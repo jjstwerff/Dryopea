@@ -9,8 +9,14 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**P0 + P1 + P2 done** (2026-08-15).  P3 is next.  Suite **1082** green,
-gate 28 scripts / **520 measurements unchanged**.
+**P0 + P1 + P2 + P3 done** (2026-08-15).  P4 is next.  Suite **1094**
+green, gate 28 scripts / **520 measurements unchanged**.
+
+⚠ **dryopea can be played.**  `make play`, pan to the base, press **P**:
+the crew appears at the core, WASD drives it, and waves arrive because
+time passed.  ⚠ **Nothing of the game is DRAWN yet** — enemies, the
+vehicle and the crew are P4 — so the console is the only way to see it,
+and it prints a line per tick.
 
 **P1 built the seam — and FALSIFIED P0 while doing it.**  P0 said an
 accumulator reproduces `tick N` exactly, so one door taking SECONDS
@@ -28,12 +34,6 @@ So the game has ONE tick and **two ways to ask for it** — a COUNT
 (`play_advance`, what a frame has).  The one-seam rule was never "one
 entry point"; it is *one caller of `wave_tick`*, and `play_one_tick` is
 it.
-
-⚠ **dryopea still cannot be played.**  `src/main.loft` opens a window
-and runs the EDITOR — paint, markers, camera, save.  P1 built the door
-the window will drive and P2 gave it a keyboard; what is missing is the
-loop, and **one argument**: `main.loft` passes `playing: false`, so
-WASD still pans.  P3 is what flips it.
 
 Before this plan, every wave, tower and clock in the repo had been
 measured by a `.keys` file and **never once played by a person** —
@@ -332,6 +332,144 @@ better anyway.  Nothing else in `src/` or `tests/` uses the shape, so it
 had never come up — recorded in
 [`docs/LOFT_GOTCHAS.md`](../../docs/LOFT_GOTCHAS.md) § Literals.
 
+## P3 — the loop: the game runs on a wall clock (2026-08-15)
+
+`main.loft` calls `play_step` and hands it how long the frame took.
+**P** flips between editing the map and playing it; the crew appears at
+the core; waves arrive because seconds passed.
+
+The whole of the shell's input-and-time half is three lines:
+
+```
+playing = play_mode(ps);
+ei      = editor_input_from(isrc, hovered, pan_due, paint_due, playing);
+play_step(ps, s, ei, play_frame_seconds(ps, elapsed));
+```
+
+### ⚠⚠ The mode moved from the SHELL to the SESSION, and the reason is `#cwd`
+
+§ Open questions 2 recommended a mode flag *in the shell*, and P2 built
+the seam's half exactly that way — a per-frame parameter, nothing
+remembered.  **That half stands and is untouched.**  What moved is where
+the flag lives BETWEEN frames.
+
+A local in `main()` cannot be reached by any test: an entry point
+carries `#cwd`, `#cwd` cannot be `use`d, so `main.loft` is compiled by
+nothing (`CLAUDE.md` § Relative paths).  A flag there would make the one
+decision CI cannot see the one that decides whether the game runs.
+
+So `PlayState.playing` holds it, and the shell reads it.  ⚠ The seam is
+still parameterised, which was the load-bearing half: plan 05's landing
+flow can set the flag instead of a key without touching
+`editor_input_from` at all.
+
+### ⚠⚠ The mode gates the CLOCK and never the seam
+
+Two flags, one word, and folding them would have broken the corpus:
+
+| | what it says | who reads it |
+|---|---|---|
+| `EditorInput.in_playing` | what the KEYS mean **this frame** — WASD pans or drives | `editor_input_from`, `play_actions` |
+| `PlayState.playing` | does wall time reach the simulation **at all** | `play_frame_seconds`, and nothing else |
+
+⚠ **A `play_step` that gated its SECONDS on either flag goes red at
+once**, and the tests that catch it are P1's and P2's rather than
+P3's: `test_a_frame_carries_both_the_input_and_the_time` hands a
+NEUTRAL frame two ticks' worth of seconds, and
+`test_an_edit_frame_leaves_a_scripted_destination_alone` hands an EDIT
+frame six — both on sessions that have never been in play mode, because
+a script's time is the script's business.  Time is the caller's;
+`play_frame_seconds` is how the *window* spends it.
+
+⚠ And the mode is a function rather than an `if` in the GL loop for the
+same reason the flag is on the session: `tests/19_p3_the_clock.loft`
+§ A session opens in the editor is what makes the rule visible to CI.
+
+### ⚠ Time spent editing is DROPPED, not banked
+
+The same decision `play_advance` already makes about a coreless world,
+and it matters more here because `play_advance` has **no clamp**: a
+minute of map-making banked and then released would arrive as ninety
+ticks in one frame.  ⚠ The shell still measures every frame — including
+the ones whose seconds it throws away — because skipping the update
+while editing is what would create the burst it is avoiding.
+
+### ⚠ P is a table row, and a REFUSED script action
+
+It is on `editor_actions()` for the reason every key is (plan 09 I1): a
+key code read privately in `main.loft` is a binding no gate can see.
+`EditorInput.in_toggle_play` carries it, and the WINDOW is its
+consumer — the third one, after `editor_step` and `play_actions`.
+
+⚠ But `do toggle_play` is **refused** by the script runner, alongside
+`do mod_ctrl` and `do palette_5`.  P2 decided a script says which
+meaning it wants by ACTION NAME — `do pan_north` against `do
+drive_north` — precisely so a line's meaning never depends on a line
+above it, and a mode verb puts that dependency straight back.
+
+⚠ It is also filled OUTSIDE `editor_input_from`'s play / edit split,
+unlike the six play rows.  Fill it in one branch and there is no way out
+of whichever mode filled it.
+
+### ⚠ Three smaller decisions
+
+**The crew appears at the CORE**, which is a stand-in for plan 05's
+landing flow and deliberately the smallest one: the design lands the
+player on a spot they pick with the mouse, and picking one is UI work
+this plan excludes.  ⚠ `play_begin` refuses an occupied chassis, so
+leaving play mode and coming back is a **pause** rather than a restart —
+otherwise a glance at the map would cost the run its position, and
+`play_begin` would be a second respawn path beside `wave_drop`'s.
+
+**The mode flips at the END of the frame.**  The input was resolved
+under the old mode — WASD already meant one of its two things before the
+flip could run — so flipping first would make one frame's keys disagree
+with that frame's mode.  ⚠ And it happens inside `play_step`, beside the
+`ps.prev` write it depends on: a caller doing it outside would have to
+save the previous frame first, and one that forgot would toggle on every
+frame the key was held.
+
+**Esc still saves and exits** rather than leaving play mode.
+`DESIGN.md` gives Esc to *cancel / menu*, and a menu is not built.
+
+### What the gate said
+
+* `scripts/validate.sh` — **28 scripts, 520 measurements, unchanged.**
+  P3 is additive: every scenario in the corpus is a run in EDIT mode,
+  and `tests/19_p3_the_clock.loft` § A scripted run is never in play
+  mode is that stated as an assertion rather than as a hope.
+* `scripts/test.sh` — **1094 green** (1082 + 12).
+* ⚠ **One control fired**: `tests/09_i1_bindings.loft` pins the table's
+  ROW COUNT, and it went red naming the count.  That is the gate working
+  — a key table that can grow silently is a key table nobody is reading.
+
+### ⚠ What P3 does NOT do, and it is visible the moment you press P
+
+**Nothing of the game is drawn.**  P4 draws the enemies, the vehicle and
+the crew; until then the window is an editor with a live simulation
+behind it, and the console echo (a line per tick: waves, enemies,
+wallet, where the crew is) is the whole of what a player can see.
+
+**The camera does not follow the vehicle** — `DESIGN.md` § 12 has it
+locked and auto-reframing, which is camera work § What this plan does
+NOT build leaves to plan 05.  Pan to the base before pressing P.
+
+⚠ **A tick lands INSIDE one frame, so the window will hitch at 1.5 Hz.**
+`play_advance` spends whole ticks in the calling frame, and `CLAUDE.md`
+§ Cost puts a tick at ~125 ms on a radius-40 world with 80 enemies —
+against a 16 ms frame.  Nothing here is wrong: the budget a tick is
+*allowed* is 667 ms precisely because a tick is 667 ms of game time.
+But it is spent in one frame rather than spread over forty, and P4 is
+where that becomes visible.  ⚠ **Not measured in a window** — no display
+here — so this is the arithmetic, not a reading.
+
+⚠ **The window half was not run by the agent that built it** — this
+environment has no display, so `make play` could not be launched.  What
+is verified is the loop's whole decision surface headlessly (`§ The
+window's frame` mirrors it line for line) plus a `--native-emit`
+parse-check of the shell.  § Open questions 4 is the human check, and it
+is still open.
+
 ## Invariant gate
 
 | Phase | Expected result | Invariant | Negative control |
@@ -339,7 +477,7 @@ had never come up — recorded in
 | **P0** ✓ | `tick 30` reproduced from 1, 30, 200, 600 and 1200 frames — every one an empty `state_diff` | ⚠ claimed *an accumulator is a REFINEMENT of `tick N`* — **too strong, corrected by P1**; what holds is that the frame SIZE does not reach the simulation | ✓ the falsifier was live for the frame size; ✗ **not for `n`** — five frame sizes over ONE tick count, and the defect was in the variable held fixed |
 | **P1** ✓ | 520 gate measurements unchanged; suite 1065 | ONE caller of `wave_tick` — asked by COUNT or by DURATION, never one folded into the other | ⚠ **the control FIRED**: routing `tick` through the seconds door went red as `a-base-that-plays-its-list … waves = 0, outside 1..1`, a wave that never arrives rather than a clock a hair off |
 | **P2** ✓ | six rows on the design's own keys; 520 measurements unchanged; suite 1082 | one key table, the I1 shape — and one key means ONE thing per frame | ⚠ **the control was nearly fatal**: WASD is shared with the camera pan, so a merged reading would have driven a parked vehicle on every `at` in 28 scenarios.  ✓ § A camera frame does not drive; ✓ § The editor seam is blind to the play fields |
-| **P3** | waves arrive in a window, on the wall clock | the loop owns the CLOCK and the seam owns the rules (`editor_step`'s existing split) | a frame-rate-dependent simulation: assert the same elapsed time gives the same state at two frame rates |
+| **P3** ✓ | 12 s of held-east frames drive the crew to a spawn marker and the wave list wakes — **no `tick` anywhere in the test**; 520 measurements unchanged; suite 1094 | the loop owns the CLOCK and nothing else — the mode gates the clock, never the seam | ✓ 60 fps against 12 fps over the same 12 s, through the KEYS, `state_diff` empty (⚠ stronger than P1's: the steering re-points every frame, so 60 fps had 5x the chances to disagree).  ⚠ **a control FIRED**: `09_i1_bindings`'s row count |
 | **P4** | enemies, the vehicle and the crew are drawn | measured frames, not goldens | ⚠ a golden AGREES WITH A SHEAR, so the gate is `classify_world` pixel shares — a thing not drawn reads as zero |
 | **P5** | a key writes the live situation as `.keys` | plan 18's emitter, driven from a session rather than a script | the emitted file must REPLAY to an S0-identical state |
 
@@ -350,9 +488,9 @@ had never come up — recorded in
 | **P0** — the probe: can real time reproduce `tick N`? | XS | the table in § P0, measured against the shipped sim over five frame sizes | **Done** |
 | **P1** — the play session and its ONE door | M | `tests/19_p1_the_seam.loft` (14 fns) + the whole gate: `play.loft` owns the only `wave_tick` call, `tick` / `fall` / every scripted frame route through it, and **all 520 measurements are unchanged** | **Done** |
 | **P2** — play actions in the ONE key table | S | `tests/19_p2_the_keys.loft` (17 fns) — WASD / Shift / E are `EditorAction` rows, a script pressing the key does what the verb does, and the 520 measurements are unchanged.  ⚠ They apply in `play_step`, not `editor_step`: the editor's seam has no roster | **Done** |
-| **P3** — the loop: the game runs in the window | M | `tests/19_p3_the_clock.loft` for the accumulator + a human check that `make play` plays.  ⚠ The headless half is what CI can hold.  ⚠ `main.loft` passes `playing: false` today — that one argument is what P3 flips | Open |
-| **P4** — drawing the game | M | `tests/19_p4_the_frame.loft` — `classify_world` pixel shares for enemies, the vehicle and the crew.  A `.keys` scenario with `snap` for human inspection | Blocked on P3 |
-| **P5** — capture from a live session | S | `tests/19_p5_capture.loft` — a key writes the situation, and the file replays to an S0-identical state ([plan 18](../18-scenario-capture/README.md)) | Blocked on P3 |
+| **P3** — the loop: the game runs in the window | M | `tests/19_p3_the_clock.loft` (12 fns) — P starts the clock, a held P toggles once, the crew lands at the core, the mode decides whether WASD pans or drives, **a wave arrives on 12 s of wall clock with no `tick` in the test**, and 60 fps and 12 fps play one game.  ⚠ The headless half is what CI can hold; the window is § Open questions 4 | **Done** |
+| **P4** — drawing the game | M | `tests/19_p4_the_frame.loft` — `classify_world` pixel shares for enemies, the vehicle and the crew.  A `.keys` scenario with `snap` for human inspection | Next |
+| **P5** — capture from a live session | S | `tests/19_p5_capture.loft` — a key writes the situation, and the file replays to an S0-identical state ([plan 18](../18-scenario-capture/README.md)) | Open |
 
 ### Why the order is this order
 
@@ -396,24 +534,30 @@ a captured situation is a starting position, not a resumable game.
    `PlayState { wave, banked, ticks }`, and `ScriptRun` holds one.
    § Open question 1, answered by the compiler.
 2. **Does the editor become a MODE of the game, or the game a mode of
-   the editor?**  ⚠ **P2 built the mechanism and deliberately not the
-   answer**: `editor_input_from`'s `playing` argument is a per-FRAME
-   parameter, so nothing remembers a mode and nothing pre-empts plan
-   05's landing flow.  `main.loft` passes `false`; P3 decides what
-   flips it.  The original recommendation stands —  Today `main.loft` is an editor that could gain a play
-   mode; the shipped game is a game that has no editor.  *Recommendation:
-   a mode flag in the shell for now and no decision baked into the seam,
-   because the answer changes when a landing flow exists (plan 05) and
-   nothing here should pre-empt it.*
+   the editor?**  ⚠ **Still deliberately unanswered, and P3 kept it
+   that way.**  Today `main.loft` is an editor that gained a play mode
+   (P), which is the recommendation acted on and not the question
+   settled — the shipped game will be a game that has no editor.  What
+   P3 changed is only WHERE the flag lives: `PlayState.playing` rather
+   than a local in `main()`, because an entry point carrying `#cwd` is
+   compiled by nothing.  ⚠ The seam is still parameterised, so plan 05's
+   landing flow sets the flag instead of a key and `editor_input_from`
+   does not move.  § P3 § The mode moved from the SHELL to the SESSION.
 3. ~~**What happens to `ScriptRun.ticks` when the clock is real?**~~
    **Answered by P1:** it is a count of TICKS, as recommended — and it
    MOVED, to `run.play.ticks`, because a run holding the wave and the
    clock as separate fields could not reach `play_ticks` without handing
    over copies of both.  § Open question 3, answered.
-4. **Can a person actually play it?**  The one question no test answers.
+4. **Can a person actually play it?**  The one question no test answers,
+   and **P3 made it askable without answering it** — the loop is built
+   and green headlessly, but the environment that built it has no
+   display, so `make play` has never been launched with the game in it.
    ⚠ `docs/NUMBERS.md` § Design targets has a target that has been
    ungateable since it was written — *"a single base session ≈ 15-25
-   minutes"* — and P3 is the first time it could be checked at all.
+   minutes"*.
+   ⚠ **Ask it after P4**, not now: with nothing of the game drawn, what
+   a person would be checking is a console log, and "is this playable"
+   is not a question a log can answer.
    *Recommendation: check it by playing, and write the number down
    wherever it lands.*
 

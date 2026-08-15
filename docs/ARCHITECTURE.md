@@ -40,12 +40,25 @@ src/
                    detection in the seam and I1 kept it, so this
                    reads LEVEL state and `input`'s `is_action_just_*`
                    are deliberately unused.  Two edge detectors is
-                   the drift this file exists to prevent
-  main.loft        interactive editor entry point — `fn main()`,
-                   NOT in the aggregator (runs via `loft src/main.loft`).
-                   The GL shell only: open window, poll input,
-                   call the seam, render.  Parse-check it by hand
-                   after every edit — `scripts/test.sh` can't see it
+                   the drift this file exists to prevent.
+                   ⚠ THREE readers since plan 19 P3, not two: the six
+                   PLAY rows are `play_actions`' and the one SHELL row
+                   (`toggle_play`, P) is the WINDOW's.  `playing`
+                   fills the drive set or the pan set, never both —
+                   but `toggle_play` is filled either way, or there is
+                   no way out of play mode
+  main.loft        interactive entry point — `fn main()`, NOT in the
+                   aggregator (runs via `loft src/main.loft`).
+                   The GL shell only: open window, measure the frame,
+                   poll input, call `play_step`, render.  Parse-check
+                   it by hand after every edit — `scripts/test.sh`
+                   can't see it.
+                   ⚠ Since plan 19 P3 it runs the GAME, and its whole
+                   input-and-time half is three lines mirrored in
+                   `tests/19_p3_the_clock.loft` § The window's frame:
+                   read the mode, resolve the keys, hand over
+                   `play_frame_seconds(ps, elapsed)`.  It owns the
+                   CLOCK and decides nothing else
   editor_step.loft the input seam (plan 08 V0) — EditorState (all
                    session state) + EditorInput (one frame of intent)
                    + editor_step(s, input).  EVERY action runs through
@@ -71,8 +84,11 @@ src/
                    Also owns VIEW_W / VIEW_H / VIEW_PPM (the window
                    size IS the shot size).  Never mutates the state
   play.loft        the GAME's seam (plan 19 P1) — PlayState { wave,
-                   banked, ticks } + play_state_new / play_core /
-                   play_ticks / play_advance / play_step.
+                   banked, ticks, prev, playing } + play_state_new /
+                   play_core / play_ticks / play_advance / play_step,
+                   plus the play ACTIONS (P2) and the MODE (P3:
+                   play_mode / play_set_mode / play_begin /
+                   play_frame_seconds).
                    ⚠ **`play_one_tick` is the ONE call to `wave_tick`
                    in the repo**, and that is the whole invariant: a GL
                    loop that ticked the game itself, or a script verb
@@ -104,7 +120,24 @@ src/
                    PASSED, the game is OWNED.
                    ⚠ No core, no game — and the seconds are DROPPED
                    rather than banked, or placing a core would replay
-                   the whole wait as one burst
+                   the whole wait as one burst.
+                   ⚠ **The MODE gates the CLOCK, never the seam**
+                   (P3).  `input.in_playing` says what the KEYS mean
+                   this frame; `PlayState.playing` says whether wall
+                   time reaches the simulation at all
+                   (`play_frame_seconds`).  Every P1/P2 test hands
+                   `play_step` real seconds on a session that has
+                   never been in play mode, so confusing the two
+                   breaks the corpus.
+                   ⚠ **The mode is remembered by the SESSION, not by
+                   `main()`** — `plans/19` § Open questions 2 said the
+                   SHELL, and the seam's half of that stands (nothing
+                   is baked in), but a local in an entry point
+                   carrying `#cwd` is a decision no test can reach.
+                   ⚠ `play_begin` puts the crew at the CORE and is a
+                   stand-in for plan 05's landing flow; it refuses an
+                   occupied chassis, so the toggle is a PAUSE rather
+                   than a restart
   compare.loft     are two runs in the same state? (plan 18 S0) —
                    state_diff(a, b) answers the FIRST difference and
                    both values, "" when identical; states_equal is
@@ -732,7 +765,7 @@ suite redirects its own shots into `tests/actual/`.
 | `MapFile` | `map_file.loft` | save record (6 fields; see Known constraints) |
 | `GroundEntry` | `map_file.loft` | one persisted hex with kind as text name |
 | `ScriptRun` | `script.loft` | one `.keys` run — ok / failing line / message / counts, plus the pointer, the shots directory and the GAME it is playing.  ⚠ `run.play.wave` / `run.play.ticks` since plan 19 P1: the wave and the clock are ONE record, because `play_ticks` takes a `PlayState` and a run holding the pieces separately could only hand over copies |
-| `PlayState` | `play.loft` | a game in progress — the roster, the clock, and the seconds banked toward the next tick.  ⚠ What a LIVE session has that an edited one does not; the world is passed in, never owned, because a struct in a field is a copy |
+| `PlayState` | `play.loft` | a game in progress — the roster, the clock, the seconds banked toward the next tick, last frame's input, and whether the session is LIVE.  ⚠ What a live session has that an edited one does not; the world is passed in, never owned, because a struct in a field is a copy.  ⚠ `playing` (plan 19 P3) gates the CLOCK and never the seam — `EditorInput.in_playing` is the other, per-frame half and says what the KEYS mean |
 | `FrameCounts` | `measure.loft` | one classified frame — pixels per bucket, `unknown` (not a palette colour = a fault), `total` |
 | `WaveState` | `spawn.loft` | the enemy roster + round-robin cursor + the runtime rubble layer + the structure damage ledger + every tower's banked charge + the run's wallet + the crew + the cargo — runtime, not editor state |
 | `Vehicle` | `vehicle.loft` | the player: where it is, where it is pointed, and whether it is in the world at all — ⚠ `parked` is separate because (0, 0) is a real hex and is the core in every scenario |

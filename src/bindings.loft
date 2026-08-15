@@ -75,6 +75,7 @@ const KEY_MINUS: integer = 45;    // '-' — palette entry 11
 const KEY_N:     integer = 110;   // 'n' — Ctrl+N clears all
 const KEY_H:     integer = 104;   // 'h' — recentre camera
 const KEY_K:     integer = 107;   // 'k' — cycle marker kind
+const KEY_P:     integer = 112;   // 'p' — edit ↔ play (plan 19 P3)
 
 // ─── One row of the table ───────────────────────────────────────
 
@@ -173,6 +174,20 @@ pub fn editor_actions() -> vector<EditorAction> {
     // the KEYBOARD has one, and this row is what makes `do carry` press
     // what a player presses.
     ea += [act("carry", graphics::KEY_E, CTRL_IGNORED)];
+
+    // ── The SHELL (plan 19 P3) ──────────────────────────────────
+    //
+    // ⚠ **P is neither an editor action nor a play action** — it is the
+    // WINDOW's, and it is on this table for the reason every other key
+    // is: `main.loft` reading a key code privately is a binding no gate
+    // can see (plan 09 I1).  `editor_input_from` reports it; who acts on
+    // it is the loop.
+    //
+    // ⚠ `DESIGN.md` § The handful of keys does not name it, because the
+    // design's answer is plan 05's LANDING FLOW rather than a key.  This
+    // is a dev-build toggle standing in for one, and `plans/19` § Open
+    // questions 2 is where it goes when that flow exists.
+    ea += [act("toggle_play", KEY_P, CTRL_IGNORED)];
 
     // Palette hotkeys — 1..9, 0, - select entries 0..10.
     //
@@ -392,6 +407,11 @@ pub fn editor_input_from(
     eif_i.in_rotate_ccw  = eif_shift;
     eif_i.in_cycle_kind  = action_on(src, "cycle_kind",  eif_ctrl);
     eif_i.in_recentre    = action_on(src, "recentre",    eif_ctrl);
+
+    // ⚠ **Outside the play / edit split below, deliberately.**  It is
+    // the way IN and the way OUT of play mode, so filling it in only one
+    // branch would strand the player in whichever mode filled it.
+    eif_i.in_toggle_play = action_on(src, "toggle_play", eif_ctrl);
 
     eif_i.in_undo      = action_on(src, "undo",   eif_ctrl);
     eif_i.in_redo      = action_on(src, "redo",   eif_ctrl);

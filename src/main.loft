@@ -59,6 +59,12 @@
 //                     painted or marker layers).  Letter rather
 //                     than `Home` because graphics.loft doesn't
 //                     ship a KEY_HOME constant yet.
+//   P                 PLAY / EDIT (plan 19 P3).  Starts the game
+//                     clock: waves arrive on the wall clock, the
+//                     crew appears at the core, and WASD drives
+//                     it instead of panning the camera.  Press
+//                     again to freeze and go back to editing —
+//                     the run is kept, so it is a pause.
 //   Esc               save + exit
 //
 // Hotkey strategy: 12 base slots (1234567890-=) cover the near-term
@@ -112,6 +118,33 @@
 // resolution did not move — it is still poll-side, as above — it
 // just became `ea_ctrl` on a record rather than `&& !ctrl_held`
 // repeated at nine call sites.
+//
+// ── The game runs here now (plan 19 P3) ─────────────────────────
+//
+// The loop calls `play_step` rather than `editor_step`, and hands it
+// how long the frame took.  That is the whole of the change, and the
+// whole of what this side decides:
+//
+//     playing = play_mode(ps);                       // the session says
+//     ei      = editor_input_from(…, playing);       // table → intent
+//     play_step(ps, s, ei, play_frame_seconds(ps, elapsed));
+//
+// ⚠⚠ **The loop owns the CLOCK and nothing else.**  Whether a frame's
+// seconds reach the simulation is `play_frame_seconds`; how many ticks
+// they buy is `play_advance`; what a key means is `bindings.loft`; what
+// a tick does is `wave_tick`.  This file measures `ticks()` and reports
+// what changed.  It decides nothing, because `#cwd` makes it a file no
+// aggregator can compile and therefore a file no test can reach.
+//
+// ⚠ **Nothing of the game is DRAWN yet** — enemies, the vehicle and the
+// crew are plan 19 P4.  Until then the window is an editor with a live
+// simulation behind it and the console below is the only way to see it,
+// which is why the echo prints a line per tick rather than per event.
+//
+// ⚠ **The camera does not follow the vehicle**, either: `DESIGN.md`
+// § 12 has it locked and auto-reframing, which is camera work `plans/19`
+// § What this plan does NOT build leaves to plan 05.  Pan to the base
+// before pressing P.
 
 #cwd
 
@@ -199,11 +232,31 @@ fn main() {
     // thirty records rebuilt twenty times a frame.
     isrc = input_source_new();
 
+    // The GAME (plan 19 P1 + P3).  A session opens in the editor, so
+    // this sits idle — no roster, no clock — until P is pressed.
+    ps = play_state_new();
+
+    // ⚠ Seeded from the clock rather than from 0, or the first frame
+    // would measure the whole of process start-up.  It is discarded
+    // anyway (a session opens in edit mode, where `play_frame_seconds`
+    // answers 0.0), but relying on that would make the seeding invisible
+    // the day the shell opens straight into a run.
+    last_frame_us: integer = ticks();
+
     for _ in 0..1000000 {
         if !gl_poll_events() { break; }
         if gl_key_pressed(graphics::KEY_ESCAPE) { break; }
 
         tnow = ticks();
+
+        // ── The wall clock ──────────────────────────────────────
+        // How long this frame took, in seconds.  ⚠ Measured EVERY
+        // frame, including edit frames whose seconds are then dropped:
+        // skipping the update while editing would make the first frame
+        // after P report the whole editing session, and `play_advance`
+        // has no clamp — it would play the lot in one frame.
+        elapsed = ((tnow - last_frame_us) as float) / 1000000.0;
+        last_frame_us = tnow;
 
         // ── Input ───────────────────────────────────────────────
         // One poll of the key table, one resolve, one step.  What a
@@ -236,12 +289,15 @@ fn main() {
         pre_markers = marker_count(s.mw);
         pre_cursor  = s.history.cursor;
         pre_dirty   = s.dirty;
-        // ⚠ `false` = this is an EDIT frame, so WASD pans the camera
-        // rather than driving (plan 19 P2).  This shell has no play
-        // mode yet — P3 is what gives it one, and this argument is the
-        // one line that will flip when it does.
-        ei = editor_input_from(isrc, hovered, pan_due, paint_tick_due, false);
-        editor_step(s, ei);
+        pre_ticks   = ps.ticks;
+        // ⚠ The mode is read ONCE, at the top of the frame, and the same
+        // answer decides both halves: what WASD means (pan or drive) and
+        // whether the frame's seconds reach the game.  Reading it twice
+        // would let a P pressed this frame — which `play_step` acts on at
+        // its END — split the frame between two modes.
+        pre_playing = play_mode(ps);
+        ei = editor_input_from(isrc, hovered, pan_due, paint_tick_due, pre_playing);
+        play_step(ps, s, ei, play_frame_seconds(ps, elapsed));
 
         // Charge the rate limits only when they actually fired, so a
         // key held against a limit still steps at the limit's rate.
@@ -274,6 +330,36 @@ fn main() {
         // Only a save or a reload makes memory match disk again.
         if pre_dirty && !s.dirty {
             println("dryopea: disk in sync ({painted_count(s.pw)} hexes, {marker_count(s.mw)} markers)");
+        }
+
+        // ── The run, in the console (plan 19 P3) ────────────────
+        //
+        // ⚠ **This is the whole of what a player can SEE of the game**
+        // until P4 draws it, which is why it prints a line per tick
+        // rather than per event: a wave arriving is only visible as the
+        // enemy count moving.
+        //
+        // Read back from the state, never predicted — the same rule the
+        // editor echoes above follow.
+        if play_mode(ps) != pre_playing {
+            if play_mode(ps) {
+                println("dryopea: PLAY — clock running, crew at the core, WASD drives");
+            } else {
+                println("dryopea: EDIT — clock stopped at t{ps.ticks} (the run is kept)");
+            }
+        }
+        if ps.ticks != pre_ticks {
+            println("dryopea: t{ps.ticks} waves {wave_schedule_sent(ps.wave.schedule)} "
+                    + "enemies {alive_count(ps.wave)} "
+                    + "wallet {wallet_left(ps.wave.wallet):8.1} "
+                    + "crew ({ps.wave.player.q}, {ps.wave.player.r})");
+            // ⚠ `wallet_broke` is the ONLY end state (`wallet.loft`) —
+            // never `core.hp`, which is null by design.  The loop only
+            // says so; it does not stop, because what happens next is
+            // the scramble and plan 19 does not build it.
+            if wallet_broke(ps.wave.wallet) {
+                println("dryopea: the base has fallen at t{ps.ticks} — press P to stop the clock");
+            }
         }
 
         // ── Render ──────────────────────────────────────────────

@@ -169,6 +169,25 @@ pub struct EditorInput {
     // deposit.
     in_carry: boolean,
 
+    // ── The SHELL's half (plan 19 P3) ──
+    //
+    // ⚠⚠ **Neither seam reads this one.**  `editor_step` does not and
+    // `play_actions` does not: it is the WINDOW's, and the window is
+    // the third consumer of this record.  P — flip between editing the
+    // map and playing it.
+    //
+    // It is a table row rather than a `gl_key_pressed` for the reason
+    // every other key is (plan 09 I1): a key code written down in
+    // `main.loft` is a key no gate can see.  ⚠ But it is refused as a
+    // SCRIPT action (`script.loft`), because P2 decided a script says
+    // which meaning it wants by ACTION NAME and never by a mode verb —
+    // a `.keys` file that could flip a mode would make a line's meaning
+    // depend on a line somewhere above it.
+    //
+    // ⚠ Filled on EVERY frame, play or edit, unlike the six above:
+    // fill it only while editing and there is no way back out.
+    in_toggle_play: boolean,
+
     // Palette hotkey: is one down, and which entry does it select.
     // One index rather than twelve booleans — the player presses one
     // hotkey, and a script says `key 5`.
@@ -215,6 +234,7 @@ pub fn editor_input_empty() -> EditorInput {
         in_drive_west:     false,
         in_boost:          false,
         in_carry:          false,
+        in_toggle_play:    false,
     }
 }
 
@@ -255,6 +275,7 @@ pub fn editor_input_copy(ic: const EditorInput) -> EditorInput {
         in_drive_west:     ic.in_drive_west,
         in_boost:          ic.in_boost,
         in_carry:          ic.in_carry,
+        in_toggle_play:    ic.in_toggle_play,
     }
 }
 

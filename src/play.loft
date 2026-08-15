@@ -146,14 +146,23 @@ pub struct PlayState {
     // would compare this frame against itself.  Same shape, same
     // `editor_input_copy`, one frame apart.
     prev: EditorInput,
+
+    // Is this session LIVE — the game running, or the map being edited?
+    // Plan 19 P3.  ⚠ See § The mode is remembered by the SESSION for why
+    // it is here and not a local in `main()`.
+    playing: boolean,
 }
 
 pub fn play_state_new() -> PlayState {
     PlayState {
-        wave:   wave_state_empty(),
-        banked: 0.0,
-        ticks:  0,
-        prev:   editor_input_empty(),
+        wave:    wave_state_empty(),
+        banked:  0.0,
+        ticks:   0,
+        prev:    editor_input_empty(),
+        // ⚠ A session opens in the EDITOR, which is what keeps every
+        // caller written before P3 — the script runner, and all 28 gate
+        // scenarios — meaning exactly what it meant.
+        playing: false,
     }
 }
 
@@ -180,6 +189,85 @@ pub fn play_core(mw: const MarkerWorld) -> (integer, integer, integer) {
         }
     }
     (pc_n, pc_q, pc_r)
+}
+
+// ─── The mode: editing, or playing (plan 19 P3) ─────────────────
+//
+// ⚠⚠ **The mode is remembered by the SESSION, not by `main()`.**
+//
+// `plans/19` § Open questions 2 recommended a flag in the SHELL, and
+// P2 built the seam's half exactly that way: `editor_input_from`'s
+// `playing` is a per-frame parameter and nothing in the seam remembers
+// it.  That half stands.  What moved is where the flag LIVES between
+// frames — a local in `main()` is a decision no test can reach, and
+// `CLAUDE.md` § Relative paths is blunt about why that matters here:
+// an entry point carrying `#cwd` cannot be `use`d, so `main.loft` is
+// compiled by nothing and must stay a shell with no decisions in it.
+//
+// So the seam is still parameterised — nothing is baked in, and the
+// landing flow plan 05 will bring can set this flag instead of a key —
+// but the flag itself is game state, where CI can see it.
+//
+// ⚠ It gates the CLOCK and NEVER the seam.  `in_playing` says what the
+// KEYS mean this frame; `playing` says whether wall time reaches the
+// simulation at all.  Confusing the two would break the corpus: every
+// P1 and P2 test hands `play_step` real seconds on a session that has
+// never been in play mode, because a scripted frame's time is the
+// SCRIPT's business and always 0.0 anyway.
+
+pub fn play_mode(ps: const PlayState) -> boolean {
+    ps.playing
+}
+
+// How much of a frame's elapsed time the GAME gets.
+//
+// ⚠ **This is the whole of what the mode does to the clock**, and it is
+// a function rather than an `if` in the GL loop so that a gate can see
+// it: `tests/19_p3_the_clock.loft` § An edit session has no clock is the
+// assertion, and without it the rule would live only in `main.loft`,
+// where nothing compiles it.
+//
+// ⚠ Time spent editing is DROPPED rather than banked — the same
+// decision `play_advance` makes about a coreless world, and for the
+// same reason: banking it would make pressing P replay the whole
+// editing session as one burst of ticks.
+pub fn play_frame_seconds(ps: const PlayState, elapsed: float) -> float {
+    if ps.playing { elapsed } else { 0.0 }
+}
+
+// The run starts: put the crew on the ground at the core.
+//
+// ⚠ **This is a STAND-IN for plan 05's landing flow, and deliberately
+// the smallest one.**  The design lands the player on a spot they pick
+// with the mouse; picking one is UI work `plans/19` § What this plan
+// does NOT build excludes.  The core is the one hex a run is guaranteed
+// to have, so it is where the crew appears until that flow exists.
+//
+// ⚠ **Only when there is nobody there.**  Leaving play mode and coming
+// back must not teleport the player home — the state is kept across the
+// toggle, so the toggle is a pause rather than a restart.
+//
+// Answers whether it placed anybody.
+pub fn play_begin(ps: PlayState, s: EditorState) -> boolean {
+    if vehicle_present(ps.wave.player) { return false; }
+    // ⚠ No core, no run — the same `play_core` both doors ask, so a
+    // half-built map cannot start a game any more than it can tick one.
+    pb_core = play_core(s.mw);
+    if pb_core.0 != 1 { return false; }
+    vehicle_place(ps.wave.player, pb_core.1, pb_core.2);
+    true
+}
+
+// Enter or leave play mode.
+//
+// ⚠ Idempotent, because the entry does WORK: a caller that set the flag
+// on every frame it was already set would re-run `play_begin` — which is
+// harmless today only because `play_begin` refuses an occupied chassis.
+// Two guards is one too few to rely on.
+pub fn play_set_mode(ps: PlayState, s: EditorState, on: boolean) {
+    if ps.playing == on { return; }
+    ps.playing = on;
+    if on { play_begin(ps, s); }
 }
 
 // ─── The play actions (plan 19 P2) ──────────────────────────────
@@ -389,10 +477,29 @@ pub fn play_advance(ps: PlayState, s: EditorState, seconds: float) -> integer {
 // ⚠ And the EDITOR's half goes before the GAME's, so a play action
 // reads the world an editor action has already changed — the same
 // reason, one level down.
+//
+// ⚠ **`seconds` is what the CALLER decided the game gets**, not the
+// wall clock's raw answer.  A GL loop passes `play_frame_seconds(ps,
+// elapsed)` so that an edited session is frozen; a script passes 0.0
+// because its clock is `tick`.  This function does not consult the mode
+// for the time — see § The mode is remembered by the SESSION.
 pub fn play_step(ps: PlayState, s: EditorState, input: EditorInput,
                  seconds: float) -> integer {
     editor_step(s, input);
     play_actions(ps, s, input);
+    // ⚠ **The mode flips at the END of the frame, never at its start.**
+    // The input was resolved under the OLD mode — WASD already meant one
+    // of its two things before this line could run — so flipping first
+    // would make one frame's keys and that frame's mode disagree.  The
+    // press lands; the next frame is the new mode.
+    //
+    // ⚠ And it is here rather than in the shell because `ps.prev` is
+    // overwritten on the next line: a caller doing this outside would
+    // have to save the previous frame first, and a caller that forgot
+    // would toggle on every frame the key was held.
+    if input.in_toggle_play && !ps.prev.in_toggle_play {
+        play_set_mode(ps, s, !ps.playing);
+    }
     // ⚠ **Recorded on EVERY frame, including edit frames and frames
     // with no vehicle** — `play_actions` returns early from both, and
     // a `prev` that skipped them would leave a key looking held across

@@ -1,0 +1,406 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 19 phase P3 — the loop: the game runs on a wall clock.
+//
+// P1 gave the game a door and P2 gave it a keyboard.  P3 opens the
+// loop: a window measures how long a frame took and hands the seconds
+// over, and waves arrive because time passed rather than because a
+// script counted.
+//
+// ── ⚠⚠ What CI can hold, and what it cannot ─────────────────────
+//
+// `src/main.loft` carries `#cwd`, so no aggregator can compile it and
+// no test can reach it (`CLAUDE.md` § Relative paths).  That is not a
+// gap to work around — it is why the shell must hold no decisions.
+// Everything the loop does BUT read the clock lives in `play.loft`,
+// and § The window's frame below is that shape, run headlessly:
+//
+//     playing = play_mode(ps)
+//     ei      = editor_input_from(…, playing)
+//     play_step(ps, s, ei, play_frame_seconds(ps, elapsed))
+//
+// Those three lines are `main.loft`'s whole input-and-time half,
+// verbatim.  What is left over there is `ticks()` and some `println`s.
+//
+// ── ⚠⚠ The negative control is a frame-rate-dependent simulation ─
+//
+// § The frame rate does not reach the simulation drives one scenario at
+// 60 fps and at 12 fps for the same twenty seconds and compares the two
+// with `state_diff`.  ⚠ It differs from P1's version of that check in
+// the half that matters here: P1 fed `play_advance` directly, while this
+// goes through the KEYS — so it also covers the steering, which
+// re-points the vehicle's destination on every frame and therefore had
+// eighty times as many chances to disagree at 60 fps as at 12.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+// A corridor east from the core to a spawn marker far enough out to be
+// PROVOKED — `WAVE_1_PROVOCATION_HEXES` is 12, so 14 clears it.
+//
+// ⚠ The paint stops AT the marker, deliberately: a vehicle holding east
+// walks two hexes a tick and would stride straight over (14, 0) if the
+// ground went on, and `wave_provoke_step` reads where the player is
+// STANDING at the top of a tick.  The shore is what parks it there.
+fn corridor() -> EditorState {
+    cr_s = editor_state_new(PALETTE);
+    for cr_q in 0..=14 { paint(cr_s.pw, cr_q, 0, as_u8(GRASS)); }
+    place_marker(cr_s.mw, 0,  0, MARKER_KIND_TARGET as u8, 0 as u8);
+    place_marker(cr_s.mw, 14, 0, MARKER_KIND_SPAWN  as u8, 3 as u8);
+    cr_s
+}
+
+// An open field, for the steering assertions that must not meet a shore.
+fn field() -> EditorState {
+    fl_s = editor_state_new(PALETTE);
+    for fl_r in -12..13 {
+        for fl_q in -12..13 { paint(fl_s.pw, fl_q, fl_r, as_u8(GRASS)); }
+    }
+    place_marker(fl_s.mw, 0, 0, MARKER_KIND_TARGET as u8, 0 as u8);
+    fl_s
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ The window's frame, as `main.loft` runs it
+// ─────────────────────────────────────────────────────────────────
+
+// A keyboard with the named actions held, resolved THROUGH the table.
+//
+// ⚠ Never by setting `EditorInput` fields: a test that did would pass
+// with the `toggle_play` row deleted, which is the whole defect plan 09
+// I1 exists to prevent.
+fn held(src: const EditorInputSource, names: const vector<text>) -> vector<boolean> {
+    hd_kb = keyboard_empty();
+    for hd_n in names {
+        for hd_k in action_keys(src.eis_actions, hd_n) { hd_kb[hd_k] = true; }
+    }
+    hd_kb
+}
+
+// ONE frame of the window.  Answers the ticks it bought.
+//
+// ⚠⚠ **This is `main.loft`'s loop body, minus the clock and the
+// console.**  Keeping it a three-line function is what lets a gate see
+// the shell's whole decision surface — and there is nothing else in it,
+// which is the claim P3 rests on.
+fn window_frame(ps: PlayState, s: EditorState, src: EditorInputSource,
+                keys: const vector<boolean>, elapsed: float) -> integer {
+    wf_playing = play_mode(ps);
+    input_source_feed(src, keys, 0.0, 0.0, 0, 0);
+    wf_in = editor_input_from(src, Hex { q: 0, r: 0 }, true, false, wf_playing);
+    play_step(ps, s, wf_in, play_frame_seconds(ps, elapsed))
+}
+
+// Hold nothing for `n` frames of `dt`.
+fn idle_frames(ps: PlayState, s: EditorState, src: EditorInputSource,
+               n: integer, dt: float) {
+    if_none: vector<text> = [];
+    if_keys = held(src, if_none);
+    for _ in 0..n { window_frame(ps, s, src, if_keys, dt); }
+}
+
+// Hold the named actions for `n` frames of `dt`.
+fn hold_frames(ps: PlayState, s: EditorState, src: EditorInputSource,
+               names: const vector<text>, n: integer, dt: float) {
+    hf_keys = held(src, names);
+    for _ in 0..n { window_frame(ps, s, src, hf_keys, dt); }
+}
+
+// Press P and let go — the gesture that starts a run.  ⚠ No time in
+// either frame, so the clock starts at zero rather than at whatever the
+// fixture took to build.
+fn press_play(ps: PlayState, s: EditorState, src: EditorInputSource) {
+    pp_p: vector<text> = ["toggle_play"];
+    hold_frames(ps, s, src, pp_p, 1, 0.0);
+    idle_frames(ps, s, src, 1, 0.0);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ A session opens in the EDITOR
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **The zero value is "not playing", and it is load-bearing.**  The
+// script runner holds a `PlayState` and never presses P; every one of
+// the 520 gate measurements is a run in this mode.
+fn test_a_session_opens_in_the_editor() {
+    tao_s   = corridor();
+    tao_ps  = play_state_new();
+    tao_src = input_source_new();
+
+    assert(!play_mode(tao_ps), "a fresh session is not playing");
+    assert(!vehicle_present(tao_ps.wave.player), "and has no crew on the ground");
+
+    // A whole minute of frames, and the game does not move.
+    idle_frames(tao_ps, tao_s, tao_src, 3600, 1.0 / 60.0);
+    assert(tao_ps.ticks == 0, "a minute of editing plays no ticks: {tao_ps.ticks}");
+}
+
+// ⚠ **And the seconds are DROPPED rather than banked**, the same
+// decision `play_advance` makes about a coreless world.  Without it,
+// pressing P would replay the whole editing session as one burst —
+// `play_advance` has no clamp, so a minute of map-making would arrive
+// as ninety ticks in one frame.
+fn test_time_spent_editing_is_not_banked() {
+    tte_s   = corridor();
+    tte_ps  = play_state_new();
+    tte_src = input_source_new();
+
+    idle_frames(tte_ps, tte_s, tte_src, 3600, 1.0 / 60.0);   // a minute
+    press_play(tte_ps, tte_s, tte_src);
+    assert(tte_ps.ticks == 0, "and P alone plays none: {tte_ps.ticks}");
+    assert(tte_ps.banked == 0.0,
+           "nothing was banked against it: {tte_ps.banked:8.6}");
+
+    idle_frames(tte_ps, tte_s, tte_src, 1, TICK_SECONDS);
+    assert(tte_ps.ticks == 1,
+           "the first played frame is worth ONE tick, not ninety: {tte_ps.ticks}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ P starts the clock, and P stops it
+// ─────────────────────────────────────────────────────────────────
+
+fn test_p_starts_and_stops_the_clock() {
+    tps_s   = corridor();
+    tps_ps  = play_state_new();
+    tps_src = input_source_new();
+
+    press_play(tps_ps, tps_s, tps_src);
+    assert(play_mode(tps_ps), "P started the game");
+
+    idle_frames(tps_ps, tps_s, tps_src, 12, TICK_SECONDS);
+    assert(tps_ps.ticks == 12, "twelve frames, twelve ticks: {tps_ps.ticks}");
+
+    press_play(tps_ps, tps_s, tps_src);
+    assert(!play_mode(tps_ps), "P again stopped it");
+
+    idle_frames(tps_ps, tps_s, tps_src, 12, TICK_SECONDS);
+    assert(tps_ps.ticks == 12,
+           "and the clock stayed where it stopped: {tps_ps.ticks}");
+}
+
+// ⚠ **A HELD P toggles once**, which is what makes it a decision rather
+// than a stutter: at 60 fps a finger on the key is thirty frames, and a
+// level-triggered toggle would flip the mode thirty times.
+fn test_a_held_p_toggles_once() {
+    thp_s   = corridor();
+    thp_ps  = play_state_new();
+    thp_src = input_source_new();
+
+    thp_p: vector<text> = ["toggle_play"];
+    hold_frames(thp_ps, thp_s, thp_src, thp_p, 31, 0.0);
+    assert(play_mode(thp_ps), "thirty-one frames of held P: still playing");
+
+    // And letting go does not flip it back either.
+    idle_frames(thp_ps, thp_s, thp_src, 5, 0.0);
+    assert(play_mode(thp_ps), "releasing P did not stop it");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ Starting a run puts the crew on the ground
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ At the CORE, which is a stand-in for plan 05's landing flow and
+// deliberately the smallest one — the core is the one hex a run is
+// guaranteed to have.
+fn test_starting_the_run_puts_the_crew_at_the_core() {
+    tsr_s   = corridor();
+    tsr_ps  = play_state_new();
+    tsr_src = input_source_new();
+
+    press_play(tsr_ps, tsr_s, tsr_src);
+    assert(vehicle_present(tsr_ps.wave.player), "there is a crew on the ground");
+    assert(tsr_ps.wave.player.q == 0 && tsr_ps.wave.player.r == 0,
+           "at the core: ({tsr_ps.wave.player.q}, {tsr_ps.wave.player.r})");
+}
+
+// ⚠⚠ **The toggle is a PAUSE, not a restart.**  Leaving play mode and
+// coming back must not teleport the player home — otherwise a glance at
+// the map costs the run its position, and `play_begin` would be a second
+// respawn path beside `wave_drop`'s.
+fn test_stopping_and_starting_is_a_pause_not_a_restart() {
+    tsp_s   = corridor();
+    tsp_ps  = play_state_new();
+    tsp_src = input_source_new();
+
+    press_play(tsp_ps, tsp_s, tsp_src);
+    tsp_east: vector<text> = ["drive_east"];
+    hold_frames(tsp_ps, tsp_s, tsp_src, tsp_east, 4, TICK_SECONDS);
+    tsp_at = tsp_ps.wave.player.q;
+    assert(tsp_at > 0, "it drove out: q = {tsp_at}");
+
+    press_play(tsp_ps, tsp_s, tsp_src);     // edit
+    press_play(tsp_ps, tsp_s, tsp_src);     // play again
+    assert(tsp_ps.wave.player.q == tsp_at,
+           "the crew is where it was: {tsp_at} -> {tsp_ps.wave.player.q}");
+    assert(tsp_ps.ticks == 4, "and the clock is kept: {tsp_ps.ticks}");
+}
+
+// ⚠ **No core, no run** — the same question both doors already ask, so
+// a half-built map cannot start a game any more than it can tick one.
+fn test_a_coreless_map_starts_nobody() {
+    tcm_s = editor_state_new(PALETTE);
+    for tcm_q in 0..=14 { paint(tcm_s.pw, tcm_q, 0, as_u8(GRASS)); }
+    tcm_ps  = play_state_new();
+    tcm_src = input_source_new();
+
+    press_play(tcm_ps, tcm_s, tcm_src);
+    assert(play_mode(tcm_ps), "the mode still flips — it is the shell's");
+    assert(!vehicle_present(tcm_ps.wave.player), "but nobody was placed");
+
+    idle_frames(tcm_ps, tcm_s, tcm_src, 30, TICK_SECONDS);
+    assert(tcm_ps.ticks == 0, "and nothing ticks: {tcm_ps.ticks}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ The MODE is what decides whether WASD pans or drives
+// ─────────────────────────────────────────────────────────────────
+
+// P2 built the exclusion and proved it with a hand-passed argument.
+// This is the same claim at the loop's level: the SESSION answers it,
+// so a window that never touched `editor_input_from` directly still
+// gets one meaning per frame.
+fn test_the_mode_decides_whether_wasd_pans_or_drives() {
+    tmd_s   = field();
+    tmd_ps  = play_state_new();
+    tmd_src = input_source_new();
+    tmd_w: vector<text> = ["drive_north"];      // ⚠ the same KEY as pan_north
+
+    // Editing: W walks the camera and there is no vehicle to move.
+    hold_frames(tmd_ps, tmd_s, tmd_src, tmd_w, 4, TICK_SECONDS);
+    assert(tmd_s.cam.pos.r > 0, "editing, W panned: r = {tmd_s.cam.pos.r}");
+    assert(!vehicle_present(tmd_ps.wave.player), "and there is no crew yet");
+    tmd_cam = tmd_s.cam.pos.r;
+
+    // Playing: the same key drives, and the camera stands still.
+    press_play(tmd_ps, tmd_s, tmd_src);
+    hold_frames(tmd_ps, tmd_s, tmd_src, tmd_w, 4, TICK_SECONDS);
+    assert(tmd_ps.wave.player.r == 8,
+           "playing, W drove: r = {tmd_ps.wave.player.r}");
+    assert(tmd_s.cam.pos.r == tmd_cam,
+           "and the camera did not move: {tmd_cam} -> {tmd_s.cam.pos.r}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ THE HEADLINE: a wave arrives because time passed
+// ─────────────────────────────────────────────────────────────────
+
+// Nothing in this test counts a tick.  A run is started, a direction is
+// held, and twelve seconds of frames go by — and the wave list wakes and
+// puts robots on the ground, because the crew drove out to a spawn
+// marker and the clock kept running.
+//
+// ⚠ That is plan 16 W3's provocation reached the way a PLAYER reaches
+// it, which no scenario in the gate can do: a `.keys` file drives with
+// `drive <q> <r>` and advances with `tick <n>`, and both of those are
+// counts.  Here the only input is a held key and the only clock is
+// elapsed seconds.
+fn test_waves_arrive_on_the_wall_clock() {
+    twa_s   = corridor();
+    twa_ps  = play_state_new();
+    twa_src = input_source_new();
+
+    press_play(twa_ps, twa_s, twa_src);
+    assert(wave_schedule_sent(twa_ps.wave.schedule) == 0,
+           "the list has not started: {wave_schedule_sent(twa_ps.wave.schedule)}");
+
+    // 720 frames of 1/60 s — twelve seconds of holding east.
+    twa_east: vector<text> = ["drive_east"];
+    hold_frames(twa_ps, twa_s, twa_src, twa_east, 720, 1.0 / 60.0);
+
+    assert(twa_ps.ticks == 18,
+           "twelve seconds is eighteen ticks: {twa_ps.ticks}");
+    assert(twa_ps.wave.player.q == 14,
+           "the crew drove to the spawn marker: q = {twa_ps.wave.player.q}");
+    assert(wave_schedule_running(twa_ps.wave.schedule),
+           "standing there provoked the list");
+    assert(wave_schedule_sent(twa_ps.wave.schedule) >= 1,
+           "a wave went out: {wave_schedule_sent(twa_ps.wave.schedule)}");
+    assert(alive_count(twa_ps.wave) > 0,
+           "and there are robots on the ground: {alive_count(twa_ps.wave)}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ The negative control: a frame-rate-dependent simulation
+// ─────────────────────────────────────────────────────────────────
+
+// The same twelve seconds at 60 fps and at 12 fps, through the KEYS, on
+// a scenario with a wave in it — and the two are the same game.
+//
+// ⚠ `state_diff` (plan 18 S0) names the FIRST differing field, so a
+// frame rate that moved one robot by one hex says which robot and which
+// hex rather than "not equal".
+fn test_the_frame_rate_does_not_reach_the_simulation() {
+    tfr_east: vector<text> = ["drive_east"];
+
+    tfr_sa   = corridor();
+    tfr_psa  = play_state_new();
+    tfr_srca = input_source_new();
+    press_play(tfr_psa, tfr_sa, tfr_srca);
+    hold_frames(tfr_psa, tfr_sa, tfr_srca, tfr_east, 720, 1.0 / 60.0);
+
+    tfr_sb   = corridor();
+    tfr_psb  = play_state_new();
+    tfr_srcb = input_source_new();
+    press_play(tfr_psb, tfr_sb, tfr_srcb);
+    hold_frames(tfr_psb, tfr_sb, tfr_srcb, tfr_east, 144, 1.0 / 12.0);
+
+    assert(tfr_psa.ticks == tfr_psb.ticks,
+           "the same clock: {tfr_psa.ticks} vs {tfr_psb.ticks}");
+    assert(state_diff(tfr_psa.wave, tfr_psb.wave) == "",
+           "60 fps and 12 fps play one game — "
+           + "'{state_diff(tfr_psa.wave, tfr_psb.wave)}'");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ And the corpus is untouched: a script never plays
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **`do toggle_play` is REFUSED**, and it is refused for P2's reason
+// rather than for tidiness: a script says which meaning it wants by
+// ACTION NAME — `do pan_north` against `do drive_north` — precisely so
+// that a line's meaning never depends on a line above it.  A mode verb
+// would put that dependency back.
+fn test_a_script_cannot_press_the_play_toggle() {
+    tsc_s = editor_state_new(PALETTE);
+    tsc_r = script_run(tsc_s, "do toggle_play\n", "tests/actual");
+    assert(!tsc_r.ok, "a script cannot flip the window's mode");
+
+    // ⚠ And it IS a table row — so this is a refusal, not a missing
+    // binding.  Deleting the row would pass the assertion above.
+    tsc_a = input_source_new().eis_actions;
+    assert(action_exists(tsc_a, "toggle_play"), "toggle_play is a table row");
+    assert((action_keys(tsc_a, "toggle_play")[0] ?? -1) == 112,
+           "on P: {action_keys(tsc_a, \"toggle_play\")[0] ?? -1}");
+}
+
+// ⚠ **Every one of the 520 gate measurements is a run in EDIT mode**,
+// which is what makes P3 additive rather than a change to the corpus.
+fn test_a_scripted_run_is_never_in_play_mode() {
+    tsr_s = editor_state_new(PALETTE);
+    tsr_r = script_run(tsr_s,
+        "palette 5\n"
+        + "drag 0 0 14 0\n"
+        + "flag 0 0 target 0\n"
+        + "flag 12 0 spawn 3\n"
+        + "park 0 0\n"
+        + "do drive_east\n"
+        + "tick 4\n", "tests/actual");
+    assert(tsr_r.ok, "the script plays: {script_describe(tsr_r)}");
+    assert(!play_mode(tsr_r.play),
+           "and the session was never in play mode");
+    // ⚠ The frames it ran were PLAY frames all the same — `sp_playing`
+    // is per-frame and comes off the action name.  The two are different
+    // questions, and this is the pair that says so.
+    assert(tsr_r.play.wave.player.q > 0,
+           "the play key still drove: q = {tsr_r.play.wave.player.q}");
+}

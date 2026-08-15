@@ -425,6 +425,15 @@ fn script_phys_action(run: ScriptRun, p: ScriptPhys, name: text) -> boolean {
     if name == ACTION_MOD_CTRL || name == ACTION_MOD_SHIFT { return false; }
     if action_palette_index(run.isrc.eis_actions, name) >= 0 { return false; }
 
+    // ⚠ **And `toggle_play` is refused too** (plan 19 P3).  It is a
+    // table row because it is a key, but it is the WINDOW's key: P2
+    // decided a script says which meaning it wants by ACTION NAME —
+    // `do pan_north` versus `do drive_north` — precisely so that a
+    // line's meaning never depends on a line above it.  A `do
+    // toggle_play` would put that dependency back, and it would put it
+    // in the one place `take` / `drop` already refused to.
+    if name == "toggle_play" { return false; }
+
     if !action_exists(run.isrc.eis_actions, name) { return false; }
     script_press(p, action_keys(run.isrc.eis_actions, name));
     if action_ctrl(run.isrc.eis_actions, name) == CTRL_REQUIRED {
