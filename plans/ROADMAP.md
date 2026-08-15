@@ -23,6 +23,98 @@ Within a tier, ordering is a suggestion — you can pick any row.
 
 ---
 
+## ⚠⚠ The critical path — the natural order to a full game
+
+*(project owner, 2026-08-15: "create a natural order for game features to get to
+the full game")*
+
+⚠ **The tiers below are ordered by player-impact-per-line-of-code and say so.**
+This section is the other axis: **what must exist before what can be judged.**
+Where they disagree, this one is about dependency and the tiers are about value —
+read both.
+
+⚠⚠ **The organising principle is dryopea's own: every step must be MEASURABLE
+when it lands.**  Twelve plans of simulation were gated headlessly with nothing
+drawn, and that worked because the questions were clocks.  ⚠ The questions now
+open are *feel* questions — does a sortie feel worth it, is the racing line real,
+does a base read — and none of them can be answered by a number.  That is what
+moves drawing up the list.
+
+### The four gaps, in dependency order
+
+| # | gap | why it comes here | state |
+|---|---|---|---|
+| **1** | **the four robot classes** | ⚠ the cheapest item in the whole design — *one row each in `numbers.json` plus one branch in the damage-to-wall lookup* — and the widest: `spawn.loft` says *"the validation tier still emits only regulars"*, so **every wave is the same wave**.  Until they exist, wave composition is a readout of one symbol (`@X023`) and no sortie can predict anything | `ENEMY_KIND_REGULAR` only |
+| **2** | **the renderer, then entity art** | nothing of the running game is drawn.  ⚠ Everything after this is judged by eye, and [`plan 21`](21-the-renderer/README.md) `R3` (the terrain mesh) is the largest single item in the repo's history | [21](21-the-renderer/README.md) → [20](20-entity-art/README.md) |
+| **3** | ⚠⚠ **BUILDING** | **the biggest missing mechanic, and it gates three finished designs** — see below | designed, none built |
+| **4** | **the scramble** | the run's ENDING, and the mechanic the game is named after.  ⚠ Its ingredients all shipped: the carry model ([15](15-the-carry-model/README.md)), detachable tower tops ([17](17-tower-hot-swap/README.md) T2), the wallet, the core | designed, not built |
+
+### ⚠⚠ Why BUILDING is the load-bearing gap
+
+Walls and towers are placed in the **editor** today
+([`plan 19`](19-the-interactive-loop/README.md) § What this plan does NOT build).
+The player cannot make a base.  Three completed designs are written against that
+missing verb and are inert without it:
+
+| design | what it assumes | `@code` |
+|---|---|---|
+| the pre-wave window is a **budget** split between looking and building | that building competes for the window | `@X022` |
+| a find is a **BUILD ACCELERANT** whose value collapses once you are busy | that there is building to accelerate | `@X024` |
+| the base **layout** is the exam, and there is a racing line | that the player chooses the layout | `@X019` |
+
+⚠ And it is what the **wallet** is for.  Points are earned (`13-V3`) and drained
+(`12-B6`) and buy nothing — `DESIGN.md` § 13 prices tower orders and helper
+orders at 100 points each, and neither exists.
+
+⚠ **Its pieces are designed and named**: wall paint (§ Wall paint — trail outline
++ erasable), the **beacon ferry** (§ New towers via beacon ferry — carry a beacon
+from the core to the site), and helper construction time.  ⚠ Nothing here needs
+a new system; `plans/15`'s carry model already moves a beacon exactly as it moves
+a tower-top.
+
+### Then the run becomes a RUN
+
+| # | feature | needs |
+|---|---|---|
+| 5 | **helper ORDERS** — commanding, not purchasing.  ⚠ `helper_drive`'s only caller is the script runner: today a helper goes where a `.keys` file says and nowhere else | building (so there is something to order them at) |
+| 6 | **landing flow + map selection** — [`plan 05`](05-validation-scenario/README.md), [`plan 04`](04-map-library/README.md) | the scramble (a run needs an exit before it needs a second entrance) |
+| 7 | **carryover** — what the rocket takes becomes the next base's start | the scramble |
+| 8 | **the permit clock** (`@X025`) | ⚠ **content long enough to clock.**  The longest base the corpus plays falls at **321 ticks ≈ 3.5 min** (`@M005`) against a 15-25 minute target — so the window is derived from content, never chosen |
+
+### Then it gets DEEP
+
+9. **exploration finds + intel that persists** (`@X020`-`@X029`) — needs 1 and 3.
+10. **the robot economy graph** ([`ROBOT_ECONOMY.md`](../docs/ROBOT_ECONOMY.md)) —
+    *"the replacement for plan 16's authored list"*; needs 1.
+11. **tiers 2 and 3** (insects, elementals) and the **bosses** — Tier C below.
+12. **bridges the robots walk under** (`@X052`) — ⚠ a movement change
+    (`Hex` → `(Hex, layer)`), deliberately last because it re-reads 1 094 tests.
+
+### Cross-cutting, pulled in by need rather than by turn
+
+- [`plan 22`](22-the-field-cache/README.md) — **cost.**  ⚠ Not scheduled: it
+  fires when the world grows or the roster does.  `flow_sweep` is **~75 %** of
+  the suite (`@M001`) and is computed over ground nobody reads.
+- [`plan 18`](18-scenario-capture/README.md) `S0`-`S4` — **built and idle.**
+  Capturing a live session is [`plan 19`](19-the-interactive-loop/README.md) `P5`,
+  which is one small phase and unblocks turning any played moment into a test.
+
+### ⚠ What this order deliberately does NOT do
+
+**It does not put the renderer first.**  Item 1 is cheaper by two orders of
+magnitude and makes every later measurement legible; doing it after the renderer
+would mean drawing four classes that are one class.
+
+**It does not wait for a "full" renderer.**  [`plan 20`](20-entity-art/README.md)
+A1-A4 are metres and turns — the part model, the catalogue, the poses — and are
+buildable and gateable while `21-R3` is still open.
+
+⚠ **It does not schedule the layer change.**  `@X052` is real and wanted, and it
+is last for a reason: it changes the flow field's node type, and every item above
+it is cheaper to build against one surface per hex and re-read once.
+
+---
+
 ## Tier A — Validation playable
 
 One map, one mission, one tower type, one enemy type — but
