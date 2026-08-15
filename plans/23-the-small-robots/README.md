@@ -9,7 +9,44 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**K0 shipped** (2026-08-15).  K1 is next.
+**K0 + K1 shipped** (2026-08-15).  K2a is next.
+
+⚠ **A wave has COMPOSITION, and the design decision was to DELETE this
+plan's own negative control.**  `schedule 4 12` arms a list and
+`compose 1 4 miner 8 scout` says what one wave of it is made of; the
+roster comes out in that order, because K0 measured order to be worth
+20x on a breach clock.  The suite went 1107 → **1128** and the gate is
+**30 scripts / 569 measurements UNCHANGED** — the identity property
+K1 needed, because a `vector<integer>` still means N waves of regulars
+(`@X055`).
+
+⚠ **§ Open questions 3 is answered and the answer removed a check.**  A
+wave is a flat `vector<WavePart>` and its SIZE is SUMMED, so *the parts
+sum to the count* is the definition rather than an invariant — the
+control this plan named (*"a mix whose parts do not sum to the wave's
+count is refused at parse"*) can only exist if the count is a second
+fact stored beside the parts, which is the shape `carry.loft` refuses
+in one line.  ⚠ **A control that cannot be WRITTEN is better than one
+that cannot fail, and saying which is which is the obligation** —
+`tests/23_k1_composition.loft` § The size is the sum asserts the
+property the deleted check protected: composing twelve as `3 miner 2
+scout` makes the wave FIVE, because there is no stored total to
+disagree with.
+
+⚠⚠ **K1's real cost was a loft heap-corruption bug, not the feature.**
+Building the parts vector inline in `script_command` (~700 lines)
+corrupts the interpreter heap *at compile time*, and the abort lands in
+`tests/12_b1_rubble.loft` — a file that never says `compose`, never
+reaches the branch and never mentions a schedule.  Bisected at
+full-suite scale: **the whole data model without that branch is 1107
+green**, so the nested `vector<Struct>` is innocent and the enclosing
+function is the ingredient.  Filed as
+[loft#935](https://github.com/loft-lang/loft/issues/935); the fix is to
+give the parsing its own small functions.  ⚠ Two false leads were
+measured and discarded — the trailing `u8` field (`integer` aborts
+identically) and one particular inline expression (binding it merely
+*moved* the abort to a different unrelated file).  ⚠ **A green suite is
+not evidence that a violating call site is absent.**
 
 ⚠ **The four classes exist and a wall knows the difference** — four of a class
 into the same sealed band breach at **20 / 35 / 50 / 96 / 456 ticks** (miner /
@@ -114,7 +151,7 @@ what it CARRIES, which would make it the richest salvage on the field"* — and
 | phase | concrete expected result | invariant it pins | negative control |
 |---|---|---|---|
 | **K0** | a 100 HP braced wall under 4 miners at 3 HP/s breaks at a measurably earlier tick than under 4 scouts at 0.2 HP/s — and the scouts do **not** break it at all within the scenario | *the class reaches the wall* — a per-class rate is READ, not defaulted | ⚠ `place 0 3 hauler` (an unknown name) must be **refused**, never silently a robot — `script.loft`'s existing rule, extended |
-| **K1** | a wave authored `8 miner` arrives as 8 enemies of kind miner, counted at the marker | *composition is conserved from the list to the roster* | a mix whose parts do not sum to the wave's count is **refused** at parse |
+| **K1** | ✅ a wave authored `8 miner` arrives as 8 enemies of kind miner, counted at the marker | *composition is conserved from the list to the roster* | ⚠ **the named control was DELETED** — *a mix whose parts do not sum to the wave's count* cannot be built, because the count is not stored (`@X055`).  What replaced it: composing 12 as `3 miner 2 scout` gives a wave of **five**; an unknown class, `vehicle`, a wave index off the end, an odd token count and an empty composition are each refused; and a composed list must survive **emit → replay → `state_diff` identical** |
 | **K2a** | **the whole corpus is unchanged** — 1094 tests, 520 measurements, every arrival tick identical, with banking in the mover and every class still at 1.5 hex/s | *banked movement at 1× is the identity* | ⚠ an epsilon whose removal leaves the suite green is a guard that cannot fire (`17-T1`) — bank a hair under a whole hex and require no step |
 | **K2b** | a scout wave crosses a measured corridor in the ratio of its speed to a robot's, ±1 tick | *speed is a rate, not a tick count* | a class at 0.0 hex/s must never advance and must not divide by zero |
 | **K3** | three waves of equal SIZE and different composition give three different clocks | *composition is legible in the outcome* | — (a measurement phase) |
@@ -124,10 +161,10 @@ what it CARRIES, which would make it the richest salvage on the field"* — and
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
 | **K0** — the four classes as DATA | S | `tests/23_k0_the_classes.loft` (11 tests) + `a-wall-against-a-miner.keys` / `a-wall-against-a-scout.keys` — the same 15 HP stub, one word apart, rubble in one run and 12.8 HP in the other | ✅ **Shipped** |
-| **K1** — a wave has COMPOSITION | M | `tests/23_k1_composition.loft` — the roster counted BY KIND matches the list; ⚠ and the default list still plays IDENTICALLY (all-regular = today) | Blocked on K0 |
-| **K2a** — speed is BANKED, and nothing moves | M | ⚠ **the corpus is the gate**: `scripts/test.sh` 1094 green + `scripts/validate.sh` 520 measurements unchanged, with the coupling broken | Blocked on K0 |
-| **K2b** — the scout is FASTER | S | a two-class corridor scenario; arrival ticks in the speed ratio | Blocked on K2a |
-| **K3** — what composition is WORTH | S | three equal-size waves, three compositions, three measured clocks — the repo's standard closing measurement | Blocked on K1, K2b |
+| **K1** — a wave has COMPOSITION | M | `tests/23_k1_composition.loft` (21 tests) — the roster counted BY KIND matches the list, in the ORDER written; the default list still plays IDENTICALLY; and a composed list round-trips through `emit_keys` | ✅ **Shipped** |
+| **K2a** — speed is BANKED, and nothing moves | M | ⚠ **the corpus is the gate**: `scripts/test.sh` 1128 green + `scripts/validate.sh` 569 measurements unchanged, with the coupling broken | Ready |
+| **K2b** — the scout is FASTER | S | a two-class corridor scenario; arrival ticks in the speed ratio.  ⚠ `tests/23_k1_composition.loft` § test_speed_is_still_the_same_for_every_class is the "not yet" pin it has to break | Blocked on K2a |
+| **K3** — what composition is WORTH | S | three equal-size waves, three compositions, three measured clocks — the repo's standard closing measurement.  ⚠ `compose` is what authors them, so this is a `.keys` phase with no new code | Blocked on K2b |
 
 ⚠ **K2 is cut in two on purpose, and the seam is where the safety is**
 (`plans/README.md` § What makes a step SAFE).  K2a changes the *mechanism* with
@@ -165,7 +202,14 @@ two possible causes.
    four rows?**  Today there is one `enemy_regular`.  Four sections repeat
    eleven fields each to vary two; one table keyed by role varies what differs.
    **Decided in K0**, and `docs/NUMBERS.md` owns the answer.
-3. **Does a wave row carry a mix, or does the LIST carry rows per class?**
-   `wave_list` is `vector<integer>` and `WaveFile` is capped at 6 declared
-   fields by the loft JSON-cast hang (`CLAUDE.md` § Loft language gotchas).
-   **Decided in K1**, and the cap is a real constraint on the answer.
+3. ✅ **Does a wave row carry a mix, or does the LIST carry rows per class?**
+   **A MIX** — a flat `vector<WavePart>` keyed by wave index, size SUMMED
+   (`@X055`).  The economy this list is a placeholder for sends convoys, not
+   single-class batches, and K0 already measured that a mix's ORDER is worth
+   20x on a breach clock — so a class per wave would have thrown away the
+   axis the roles exist for.
+   ⚠ **The 6-field cap turned out not to constrain it, because the FILE does
+   not move** (`@X057`): nothing in `src/` loads `WaveFile`, and the shape it
+   would need is the `vector<Struct>` cast that hangs.  Composition is
+   authored in the `.keys` vocabulary — `schedule` arms, `compose` fills
+   (`@X056`).

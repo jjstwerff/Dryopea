@@ -168,12 +168,37 @@ fn emit_cargo(state: const WaveState) -> text {
     ec_out
 }
 
+// ⚠ **`compose` only for a wave that needs it** (plan 23 K1).  The
+// `schedule` line carries every wave's SIZE, which is all a pure list
+// has ever been, so all 28 captures written before composition existed
+// come back byte-identical — and a wave that is not one group of
+// regulars gets a `compose` line after it that replaces what the
+// `schedule` line said.  Emitting one unconditionally would have been
+// simpler and would have rewritten every fixture in the repo.
 fn emit_schedule(state: const WaveState) -> text {
     es_out = "";
-    if len(state.schedule.waves) > 0 {
+    es_n = wave_schedule_count(state.schedule);
+    if es_n > 0 {
         es_out = es_out + "schedule";
-        for es_w in state.schedule.waves { es_out = es_out + " {es_w}"; }
+        es_w = 0;
+        while es_w < es_n {
+            es_out = es_out + " {wave_schedule_size(state.schedule, es_w)}";
+            es_w += 1;
+        }
         es_out = es_out + "\n";
+        es_c = 0;
+        while es_c < es_n {
+            if !wave_schedule_pure(state.schedule, es_c) {
+                es_out = es_out + "compose {es_c}";
+                es_parts = wave_schedule_parts(state.schedule, es_c);
+                for es_p in es_parts {
+                    es_out = es_out + " {es_p.count} "
+                                    + enemy_class_name(es_p.kind as u8? ?? 0);
+                }
+                es_out = es_out + "\n";
+            }
+            es_c += 1;
+        }
         es_out = es_out + "pending {state.schedule.sent} {state.schedule.lull} "
                         + "{state.schedule.delay} "
                         + (if state.schedule.running { "on" } else { "off" })

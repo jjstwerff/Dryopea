@@ -76,7 +76,8 @@ exists today.
 | ⚠ **The authored SEVEN-WAVE list is playable**: seven towers and two SHUTTLING helpers clear all 205 robots.  ⚠ Parked on their towers the same two reach 5/7 and the base falls — upkeep is a POSITIONING problem, not a resource | [17](plans/17-tower-hot-swap/README.md), T3 shipped — plan **complete** |
 | THE GAME HAS A DOOR: `play.loft` owns the only call to `wave_tick`, asked by COUNT (`play_ticks`) or by DURATION (`play_advance`).  ⚠ **They are not interchangeable** — `n × TICK_SECONDS` through the accumulator is one tick SHORT for 602 of the first 1000 `n` | [19](plans/19-the-interactive-loop/README.md), P0-P1 shipped |
 | AND A KEYBOARD: WASD / Shift / E are rows in the ONE key table, and a `.keys` script presses them.  ⚠ WASD is SHARED with the camera pan — `editor_input_from(…, playing)` fills one set or the other, never both.  ⚠ W is TRUE north via a metre heading, measured at zero drift | [19](plans/19-the-interactive-loop/README.md), P2 shipped |
-| FOUR ROLES, ONE AI: scout / harvester / builder / miner — the same wave size at the same wall breaches at **20 / 35 / 50 / 96 / 456** ticks, and a harvester's body pays TRIPLE.  ⚠ `robot` keeps its rate, so **no existing measurement moved** | [23](plans/23-the-small-robots/README.md), K0 shipped — K1 next |
+| FOUR ROLES, ONE AI: scout / harvester / builder / miner — the same wave size at the same wall breaches at **20 / 35 / 50 / 96 / 456** ticks, and a harvester's body pays TRIPLE.  ⚠ `robot` keeps its rate, so **no existing measurement moved** | [23](plans/23-the-small-robots/README.md), K0 shipped |
+| A WAVE HAS COMPOSITION: `schedule 4 12` arms the list and `compose 1 4 miner 8 scout` fills a wave of it, in the order written.  ⚠ A wave's SIZE is **summed** from its parts and never stored, which DELETES the plan's own negative control (`@X055`).  ⚠ 569 measurements unchanged — a `vector<integer>` still means N waves of regulars | [23](plans/23-the-small-robots/README.md), K1 shipped — K2a next |
 | **AND IT OPENS**: `make play`, press **P**, and waves arrive because TIME PASSED — the crew lands at the core and WASD drives it.  ⚠ **Nothing of the game is DRAWN yet** (P4), so the console echo is the only way to see it.  ⚠ The mode gates the CLOCK and never the seam | [19](plans/19-the-interactive-loop/README.md), P3 shipped — P4 next |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
@@ -93,7 +94,7 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 1107/1107 green under `scripts/test.sh`** (~150 s measured
+**Suite: 1128/1128 green under `scripts/test.sh`** (~150 s measured
 2026-08-14 — the `frame` measurements classify full 960x720 frames, the
 cost gate ticks a radius-40 world twice, and since plan 13 a dozen tests
 run whole scenarios to their fall.  ⚠ This line carried "~35 s" from
@@ -539,7 +540,7 @@ navigational summary of it.
 | `render.loft` | the software rasteriser over `graphics::Canvas` |
 | `picker.loft` / `hud.loft` / `editor_mode.loft` / `chunks.loft` / `history.loft` | palette UI, HUD, the mode flag, the dirty-chunk set, undo/redo |
 | `spawn.loft` | **the tick** — `WaveState`, `wave_tick`, enemy movement, targeting, deaths, the schedule, `TICK_SECONDS` |
-| `waves.loft` | the authored wave list and its lull |
+| `waves.loft` | the authored wave list, its lull, and what a wave is MADE OF — `WavePart` / `wave_schedule_compose`.  ⚠ A wave's size is SUMMED from its parts, never stored |
 | `flow.loft` | the distance field — `flow_build` / `flow_step` / `flow_steps` / `flow_desire` |
 | `passable.loft` | may a class MOVE here? — `can_stand` / `can_step` / `can_occupy`, and `hex_height` |
 | `occupancy.loft` | who is standing where this tick — enemy counts, and the separate `BlockerMap` |
@@ -676,6 +677,16 @@ By name, so you know when to go and read it:
 - ⚠ `ticks()` is loft's clock builtin — **never shadow it**, not even
   as a parameter name.  A probe that did compiled clean and reported a
   tick 4x cheaper than it was.
+- ⚠⚠ **Never add a `vector<Struct>` local to `script_command`**
+  ([loft#935](https://github.com/loft-lang/loft/issues/935)) — give it a
+  helper function, as `compose_parts` does.  A ~700-line function with
+  one in it corrupts the interpreter heap **at compile time**, and the
+  abort (`realloc(): invalid next size`) lands in an unrelated test file
+  that never reaches the branch.  ⚠ Bisected at full-suite scale in plan
+  23 K1: the nested data structure is innocent and the function's SIZE
+  is the ingredient, so the same local is fine anywhere smaller.  ⚠ And
+  a green suite cannot see the violation — the damage is latent until
+  the allocator trips over it, so unrelated code can wake it up.
 
 ### Save path
 
@@ -862,12 +873,11 @@ signature.
 | Judge a PROGRESSION idea (upgrades, unlocks, XP) | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X0 — ⚠ **the progression is the player's own skill with the controls**, which passes `DESIGN.md`'s genre test in its purest form: there are no stats to resolve into.  ⚠⚠ **The player's vehicle must not get faster** — the moment speed is a purchase, skill stops separating a good run from a bad one.  (§ 9's *"Scouting — faster movement"* is a HELPER skill and is unaffected) |
 | Design EXPLORATION, or judge a scouting idea | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) — ⚠ not a new pillar; § X2 shows the run already opens with a sortie and § X2b that the game waits until you poke a marker.  ⚠ **The cost of leaving is already MEASURED** (plan 17 T3: parked vs shuttling helpers = two waves of the authored list), so exploration needs no new cost mechanic.  ⚠ The first scenario is a `.keys` file, not a feature |
 | Ask why a find has to be found EARLY | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X2c — a find is a BUILD ACCELERANT, and what decays is **the opportunity to use it**, not the thing itself.  ⚠ Already measured twice by accident: the same retrieval is worth **one tick** when the job is gone (plan 16 W4) and **+76 points** when it is not (plan 17 T3) |
-| Ask why wave COMPOSITION cannot be read yet | ⚠ **Half of it now can** — [plan 23](plans/23-the-small-robots/README.md) K0 shipped scout / harvester / builder / miner, and a `.keys` script says `wave 4 miner`.  ⚠ What is still missing is the SCHEDULE: `waves.loft::wave_list_default` is a bare `vector<integer>` — a wave is a COUNT with no class in it — so the authored list emits regulars and nothing else.  That is K1, and `WaveFile`'s 6-field cap (the loft JSON-cast hang) is a real constraint on the answer |
+| Author what a WAVE IS MADE OF | `schedule 4 12` arms the list, `compose 1 4 miner 8 scout` says what one wave of it is made of ([plan 23](plans/23-the-small-robots/README.md) K1, `@X056`).  ⚠ **`compose` REPLACES a wave and a later `schedule` line WIPES it**, so the order `emit.loft` writes is a requirement, not a style.  ⚠ A wave's SIZE is SUMMED from its parts and never stored (`@X055`), so `schedule 12` + `compose 0 3 miner 2 scout` is a wave of **five** — there is no total to disagree with.  ⚠ ORDER inside a wave is load-bearing: K0 measured the same mix at 20x depending on which group is in front.  ⚠ `examples/waves.json` is NOT the place — `WaveFile` deliberately has no composition (`@X057`) |
 | Judge a PROGRESSION idea (upgrades, unlocks, XP) | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X0 — ⚠ **the progression is the player's own skill with the controls**, which passes `DESIGN.md`'s genre test in its purest form: there are no stats to resolve into.  ⚠⚠ **The player's vehicle must not get faster** — the moment speed is a purchase, skill stops separating a good run from a bad one.  (§ 9's *"Scouting — faster movement"* is a HELPER skill and is unaffected) |
 | Design EXPLORATION, or judge a scouting idea | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) — ⚠ not a new pillar; § X2 shows the run already opens with a sortie and § X2b that the game WAITS until you poke a marker.  ⚠ The cost of leaving is already MEASURED (plan 17 T3: parked vs shuttling helpers = two waves of the authored list).  ⚠ The first scenario is a `.keys` file, not a feature |
 | Ask what CLOCKS a run, or why the player must be efficient | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X2d — the **permit**.  `DESIGN.md` § 2 hires the player on a *"permit-bound sortie"*, `SETTING.md` § History calls them *"limited-time sorties"*, and § The quarantine puts the teeth at the exit: *"orbital exit is the chokepoint … permit on file = pass; permit missing = destroyed"*.  ⚠ Expiry must cost the CARGO, never the run — § 14 has no fail screen, and a bad run is one with *"meagre carryover"*.  ⚠ It also turns `NUMBERS.md`'s ungateable *"15-25 minutes"* into a tunable — but today's longest base falls at **321 ticks (~3.5 min)**, so the window is derived from content, not chosen |
 | Ask why a find has to be found EARLY | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X2c — a find is a BUILD ACCELERANT, and what decays is **the opportunity to use it**, not the thing itself.  ⚠ Already measured twice by accident: the same retrieval is worth **one tick** when the job is gone (plan 16 W4) and **+76 points** when it is not (plan 17 T3) |
-| Ask why wave COMPOSITION cannot be read yet | ⚠ **Half of it now can** — [plan 23](plans/23-the-small-robots/README.md) K0 shipped scout / harvester / builder / miner, and a `.keys` script says `wave 4 miner`.  ⚠ What is still missing is the SCHEDULE: `waves.loft::wave_list_default` is a bare `vector<integer>` — a wave is a COUNT with no class in it — so the authored list emits regulars and nothing else.  That is K1, and `WaveFile`'s 6-field cap (the loft JSON-cast hang) is a real constraint on the answer |
 | Design where WAVES eventually come from | [docs/ROBOT_ECONOMY.md](docs/ROBOT_ECONOMY.md) — six installation types and the routes between them.  ⚠ Its governing rule is the enemy rule again: ONE system, per-type DATA, so a new installation costs a row and no new behaviour |
 | Cite a design decision, or find where one was made | [`docs/DECISIONS.md`](docs/DECISIONS.md) — `grep -rn '@X025' .` finds every mention of a decision, `@M001` every quote of a number.  ⚠ **Never cite a bare plan phase in a code** — `S0` is two plans and `C2` is two more; write `22-S0`.  ⚠ A code is permanent even after its decision is reversed (it gains a `SUPERSEDED by` line, like `@D001`) |
 | Find a mechanic that is designed but NOT built | [docs/DESIGN.md](docs/DESIGN.md) (the mechanics) and [plans/ROADMAP.md](plans/ROADMAP.md) (the index).  ⚠ `plans/12` § Design recorded during this plan POINTS at them rather than restating — a second copy is the one that drifts |

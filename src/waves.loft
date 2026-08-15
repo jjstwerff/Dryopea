@@ -43,8 +43,40 @@
 // comparing it with `helper.loft` does not add one, and so that anyone
 // who rounds either number to a whole count of seconds knows they have
 // just moved it into the dangerous class.
+//
+// ── ⚠ A wave is PARTS, and its size is DERIVED (plan 23 K1) ─────
+//
+// `plans/23` § Open questions 3 asked whether a wave row carries a mix
+// or the list carries rows per class.  **It carries a mix**, as a flat
+// `vector<WavePart>` keyed by wave index, and a wave's SIZE is summed
+// from its parts rather than stored beside them.
+//
+// ⚠ **That deletes the plan's own negative control, and deleting it is
+// the point.**  K1's gate named *"a mix whose parts do not sum to the
+// wave's count is refused at parse"* — a check that only exists if the
+// count is a second fact living beside the parts.  It is the shape
+// `carry.loft` refuses in one line (*"a slot on the carrier and an
+// owner on the object are two facts that can disagree"*), so the count
+// is not stored, the sum cannot be violated, and there is nothing to
+// refuse.  What replaces it as a control is in
+// `tests/23_k1_composition.loft` § The size is the sum.
+//
+// ⚠ **`wave_schedule_of` keeps its signature and its meaning** — a
+// `vector<integer>` is a list of all-REGULAR waves, which is what every
+// scenario in the gate and every test written before K1 authors.  That
+// is what lets composition land without moving a measurement.
+//
+// ⚠ **`WaveFile` is deliberately NOT extended.**  Nothing in `src/`
+// loads it (only `tests/16_w1` does, against `examples/waves.json`), so
+// giving it composition would be a file format nothing reads — and the
+// shape it would need is `vector<Struct>` in a `text as`, which is the
+// one that hangs the JSON cast and miscompiles to zero entries on the
+// native backend (`CLAUDE.md` § Loft language gotchas).  Composition is
+// authored in the `.keys` vocabulary, which is where dryopea authors
+// everything else about a run.
 
 use lattice;
+use passable;
 
 // ─── The authored list ──────────────────────────────────────────
 
@@ -115,6 +147,25 @@ pub fn wave_list_default() -> vector<integer> {
     [5, 8, 12, 20, 30, 50, 80]
 }
 
+// ─── What a wave is MADE OF (plan 23 K1) ────────────────────────
+
+// One class's share of one wave.
+//
+// ⚠ **`wave` is the index into the list, and the vector is FLAT** —
+// there is no vector-of-vectors, so wave 2 is "every part whose `wave`
+// is 2, in the order they sit in the vector".  Order is authored order
+// and it is load-bearing: plan 23 K0 measured that the same mix chews a
+// wall 20x faster with the miners behind the scouts than in front of
+// them, because the breach clock saturates past a handful of attackers.
+//
+// ⚠ **`count` is the only place a number of robots is written down.**
+// Nothing stores a wave's total; `wave_schedule_size` sums it.
+pub struct WavePart {
+    wave:  integer,
+    count: integer,
+    kind:  integer,     // `passable.loft` § ENEMY_KIND_*
+}
+
 // ─── The schedule ───────────────────────────────────────────────
 
 // Where a run is in its wave list.
@@ -130,25 +181,57 @@ pub fn wave_list_default() -> vector<integer> {
 // not STARTED is not the same as one that has finished — plan 16 W3
 // puts a trigger in front of this, and until it fires a run has a list
 // and is not playing it.
+//
+// ⚠ **`length` is how many waves the list HOLDS and cannot be derived**
+// from the parts: a wave of zero robots is a slot in the list that
+// passes, and `max(part.wave) + 1` cannot see a trailing one.  It is a
+// LENGTH rather than a second copy of the composition — the invariant
+// every factory here keeps is *every index in `0..length` carries at
+// least one part*, which is what makes `wave_schedule_size` total.
 pub struct WaveSchedule {
-    waves:   vector<integer>,
+    parts:   vector<WavePart>,
+    length:  integer,     // how many waves the list holds
     sent:    integer,     // waves spawned so far; also the next index
     lull:    float,       // seconds left before the next wave
     delay:   float,       // seconds between waves
     running: boolean,
 }
 
-// Factory: a run with the design's list, not yet started.
-pub fn wave_schedule_new() -> WaveSchedule {
-    WaveSchedule { waves: wave_list_default(), sent: 0, lull: 0.0,
-                   delay: INTER_WAVE_DELAY_SECONDS, running: false }
+// One all-REGULAR part per entry — what a `vector<integer>` list means.
+fn regular_parts(counts: vector<integer>) -> vector<WavePart> {
+    rp_out: vector<WavePart> = [];
+    rp_i = 0;
+    for rp_c in counts {
+        rp_out += [WavePart { wave: rp_i, count: rp_c,
+                              kind: ENEMY_KIND_REGULAR }];
+        rp_i += 1;
+    }
+    rp_out
 }
 
 // Factory: a run playing an explicit list — what a scenario uses when
 // it wants two short waves rather than the design's seven.
+//
+// ⚠ **A `vector<integer>` still means what it always meant**: N waves
+// of N counts, every robot a regular.  Composition is layered on top by
+// `wave_schedule_compose`, which is why plan 23 K1 moved no existing
+// reading — a list authored before composition existed still describes
+// the same run.
 pub fn wave_schedule_of(waves: vector<integer>, delay: float) -> WaveSchedule {
-    WaveSchedule { waves: waves, sent: 0, lull: 0.0,
+    wso_p = regular_parts(waves);
+    WaveSchedule { parts: wso_p, length: len(waves), sent: 0, lull: 0.0,
                    delay: delay, running: false }
+}
+
+// Factory: a run with the design's list, not yet started.
+//
+// ⚠ The call is BOUND rather than returned in tail position: a struct
+// returned through two nested tail calls loses what its loop wrote
+// ([loft#880](https://github.com/loft-lang/loft/issues/880)), and
+// `wave_schedule_of` builds its parts in a loop.
+pub fn wave_schedule_new() -> WaveSchedule {
+    wsn_s = wave_schedule_of(wave_list_default(), INTER_WAVE_DELAY_SECONDS);
+    wsn_s
 }
 
 // Start the schedule.  The first wave goes out on the next tick.
@@ -173,7 +256,79 @@ pub fn wave_schedule_sent(ws: const WaveSchedule) -> integer {
 
 // How many waves the list holds.
 pub fn wave_schedule_count(ws: const WaveSchedule) -> integer {
-    len(ws.waves)
+    ws.length
+}
+
+// What wave `i` is made of, in the order it will be spawned.  An empty
+// vector for a wave the list does not have.
+pub fn wave_schedule_parts(ws: const WaveSchedule, i: integer) -> vector<WavePart> {
+    wsp_out: vector<WavePart> = [];
+    for wsp_p in ws.parts {
+        if wsp_p.wave == i { wsp_out += [wsp_p]; }
+    }
+    wsp_out
+}
+
+// Is wave `i` the plain kind — one group, and it is regulars?
+//
+// ⚠ **The question is about the SHAPE and not about the outcome.**  A
+// wave of `4 robot 8 robot` is two groups that spawn exactly as one of
+// twelve would, and it still answers false — because `emit.loft` uses
+// this to decide whether a `compose` line is needed, and a capture that
+// wrote one group where the state holds two replays into a different
+// state.  `tests/18_s2` compares the STATE, so a merge here would fail
+// there rather than here.
+pub fn wave_schedule_pure(ws: const WaveSchedule, i: integer) -> boolean {
+    wsr_n    = 0;
+    wsr_only = true;
+    for wsr_p in ws.parts {
+        if wsr_p.wave == i {
+            wsr_n += 1;
+            if wsr_p.kind != ENEMY_KIND_REGULAR { wsr_only = false; }
+        }
+    }
+    wsr_n == 1 && wsr_only
+}
+
+// Replace what wave `i` is made of.  Answers false — and changes
+// nothing — when `i` names no wave, or when the composition is empty.
+//
+// ⚠ **It REPLACES rather than adds**, which is what makes the `.keys`
+// verb a statement (*wave 2 is four miners and eight scouts*) rather
+// than an accumulation whose result depends on how many times the line
+// was played.  Re-running a fixture has to reach the same state.
+//
+// ⚠ **The wave index is STAMPED here** — a caller passes the groups and
+// this writes `wave: i` onto each, so a part cannot end up filed under
+// a wave that is not the one being composed.
+//
+// ⚠ **An empty composition is refused**, and that is what keeps *every
+// index carries at least one part* true.  A wave of nothing is
+// `compose {i} 0 robot`, which says so.
+pub fn wave_schedule_compose(ws: WaveSchedule, i: integer,
+                             parts: vector<WavePart>) -> boolean {
+    if i < 0 || i >= ws.length { return false; }
+    if len(parts) == 0 { return false; }
+
+    // Rebuilt in wave order, so the vector stays grouped and a capture
+    // reads down the list rather than round it.
+    wsc_out: vector<WavePart> = [];
+    wsc_w = 0;
+    while wsc_w < ws.length {
+        if wsc_w == i {
+            for wsc_n in parts {
+                wsc_out += [WavePart { wave: i, count: wsc_n.count,
+                                       kind: wsc_n.kind }];
+            }
+        } else {
+            for wsc_p in ws.parts {
+                if wsc_p.wave == wsc_w { wsc_out += [wsc_p]; }
+            }
+        }
+        wsc_w += 1;
+    }
+    ws.parts = wsc_out;
+    true
 }
 
 // Has every wave been sent?
@@ -184,12 +339,20 @@ pub fn wave_schedule_count(ws: const WaveSchedule) -> integer {
 // "the battlefield is empty" become different at exactly the moment
 // that section is about.
 pub fn wave_schedule_done(ws: const WaveSchedule) -> boolean {
-    ws.sent >= len(ws.waves)
+    ws.sent >= ws.length
 }
 
 // The size of wave `i`, or 0 when the list has no such wave.
+//
+// ⚠ **SUMMED, never stored** — this is the whole of plan 23 K1's data
+// decision.  There is no field a mix could disagree with, so *the parts
+// sum to the count* is not an invariant anybody has to check.
 pub fn wave_schedule_size(ws: const WaveSchedule, i: integer) -> integer {
-    ws.waves[i] ?? 0
+    wss_n = 0;
+    for wss_p in ws.parts {
+        if wss_p.wave == i { wss_n += wss_p.count; }
+    }
+    wss_n
 }
 
 // Seconds left before the next wave.
@@ -224,7 +387,12 @@ pub fn wave_schedule_due(ws: WaveSchedule, cleared: boolean,
         if ws.lull > 0.0 { return 0; }
     }
 
-    wsd_size = ws.waves[ws.sent] ?? 0;
+    // ⚠ The SIZE, not the composition: this half of the split knows
+    // only a clock, and `spawn.loft::wave_schedule_step` asks
+    // `wave_schedule_parts` for what to put on the ground.  A wave of
+    // zero still consumes its slot and still answers 0, which reads as
+    // "not yet" to the caller and spawns nothing either way.
+    wsd_size = wave_schedule_size(ws, ws.sent);
     ws.sent  = ws.sent + 1;
     ws.lull  = ws.delay;
     wsd_size

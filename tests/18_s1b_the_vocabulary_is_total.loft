@@ -83,7 +83,8 @@ fn test_every_field_of_the_state_is_reachable() {
         + "crew 2 1\nsend 0 8 1\nmember 0 off 0.5 15 45\n"
         // the cargo and the schedule
         + "object 7 0 wreck 0 player\n"
-        + "schedule 4 6\npending 1 5.0 9.0 on\n");
+        + "schedule 4 6\ncompose 1 2 miner 4 scout\n"
+        + "pending 1 5.0 9.0 on\n");
     assert(tef_run.ok, "the script runs: {script_describe(tef_run)}");
 
     // The same state, built by hand.
@@ -132,6 +133,12 @@ fn test_every_field_of_the_state_is_reachable() {
     // the totality test passed anyway.  A field at its default on both
     // sides of a comparison compares equal and proves nothing.
     tef_want.schedule = wave_schedule_of([4, 6], 9.0);
+    // ⚠ A COMPOSITION the default would not produce (plan 23 K1) — the
+    // same argument the delay above makes: `WavePart.kind` left at
+    // `robot` on both sides compares equal and proves nothing.
+    wave_schedule_compose(tef_want.schedule, 1,
+        [WavePart { wave: 1, count: 2, kind: ENEMY_KIND_MINER },
+         WavePart { wave: 1, count: 4, kind: ENEMY_KIND_SCOUT }]);
     tef_want.schedule.sent    = 1;
     tef_want.schedule.lull    = 5.0;
     tef_want.schedule.running = true;

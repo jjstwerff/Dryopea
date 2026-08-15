@@ -1466,6 +1466,90 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
     "unknown author command '{sa_cmd}'"
 }
 
+// ─── `compose`, parsed away from the dispatcher (plan 23 K1) ────
+//
+// ⚠ **These three exist because building the parts INSIDE
+// `script_command` aborts the interpreter.**  See the `compose` branch
+// below for the bisection; the short version is that a
+// `vector<WavePart>` local in a ~700-line function corrupts the heap at
+// compile time, and the damage lands in an unrelated test file.  They
+// are small functions for a bad reason and read like good ones.
+//
+// ⚠ The split is the repo's own `*_fault` idiom (`tower_sight_fault`,
+// `can_step` / `step_fault`): one function ASKS and one ANSWERS why
+// not, so a refusal names itself and the builder can assume a checked
+// line.
+
+// Everything wrong with a `compose` line, or "" when it parses.
+//
+// ⚠ Every branch here is a way a typo becomes a green lie: a wave that
+// quietly stayed regulars measures the regular's clock and reports it
+// as the miner's.
+fn compose_fault(tok: vector<text>) -> text {
+    cf_argc = len(tok) - 1;
+    if cf_argc < 3 {
+        return "compose needs <wave> <count> <class> [<count> <class> ...]";
+    }
+    if (cf_argc - 1) % 2 != 0 {
+        return "compose: <count> <class> comes in pairs, got {cf_argc - 1} after <wave>";
+    }
+    cf_wt = tok[1] ?? "";
+    cf_wn = cf_wt as integer?;
+    if cf_wn == null { return "compose: <wave> must be an integer"; }
+
+    cf_at = 2;
+    while cf_at < len(tok) {
+        cf_ct = tok[cf_at] ?? "";
+        cf_nm = tok[cf_at + 1] ?? "";
+        cf_cn = cf_ct as integer?;
+        if cf_cn == null {
+            return "compose: <count> must be an integer, got '" + cf_ct + "'";
+        }
+        cf_c = cf_cn ?? 0;
+        if cf_c < 0 || cf_c > SCRIPT_MAX_REPEAT {
+            return "compose: each <count> must be 0..{SCRIPT_MAX_REPEAT}, got {cf_c}";
+        }
+        cf_kv = enemy_class_of(cf_nm);
+        if cf_kv == null {
+            return "compose: unknown class '" + cf_nm + "' — {enemy_class_names()}";
+        }
+        cf_at += 2;
+    }
+    ""
+}
+
+// Which wave a `compose` line names.  ⚠ Only meaningful once
+// `compose_fault` has passed the line.
+fn compose_wave(tok: vector<text>) -> integer {
+    cw_t = tok[1] ?? "";
+    cw_n = cw_t as integer?;
+    cw_n ?? 0
+}
+
+// The groups a CHECKED `compose` line names, in the order written.
+fn compose_parts(tok: vector<text>, wave: integer) -> vector<WavePart> {
+    cp_out: vector<WavePart> = [];
+    cp_at = 2;
+    while cp_at < len(tok) {
+        cp_ct = tok[cp_at] ?? "";
+        cp_nm = tok[cp_at + 1] ?? "";
+        cp_cn = cp_ct as integer?;
+        cp_kv = enemy_class_of(cp_nm);
+        cp_c  = cp_cn ?? 0;
+        cp_k  = cp_kv ?? 0;
+        cp_out += [WavePart { wave: wave, count: cp_c, kind: cp_k }];
+        cp_at += 2;
+    }
+    cp_out
+}
+
+// Apply a checked `compose` line.  False when the list has no such
+// wave — the one refusal that needs the schedule rather than the text.
+fn script_compose(ws: WaveSchedule, tok: vector<text>, wave: integer) -> boolean {
+    sco_p = compose_parts(tok, wave);
+    wave_schedule_compose(ws, wave, sco_p)
+}
+
 fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text) -> text {
     sc_cmd  = tok[0] ?? "";
     sc_argc = len(tok) - 1;
@@ -2002,6 +2086,53 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         }
         run.play.wave.schedule = wave_schedule_of(sc_sched, INTER_WAVE_DELAY_SECONDS);
         println("script: {len(sc_sched)} waves armed — a spawn marker {WAVE_1_PROVOCATION_HEXES}+ hexes out has to be driven onto before wave 1 goes");
+        return "";
+    }
+
+    // Say what ONE wave of the armed list is made of.  Plan 23 K1.
+    //
+    // ⚠ **`schedule` arms and `compose` fills**, two verbs for what
+    // could have been one grammar, and the reason is the same one
+    // `script_author` gives for seven command words rather than one
+    // `set`: `schedule 12 12` already means *two waves of twelve*, and
+    // a form that also took class names inside it could not tell a wave
+    // boundary from a group boundary.  Every scenario written before
+    // this phase keeps its meaning untouched, which is what K1's
+    // identity gate needs.
+    //
+    // ⚠ **It REPLACES the wave**, so `compose 0 4 miner` after
+    // `schedule 12` is a wave of FOUR, not sixteen.  There is no stored
+    // total to disagree with the parts (`waves.loft` § A wave is
+    // PARTS) — the size a scenario measures is the sum of what it said.
+    //
+    // ⚠ The class is NAMED and an unknown one is an ERROR, per `wave`:
+    // a typo that silently spawns regulars turns a composition
+    // measurement into a restatement of the baseline.
+    // ⚠⚠ **The parsing is in `compose_fault` / `compose_parts` and NOT
+    // here, and the suite is what says it has to be.**  The first draft
+    // built its `vector<WavePart>` inline in this function and aborted
+    // the interpreter — `realloc(): invalid next size`, deterministic,
+    // in `tests/12_b1_rubble.loft`, a file that never says `compose`
+    // and never reaches this branch.  Bisected at full-suite scale:
+    // every other file of plan 23 K1 together is 1107 green, and adding
+    // this branch alone is the crash.  `script_step` is ~700 lines and
+    // that appears to be the ingredient — the corruption is written
+    // where the code is COMPILED and detected wherever the allocator
+    // next touches it, which is why moving the locals into small
+    // functions of their own fixes it.  `QUESTIONS_FOR_LOFT.md` § A
+    // `vector<Struct>` local in a very large function.
+    //
+    // ⚠ So the rule this leaves behind is not about `compose`: **do not
+    // add a `vector<Struct>` local to `script_step`** — give it a
+    // helper.  A green suite cannot see the violation.
+    if sc_cmd == "compose" {
+        sc_cfault = compose_fault(tok);
+        if sc_cfault != "" { return sc_cfault; }
+        sc_cw = compose_wave(tok);
+        if !script_compose(run.play.wave.schedule, tok, sc_cw) {
+            return "compose: no wave {sc_cw} — the list is {wave_schedule_count(run.play.wave.schedule)} long; `schedule` arms it first";
+        }
+        println("script: wave {sc_cw} is {wave_schedule_size(run.play.wave.schedule, sc_cw)} robots");
         return "";
     }
 

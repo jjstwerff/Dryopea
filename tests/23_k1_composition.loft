@@ -1,0 +1,418 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 23 phase K1 — a wave has COMPOSITION.
+//
+// ── What K0 left, and what this closes ──────────────────────────
+//
+// K0 made four classes a wall can tell apart, and a `.keys` script can
+// say `wave 4 miner` — but that verb puts enemies on the ground NOW.
+// The authored list `waves.loft::wave_list_default` is a bare
+// `vector<integer>`, so a wave the SCHEDULE sends is a count with no
+// class in it and every scheduled wave is regulars.  Until that
+// changes, `ROBOT_ECONOMY.md`'s *"composition is a readout"* has one
+// symbol to read.
+//
+// ── ⚠ The invariant, and why its negative control was DELETED ───
+//
+// `plans/23` § Invariant gate named K1's control as *"a mix whose parts
+// do not sum to the wave's count is refused at parse"*.  That check can
+// only exist if a wave's count is a second fact stored beside its
+// parts — the shape `carry.loft` refuses in one line, because two facts
+// that can disagree eventually do.
+//
+// So the count is not stored: `wave_schedule_size` SUMS the parts, and
+// the control that replaces it is § The size is the sum, which asserts
+// the property the deleted check was protecting rather than the check.
+// ⚠ A control that cannot fail is what `plans/README.md` § A self-test
+// is not validation refuses; one that cannot even be WRITTEN is better,
+// and saying which is which is the point of this paragraph.
+//
+// ── ⚠ What the identity half gates ──────────────────────────────
+//
+// The other half of K1 is that nothing moved.  A `vector<integer>`
+// still means N waves of regulars, so § The default list is untouched
+// pins the shape a run gets when nobody composes anything — and the
+// 1107-test corpus is the rest of that gate.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SHOTS:   text = "tests/actual";
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+// A band with a core and one spawn marker far enough out to be live,
+// plus the ground between them — `CLAUDE.md` § A walking test must
+// paint the ground it walks on.
+fn band() -> text {
+    b_t = "flag 0 0 target 0\nflag 14 0 spawn 3\npalette 5\n";
+    for b_q in -1..=15 { b_t = b_t + "click {b_q} 0\n"; }
+    b_t
+}
+
+fn played(src: text) -> ScriptRun {
+    p_r = script_run(editor_state_new(PALETTE), src, SHOTS);
+    p_r
+}
+
+// ⚠ **The world is the EDITOR's**, not the run's — a `ScriptRun`
+// carries only the game (`tests/23_k0` § Read off the EDITOR states).
+// So a test that emits has to hold the state it played against, which
+// aliases because a struct passed as a PARAMETER does.
+fn played_on(es: EditorState, src: text) -> ScriptRun {
+    po_r = script_run(es, src, SHOTS);
+    po_r
+}
+
+// How many of the roster are of `kind`.
+fn roster_of(state: const WaveState, kind: integer) -> integer {
+    ro_n = 0;
+    for ro_e in state.enemies {
+        if ro_e.kind == as_u8(kind) { ro_n += 1; }
+    }
+    ro_n
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ THE GATE: composition is conserved from the list to the roster
+// ─────────────────────────────────────────────────────────────────
+
+// `plans/23` § Invariant gate, K1: *a wave authored `8 miner` arrives
+// as 8 enemies of kind miner, counted at the marker*.
+//
+// ⚠ It is counted OFF THE ROSTER and not off the schedule — the whole
+// claim is that what the list says reaches the ground, so reading the
+// list back would be the self-test that proves nothing.
+fn test_a_composed_wave_arrives_as_what_it_says() {
+    tac = played(band()
+        + "schedule 8\ncompose 0 8 miner\n"
+        + "park 14 0\ntick 20\n");
+    assert(tac.ok, "the run plays: {script_describe(tac)}");
+
+    assert(len(tac.play.wave.enemies) == 8,
+           "eight robots arrived: {len(tac.play.wave.enemies)}");
+    assert(roster_of(tac.play.wave, ENEMY_KIND_MINER) == 8,
+           "and all eight are miners: "
+           + "{roster_of(tac.play.wave, ENEMY_KIND_MINER)}");
+    assert(roster_of(tac.play.wave, ENEMY_KIND_REGULAR) == 0,
+           "with no regular among them");
+}
+
+// The mixed case, which is what makes a wave a COMPOSITION rather than
+// a class per wave.
+fn test_a_mixed_wave_arrives_in_its_stated_proportions() {
+    tam = played(band()
+        + "schedule 12\ncompose 0 4 miner 8 scout\n"
+        + "park 14 0\ntick 20\n");
+    assert(tam.ok, "the run plays: {script_describe(tam)}");
+
+    assert(len(tam.play.wave.enemies) == 12,
+           "twelve arrived: {len(tam.play.wave.enemies)}");
+    assert(roster_of(tam.play.wave, ENEMY_KIND_MINER) == 4,
+           "four miners: {roster_of(tam.play.wave, ENEMY_KIND_MINER)}");
+    assert(roster_of(tam.play.wave, ENEMY_KIND_SCOUT) == 8,
+           "eight scouts: {roster_of(tam.play.wave, ENEMY_KIND_SCOUT)}");
+}
+
+// ⚠ **Order is part of the composition**, and K0 measured that it is
+// worth 20x on a wall's breach clock — the scouts in front of the
+// miners is a different wave from the miners in front of the scouts,
+// because the breach clock saturates past a handful of attackers.  So
+// the roster has to come out in the order the parts were written.
+fn test_the_groups_arrive_in_the_order_they_were_written() {
+    tgo = played(band()
+        + "schedule 4\ncompose 0 2 scout 2 miner\n"
+        + "park 14 0\ntick 4\n");
+    assert(tgo.ok, "the run plays: {script_describe(tgo)}");
+    assert(len(tgo.play.wave.enemies) == 4, "four arrived");
+
+    assert((tgo.play.wave.enemies[0] ?? Enemy { }).kind
+           == as_u8(ENEMY_KIND_SCOUT), "the first is a scout");
+    assert((tgo.play.wave.enemies[1] ?? Enemy { }).kind
+           == as_u8(ENEMY_KIND_SCOUT), "and so is the second");
+    assert((tgo.play.wave.enemies[2] ?? Enemy { }).kind
+           == as_u8(ENEMY_KIND_MINER), "the third is a miner");
+    assert((tgo.play.wave.enemies[3] ?? Enemy { }).kind
+           == as_u8(ENEMY_KIND_MINER), "and so is the fourth");
+}
+
+// Composition is PER WAVE: composing wave 1 must leave wave 0 alone.
+//
+// ⚠ Without this a mix could be a property of the LIST — which reads
+// the same in a one-wave scenario and is a different mechanic.
+fn test_composing_one_wave_leaves_the_others_alone() {
+    tco = wave_schedule_of([5, 8], INTER_WAVE_DELAY_SECONDS);
+    assert(wave_schedule_compose(tco, 1,
+               [WavePart { wave: 0, count: 3, kind: ENEMY_KIND_MINER },
+                WavePart { wave: 0, count: 5, kind: ENEMY_KIND_SCOUT }]),
+           "wave 1 composes");
+
+    assert(wave_schedule_size(tco, 0) == 5, "wave 0 is still five");
+    assert(wave_schedule_pure(tco, 0), "and still one group of regulars");
+    assert(wave_schedule_size(tco, 1) == 8, "wave 1 is still eight");
+    assert(!wave_schedule_pure(tco, 1), "but no longer plain");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The control that replaces the one the design deleted
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠⚠ **The size is the SUM, so a mix cannot disagree with a count.**
+// This is the property `plans/23`'s *"parts do not sum to the count is
+// refused"* existed to protect, asserted directly — composing a wave
+// with a different total CHANGES the wave's size rather than failing a
+// consistency check, because there is no second number to check
+// against.
+fn test_the_size_is_the_sum_and_never_a_stored_total() {
+    tss = wave_schedule_of([12], INTER_WAVE_DELAY_SECONDS);
+    assert(wave_schedule_size(tss, 0) == 12, "twelve to start with");
+
+    // Deliberately NOT twelve.
+    assert(wave_schedule_compose(tss, 0,
+               [WavePart { wave: 0, count: 3, kind: ENEMY_KIND_MINER },
+                WavePart { wave: 0, count: 2, kind: ENEMY_KIND_SCOUT }]),
+           "a five-robot composition is accepted over a twelve");
+    assert(wave_schedule_size(tss, 0) == 5,
+           "and the wave is FIVE — the sum of what was said, not the "
+           + "twelve it used to be: {wave_schedule_size(tss, 0)}");
+}
+
+// And the sum reaches the ground, which is the half a data-structure
+// assertion cannot see.
+fn test_the_summed_size_is_what_spawns() {
+    tsu = played(band()
+        + "schedule 12\ncompose 0 3 miner 2 scout\n"
+        + "park 14 0\ntick 20\n");
+    assert(tsu.ok, "the run plays: {script_describe(tsu)}");
+    assert(len(tsu.play.wave.enemies) == 5,
+           "five spawned, not the twelve the `schedule` line said: "
+           + "{len(tsu.play.wave.enemies)}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠ The identity half — the default list plays exactly as it did
+// ─────────────────────────────────────────────────────────────────
+
+// A `vector<integer>` is N waves of REGULARS, and that is what every
+// scenario written before this phase means.  ⚠ Pinned as SHAPE as well
+// as size: one group per wave, so `emit.loft` writes no `compose` line
+// for any of them and all 28 captures stay byte-identical.
+fn test_the_default_list_is_untouched() {
+    tdl = wave_schedule_new();
+
+    assert(wave_schedule_count(tdl) == 7,
+           "seven waves: {wave_schedule_count(tdl)}");
+    tdl_i = 0;
+    for tdl_w in wave_list_default() {
+        assert(wave_schedule_size(tdl, tdl_i) == tdl_w,
+               "wave {tdl_i} is {tdl_w}: {wave_schedule_size(tdl, tdl_i)}");
+        assert(wave_schedule_pure(tdl, tdl_i),
+               "and wave {tdl_i} is one group of regulars");
+        tdl_i += 1;
+    }
+}
+
+// The scheduled path still emits regulars when nobody composed
+// anything — read off the ROSTER, because that is where a class that
+// quietly defaulted would show up.
+fn test_an_uncomposed_list_still_sends_regulars() {
+    tau = played(band() + "schedule 6\npark 14 0\ntick 20\n");
+    assert(tau.ok, "the run plays: {script_describe(tau)}");
+    assert(roster_of(tau.play.wave, ENEMY_KIND_REGULAR) == 6,
+           "six regulars: {roster_of(tau.play.wave, ENEMY_KIND_REGULAR)}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The refusals — every one of them a way a typo becomes a green lie
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ Each of these would otherwise turn a composition measurement into a
+// restatement of the baseline: a wave that quietly stayed regulars
+// measures the regular's clock and reports it as the miner's.
+fn test_an_unknown_class_is_refused() {
+    tuc = played(band() + "schedule 8\ncompose 0 8 hauler\n");
+    assert(!tuc.ok, "'hauler' is refused");
+    assert(script_describe(tuc).contains("unknown class"),
+           "and it says so: {script_describe(tuc)}");
+}
+
+fn test_the_vehicle_is_not_a_class_a_wave_can_be_made_of() {
+    tvn = played(band() + "schedule 8\ncompose 0 8 vehicle\n");
+    assert(!tvn.ok, "'vehicle' names no enemy class");
+}
+
+fn test_a_wave_the_list_does_not_have_is_refused() {
+    twl = played(band() + "schedule 4 4\ncompose 5 2 miner\n");
+    assert(!twl.ok, "there is no wave 5 in a list of two");
+    assert(script_describe(twl).contains("no wave 5"),
+           "and it names the index: {script_describe(twl)}");
+}
+
+// ⚠ **`schedule` REPLACES the list, so a `compose` BEFORE it is lost** —
+// which is the ordering rule `emit.loft` § ORDER is load-bearing keeps
+// for `schedule` / `pending`, extended to a third verb.  It is not an
+// error (there is always a list — `wave_state_empty` hands out the
+// design's seven), so nothing would report it; this is what says the
+// emitter's order is a requirement rather than a preference.
+fn test_a_schedule_line_wipes_a_compose_before_it() {
+    tsw = played(band() + "compose 0 2 miner\nschedule 5\n"
+                 + "park 14 0\ntick 20\n");
+    assert(tsw.ok, "the run plays: {script_describe(tsw)}");
+    assert(roster_of(tsw.play.wave, ENEMY_KIND_REGULAR) == 5,
+           "the `schedule` line won: "
+           + "{roster_of(tsw.play.wave, ENEMY_KIND_REGULAR)} regulars");
+    assert(roster_of(tsw.play.wave, ENEMY_KIND_MINER) == 0,
+           "and the miners composed before it are gone");
+}
+
+// The other half of that rule: a fresh run already HAS a list, so
+// `compose` needs no `schedule` in front of it — it edits the design's
+// seven.  ⚠ Pinned because the test above only makes sense if this is
+// true, and a reader would otherwise expect an "arm first" error.
+fn test_compose_edits_the_default_list_with_no_schedule_line() {
+    tce = played(band() + "compose 0 3 miner\npark 14 0\ntick 20\n");
+    assert(tce.ok, "the run plays: {script_describe(tce)}");
+    assert(roster_of(tce.play.wave, ENEMY_KIND_MINER) == 3,
+           "three miners where the design's five regulars would have been: "
+           + "{roster_of(tce.play.wave, ENEMY_KIND_MINER)}");
+}
+
+fn test_an_odd_number_of_tokens_is_refused() {
+    ton = played(band() + "schedule 8\ncompose 0 8\n");
+    assert(!ton.ok, "a count with no class is refused");
+    tob = played(band() + "schedule 8\ncompose 0 8 miner 4\n");
+    assert(!tob.ok, "and so is a trailing count");
+}
+
+fn test_a_non_integer_count_is_refused() {
+    tni = played(band() + "schedule 8\ncompose 0 many miner\n");
+    assert(!tni.ok, "'many' is not a count");
+}
+
+// An empty composition would break *every wave carries at least one
+// part*, which is what makes `wave_schedule_size` total and
+// `emit.loft`'s `compose` line writable.  A wave of nothing is spelled
+// `compose 0 0 robot`, which says so.
+fn test_an_empty_composition_is_refused_but_a_zero_one_is_not() {
+    tec = wave_schedule_of([5], INTER_WAVE_DELAY_SECONDS);
+    tec_none: vector<WavePart> = [];
+    assert(!wave_schedule_compose(tec, 0, tec_none),
+           "an empty composition is refused");
+    assert(wave_schedule_size(tec, 0) == 5, "and it changed nothing");
+
+    tez = played(band() + "schedule 5\ncompose 0 0 robot\npark 14 0\ntick 20\n");
+    assert(tez.ok, "a wave of zero is sayable: {script_describe(tez)}");
+    assert(len(tez.play.wave.enemies) == 0, "and nothing arrives");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The round trip — a composed list survives capture and replay
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **`state_diff` is the oracle and the emitter is what is on trial**
+// (`plans/18` S0's rule).  A composed schedule that emitted only its
+// SIZES would replay as a wave of regulars, and every assertion about
+// the size would still pass.
+fn test_a_composed_list_survives_capture_and_replay() {
+    tcs_es = editor_state_new(PALETTE);
+    tcs = played_on(tcs_es, band() + "schedule 4 12\ncompose 1 4 miner 8 scout\n");
+    assert(tcs.ok, "the run plays: {script_describe(tcs)}");
+
+    tcs_txt = emit_keys(load_palette(PALETTE), tcs_es.pw, tcs_es.mw,
+                        tcs.play.wave, "k1 composition");
+    assert(tcs_txt.contains("compose 1 4 miner 8 scout"),
+           "the capture says what wave 1 is made of:\n{tcs_txt}");
+
+    tcs_back = played(tcs_txt);
+    assert(tcs_back.ok, "the capture replays: {script_describe(tcs_back)}");
+    assert(state_diff(tcs.play.wave, tcs_back.play.wave) == "",
+           "and lands in the same state: "
+           + "'{state_diff(tcs.play.wave, tcs_back.play.wave)}'");
+}
+
+// ⚠ **A pure list emits NO `compose` line**, which is what keeps every
+// fixture written before this phase byte-identical.  Asserted rather
+// than assumed: the round-trip gate above would be green either way.
+fn test_a_pure_list_emits_no_compose_line() {
+    tpl_es = editor_state_new(PALETTE);
+    tpl = played_on(tpl_es, band() + "schedule 4 6\n");
+    assert(tpl.ok, "the run plays: {script_describe(tpl)}");
+
+    tpl_txt = emit_keys(load_palette(PALETTE), tpl_es.pw, tpl_es.mw,
+                        tpl.play.wave, "k1 identity");
+    assert(tpl_txt.contains("schedule 4 6"), "the list is written");
+    assert(!tpl_txt.contains("compose"),
+           "and nothing composes it:\n{tpl_txt}");
+}
+
+// ⚠ Two groups of the SAME class spawn exactly as one group of their
+// sum would — and still emit a `compose` line, because a capture that
+// merged them would replay into a state `state_diff` calls different.
+// `waves.loft::wave_schedule_pure` § The question is about the SHAPE.
+fn test_two_groups_of_one_class_still_round_trip() {
+    ttg_es = editor_state_new(PALETTE);
+    ttg = played_on(ttg_es, band() + "schedule 12\ncompose 0 4 robot 8 robot\n");
+    assert(ttg.ok, "the run plays: {script_describe(ttg)}");
+
+    ttg_txt = emit_keys(load_palette(PALETTE), ttg_es.pw, ttg_es.mw,
+                        ttg.play.wave, "k1 two groups");
+    assert(ttg_txt.contains("compose 0 4 robot 8 robot"),
+           "both groups are written:\n{ttg_txt}");
+
+    ttg_back = played(ttg_txt);
+    assert(state_diff(ttg.play.wave, ttg_back.play.wave) == "",
+           "and replay is identical: "
+           + "'{state_diff(ttg.play.wave, ttg_back.play.wave)}'");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The comparer sees it
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ `tests/18_s0` § The field list is hand-maintained — a new field on
+// a state struct needs a row that discriminates it, and `WavePart.kind`
+// is one.  ⚠ The two lists here are the SAME SIZE, so a comparer that
+// summed the parts per wave would be green over the whole difference.
+fn test_two_lists_of_equal_size_and_different_composition_differ() {
+    tel_a = wave_state_empty();
+    tel_a.schedule = wave_schedule_of([12], INTER_WAVE_DELAY_SECONDS);
+    wave_schedule_compose(tel_a.schedule, 0,
+        [WavePart { wave: 0, count: 12, kind: ENEMY_KIND_MINER }]);
+
+    tel_b = wave_state_empty();
+    tel_b.schedule = wave_schedule_of([12], INTER_WAVE_DELAY_SECONDS);
+    wave_schedule_compose(tel_b.schedule, 0,
+        [WavePart { wave: 0, count: 12, kind: ENEMY_KIND_SCOUT }]);
+
+    assert(wave_schedule_size(tel_a.schedule, 0)
+           == wave_schedule_size(tel_b.schedule, 0),
+           "the two lists really are the same size");
+    assert(state_diff(tel_a, tel_b) != "",
+           "and the diff sees the class: '{state_diff(tel_a, tel_b)}'");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// What K1 does NOT claim
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **A scout still moves at a robot's speed**, and will until K2.
+// Worth pinning here so that K3's measurement is read as *what
+// composition is worth on the WALL axis alone* — the speed axis is not
+// in it yet, and a reader who assumed otherwise would price the result
+// against a mechanic that does not exist.
+fn test_speed_is_still_the_same_for_every_class() {
+    tsp_a = played(band() + "schedule 1\ncompose 0 1 scout\npark 14 0\ntick 10\n");
+    tsp_b = played(band() + "schedule 1\ncompose 0 1 miner\npark 14 0\ntick 10\n");
+    assert(tsp_a.ok && tsp_b.ok, "both run");
+
+    tsp_s = (tsp_a.play.wave.enemies[0] ?? Enemy { }).q;
+    tsp_m = (tsp_b.play.wave.enemies[0] ?? Enemy { }).q;
+    assert(tsp_s == tsp_m,
+           "a scout and a miner are still on the same hex at tick 10 "
+           + "({tsp_s} vs {tsp_m}) — speed is plan 23 K2");
+}

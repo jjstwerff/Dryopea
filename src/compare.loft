@@ -241,15 +241,27 @@ fn cargo_diff(a: const CargoLayer, b: const CargoLayer) -> text {
     ""
 }
 
+// ⚠ **The PARTS, not the sizes** (plan 23 K1).  Two lists whose waves
+// are the same size can be made of different classes, and comparing
+// `wave_schedule_size` per wave would be green over exactly the
+// difference composition exists to express.  The groups are compared
+// in order, because order is what a wave spawns in.
 fn schedule_diff(a: const WaveSchedule, b: const WaveSchedule) -> text {
-    if len(a.waves) != len(b.waves) {
-        return "schedule: {len(a.waves)} waves vs {len(b.waves)}";
+    if wave_schedule_count(a) != wave_schedule_count(b) {
+        return "schedule: {wave_schedule_count(a)} waves vs {wave_schedule_count(b)}";
+    }
+    if len(a.parts) != len(b.parts) {
+        return "schedule: {len(a.parts)} wave groups vs {len(b.parts)}";
     }
     kd_i = 0;
-    for kd_w in a.waves {
-        kd_o = b.waves[kd_i] ?? 0;
-        if kd_w != kd_o {
-            return "schedule.waves[{kd_i}]: {kd_w} vs {kd_o}";
+    for kd_w in a.parts {
+        kd_o = b.parts[kd_i] ?? WavePart { };
+        if kd_w.wave != kd_o.wave || kd_w.count != kd_o.count
+           || kd_w.kind != kd_o.kind {
+            return "schedule.parts[{kd_i}]: wave {kd_w.wave} "
+                 + "{kd_w.count} " + enemy_class_name(kd_w.kind as u8? ?? 0)
+                 + " vs wave {kd_o.wave} "
+                 + "{kd_o.count} " + enemy_class_name(kd_o.kind as u8? ?? 0);
         }
         kd_i += 1;
     }

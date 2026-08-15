@@ -64,6 +64,65 @@ fix / feature, move it to **Resolved**.
 Filed upstream as GitHub issues; kept here as dryopea's own record until
 the fix ships, then moved to Resolved.
 
+### A `vector<Struct>` local in a very large function corrupts the heap — and an unrelated test file is what dies
+
+- **Filed:** [loft#935](https://github.com/loft-lang/loft/issues/935)
+- **Found while:** plan 23 K1 — adding a `compose` branch to
+  `src/script.loft::script_command` (~700 lines, complexity 246).
+- **Kind:** bug (memory safety), interpreter
+- **What happens:** the branch builds a `vector<WavePart>` local from
+  the command's tokens.  Adding it turns
+  `tests/12_b1_rubble.loft` — a file that never says `compose`, never
+  reaches the branch and never mentions a wave schedule — into a
+  deterministic abort:
+
+  ```
+  realloc(): invalid next size
+  === loft crash (loft) SIGABRT caught ===
+    last op:  OpArgText (op=109)
+    pc:       1265
+    fn:       (?) (d_nr=362)
+    at:       <loft>/default/01_code.loft:1269:13
+  ```
+
+- ⚠ **Bisected at full-suite scale, and the result is clean:**
+
+  | src under test | `scripts/test.sh` |
+  |---|---|
+  | HEAD (no K1 at all) | 1107 passed |
+  | K1's whole data model — `WavePart`, `vector<WavePart>` nested in `WaveSchedule` in `WaveState`, a new spawn loop, emitter and comparer — **without** the `compose` branch | **1107 passed** |
+  | the same, **plus** the `compose` branch building its vector inline in `script_command` | **abort** |
+  | the same, with the parsing moved into three small helper functions | 1107 passed |
+
+  So the data structure is innocent and the enclosing function is the
+  ingredient.  Moving the `vector<Struct>` local and its loop out of
+  `script_command` into `compose_fault` / `compose_parts` /
+  `script_compose` is a complete fix.
+- ⚠ **Two things it is NOT**, both measured rather than assumed:
+  - not the trailing `u8` field — `WavePart.kind` as `integer` aborts
+    identically (that is the already-fixed `vector<Struct>` u8 bug
+    below, and this is not it);
+  - not one particular expression — an earlier draft blamed an inline
+    `tok[i + 1] ?? ""`, and binding it merely moved the abort from
+    `tests/18_s4_the_reduce.loft` to `tests/12_b1_rubble.loft`.  Any
+    perturbation of the function relocates the damage.
+- **Why it does not reduce:** the corruption is written where the code
+  is COMPILED — the crash site is inside loft's own `01_code.loft` —
+  and detected wherever the allocator next touches the mangled chunk.
+  A standalone program with the same expressions survives 4000
+  iterations; so does a standalone `reduce_keys` over the same fixture.
+  The size of the enclosing function appears to be required, and that
+  is not something a small file reproduces.
+- **Workaround in dryopea:** **do not add a `vector<Struct>` local to
+  `script_command`** — give it a helper.  `src/script.loft` carries the
+  rule and this bisection beside the `compose` branch.
+- ⚠ **What makes it dangerous rather than merely annoying:** a green
+  suite is not evidence that a violating call site is absent.  The
+  branch that provokes it never runs, and the file that dies has
+  nothing to do with the file that was edited.
+- **Loft pointer:** interpreter, `OpArgText`; the abort surfaces at
+  `<loft>/default/01_code.loft:1269`.
+
 ### `loft test` recompiles the consumer library once per test file
 
 **Filed:** [loft#925](https://github.com/loft-lang/loft/issues/925)

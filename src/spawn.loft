@@ -1780,13 +1780,23 @@ pub const SPAWN_DISABLE_RADIUS: integer = 10;
 // last enemy dying and the next wave's spawn"*, which is the same
 // statement given a clear is made of deaths — see `plans/16` § Open
 // questions 2.
+// ⚠ **One `spawn_wave` per PART, in authored order** (plan 23 K1).  A
+// pure list is one part per wave, so this is bit-identical to the
+// single call it replaced; a composed one puts its groups on the ground
+// in the order they were written, which K0 measured to be worth 20x on
+// a wall's breach clock.  Each call carries on from `pick_cursor`, so
+// the whole wave still spreads round the markers as one.
 pub fn wave_schedule_step(state: WaveState, mw: MarkerWorld, core: Hex) -> integer {
     wss_due = wave_schedule_due(state.schedule, alive_count(state) == 0,
                                 TICK_SECONDS);
     if wss_due <= 0 { return 0; }
 
-    spawn_wave(state, wss_due, ENEMY_KIND_REGULAR as u8? ?? 0, mw,
-               core.q, core.r, SPAWN_DISABLE_RADIUS);
+    wss_parts = wave_schedule_parts(state.schedule,
+                                    wave_schedule_sent(state.schedule) - 1);
+    for wss_p in wss_parts {
+        spawn_wave(state, wss_p.count, wss_p.kind as u8? ?? 0, mw,
+                   core.q, core.r, SPAWN_DISABLE_RADIUS);
+    }
     wss_due
 }
 

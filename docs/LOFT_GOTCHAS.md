@@ -118,6 +118,28 @@ behaviour.  Full reproducers + loft-side issue refs live in
   live workaround.  What survives is the § Profiling warning: a
   parameter named `ticks` beside a `ticks()` call compiles clean
   and measures the wrong thing, and nothing warns.
+- ⚠⚠ **A `vector<Struct>` local in a VERY LARGE function corrupts the
+  heap, and an unrelated test file is what dies**
+  ([loft#935](https://github.com/loft-lang/loft/issues/935), plan 23
+  K1).  Building one inside `script_command` (~700 lines, complexity
+  246) gives `realloc(): invalid next size` with `last op: OpArgText`,
+  deterministically, inside `tests/12_b1_rubble.loft` — a file that
+  never reaches the branch and never mentions the type.  The crash site
+  is in loft's own `default/01_code.loft`, so the damage is written at
+  COMPILE time and merely detected wherever the allocator next touches
+  it.
+  ⚠ **Bisected at full-suite scale**: the whole nested data structure
+  (`vector<WavePart>` in a struct in another struct) without that branch
+  is 1107 green, so the structure is innocent and the enclosing
+  function's SIZE is the ingredient.
+  ⚠ **Two false leads, both measured**: not the trailing `u8` field
+  (`integer` aborts identically), and not one inline expression —
+  binding `tok[i + 1] ?? ""` merely MOVED the abort to a different
+  unrelated file.  Any perturbation relocates the damage, which is
+  exactly why the first two "fixes" looked like fixes.
+  **Workaround:** give the vector its own small function
+  (`compose_fault` / `compose_parts` / `script_compose`).  ⚠ A green
+  suite cannot see a violating call site.
 - **`graphics::KEY_*` need explicit qualification.** Bare-name
   UPPER_CASE constants without `pub` don't re-export across
   `use` chains.  `gl_key_pressed(graphics::KEY_W)` works;

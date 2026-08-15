@@ -261,6 +261,17 @@ src/
                   be the one shortcut letting every scenario in the gate
                   skip the rule — so `schedule 3 4` with nobody to poke
                   it plays nothing, and says so on stdout.
+                  Plan 23 K1 added `compose <wave> <count> <class> …`,
+                  which says what ONE wave of the armed list is made
+                  of.  ⚠ It REPLACES that wave, so re-running a fixture
+                  reaches the same state — and a `schedule` line AFTER
+                  it wipes it, which is why `emit.loft` writes
+                  `schedule` → `compose` → `pending` in that order.
+                  ⚠ Its parsing lives in `compose_fault` /
+                  `compose_parts` / `script_compose` and NOT in
+                  `script_command`: a `vector<Struct>` local in that
+                  function corrupts the interpreter heap
+                  (loft#935).
                   B7 added `fall <max>` (tick until the wallet empties
                    — ⚠ still standing after `<max>` is an ERROR, or a
                    later `ticks` band would read a collapsed premise as

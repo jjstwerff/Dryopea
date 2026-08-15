@@ -330,6 +330,25 @@ fn test_the_schedule_is_discriminated() {
     tsd_6 = peopled();
     tsd_6.schedule.running = false;
     assert(saw(tsd_6) != "", "a list that has not started is seen");
+
+    // ⚠ **Same SIZE, different CLASS** (plan 23 K1).  `peopled`'s wave 0
+    // is four regulars; this makes it four miners.  A comparer that
+    // summed each wave's parts back into a count would be green over
+    // exactly the difference composition exists to express, which is
+    // why the sizes are held equal here on purpose.
+    tsd_7 = peopled();
+    wave_schedule_compose(tsd_7.schedule, 0,
+        [WavePart { wave: 0, count: 4, kind: ENEMY_KIND_MINER }]);
+    assert(saw(tsd_7) != "", "what a wave is MADE OF is seen");
+
+    // And the grouping, at one class and one total — `4 robot 8 robot`
+    // spawns as `12 robot` would but is not the same state, because
+    // `emit.loft` has to write it back as two groups.
+    tsd_8 = peopled();
+    wave_schedule_compose(tsd_8.schedule, 1,
+        [WavePart { wave: 0, count: 2, kind: ENEMY_KIND_REGULAR },
+         WavePart { wave: 0, count: 4, kind: ENEMY_KIND_REGULAR }]);
+    assert(saw(tsd_8) != "", "and so is how a wave is GROUPED");
 }
 
 // ─────────────────────────────────────────────────────────────────
