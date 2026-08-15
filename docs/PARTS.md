@@ -73,81 +73,257 @@ turns-there hinge looks perfectly reasonable in both files.
 
 ---
 
-## D1 — dryopea gets its own part model, and does not take `hex_part`  `@X001`
+## D1 — REUSE the published family, and ENHANCE it where it stops  `@X001`
 
-**The decision: a dryopea-native `src/part.loft` carrying moros's vocabulary,
-units and invariants — not a dependency on `hex_part`.**
+⚠⚠ **THIS SECTION WAS WRONG AND IS REWRITTEN** (2026-08-15).  Its first draft
+decided *"a dryopea-native part model, not a dependency"* on the strength of
+having read **`hex_part`** — moros's unpublished, `hex_voxel`-backed house-parts
+library — and **never checking the published `hex_*` family**.  The project
+owner's correction was one line: *"reuse as much of the current libraries as
+possible, enhance the libs were needed"*, which is also `CLAUDE.md`'s own rule.
 
-Measured before deciding:
+⚠ **The miss is instructive and is why the survey below exists**: I searched for
+the thing I already had a name for.  `hex_part` was the wrong name, and the
+right one — `hex_body` — was in the registry the whole time.
+
+### The survey, so nobody repeats it
+
+| library | published? | what it is | dryopea |
+|---|---|---|---|
+| **`hex_body`** | ✅ registry | ⚠⚠ *"rigs, revolute joints with computed limits, pure poses, proxies"* — **a body is a RIG, never a pose** | **the part model** |
+| **`mesh3d`** | ✅ registry, **zero deps** | Vec3/Mat4, `Mesh`, `Scene`/`Node`, `cube()`, `mesh_to_floats` | the geometry (§ D9) |
+| **`glb`** | ✅ registry | `save_scene_glb` — Blender/three.js readable | the artefact (§ D9) |
+| **`hex_draw`** | ✅ registry | *"a wall's ANALYTIC SURFACE recovered as the exact average of its stored edges, so a wall renders as one flat quad rather than a strip"* | walls, [`RENDERER.md`](RENDERER.md) § R3 |
+| **`hex_roof`** | ✅ registry | roofs/vaults/arches as one function of a DISTANCE | buildings, later |
+| **`hex_form`** | ✅ registry | the exact turtle form + **canonical text, byte-for-byte** | shapes-as-text |
+| **`hex_place`** | ✅ registry | place / seat / combine | placement |
+| `hex_part` | ❌ `../moros` | a part as a small `hex_voxel` store | ⚠ **not this** — see below |
+| `hex_mesh` | ❌ `../moros` | the hexes-and-buildings mesher | ⚠ the CONSTRUCTION is copied, `RENDERER.md` § R3 |
+
+### `hex_body` IS the part model, and it is published
+
+> *"a body is a **RIG** — bones and the limits in the joints between them, never a
+> pose"* … *"this module never stores a pose; it COMPUTES one from the current
+> joint values, and that computation is a **pure function**"*
+
+That is § D4's design, already written and already shipped.  What it gives:
 
 | | |
 |---|---|
-| `hex_part` | 4 003 lines, **unpublished** |
-| its dependencies | `hex_voxel` (a whole voxel world + `.hxw` save format), `glb_read`, `hex_field` — all path-deps into `../moros` |
-| what a part IS there | a small `hex_voxel` store — *"a part IS a world"* (moros § P1) |
-| what dryopea's world IS | `PaintedWorld` (sparse, sea-default, painted `u8` kinds) + `HeightLayer` |
+| `Rig` + `rig_bone(r, **parent**, ox, oy, len, lo, hi)` | ⚠ a **parented tree** — which `mesh3d::Node` does *not* have (§ D9) |
+| `Joint { value, lo, hi }`, `joint_fits` / `joint_offer` / `joint_residual` | limits, and how far past one a request is |
+| **`rig_write` / `rig_read`** | ⚠⚠ **a canonical TEXT round-trip** — this is *"you provide a script"*, already a format |
+| `rig_world_seg(r, values, i)` | the pose COMPUTED from joint values, never stored |
+| `bone_obb` / `obb_contains` | per-bone hitboxes — moros § P9.10's *"the hitboxes are the half an artist can never hand back"* |
+| `rig_admissible`, `rig_eq` | validation and comparison, for free |
 
-⚠ **Taking the dependency means two world models in one repo**, and the second
-one arrives to hold *assets* rather than terrain.  dryopea already has one
-unpublished path-dep (`moros_map`) and `loft api` reports it **NOT INSTALLED** —
-declared for six plans and never consumable.  A build that needs a sibling
-checkout at an unstated revision is a build that breaks for the next reader.
+### ⚠⚠ Where it stops: it is strictly 2-D — and that is the enhancement
 
-⚠ **And "reuse is the rule" is not being waived — it is being read.**
-`CLAUDE.md` § Loft consumer relationship forbids *"a dryopea-local version of a
-routine a library already provides"*.  `hex_part` provides a part **document
-format over a voxel store**; what dryopea needs is a part **model it can draw**.
-The overlap is the design, and the design is what is being reused — that is
-what *"we use the ../moros way"* asks for.
+`rig_bone` takes `(ox, oy, len)`; `rig_world_seg` answers four floats; there is
+**not one `z` in the package**.  Bones lie in a plane and the joint axis is
+implicit.
 
-⚠ **The trigger for revisiting is explicit**, so this does not quietly become
-permanent: when `hex_voxel` and `hex_part` are published to the registry **and**
-moros#8 (which tree owns the store) is settled, re-read this decision.  Until
-then dryopea's model must stay small enough to throw away — which is § D2's
-other reason.
+dryopea needs three dimensions: the canopy hinges about a **lateral** axis while
+the rotors sit at four different heights (§ D7).
+
+⚠ **So the enhancement is additive and its exact shape is already agreed
+elsewhere in the family.**  moros's `hex_part::Hinge` is
+`{ ox, oy, oz, ax, ay, az, lo, hi }` — **the same eight numbers**, of which
+`hex_body`'s are the planar six-minus-two.  A 3-D bone constructor with the 2-D
+one defined in terms of it (axis = +z) unifies two libraries that already agree,
+rather than inventing a dryopea shape:
+
+```
+rig_bone3(r, parent, ox, oy, oz, len, ax, ay, az, lo, hi)
+rig_bone (r, parent, ox, oy,     len,             lo, hi)   // = rig_bone3(…, 0.0, …, 0,0,1, …)
+```
+
+⚠ `CLAUDE.md` § Loft consumer relationship is explicit that this is the right
+move: *"dryopea may ADD to them under their existing contract, which is the right
+move when dryopea needs something adjacent to what a library already does."*
+
+⚠ **And it is a real cross-repo commitment, not a footnote.**  `hex_body` belongs
+to hexbody/lavition (*"the first brick of the body half, `plans/m1-moving-body/`"*),
+so the enhancement is proposed there, gated by their suite, and consumed as a
+release.  Plan 20's § Cross-repo coordination is where that is tracked.
+
+### What is still NOT taken, and why that half of the old decision stands
+
+⚠ **`hex_part` remains out of scope** — and this is unchanged.  It is 4 000
+unpublished lines whose premise is *"a part IS a world"*, i.e. a small
+`hex_voxel` store with its own `.hxw` save format.  dryopea's world is
+`PaintedWorld` + `HeightLayer`, and importing a second world model to hold what
+are for dryopea **assets** is a different question from reusing a rig.
+⚠ Trigger unchanged: `hex_voxel` + `hex_part` published, and moros#8 settled.
 
 ---
 
-## D2 — a limb's body is PRIMITIVES, not hex cells  `@X002`
+## D2 — a limb's body is HEX CELLS WITH HEIGHTS, like everything else  `@X002`
 
-**The decision: a limb's body is a list of BOXES and DISCS in the limb's own
-frame, in metres.**  This is the first deviation, and it is the sharpest.
+⚠⚠ **THIS SECTION WAS WRONG AND IS REWRITTEN** (2026-08-15).  Its first draft
+chose box-and-disc primitives over hex cells, on the argument that *"a hex is
+1.5 m and a rotor is 0.5 m"*.  The project owner's correction: *"that is strange
+— everything is built from hexes but every hex has a height to get the 3rd
+dimension."*
 
-moros authors a limb as **cells** in a hex voxel grid, because a moros limb is a
-house — a building at terrain scale, on the lattice the terrain uses.  A
-dryopea limb is a **rotor 0.5 m across**.  A hex is 1.5 m.
+**The decision: a limb's body is a CELL FORM WITH HEIGHTS, authored at the
+part's own scale.**  The same representation as terrain, houses, roofs and
+creatures — which is the whole `hex_*` family's, and the reason it composes.
 
-⚠ moros's own § P9.1 answers this in principle — *"a limb is authored at its OWN
-scale, and the ratio is already in the file"* — so a part could declare
-0.05 m per cell and author a rotor in 200 cells.  Rejected, for two reasons
-that are dryopea's rather than moros's:
+### Why the size objection was not an objection
 
-1. **A hex grid is the wrong lattice for a machine.**  Rotor booms are radial
-   and the canopy is a wedge; expressing either as odd-r offset cells is
-   fighting the lattice for nothing, and the result still has to be *drawn* as
-   polygons.
-2. **The primitive list is already the project's stated convention.**
-   `PROXY_ART.md` § Conventions opens with *"primitive geometry first — cuboids
-   and cylinders"*.  This design makes that convention structural instead of
-   replacing it.
+moros § P9.1 already answers it: **a limb is authored at its OWN scale, and the
+ratio is in the file** — `child.w_unit / parent.w_unit`, derived and never
+authored (moros § P9.0 invariant 3).  A rotor is authored in a part-world whose
+cell is ~0.1 m; nothing requires a part to use the terrain's 1.5 m hex.  I read
+that sentence, quoted it in the first draft, and then argued against it anyway.
 
-⚠ **It is a THIRD body kind in a slot that already had two, not a new concept.**
-moros § P5 gives a part two possible bodies — cells, or a `.glb` — and § P9.3
-corrected the rule to *"nothing NEEDS a custom mesh, not nothing may be one"*.
-A box list sits in the same slot under the same rule.  A cells body or a `.glb`
-body can be added later without touching the tree, the sockets or the hinges,
-because none of them ask what a limb is made of.
+### ⚠⚠ And the roundness objection dissolves on a mechanism already documented
 
-**Two primitives, deliberately:**
+The real worry behind "boxes" was that a disc built from cells reads as a
+**hexagonal** blob rather than a rotor.  It does not, and the reason is in
+[`RENDERER.md`](RENDERER.md) § R3 `@X044`:
 
-| kind | fields | drawn as |
-|---|---|---|
-| `PRIM_BOX` | centre (x, y, z), half-extents (hx, hy, hz) | its ≤3 visible faces, each a shaded quad |
-| `PRIM_DISC` | centre, normal, radius, thickness | an N-gon fan in the disc's plane |
+> `corner_heights_from` averages a cell's height with each neighbour that shares
+> that corner — which is what makes terrain **slope** instead of **step**.
 
-⚠ **No cylinder.**  A boom arm is a thin box and reads as one at 24 px/m; a
-cylinder is a third rasteriser for a difference nobody can see at this scale.
-Add one when a measurement says the box is the thing that looks wrong.
+⚠ **That same pass smooths a part.**  The mechanism that stops ground looking
+like stairs is the mechanism that stops a rotor looking like a hexagon, and it
+is one function serving both because both are cells with heights.  ⚠ And
+`hex_roof` shows the family already expresses curvature this way — *"every roof
+form anyone names is the same function of a DISTANCE"* — cones, domes and arches
+over a height field.
+
+### What choosing boxes would have cost, stated plainly
+
+⚠⚠ **Six published libraries.**  A box list is not a cell field, so none of them
+apply to it:
+
+| library | what dryopea would have forfeited |
+|---|---|
+| `hex_draw` | walls as an **analytic surface** — one flat quad, not a strip of them |
+| `hex_roof` | every roof / vault / arch profile, as one distance function |
+| `hex_form` | the exact turtle form **and its canonical text** — the script format |
+| `hex_place` | place / seat / combine |
+| `hex_mesh` (construction) | corner smoothing, `faced_between`, the face pass |
+| `hex_field` | the exact cell sets underneath all of it |
+
+That is the opposite of *"reuse as much of the current libraries as possible"*,
+and it is a self-inflicted fork of an ecosystem dryopea joined deliberately in
+plan 09.
+
+### ⚠ The one thing a cell field still does not carry: an out-of-plan hinge
+
+A cell form gives shape; `hex_body`'s `Rig` gives articulation.  Its bones are
+placed in **plan** (`rg_ox`, `rg_oy` — *"joint offset in the parent's frame"*)
+and a joint turns about the plan's normal.
+
+⚠ dryopea's canopy hinges about a **lateral** axis — it tips *out* of plan
+(§ D7).  That is the one motion a plan-view rig cannot express, and therefore
+the whole of the enhancement § D1 proposes.  ⚠ **It is much smaller than "make
+the rig 3-D"**: heights already give the third dimension, so what is missing is
+a joint whose axis lies **in** the plan rather than normal to it — and moros's
+`hex_part::Hinge` already writes that axis down as `(ax, ay, az)`.
+
+### ⚠⚠ And a cell is a COLUMN OF LAYERS, which is where the detail comes from  `@X048`
+
+*(project owner, 2026-08-15: "and there are multiple layers for the extra
+details")*
+
+A cell does not carry **one** height.  `hex_voxel`'s model:
+
+| | |
+|---|---|
+| `LAYER_CAP = 64` | layers per chunk |
+| `Chunk { base height, ck_layers }` | *"its OWN ORDERED list of layers"* — the index means nothing outside the chunk |
+| `Column { co_cells }` | **ABSOLUTE heights, one per layer, in the chunk's order** |
+| `Layer { …, label }` | an optional **cross-chunk label**, so corresponding layers of different chunks are identified by name rather than by index |
+| `w_eps` | ⚠ the **minimum layer separation** |
+
+⚠ **So the vertical detail is a STACK, not a single surface.**  One cell can
+carry a floor, a shelf, an overhang and a roof; a quadcopter cell can carry a
+skid at 0.0, the chassis at 0.3 and a canopy at 0.7.  That is how a form built
+from hexes gets detail that a single height field cannot express — and it is the
+answer to the question the box-primitive draft was really asking.
+
+⚠ **The label is what makes a layer a THING rather than a slot.**  Index-identity
+is chunk-local by construction, and `hex_voxel`'s own comment records the bug
+that taught it: *"a marker left on an index therefore lands on the wrong layer"*.
+
+⚠⚠ **The trap, and it is documented as SILENT**: two layers can both fall within
+θ of one height, which is what `w_eps` exists to forbid.  A part authored with a
+canopy 1 mm above a chassis is not a fine detail — it is a corrupt column.
+
+### ⚠ Layers for PARTS now; layers for the WORLD is a SEPARATE decision
+
+dryopea's world today is one surface per hex — `PaintedWorld` (a kind) plus
+`HeightLayer` (a rubble rise) — which is a **degenerate column of one**.
+
+⚠⚠ **Adopting columns for the terrain is not an art change; it is a movement
+change.**  `passable.loft::hex_height` answers one number per hex, and
+`can_step` / `can_climb` / the flow field are all written against that answer.
+The moment a hex has several surfaces, *"which layer is the surface"* becomes a
+real question — one `hex_voxel`'s banner explicitly points at
+(`WORLD_MODEL.md` § Which layer is the surface) and warns is **not** the same
+rule as the mesher's.
+
+*Decision: parts get columns (they are assets and nothing routes over them);
+the terrain keeps its single surface until a mechanic needs otherwise.*
+⚠ **Trigger: the first thing a robot must walk UNDER** — a bridge, an overhang,
+a gantry.  That is the mechanic that makes one height per hex unable to answer,
+and it is also the point at which 1 094 tests written against `hex_height` need
+re-reading.
+
+### ⚠⚠ A PLACEMENT layer, and joints that carry their own limits  `@X049` `@X050`
+
+*(project owner, 2026-08-15: "and there is a special layer for possible
+placement of other forms and there is a method to attach limbs/things with
+limits to where they can move")*
+
+Both exist in the family; neither is dryopea's to invent.
+
+**`@X049` — the placement layer.**  A layer whose content is not surface but
+**where another form MAY GO** — moros's `SOCK` (the joints a part offers) and
+`FITS` (the one class it goes into), with `hex_fit` as the predicate.  ⚠ Its
+doorstep has a documented FORM: *"a value off the grid the field distinguishes
+is **silently snapped, not rejected** — so the refusal has to happen at authoring
+time or the round trip reports success on a model nobody wrote"*, and a refusal
+must **name its restriction** (`hex_fit` § THE DOORSTEP, law `K-FIT`).
+
+⚠⚠ **dryopea already has one of these and calls it something else.**  A tower's
+socket (`@X003`) is exactly a placement slot that refuses a second occupant —
+`tower_mount_top` REFUSES an occupied tower, which is `K-FIT`'s named refusal
+arrived at independently.  The marker layer is the other: a hex either takes a
+marker or does not.
+
+**`@X050` — attachment with limits.**  `hex_body`'s `Joint { value, lo, hi }`,
+and the three verbs that make limits usable rather than merely present:
+
+| | |
+|---|---|
+| `joint_fits(j, v)` | is this value admissible |
+| `joint_offer(j, v)` | ⚠ the value the joint will **give you** — clamped, not refused |
+| `joint_residual(j, v)` | ⚠ **how far past the limit** the request was |
+
+⚠ `joint_offer` / `joint_residual` are the pair worth noticing: a joint does not
+merely say *no*, it says *this much, and you asked for that much more*.  That is
+what lets a caller drive toward a limit smoothly — a canopy that opens as far as
+it can and reports the rest, rather than snapping or refusing.
+
+⚠ And `rig_admissible(r)` asks it of a whole rig at once, so *"is this pose
+legal"* is one call rather than a loop the caller writes.
+
+### So a part is composed, not invented
+
+```
+hex_form / hex_draw   the cell form and its heights        the SHAPE
+hex_body::Rig         bones, joints, limits, hitboxes      the ARTICULATION
+hex_mesh (construction) corner smoothing + the face pass   the SURFACE
+mesh3d + glb          nodes, transforms, the export        the ARTEFACT (§ D9)
+```
+
+⚠ Every row is a library dryopea consumes or a construction it copies.  ⚠ The
+only NEW code is the join between them, plus the one enhancement above.
 
 ---
 
@@ -377,6 +553,131 @@ carries it with no new concept, which is the point of § D1.
 
 **The towers** are § D3: a base part offering one socket, and a top part that
 fits it.
+
+---
+
+## D9 — the build pipeline: a script in, a mesh and validation frames out  `@X038`-`@X043`
+
+*(project owner, 2026-08-15: "so we need a building pipeline when you provide a
+script of how the enemy/helper/player/tower should look and where then a 3d mesh
+and a couple of png images are generated to validate if the end result matches
+expectations")*
+
+```
+   part script  (authored — a loft function per part)
+        │
+   parse│                                                        dryopea
+        ├──> Part { limbs, prims, hinges, sockets }
+        │
+   pose │  hinge angles from the SIM, or a named pose            dryopea
+        │
+   bake │  ⚠ flatten the tree to world transforms               dryopea
+        │
+   emit ├──> mesh3d::Mesh per limb  +  mesh3d::Scene             mesh3d
+        │
+        ├──> save_scene_glb()  →  build/parts/<name>.glb         glb     THE ARTEFACT
+        │
+        └──> render N poses × M views                            dryopea THE CHECK
+                 →  shots/parts/<name>_<pose>_<view>.png
+```
+
+### ⚠⚠ The geometry layer is ALREADY PUBLISHED — do not write one
+
+Measured against the registry before designing any of it:
+
+| dryopea needs | it already exists as | dep |
+|---|---|---|
+| vectors, matrices, `look_at`, `perspective`, `ortho`, `rotate_x/y`, `trs` | `mesh3d::math` | `mesh3d` |
+| a mesh, and `cube()` / `plane()` / `sphere()` | `mesh3d::mesh` | `mesh3d` |
+| a scene of nodes with transforms + materials | `mesh3d::scene` — `node_at(name, mesh, mat, Mat4)` | `mesh3d` |
+| **write a GLB 2.0 file** — *"readable by Blender, three.js, gltf-validator"* | `glb::save_scene_glb` | `glb` |
+| vertices in the shape GL wants | `mesh3d::mesh_to_floats` → `graphics::gl_upload_vertices` | both |
+
+⚠⚠ **So `@X004`'s "geometry emitter" is mostly a MAPPING, not an implementation**, and
+[`RENDERER.md`](RENDERER.md) § Open 5's *"port the camera"* shrinks with it: the
+matrix half is `mesh3d`'s, and what is left is ~40 lines of spherical
+trigonometry over `mat4_look_at`.  ⚠ `mesh3d` has **zero dependencies** and `glb`
+has exactly one (`mesh3d`), so this is a cheap edge to add.
+
+### ⚠ `mesh3d::Node` is FLAT, so the glb is a BAKED POSE and not a rig
+
+`Node { name, mesh_idx, material_idx, transform }` — **there is no parent
+field**.  The part-tree's hierarchy therefore has to be baked into world
+transforms before nodes are emitted, which is exactly the step moros gives its
+own file (`hex_part/bake.loft`).
+
+⚠ **Consequences, stated rather than discovered later:**
+
+- the exported `.glb` captures **one pose**.  A canopy shut and a canopy open are
+  two exports, not one articulated model.
+- an artist opening it gets a **posed model, not a rig** — fine for silhouette,
+  proportion and scale review, which is what `@X006` says the export is *for*.
+- ⚠ **the ARTICULATION stays dryopea's**, and that is the right side of the line:
+  the hinge is `@X007`'s `lo`/`hi` in turns and the pose comes from the
+  simulation (`@X003`), neither of which a mesh file should own.
+
+### The script is a LOFT FUNCTION, and § Open 2 is unchanged
+
+⚠ *"You provide a script"* is satisfied by a function per part in
+`src/catalogue.loft` — and it should stay one:
+
+- **crawler reached the same answer independently.**  `../crawler/PROPS.md`:
+  *"**Not a folder of `.glb` files.**  They are drawn the way houses are drawn —
+  **by a function that emits geometry from parameters** — and placed the way
+  items are placed."*
+- a compiled function means **the export tool and the running game share one
+  constructor**, so a mesh cannot drift from what the player sees.  A data file
+  would need a parser, a format gate, and a second way to be wrong.
+
+⚠ § Open 2's trigger is untouched: *the first part authored by somebody who is
+not editing loft*.  A human-authored data format is what fires it, and this
+pipeline is not that.
+
+### Validation is TWO checks, and confusing them is how it fails
+
+| check | what it answers | who runs it |
+|---|---|---|
+| **measured** | extents match the simulation's constant (`@X006`); triangle counts; `classify_world` pixel shares; the poses DIFFER | `scripts/test.sh` |
+| **cold read** | *"does this read as a big quadcopter with bigger rear rotors and a canopy that opens?"* | a person, looking |
+
+⚠⚠ **The measured half cannot see the thing the pipeline exists for.**  A part
+can have correct extents, correct triangle counts and correct pixel shares and
+still be unrecognisable — which is `PARTS.md` § What could kill this design's
+*"the failure mode is not 'it crashes', it is 'it is fine'"*.
+
+⚠ **crawler already pinned the done-criterion for the cold read** and dryopea
+should adopt it verbatim rather than invent one: *"stop when a **cold read** names
+it uniquely as that form — unique recognizability is 'finished for the game';
+don't over-render past it (clarity has an optimum)"*
+(`../crawler/SPRITES.md` § The done-criterion).
+
+⚠ **And the PNG set must contain the poses that DIFFER** — canopy shut *and*
+open, tower topped *and* bare.  A validation set of one pose per part cannot see
+a joint at all, which is plan 20 `20-A4`'s negative control stated as an
+artefact.
+
+### ⚠ No Python blueprint for this, and crawler says why
+
+`../crawler/CLAUDE.md`:
+
+> **A BLUEPRINT PHASE is for when the construction is UNKNOWN.**  When the
+> primitives already exist in the tree, the cheapest medium is **the engine
+> itself** — write the real code and its gate, not a model of it.  A model can
+> disagree with the original *silently*: in plan #11 P5 a Python blueprint
+> reported a **39 % wall-run overhead where the engine measured 15.5 %**, and the
+> wrong number reached a design doc before anyone ran the real thing.
+
+⚠ dryopea's primitives exist — `mesh3d`, `glb`, `Canvas`, and the GL path `@M002`
+proved.  **So this pipeline is written in loft directly**, and the *"plot the
+concrete end-result first"* step survives as a TEST rather than a prototype:
+`20-A2`'s gate already is one (*a canopy at 0.25 turns puts its far edge where
+trigonometry says, asserted as a coordinate*).
+
+⚠ **What the `draw` skill is for here is the TARGET, not the asset** — crawler's
+other use of it: *"first set the wall aesthetic target with the `draw` skill —
+compose + cold-critique a reference view so 'nice' is concrete (a checkable look)
+before coding"*.  That is worth doing once for the hover unit before the
+catalogue is written, so the cold read has something to be read *against*.
 
 ---
 

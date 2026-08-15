@@ -59,13 +59,18 @@ Every `@X` carries one, so the index can be filtered:
 
 | code | decision | owner |
 |---|---|---|
-| `@X001` | dryopea gets its **own part model**, not a `hex_part` dependency — it is 4 000 unpublished lines over `hex_voxel`, a second world model, to hold what are for dryopea *assets*.  ⚠ Trigger to revisit: `hex_voxel` + `hex_part` published, and moros#8 settled | `PARTS.md` § D1 |
-| `@X002` | a limb's body is **primitives (box, disc)**, not hex cells — a hex is 1.5 m and a rotor is 0.5 m.  A third body kind in a slot that already had two | `PARTS.md` § D2 |
+| `@X001` | ⚠ **REVISED 2026-08-15** — ~~a dryopea-native part model~~ → **reuse `hex_body`** (published: rigs, revolute joints with limits, pure poses, per-bone OBBs, canonical text) and **enhance it** with an out-of-plan hinge axis.  ⚠ The first draft read `hex_part` (unpublished) and never checked the registry.  ⚠ `hex_part` itself stays out — trigger unchanged | `PARTS.md` § D1 |
+| `@X002` | ⚠ **REVISED 2026-08-15** — ~~box/disc primitives~~ → **hex CELLS WITH HEIGHTS**, authored at the part's own scale.  ⚠ The roundness objection dissolves on `@X044`'s corner smoothing; boxes would have forfeited six published libraries | `PARTS.md` § D2 |
 | `@X003` | **the tower's socket is the SIMULATION's** — plan `17-T2`'s detachable top already is moros's socket model, so what is drawn asks `TowerState` and never a second flag | `PARTS.md` § D3 |
 | `@X004` | a part emits **GEOMETRY**; there is no sprite and no baked scale.  ⚠ Replaced an earlier sprite design — a sprite sheet does not degrade under a free camera, it *lies* | `PARTS.md` § D4 |
 | `@X005` | a **PNG is an ARTEFACT**, never a runtime input.  ⚠ `imaging::Pixel` has no alpha, but a captured frame is opaque, so the hole does not bite | `PARTS.md` § D5 |
 | `@X006` | **the durable artefact is the SIZE**, and a test compares a part's footprint to the simulation's constant | `PARTS.md` § D6 |
 | `@X007` | the **hover unit**: fixed base, four booms, front rotors r 0.36, **rear r 0.52**, canopy on a rear lateral hinge `0 → 0.30` turns | `PARTS.md` § D7 |
+| `@X044`-`@X047` | the terrain mesh's construction, copied from moros — corner heights are a MEAN; **one predicate** (`faced_between`) both stops the blend and draws the wall; emit a face only from the side that stands; the mesh tile is not the store tile | [`RENDERER.md`](RENDERER.md) § R3 |
+| `@X048` | ⚠⚠ **a cell is a COLUMN OF LAYERS**, each with an absolute height — that is where vertical detail comes from.  ⚠ Parts get columns now; the TERRAIN keeps one surface until something must walk UNDER something | `PARTS.md` § D2 |
+| `@X049` | a **PLACEMENT layer** — where another form MAY go (`SOCK`/`FITS`, `hex_fit`'s doorstep).  ⚠ A refusal must NAME its restriction, because an off-grid value is otherwise **silently snapped**.  ⚠ dryopea has one already: the tower socket | `PARTS.md` § D2 |
+| `@X050` | **attachment with LIMITS** — `hex_body`'s `Joint {value, lo, hi}` plus `joint_fits` / `joint_offer` (clamped, not refused) / `joint_residual` (how far past), and `rig_admissible` for a whole pose | `PARTS.md` § D2 |
+| `@X038`-`@X043` | the build pipeline — a script in, a `.glb` and validation frames out.  ⚠ `mesh3d` + `glb` are published, so the emitter is a MAPPING; the glb is a baked POSE not a rig; validation is measured **and** a cold read | `PARTS.md` § D9 |
 | `@X008` | the **crew is the same part** as the player (*"same chassis"*), and the four robot classes are **one part with per-class DATA** | `PARTS.md` § D8 |
 
 ### render — the camera and the pipeline ([`RENDERER.md`](RENDERER.md))

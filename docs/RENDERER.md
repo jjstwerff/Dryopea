@@ -182,7 +182,7 @@ migration rather than a rewrite.
 
 ---
 
-## R3 — the terrain has to become 3-D, and that is the biggest single item  `@X011`
+## R3 — the terrain has to become 3-D  `@X011` `@X044`-`@X047`
 
 ⚠ **A follow camera at ground level over a flat top-down hex painting is
 incoherent.**  This is the part of the pivot that is easy to under-scope: entity
@@ -197,15 +197,70 @@ What dryopea already has, and it is more than it looks:
 | a dirty-chunk set, so a rebuild is local | `chunks.loft` over `gridmesh`, wired since plan 07 |
 | corner geometry in metres | `lattice.loft::lat_corner_metres` (⚠ clockwise in dryopea's frame — the y-negation) |
 
-So the mesher is *"for each dirty chunk, for each hex, emit a top face at
-`hex_height` and a side quad down to each lower neighbour"* — and `gridmesh` is
-already a dependency whose whole job is the chunk/dirty/mesh pipeline.
+### ⚠⚠ moros has SOLVED this, and the mechanism is not one anybody would derive
 
-⚠ **The trap it walks into is `CLAUDE.md`'s oldest one**: the SURFACE is not
-always the painted kind.  A hex carrying rubble stands on `rubble` while the
-authored ground underneath is untouched, so the mesher must colour from
-`hex_ground` and take its height from `hex_height` — get that backwards and
-piling debris on a wall LOWERS it, visibly.
+`../moros/lib/hex_mesh/` is a 2 700-line hexes-and-buildings mesher.  ⚠ dryopea
+should not depend on it (it is `hex_voxel`-backed and unpublished, `@X001`'s
+argument again) — but the **construction** is what matters and it is worth
+following exactly.  Read `lib/hex_mesh/src/hex_mesh.loft` before writing R3.
+
+**Two passes over one haloed grid:**
+
+| pass | function | emits |
+|---|---|---|
+| the GROUND | `chunk_mesh_mat(cx, cz, wld, want_mat)` → `emit_hex_sloped` | each hex as sloped triangles, using **six corner heights** |
+| the WALLS and CLIFFS | `chunk_mesh_faces(cx, cz, wld)` → `emit_face_wall` | a vertical quad per faced edge |
+
+**`@X044` — a corner height is a MEAN, not the cell's height.**
+`corner_heights_from` averages the hex's own height with each neighbour that
+shares that corner.  ⚠ That is what makes terrain *slope* instead of *step*, and
+dryopea's `hex_height` — one number per hex — would give blocky ground if meshed
+naively.
+
+**`@X045` — ⚠⚠ and one predicate stops the blend AND draws the wall.**
+`faced_between(a, b)` answers *is there a face on this edge* — and it is used
+twice: `corner_heights_from` **skips** neighbours across a face, and
+`chunk_mesh_faces` **emits a quad** exactly where one exists.  So smooth ground
+and crisp buildings fall out of **one rule**, not two that must agree.
+
+⚠ Its own comment is the part to copy: it is asked **from both ends**, because
+*"the face belongs to whichever column stands higher, and a smoothing rule that
+only looked one way would blend the low side into the cliff it is standing
+under."*
+
+**`@X046` — emit a wall quad only from the side that STANDS.**
+`if hh <= nh { continue; }` — otherwise the same quad is emitted twice, once from
+each cell, *"and the second copy is back-facing, so it is invisible and pure
+cost."*
+
+**`@X047` — the mesh tile is NOT the store tile.**  moros meshes at
+`MESH_CHUNK = 8` while its store chunks at 32: *"different questions.  The store
+tiles at 32 for windowing and elision; the renderer tiles at 8 because that is
+what a rebuild costs."*  ⚠ dryopea's `chunks.loft`/`gridmesh` dirty set is a
+STORE-side tiling; the mesher wants its own, and `MESH_MARGIN = 2` of halo so a
+chunk-edge corner mean is correct.
+
+### Two instruments in that tree that dryopea wants for its own reasons
+
+- ⚠⚠ **`mesh_crc`** — a deterministic CRC over a mesh.  That is exactly what
+  § R2's *"one geometry layer, two rasterisers"* needs to prove the GL path and
+  the software path agree, and it is the executable form of moros's own
+  plan-16 S3 move.
+- ⚠⚠ **`surfaces.loft`'s `Chroma` / `chroma_gap`** — a measured minimum
+  chromaticity distance between surfaces.  It exists because of the bug
+  `CAMERA_INDOORS.md` records: a floor sat **0.0003** from a wall's chromaticity
+  against a **0.0009** tolerance, so *"an instrument that cannot tell two
+  surfaces apart cannot judge a threshold about one of them"* and a gate about
+  walls was partly passing on a hole.  ⚠ § R4's lighting problem is the same
+  hazard arriving at dryopea, and a `chroma_gap` over the 12-colour palette is
+  the check that would see it coming.
+
+### ⚠ The trap it walks into is `CLAUDE.md`'s oldest one
+
+The SURFACE is not always the painted kind.  A hex carrying rubble stands on
+`rubble` while the authored ground underneath is untouched, so the mesher must
+colour from `hex_ground` and take its height from `hex_height` — get that
+backwards and piling debris on a wall LOWERS it, visibly.
 
 ---
 
