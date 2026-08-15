@@ -87,6 +87,8 @@ pointer, not a second copy.
 
 | [`18-scenario-capture`](18-scenario-capture/README.md) | S | MH | **Complete** | Play until something interesting happens, then emit the smallest `.keys` scenario that reproduces it — so a state you can REACH but could not have thought of becomes a test.  ⚠ It is `S` because [plan 15](15-the-carry-model/README.md) C1's two-objects-on-one-hex case was reachable in the shipped game with *"no fault raised anywhere"* until somebody happened to imagine it.  ⚠ Emits `.keys` and never a state blob: a saved `WaveState` is a golden of the SIMULATION and inherits *a golden agrees with a shear*, where an authored starting position has nothing derived in it to go stale.  ⚠ The work is making the script vocabulary TOTAL over `WaveState` — enemies, towers, wallet and cargo have no setters today |
 
+| [`19-the-interactive-loop`](19-the-interactive-loop/README.md) | G | H | **Active** (P0 done) | The game runs in the WINDOW.  ⚠ dryopea cannot be played today: `main.loft` is the editor, `WaveState` rides on `ScriptRun`, and every clock plans 12-17 measured describes a game nobody has played.  ⚠ Its rule is plan 08 V0's one level up — ONE seam, two callers — because a GL loop that advanced the game itself would let a script and a player play different games with all 520 measurements green.  ⚠ P0 measured the load-bearing question and the design survives: an accumulator reproduces `tick N` exactly at every frame size, because a REPEATING accumulator carries its remainder where a one-shot timer loses it |
+
 Parked plans: [`DEFERRED.md`](DEFERRED.md). Roadmap entries without a plan
 slot get one when their trigger fires.
 

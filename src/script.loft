@@ -1268,9 +1268,9 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         tower_bank(run.wave.towers, sa_tq, sa_tr, 0.0);
         sa_tc = run.wave.towers.cells[sa_tq, sa_tr];
         if sa_tc == null { return "tower: ({sa_tq}, {sa_tr}) has no cell"; }
-        sa_tc.shots       = sa_tsh ?? 0;
-        sa_tc.charge      = sa_tch ?? 0.0;
-        sa_tc.repair      = sa_trp ?? 0.0;
+        sa_tc.shots       = sa_tsh;
+        sa_tc.charge      = sa_tch;
+        sa_tc.repair      = sa_trp;
         sa_tc.top_removed = sa_ttp == 0;
         return "";
     }
@@ -1324,7 +1324,7 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         if sa_argc != 1 { return "spent needs <points>"; }
         sa_sp = (tok[1] ?? "") as float?;
         if sa_sp == null { return "spent: <points> must be a number"; }
-        run.wave.wallet.spent = sa_sp ?? 0.0;
+        run.wave.wallet.spent = sa_sp;
         return "";
     }
 
@@ -1392,8 +1392,8 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         if sa_pd == null { return "pending: <delay> must be a number"; }
         sa_pr = on_off(tok[4] ?? "");
         if sa_pr < 0 { return "pending: <on|off> for running, not '{tok[4] ?? ""}'"; }
-        run.wave.schedule.sent    = sa_ps ?? 0;
-        run.wave.schedule.lull    = sa_pl ?? 0.0;
+        run.wave.schedule.sent    = sa_ps;
+        run.wave.schedule.lull    = sa_pl;
         // ⚠ **The delay is here and not on `schedule`**, and finding
         // that out is a plan 18 S2 story worth keeping: S1b's totality
         // test missed this field entirely, because both the script and
@@ -1401,7 +1401,7 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         // field left at its DEFAULT on both sides of a comparison
         // compares equal and proves nothing.  A totality test has to
         // hold every field at a value the default would not produce.
-        run.wave.schedule.delay   = sa_pd ?? 0.0;
+        run.wave.schedule.delay   = sa_pd;
         run.wave.schedule.running = sa_pr == 1;
         return "";
     }
@@ -1414,7 +1414,7 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         if sa_argc != 1 { return "cursor needs <n>"; }
         sa_cn = (tok[1] ?? "") as integer?;
         if sa_cn == null { return "cursor: <n> must be an integer"; }
-        run.wave.pick_cursor = sa_cn ?? 0;
+        run.wave.pick_cursor = sa_cn;
         return "";
     }
 
@@ -1794,7 +1794,7 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         if sc_sidx < 0 || sc_sidx >= len(run.wave.enemies) {
             return "stand: no enemy {sc_sidx} — the roster holds {len(run.wave.enemies)}";
         }
-        (run.wave.enemies[sc_sidx] ?? Enemy { }).stand = sc_ssec ?? 0.0;
+        (run.wave.enemies[sc_sidx] ?? Enemy { }).stand = sc_ssec;
         return "";
     }
 

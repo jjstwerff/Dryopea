@@ -56,8 +56,10 @@ fn pal() -> vector<GroundType> {
 }
 
 // A band with a spawn marker far enough out to be active, and
-// optionally a wall with a tower behind it.
-fn base(walled: boolean, towers: integer) -> MarkerWorld {
+// optionally towers behind the wall.  ⚠ The WALL is `ground`'s to
+// place, not this one's — `base` used to take a `walled` flag it never
+// read.
+fn base(towers: integer) -> MarkerWorld {
     b_mw = marker_empty();
     place_marker(b_mw, 14, 0, MARKER_KIND_SPAWN as u8, 3 as u8);
     if towers > 0 { place_marker(b_mw, 4, 0, MARKER_KIND_TOWER as u8, 0 as u8); }
@@ -200,7 +202,7 @@ fn test_a_finished_list_sends_nothing_more() {
 // outside the tick asking for either.
 fn test_a_defended_base_plays_wave_one_then_wave_two() {
     tad_pw  = ground(true);
-    tad_mw  = base(true, 2);
+    tad_mw  = base(2);
     tad_pal = pal();
     tad_s   = wave_state_empty();
 
@@ -227,7 +229,7 @@ fn test_a_defended_base_plays_wave_one_then_wave_two() {
 // happens over an empty battlefield the schedule meant to fill.
 fn test_the_first_wave_lands_on_the_first_tick() {
     tfl2_pw  = ground(true);
-    tfl2_mw  = base(true, 1);
+    tfl2_mw  = base(1);
     tfl2_s   = wave_state_empty();
     tfl2_s.schedule = wave_schedule_of([4], INTER_WAVE_DELAY_SECONDS);
     wave_schedule_begin(tfl2_s.schedule);
@@ -244,7 +246,7 @@ fn test_the_first_wave_lands_on_the_first_tick() {
 // wallet rather than with the list.
 fn test_an_undefended_base_never_sees_wave_two() {
     tau_pw  = ground(false);
-    tau_mw  = base(false, 0);
+    tau_mw  = base(0);
     tau_pal = pal();
     tau_s   = wave_state_empty();
 
@@ -265,7 +267,7 @@ fn test_an_undefended_base_never_sees_wave_two() {
 // ignored the clear would have sent every wave in the list by now.
 fn test_a_timer_alone_would_have_emptied_the_list() {
     tta_pw  = ground(false);
-    tta_mw  = base(false, 0);
+    tta_mw  = base(0);
     tta_s   = wave_state_empty();
     tta_s.schedule = wave_schedule_of([3, 3, 3, 3, 3], INTER_WAVE_DELAY_SECONDS);
     wave_schedule_begin(tta_s.schedule);
