@@ -67,6 +67,13 @@ the fix ships, then moved to Resolved.
 ### Returning a large struct by value poisons the store — the NEXT unrelated call corrupts an already-returned struct
 
 - **Filed:** [loft#939](https://github.com/loft-lang/loft/issues/939)
+- ✅ **FIXED** by loft `ac8fb1dc` (2026-08-16 00:59), *"A vector field
+  assigned from a view frees what it only names"* — which is exactly
+  `crop_state`'s `cs_out.crew = state.crew` / `cs_out.cargo =
+  state.cargo`.  `tests/18_s3_the_crop.loft` passes 8/8 again.  ⚠ Kept
+  here rather than moved to Resolved until a full `scripts/test.sh` run
+  confirms it end to end — the graphics cdylib is blocking that, and a
+  single green test file is not the corpus.
 - **Found while:** inspecting the installed loft after plan 23 K3, when
   `scripts/test.sh` went red on a tree whose two gates were green.
 - **Kind:** bug (memory safety), interpreter, **regression**

@@ -108,45 +108,55 @@ measurement phase costs).
 **Gate: 33 scripts green under `scripts/validate.sh`** (~14 s, 652
 measurements).
 
-⚠⚠ **The 1161 is a LOFT-VERSION-dependent figure right now, and the
-suite is RED on today's loft** ([loft#939](https://github.com/loft-lang/loft/issues/939),
-2026-08-15).  `tests/18_s3_the_crop.loft` fails and the run SIGSEGVs,
-because returning a large struct by value poisons the store and the
-next unrelated call corrupts an already-returned one — a plain
-`integer` field reads back as a pointer.  ⚠ **Nothing in dryopea can
-work around it**; the two calls it needs are plan 18 S3's feature.  The
-1161/1161 above was measured on a loft built 2026-08-12 21:58 and the
-regression window is `0d46efef..a5ce016b`.  ⚠ Do not "fix" `18_s3` —
-it is the detector.
+⚠ **[loft#939](https://github.com/loft-lang/loft/issues/939) is FIXED**
+(loft `ac8fb1dc`, *"A vector field assigned from a view frees what it
+only names"* — which is exactly `crop_state`'s `cs_out.crew =
+state.crew`).  It made `tests/18_s3_the_crop.loft` fail and the suite
+SIGSEGV for about a day: returning a large struct by value poisoned the
+store, and the next unrelated call read a plain `integer` field back as
+a pointer.  ⚠ **`18_s3` is the detector for it** — it passes 8/8 again,
+and it is not something to "fix" if it goes red.  ⚠ The 1161/1161 above
+was last confirmed end-to-end on a loft built 2026-08-12 21:58; since
+then the cdylib fault below has blocked a clean full-suite run, so
+treat the figure as unconfirmed rather than as re-measured.
 
 ⚠ Do not run two `scripts/test.sh` at once — both pre-clean
 `tests/actual/`, so they clobber each other and fail for no reason.
 
-⚠⚠ **If every PNG/GL test fails with *"native function not loaded"*,
-suspect TWO loft binaries before suspecting the code.**  loft re-checks
-the `graphics` cdylib's loft-ffi fingerprint on every run and rebuilds
-on a mismatch, stamping its own fingerprint.  That is correct for one
-loft — the rebuild happens once and the next run is quiet.  ⚠ With an
-in-tree `target/release/loft` beside an older installed one, the two
-stamp **different** fingerprints into the same
-`~/.loft/build-cache/graphics-<ver>`, so each run rejects the other's
-artefact and rebuilds for ever — and under `loft test`'s parallelism the
-workers destroy each other's half-built `.so`.
-⚠ **The fix is to make the two agree** (`make install` in the loft tree,
-so the installed binary IS the tree build).  Diagnosed 2026-08-15, when
-`/usr/local/bin/loft` was three days behind the checkout.
+⚠⚠ **Both gates can be taken out by the `graphics` cdylib, and it is a
+TOOLCHAIN fault every time — but the cause is NOT yet pinned, so do not
+trust a tidy story about it.**  Symptoms, all seen 2026-08-15/16:
+every PNG/GL test failing with *"native function not loaded"*; a
+`[timeout] hard-kill after 300s` in an unrelated file's PARSE phase (a
+cdylib build in flight); a `SIGABRT` at the end of an otherwise green
+run; and `validate.sh` refusing to start with
 
-⚠ Symptoms that read as something else entirely: a `[timeout] hard-kill
-after 300s` in an unrelated file's PARSE phase (a cdylib build in
-flight), and a `SIGABRT` at the end of an otherwise green run.  ⚠ To
-gate while the toolchain is being sorted out, build the cdylib once by
-hand and stop loft touching it:
+```
+rust-lld: error: unable to find library -lloft_graphics_native
+```
+
+which is a DIFFERENT library's auto-cdylib (`hex_grid`) linking against
+`graphics` while `libloft_graphics_native.so` is absent.  loft rebuilds
+graphics 2-3 times in a single run and the artefact ends up missing.
+
+⚠ **Two explanations were tried and FALSIFIED, so skip them**: it is not
+simply *two loft binaries sharing `~/.loft/build-cache`* (it reproduces
+with one binary, installed and in-tree byte-identical), and it is not
+the stamped loft-ffi fingerprint alone — pinning `.loft-build-fp` to the
+expected value and setting `LOFT_NO_AUTO_REBUILD=1` do not stop the
+rebuild.  ⚠ A fresh `loft` install is what has triggered it each time.
+
+⚠ **What has worked, when it works**: build the cdylib by hand and
+re-run, checking the `.so` actually survives.
 
 ```bash
 (cd ~/.loft/registry/graphics-<ver>/native && \
    CARGO_TARGET_DIR=~/.loft/build-cache/graphics-<ver> cargo build --release)
-LOFT_NO_AUTO_REBUILD=1 scripts/test.sh      # and the same for validate.sh
+ls -l ~/.loft/build-cache/graphics-<ver>/release/libloft_graphics_native.so
 ```
+
+⚠ It is a loft-side problem and belongs upstream, not in a dryopea
+workaround.
 
 ⚠ **Both gates run INTERPRETED**, and that is not a preference.  On the
 NATIVE backend `load_palette` answers 0 entries — a silent `text as
