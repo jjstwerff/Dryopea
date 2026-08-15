@@ -83,12 +83,20 @@ ignore the lot and still complete missions.
 
 Plan-shaped candidate: `plan-future-XX — Tower mechanics
 depth` covering the strain / boost / overload / hot-swap
-arc together — they share mechanics and graphics.  Slot
-number TBD when the trigger fires.
+arc together — they share mechanics and graphics.
 
-⚠⚠ **The trigger has fired: [plan 16](16-the-wave-system/README.md)
-W4 names tower repair as the thing standing between dryopea and a
-base that can be played.**  Measured, two ways:
+⚠⚠ **The trigger has fired and the UPKEEP half is now
+[plan 17](17-tower-hot-swap/README.md)** (opened 2026-08-15):
+rebuild a black tower, and make the top a carry object that can be
+transplanted onto a spent one.  ⚠ **Strain / overload / type-swap /
+ammo / swap pits stay here** — `DESIGN.md` § Tower overload marks
+them deferred to a later tier, and several need tower variants that
+do not exist.  ⚠ **Boost stays here too**, and deliberately: it is
+about OUTPUT where plan 17 is about RECOVERY, and W4's finding does
+not name it.
+
+[Plan 16](16-the-wave-system/README.md) W4 is what named the upkeep
+half.  Measured, two ways:
 
 - **The authored seven-wave list is unplayable.**  205 robots is
   6150 HP and a tower is 300 HP of ammunition *for the whole run*,
@@ -105,6 +113,12 @@ base that can be played.**  Measured, two ways:
 what is missing is carrying a fresh top out to a black tower, which
 is the carry model's second consumer and needs a kind row plus a
 destination rule and no new carrying code.
+
+⚠ **And plan 17's own first finding sharpens it**: a tower's
+magazine is keyed by HEX today (`hash<TowerCharge[q, r]>`), so
+making a top carriable is an OWNERSHIP move — the budget becomes a
+property of the top — and *detach-and-remount must not refill*, or
+two keypresses bypass the whole loop.
 
 ### Editor-to-entity content pipeline
 
