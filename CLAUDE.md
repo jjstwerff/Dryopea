@@ -97,35 +97,45 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 1161/1161 green under `scripts/test.sh`** (~150 s measured
-2026-08-14 — the `frame` measurements classify full 960x720 frames, the
+**Suite: 1161/1161 green under `scripts/test.sh`** (~205 s re-measured
+2026-08-17 — the `frame` measurements classify full 960x720 frames, the
 cost gate ticks a radius-40 world twice, and since plan 13 a dozen tests
 run whole scenarios to their fall.  ⚠ This line carried "~35 s" from
-plan 12 until H2 re-measured it; the figure grew with the scenario
-tests, not with any one phase — and plan 16 W4 alone is **13 s**, six
-whole-base simulations of 200-320 ticks each, which is what a
-measurement phase costs).
+plan 12 until H2 re-measured it and "~150 s" until plan 23 K3; the
+figure grows with the SCENARIO tests, not with any one phase.  ⚠ The
+two most expensive files are both closing measurements and they are
+**35 s (plan 23 K3)** and **13 s (plan 16 W4)** — where a file that
+runs no simulation costs 3.8 s, which is the compile baseline every
+single-file run pays.  ⚠ **K3 is the most expensive file in the repo**
+and its own cost was never priced during the phase; trimming its
+duplicate whole-base runs is open work).
 **Gate: 33 scripts green under `scripts/validate.sh`** (~14 s, 652
 measurements).
 
-⚠ **[loft#939](https://github.com/loft-lang/loft/issues/939) is FIXED**
-(loft `ac8fb1dc`, *"A vector field assigned from a view frees what it
-only names"* — which is exactly `crop_state`'s `cs_out.crew =
-state.crew`).  It made `tests/18_s3_the_crop.loft` fail and the suite
-SIGSEGV for about a day: returning a large struct by value poisoned the
-store, and the next unrelated call read a plain `integer` field back as
-a pointer.  ⚠ **`18_s3` is the detector for it** — it passes 8/8 again,
-and it is not something to "fix" if it goes red.  ⚠ The 1161/1161 above
-was last confirmed end-to-end on a loft built 2026-08-12 21:58; since
-then the cdylib fault below has blocked a clean full-suite run, so
-treat the figure as unconfirmed rather than as re-measured.
+⚠ **[loft#939](https://github.com/loft-lang/loft/issues/939) is FIXED
+and CLOSED** (loft `ac8fb1dc`, *"A vector field assigned from a view
+frees what it only names"* — which is exactly `crop_state`'s
+`cs_out.crew = state.crew`).  For about a day it made
+`tests/18_s3_the_crop.loft` fail and the suite SIGSEGV: returning a
+large struct by value poisoned the store, and the next unrelated call
+read a plain `integer` field back as a pointer.  ⚠ **`18_s3` is the
+detector for it** — it is not something to "fix" if it ever goes red.
+⚠ It closed labelled `both-backends`, so *"`--native` looked clean"* was
+wrong at the time and the tell was in the reading: native emitted 255
+characters where the interpreter emitted 1017, i.e. it never ran the
+same workload.  **A backend answering differently on a different
+workload is not a backend answering correctly.**
 
 ⚠ Do not run two `scripts/test.sh` at once — both pre-clean
 `tests/actual/`, so they clobber each other and fail for no reason.
 
 ⚠⚠ **Both gates can be taken out by the `graphics` cdylib, and it is a
-TOOLCHAIN fault every time — but the cause is NOT yet pinned, so do not
-trust a tidy story about it.**  Symptoms, all seen 2026-08-15/16:
+TOOLCHAIN fault every time — but the cause is NOT pinned, so do not
+trust a tidy story about it.**  ⚠ **Not reproducing as of 2026-08-17**:
+both gates run clean with no flags.  It has come and gone twice, each
+time around a fresh `loft` install, so treat this as a thing to
+RECOGNISE rather than a thing that is currently broken.  Symptoms, all
+seen 2026-08-15/16:
 every PNG/GL test failing with *"native function not loaded"*; a
 `[timeout] hard-kill after 300s` in an unrelated file's PARSE phase (a
 cdylib build in flight); a `SIGABRT` at the end of an otherwise green
@@ -795,6 +805,13 @@ By name, so you know when to go and read it:
   is the ingredient, so the same local is fine anywhere smaller.  ⚠ And
   a green suite cannot see the violation — the damage is latent until
   the allocator trips over it, so unrelated code can wake it up.
+  ⚠ **FIXED and CLOSED upstream 2026-08-16**, so this is now a
+  historical note rather than a live rule.  The split into
+  `compose_fault` / `compose_parts` / `script_compose` **stays** — it
+  reads better than the inline version and `script_command` is already
+  at complexity 255 — but it is no longer load-bearing, and a future
+  `vector<Struct>` local in a big function is not by itself a defect.
+  ⚠ Retiring the split to re-test the fix is open work nobody needs.
 
 ### Save path
 

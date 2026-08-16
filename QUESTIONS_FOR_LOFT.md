@@ -64,6 +64,68 @@ fix / feature, move it to **Resolved**.
 Filed upstream as GitHub issues; kept here as dryopea's own record until
 the fix ships, then moved to Resolved.
 
+⚠ **Empty as of 2026-08-17** — loft#935 and loft#939 both closed on
+2026-08-16 and moved to § Resolved.  Nothing of dryopea's is outstanding
+upstream.
+
+## Investigated — no bug
+
+### Vector-in-struct pass-by-value (false alarm)
+
+Observed during E2 picker work: passing a `Picker { palette,
+active }` by value to `render_picker(p: Picker, ...)` produced
+`len(p.palette) == 0` inside the callee, even though the
+caller's `len(picker.palette) == 11`.
+
+Filed as a suspected fourth bug; reproducer was constructed
+and **the bug did not reproduce**.  Plain `vector<integer>`,
+`vector<Struct>`, and "inline call inside struct ctor"
+patterns all behave correctly: caller and callee see the same
+elements.
+
+```loft
+struct Item { name: text, n: integer }
+struct Wrap { items: vector<Item> }
+
+fn make_wrap() -> Wrap {
+    Wrap { items: [Item { name: "a", n: 1 }, Item { name: "b", n: 2 }] }
+}
+fn consume(w: Wrap) {
+    println("consume: items.len = {len(w.items)}");  // → 2 (correct)
+}
+```
+
+**Root cause:** the apparent "empty vector inside the struct"
+was actually the **JSON-cast-with-extras bug** (now § Resolved
+as @P366) hiding a load that was returning zero entries from
+the start.  Once `GroundType` declared all four extra optional
+fields the JSON has (`variant`, `color_status`,
+`height_override`, `end_drivable`), the cast started returning
+11 entries, the struct correctly carried them across the
+value-pass, and the picker rendered.
+
+Notable: **@P366** (silent JSON-cast empty on strict-reject) and
+**@P367** (test runner not failing on assert) were **compound**
+— they masked each other for ~half an hour of debugging,
+producing a green test suite while every assertion was running
+against a 0-length palette.  Both fixed in loft commit `42f8228`.
+
+## Resolved
+
+### Verified fixed on 2026-08-17 — the two store-lifetime bugs plan 23 filed
+
+Both closed upstream 2026-08-16, and dryopea's whole corpus confirms it:
+**1161/1161 under `scripts/test.sh`** and **33 scripts / 652 measurements
+under `scripts/validate.sh`**, on the installed loft, with no workaround
+flags.  ⚠ `tests/18_s3_the_crop.loft` is the live detector for the second
+one and passes 8/8 — do not "fix" it if it ever goes red again.
+
+⚠ **loft#939 was labelled `both-backends` when it closed**, which retires
+this file's own note that `--native` looked clean: it did not, and the
+255-vs-1017 crop length was the tell that native never ran the same
+workload.  A backend that answers differently on a different workload is
+not a backend that answers correctly.
+
 ### Returning a large struct by value poisons the store — the NEXT unrelated call corrupts an already-returned struct
 
 - **Filed:** [loft#939](https://github.com/loft-lang/loft/issues/939)
@@ -776,51 +838,6 @@ through and never to write through.
   destination escaping through the return path and being freed as an
   owned heap store (guard #306).  Probably the same area as
   OWNERSHIP_MODEL.md's store-lifetime work.
-
-
-## Investigated — no bug
-
-### Vector-in-struct pass-by-value (false alarm)
-
-Observed during E2 picker work: passing a `Picker { palette,
-active }` by value to `render_picker(p: Picker, ...)` produced
-`len(p.palette) == 0` inside the callee, even though the
-caller's `len(picker.palette) == 11`.
-
-Filed as a suspected fourth bug; reproducer was constructed
-and **the bug did not reproduce**.  Plain `vector<integer>`,
-`vector<Struct>`, and "inline call inside struct ctor"
-patterns all behave correctly: caller and callee see the same
-elements.
-
-```loft
-struct Item { name: text, n: integer }
-struct Wrap { items: vector<Item> }
-
-fn make_wrap() -> Wrap {
-    Wrap { items: [Item { name: "a", n: 1 }, Item { name: "b", n: 2 }] }
-}
-fn consume(w: Wrap) {
-    println("consume: items.len = {len(w.items)}");  // → 2 (correct)
-}
-```
-
-**Root cause:** the apparent "empty vector inside the struct"
-was actually the **JSON-cast-with-extras bug** (now § Resolved
-as @P366) hiding a load that was returning zero entries from
-the start.  Once `GroundType` declared all four extra optional
-fields the JSON has (`variant`, `color_status`,
-`height_override`, `end_drivable`), the cast started returning
-11 entries, the struct correctly carried them across the
-value-pass, and the picker rendered.
-
-Notable: **@P366** (silent JSON-cast empty on strict-reject) and
-**@P367** (test runner not failing on assert) were **compound**
-— they masked each other for ~half an hour of debugging,
-producing a green test suite while every assertion was running
-against a 0-length palette.  Both fixed in loft commit `42f8228`.
-
-## Resolved
 
 ### Verified fixed on 2026-08-12 (loft 2026.8.0)
 
