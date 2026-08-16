@@ -450,8 +450,21 @@ the ones that mislead a reader who skips it:
 - ⚠⚠ **A profile AGES, and the stale one gets quoted.**  *"58% is
   `canvas()`"* was true on 2026-08-12 and was still being cited three
   plans later; re-profiled 2026-08-15, **the distance field is ~75%**
-  and `classify_canvas` is 7.5%.  Re-profile before optimising, and
-  quote the date.
+  and `classify_canvas` 7.5%.  Re-profile before optimising, and quote
+  the date.
+- ⚠ **Re-profiled again 2026-08-17 and the SHAPE held**: the field
+  family is **~69%** (`flow_sweep` 17.6% self) and every one of the
+  eight hottest paths is `wave_tick → … → flow_sweep`.  So a third
+  reading agrees and [`plans/22`](plans/22-the-field-cache/README.md) is
+  still the win.
+- ⚠⚠ **But the SIZE doubled — 2 780 440 → 5 983 456 samples on twelve
+  more tests — and most of it is UNATTRIBUTED.**  Plan 23's files are
+  only ~1.1 M of the +3.2 M; the first hypothesis to test is K2a's
+  banked mover, which put an `enemy_bank` per enemy per tick into every
+  scenario under a gate that only asked whether behaviour moved
+  (`@M015`).  ⚠ `11_f8_the_tick_budget` cannot see it either — a RATIO
+  divides a uniform increase out.  [`docs/PROFILING.md`](docs/PROFILING.md)
+  has the per-file table.
 
 ### Timers and epsilons
 
@@ -1077,10 +1090,10 @@ signature.
 | Hurt or kill an enemy | `src/spawn.loft::enemy_hurt` lands damage and never kills; `wave_deaths` (the tick's, after the move loop) is the ONE death path, so B5's tower and a script's `hit` cannot drift.  ⚠ A fatal hit is followed by one last STEP — the tick moves before it kills, so the body lands one hex down the route from where the shot landed |
 | Validate the GAME (not a function) | `scripts/validate.sh` — then [plans/08-game-validation/README.md](plans/08-game-validation/README.md) |
 | Check a change did not cost anything | `tests/11_f8_the_tick_budget.loft` — a RATIO gate, because a copy changes no behaviour and no other test can see it |
-| Make the SIMULATION cheaper | [`plans/22`](plans/22-the-field-cache/README.md) — ⚠ the field, not the roster.  `flow_sweep` is **~75%** of the suite, it is UNBOUNDED, and it is only read inside the 25-hex bubble, so ~60% of every sweep is never looked at.  ⚠ The field is a pure function of `(pal, pw, hl, climb, core)` and its invalidation surface is **two functions** (`height_raise` / `height_clear`) plus `paint` — so caching is exact, and `11_f8::test_the_field_a_tick_uses_equals_a_fresh_build` is the gate, written in advance and currently vacuous |
+| Make the SIMULATION cheaper | [`plans/22`](plans/22-the-field-cache/README.md) — ⚠ the field, not the roster.  `flow_sweep` is **17.6% self and ~69% with its passability family** (re-profiled 2026-08-17, third reading in agreement), it is UNBOUNDED, and it is only read inside the 25-hex bubble, so ~60% of every sweep is never looked at.  ⚠ The field is a pure function of `(pal, pw, hl, climb, core)` and its invalidation surface is **two functions** (`height_raise` / `height_clear`) plus `paint` — so caching is exact, and `11_f8::test_the_field_a_tick_uses_equals_a_fresh_build` is the gate, written in advance and currently vacuous |
 | Judge a simulation-LOD idea (coarser away from the player) | ⚠ **Granularity must NOT follow the CAMERA** — if it does, where the player looks changes the outcome, which is unfalsifiable from inside.  The boundary is the interaction radii (tower range 15, bubble 25, nibble reach 1, salvage reach 1, blocker = same hex), which are stable under camera movement.  ⚠ And ticking distant things every N ticks with N× movement is the `n × TICK_SECONDS` defect again — bank progress, never multiply it.  [`plans/22`](plans/22-the-field-cache/README.md) § What this plan does NOT build carries the trigger |
 | Find out what the SUITE spends its time on | `LC_ALL=C LOFT_PROFILE=1 loft test > out.txt 2>&1` — § Profiling the suite.  Read the op count, never the wall clock |
-| Speed up frame measurement further | `src/measure.loft::classify_canvas` is already written for the pixel count — do not "tidy" it.  ⚠ And it is no longer where the time goes: `classify_canvas` + the `Canvas` primitives are **7.5%** since the 2026-08-15 re-profile, against ~75% for the distance field.  [`docs/PROFILING.md`](docs/PROFILING.md) |
+| Speed up frame measurement further | `src/measure.loft::classify_canvas` is already written for the pixel count — do not "tidy" it.  ⚠ And it is no longer where the time goes: `classify_canvas` + the `Canvas` primitives are **~5%** (2026-08-17), against ~69% for the distance field.  [`docs/PROFILING.md`](docs/PROFILING.md) |
 | Find out what the SUITE spends its time on, or optimise anything | [`docs/PROFILING.md`](docs/PROFILING.md) — ⚠ re-profile first and quote the DATE; the reading in this file has inverted once already |
 | Look up what a `src/` file owns before editing it | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — the full listing, plus the key data structures.  ⚠ Each `.loft` file's own header is the source of truth |
 | Add a script to the gate | drop a `.keys` in `tests/scripts/` — the sweep finds it.  ⚠ every file there must play GREEN; a run that must FAIL belongs in a test as an inline string |

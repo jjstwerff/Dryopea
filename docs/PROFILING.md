@@ -32,9 +32,56 @@ per-function + per-line + call-path report over every run in the suite.
 - `ticks()` is in **microseconds** (`default/02_files.loft`), so a probe
   that prints it as ms overstates by 1000x.
 
-**Where the time goes (re-profiled 2026-08-15: 2 780 440 samples,
-65.5 s interpreted of a ~130 s wall — the other half is compilation,
-below):**
+**Where the time goes (re-profiled 2026-08-17: 5 983 456 samples,
+125.40 s interpreted across 1161 runs):**
+
+| function (self) | 2026-08-15 | 2026-08-17 |
+|---|---|---|
+| `flow_sweep` | 16.1% | **17.6%** (22.08 s) |
+| `painted_ground` | 11.9% | **10.1%** (12.66 s) |
+| `hex_neighbor` | 8.5% | **8.6%** (10.70 s) |
+| `hex_walkable` | 6.7% | **7.1%** (8.85 s) |
+| `lat_neighbour` | 6.5% | **6.6%** (8.20 s) |
+| `hex_ground` / `lookup_painted` / `height_rise` / `painted_height_of` | 19.3% | **16.3%** |
+| `classify_canvas` | — | **3.9%** (4.82 s) |
+
+⚠ **The distance field is still the suite and the shape has not moved**
+— **~69%** across the field family, against the ~75% read two days
+earlier, and the top eight *hottest paths* are all
+`wave_tick → wave_fields → flow_build → flow_sweep → …`.  So this
+re-profile does NOT retire the 2026-08-15 conclusion; it confirms it a
+third time and [`plans/22`](../plans/22-the-field-cache/README.md) is
+still where the win is.
+
+⚠⚠ **What DID move is the absolute size: the suite's interpreted work
+roughly DOUBLED, 2 780 440 → 5 983 456 samples, on twelve more tests.**
+Measured per file, the most expensive in the repo are now:
+
+| file | samples | share of suite |
+|---|---|---|
+| `23_k3_what_composition_is_worth` | 739 187 | **12.4%** |
+| `17_t3_what_upkeep_is_worth` | 712 523 | 11.9% |
+| `16_w4_the_real_length` | 382 353 | 6.4% |
+| `23_k0_the_classes` | 320 344 | 5.4% |
+| `23_k1` + `23_k2b` together | 41 458 | 0.7% |
+
+⚠ **Plan 23 accounts for at most a third of the doubling** (~1.10 M
+samples of the +3.20 M), so **most of it is unattributed** and it is an
+open question rather than a known cost.  ⚠ The hypothesis worth
+checking first — and it is a HYPOTHESIS, not a finding — is plan 23
+K2a's banked mover: it added an `enemy_bank` call per enemy per tick to
+**every** scenario in the suite, and its gate was *the corpus does not
+move* (`@M015`), which is a BEHAVIOUR gate.  A per-tick cost that
+changes no measurement is exactly what that gate cannot see, and
+`11_f8_the_tick_budget` cannot either — it is a RATIO, so a uniform
+increase divides out.  ⚠ That is `CLAUDE.md` § Cost's own rule
+recurring: *a copy changes no behaviour, only cost*.
+
+⚠ **Read the older numbers below as the 2026-08-15 reading**, kept
+because the INVERSION they record is the durable lesson.
+
+**The 2026-08-15 reading (2 780 440 samples, 65.5 s interpreted of a
+~130 s wall — the other half is compilation, below):**
 
 ⚠⚠ **This INVERTED between plan 12 and plan 17, and the old reading is
 the trap.**  The 2026-08-12 profile said *58% is `graphics`'s `canvas()`
