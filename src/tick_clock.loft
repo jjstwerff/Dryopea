@@ -132,7 +132,12 @@
 // measurements rest on.  `clock_advance_capped` is a door BESIDE it,
 // never a default inside it.
 //
-// **No alpha.**  L5.
+// **An ALPHA, and nothing that uses it** (L5).  `clock_alpha` is how
+// far the bank is toward the next step, and it is the one number a
+// renderer needs from a fixed-step clock.  ⚠ What a consumer DOES with
+// it is a presentation decision the clock must not make — dryopea
+// measured three policies for it and ships none of them
+// (`tests/26_l5_the_alpha.loft`, `@M035`).
 //
 // **No tick COUNTER.**  `PlayState.ticks` already counts the run's
 // ticks, and a second counter beside it is two facts that can
@@ -466,6 +471,50 @@ pub fn clock_banked(clk: const TickClock) -> integer {
 pub fn clock_restore(clk: TickClock, banked: integer) {
     if banked <= 0 { clk.banked = 0; return; }
     clk.banked = (banked % clk.step) ?? 0;
+}
+
+// ─── The alpha: where the frame falls between two steps (L5) ────
+
+// How far the bank is toward the next step, in `[0, 1)`.
+//
+// ⚠ **The one number a renderer needs from a fixed-step clock**, and
+// the reason it is here rather than at the call site: `banked / step`
+// written by hand is a caller reaching INTO the accumulator, and a
+// caller that can read `banked` can also write it.  This is the read
+// door, and `clock_banked` (raw units, for save/restore) is the other
+// one — two questions, two answers, one field.
+//
+// ⚠ **Half-open by construction, not by a clamp.**  `clock_advance`
+// leaves `banked` in `[0, step)` and `clock_restore` refuses anything
+// else, so the division cannot reach 1.0 — which is what a caller
+// lerping between two states depends on: an alpha of exactly 1.0 would
+// draw the NEXT state one frame early, on the frame before the tick
+// that produces it.
+//
+// ⚠⚠ **What a consumer does with it is a PRESENTATION decision and this
+// file must not make it.**  The textbook use is
+// `lerp(previous_state, current_state, alpha)` — and dryopea measured it
+// against two alternatives over one drive (`tests/26_l5_the_alpha.loft`,
+// `@M035`):
+//
+//   * `lerp(prev, cur, alpha)` draws the step that has ALREADY happened,
+//     so it is **exactly one step behind, for ever** — 2.598 m here,
+//     because a step is 2/3 of a second;
+//   * `cur + alpha·(cur − prev)` is **exact to machine precision** while
+//     the velocity holds, and jumps a whole step's travel on the frame
+//     the mover starts or stops;
+//   * a first-order ease toward `cur` needs no previous state, lags
+//     between the two, and is the only one whose picture depends on the
+//     frames it was drawn on.
+//
+// ⚠ Three prices on three different axes, and which one is right is a
+// function of how long the STEP is — so a clock that picked one would be
+// wrong for every consumer whose step is a different length.  This
+// answers *where between two steps are we*; it does not answer *what
+// should be drawn there*.
+pub fn clock_alpha(clk: const TickClock) -> float {
+    if clk.step <= 0 { return 0.0; }
+    ((clk.banked as float) / (clk.step as float)) ?? 0.0
 }
 
 // ─── Composition: a slow clock driven by a fast one (L4) ────────

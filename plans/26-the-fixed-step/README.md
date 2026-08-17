@@ -9,10 +9,61 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**Opened 2026-08-17.  L0, L1, L2, L3 and L4 shipped 2026-08-17; L5 next.**  This
+**Opened 2026-08-17.  L0 through L5 shipped 2026-08-17; L6 next.**  This
 plan came out of a comparison of dryopea's tick pacing against moros's, run
 before it was written; the readings are § What was measured first and three of
 them are defects nothing in either repo can currently see.
+
+⚠⚠ **L5's headline is that an eased follow camera does not REMOVE a lattice
+mover's jump — it MOVES it, off the world and onto the mover, and the jump
+gets six times bigger doing so** (`@M035`, `@X085`).  Measured on screen over
+one drive, as the worst single-frame move in pixels: a raw follow camera
+leaves the mover at **0.0 px** and throws **14.9 px** at the ground; the
+shipped eased camera leaves the ground at **1.3 px** and throws **96.1 px**
+at the mover.  ⚠ **The one object in the frame an eased follow camera cannot
+smooth is the object it is following**, and `@M023` could not see it because
+it measured the camera's own target rather than anything drawn.
+
+⚠⚠ **And the answer to § Open questions 6 is *neither*: alpha is what the
+target ease was standing in for.**  Drawing the mover between its two hexes
+takes that 96.1 px to **14.1 px and no further**, because `camera_rig_step`
+eases toward the mover's HEX and a step-function target keeps a seventh of
+the jump alive.  A camera that follows the **DRAWN** point reads **0.0 px** on
+the mover and **0.329 px** on the ground — *smoother than the eased camera on
+the ground as well*.  ⚠ So alpha and the ease are not complements to be added
+in different places; applying one without the other is what leaves the
+residual.
+
+⚠⚠ **And the policy the textbook warns about is the EXACT one.**  Priced with
+no camera in it at all, against the continuous ideal: `lerp(prev, cur, alpha)`
+draws the tick that has ALREADY happened and is **2.598 m behind for ever**
+(one whole step, four times the trail the ease already has), while
+`cur + alpha·(cur − prev)` is exact to **9.5e-16 m** — because a lattice
+mover's hex at a tick boundary *is* its true position at that instant.  ⚠ Its
+price is a whole step's jump at every CHANGE of velocity (**2.598 m** starting,
+**2.533 m** on the frame the player lets go), which is a different axis rather
+than a smaller number.  **Three prices on three axes, decided by how long the
+step is — so `clock_alpha` ships and no policy does.**
+
+⚠⚠ **L5's gate is about THIS DOCUMENT'S OWN GATE for the FOURTH phase
+running, and this time it is off by ONE.**  The row asks that the mover drawn
+at alpha *"moves on **>200 of 240 frames**"*; measured, interpolating moves on
+**exactly 200**.  ⚠ The missing frames are not noise: three of the four
+policies read a PREVIOUS position and a mover that has not stepped yet has
+none, so for the first forty frames every policy draws the hex.  **A threshold
+within one frame of its subject is a threshold decided by whether the fixture
+starts warm.**  ⚠ `@M031` was a gate that could not SEE, `@M033` one whose
+control agreed for the wrong reason, `@M034` one that could not FAIL — and
+this one is off by one.  Four phases, four different ways for a stated gate to
+be weaker than the phase that ran it.
+
+⚠ **What L5 shipped**: `clock_alpha` and `play_alpha` — the number, and the
+game's door onto it — plus `tests/26_l5_the_alpha.loft`.  **No policy, and no
+change to the camera**, which is § What this plan does NOT build's newest row:
+nothing in dryopea draws an entity, so a `prev` position per drawn thing would
+be a field nobody reads.  ⚠ **L5 is NOT cut** — the row's own escape clause is
+*if alpha adds nothing over the ease* and it adds the only thing that can
+smooth the mover at all.
 
 ⚠⚠ **L4's finding is about THIS DOCUMENT'S OWN GATE, for the third phase
 running** (`@M034`) — and this one is the hardest of the three to notice,
@@ -508,7 +559,8 @@ example of the editor's door, and `plans/08` is the plan that made them so.
 | ↳ **measured** | **this row's own expected result is a gate that could not fail**, and the phase's first measurement is what said so.  Over six exact-multiple durations at the shipped tick, float UP vs float DOWN vs true: **7/7/6, 16/16/15, 30/31/30, 45/45/45, 61/61/60, 91/91/90** — the two directions disagree at ONE of six and **agree while both being a tick long at FOUR**.  ⚠ The shipped gate therefore measures against the TRUE count and keeps the up/down pair only as the record.  ⚠⚠ The real defect was elsewhere and is `@D004`: the two timers with NO epsilon (`Enemy.stand`, `WaveSchedule.lull`) run a tick long at four and three of seven tick lengths, while all three GUARDED ones are exact at all seven — § 2 had the brittleness backwards.  **1285 tests green, 654 measurements green and unmoved, three epsilons deleted** | `@M033`, `@D004`, `@X082` | ⚠ The `Timer`-as-`Bank` refutation L2 deferred here was RUN and BROKE the bank twice, both silently: it fires a second time with nobody re-arming it, and a 5.0 s cooldown costs 8 ticks the first time and **7** the second.  ⚠ The negative control for the two converted rows is the pre-L3 float arithmetic reproduced beside them and asserted WRONG at seven of fourteen readings — so a green profile is a measurement rather than a restatement of `true_ticks` |
 | **L4** ✅ | a capped driver and an uncapped one produce **different tick counts** and **identical worlds per tick**; a 1 Hz clock driven by a 30 Hz clock's ticks equals one driven from the wall | policy is the DRIVER's, arithmetic is the clock's | ⚠ Identical worlds per tick is the whole assertion — equal tick counts would mean the cap did nothing, and equal wall-clock outcomes would mean it compressed rather than dropped |
 | ↳ **measured** | **both halves of this row are weaker than what the phase found.**  The composition clause **cannot fail**: 1 Hz is exactly thirty 30 Hz steps, so every slow boundary falls ON a fast one and the two counts agree after every one of 600 frames for any implementation that hands on whole steps.  The property it reaches for needs steps that do NOT divide — 700 000 driven by 300 000 is behind at **3 of 21** frames, **0** ahead, worst lag **1**, level at the common multiple.  ⚠ And the cap reads **4** ticks dropping against **24** deferring over one stream with a 20 s stall, with `state_diff` green against a counted control both ways and the two capped/uncapped worlds DIFFERING so the pair cannot hold vacuously.  ⚠ A wall minute at 1/3 speed is **30** ticks exact against **29** truncated.  **1305 tests green, 654 measurements green and unmoved** | `@M034`, `@X083`, `@X084` | ⚠⚠ **The stated control passes for the wrong implementation.**  *Equal tick counts would mean the cap did nothing* — but a DEFERRING cap answers fewer ticks on the stalled frame too and is still wrong, so the real control is the deferring driver reproduced beside the shipped one.  ⚠ *Equal wall-clock outcomes would mean it compressed* is unreachable rather than satisfied: the step is fixed and the door answers a COUNT, so nothing in the clock can compress — a driver that multiplied its dt could, which is `plans/22` § LOD's warning and not this file's |
-| **L5** | `clock_alpha()` in `[0, 1)`, and the vehicle drawn at alpha moves on **>200 of 240 frames** un-eased | a fixed sim and a free frame rate meet at one number | ⚠ Alpha and the ease must be measured SEPARATELY, or a green reading is the ease's (`@M023` is the prior).  ⚠⚠ If alpha adds nothing over the ease, **L5 is cut** and that is a result |
+| **L5** ✅ | `clock_alpha()` in `[0, 1)`, and the vehicle drawn at alpha moves on **>200 of 240 frames** un-eased | a fixed sim and a free frame rate meet at one number | ⚠ Alpha and the ease must be measured SEPARATELY, or a green reading is the ease's (`@M023` is the prior).  ⚠⚠ If alpha adds nothing over the ease, **L5 is cut** and that is a result |
+| ↳ **measured** | **the alpha half holds and the frame count is off by ONE** — interpolating moves on **exactly 200** of 240, because a mover that has not stepped yet has no previous position and the first forty frames draw the hex under every policy.  ⚠⚠ And the phase's real finding is the one the row does not reach for: the eased camera does not REMOVE the mover's jump, it MOVES it — raw camera **0.0 px** mover / **14.9 px** ground against the shipped eased camera's **96.1 px** mover / **1.3 px** ground.  Alpha takes 96.1 to **14.1** and a camera following the DRAWN point takes it to **0.0** with **0.329 px** of ground.  ⚠ Priced with no camera at all: interpolate **2.598 m** of lag (one whole step) against extrapolate's **9.5e-16 m**, and extrapolate pays **2.598 / 2.533 m** in one frame at the start and the stop.  **1322 tests green, 654 measurements green and unmoved** | `@M035`, `@X085` | ⚠ The row's separation held and earned its keep — the policy sweep has no camera in it, so interpolation's *2.598 m* is the drawn position against the continuous ideal and not the ease's.  ⚠⚠ **And the screen 2x2 is its own control**: each camera is smooth for exactly one of the two points, so no row can be green by the instrument reading nothing — which is what `@M022`'s *can this gate produce a non-trivial reading at all?* asks for.  ⚠ One further control was needed and was not foreseen: measuring the truth against `HEX_FLAT_TO_FLAT` (seven digits) rather than against `lat_to_metres` (exact) charged extrapolation with **1.3 µm** of error that was the CONSTANT's — *a reference rounded to seven digits cannot certify a policy that is exact* |
 | **L6** | dryopea's 1268 + 654 and moros's world digests unchanged across the extraction, and **every door in § A DOOR PER USE CASE has a test named for its case that the docs link to** | a library is a move, not a rewrite — and a door nobody can find is a door a consumer rebuilds | ⚠ Byte-identical digests on BOTH sides; a consumer that only compiles has verified nothing.  ⚠⚠ **And the example gate needs both halves**: a test with no link is invisible, a link to prose is a snippet that rots.  The refutation is a door whose "example" is not a compiled test |
 
 ## Phases
@@ -520,8 +572,8 @@ example of the editor's door, and `plans/08` is the plan that made them so.
 | **L2** — `Bank`: a rate in whole units; both mover epsilons deleted | M | `scripts/test.sh` + `scripts/validate.sh` with `ENEMY_PROGRESS_EPSILON` and `HELPER_PROGRESS_EPSILON` **removed**.  ⚠ And the vehicle gains the bank it never had | **Done** 2026-08-17 — `src/tick_bank.loft`; `@D003` closed, both epsilons deleted, all three movers take INTEGER base units.  ⚠ `@X080`: a `Bank` holds the carry alone — the rate is `@X061`'s and `whole` is a parameter, because a nested struct's silent zero-default would freeze a mover.  ⚠ `@X081`: `vehicle_hexes_per_tick` is a CEILING that spends nothing, because `play_steer_reach` asks once per FRAME |
 | **L3** — `Timer`: one-shot, UP and DOWN, and the family boundary | S | `tests/26_l3_the_timers.loft` — both directions on one target, plus the `Timer`-as-`Bank` refutation | **Done** 2026-08-17 — `src/tick_timer.loft`, 16 tests; all five one-shot timers converted and `HELPER_TIMER_EPSILON` / `TOWER_REPAIR_EPSILON` / `VEHICLE_TIMER_EPSILON` deleted.  ⚠ `@D004` found AND closed in the phase: the two timers that never had a guard were the broken ones.  ⚠ `@X082`: a `Timer` holds its `total` where a `Bank` may not hold its `whole` — same [loft#914] rule, opposite conclusion.  ⚠ § 2's count was seven and there are EIGHT — the tower's CHARGE is a hand-rolled bank, pinned rather than converted |
 | **L4** — the policies dryopea does NOT need: cap, rate, composition | S | `tests/26_l4_the_policies.loft` — capped vs uncapped, and a nested clock | **Done** 2026-08-17 — four doors on `src/tick_clock.loft` (`clock_advance_capped` / `clock_pump` / `clock_set_rate` / `clock_drive`), 20 tests, and dryopea consumes none of them.  ⚠ `@M034`: **this row's composition clause cannot fail** — the pair it names is commensurate — and its cap control passes for a DEFERRING cap, which is the mistake a driver actually writes.  ⚠ `@X083`: a policy is a door, and the cap DROPS.  ⚠ `@X084`: the rate is a rational, exempt from the count door, and its defaulted `0 / 0` is the third [loft#914] answer in this plan |
-| **L5** — alpha, or the finding that the ease already covers it | S | `tests/26_l5_the_alpha.loft` — frames moved, alpha and ease measured apart.  ⚠ May be CUT | Next |
-| **L6** — extract; a door per use case, each with the test that IS its example | M | both suites, both digests, and one named test per door that the docs link to | Blocked on L5 |
+| **L5** — alpha, or the finding that the ease already covers it | S | `tests/26_l5_the_alpha.loft` — frames moved, alpha and ease measured apart.  ⚠ May be CUT | **Done** 2026-08-17 — `clock_alpha` + `play_alpha`, 17 tests, and **no policy**: three of them measured, all three priced, none shipped.  ⚠ **NOT cut** — the ease is the one thing that cannot smooth the mover, because the mover is what it is chasing (`@M035`).  ⚠ `@X085`: the alpha is the clock's and the policy is the renderer's, and the two have to be applied in the SAME place or a seventh of the fault survives.  ⚠ The row's own frame count is off by one, for a reason that is in the arithmetic |
+| **L6** — extract; a door per use case, each with the test that IS its example | M | both suites, both digests, and one named test per door that the docs link to | Next |
 
 ⚠ **L0 before L1 is not ceremony.**  `design-protocol` § step 3 asks for the
 cheapest test that could prove the design UNNECESSARY, and L0 is it: if every
@@ -557,7 +609,30 @@ everything a game would rebuild.
 **No fast-forward key in dryopea.**  L4 builds rate scaling because moros
 needs it and the next consumer would rebuild it; dryopea binds nothing to it.
 
-**No retirement of the ease.**
+**No retirement of the ease**, and after L5 that is a measured position
+rather than a reservation: the ease still owns the azimuth (eight discrete
+WASD headings), the boom (quantised to hex steps) and the deliberate trail
+that makes a boost read as speed.  What L5 measured is that it never owned
+the mover.
+
+**No INTERPOLATION POLICY, and no change to what the camera follows** — L5's
+newest row.  Three policies are measured and priced (`@M035`) and none is
+built, because nothing in dryopea draws an entity: a previous position per
+drawn thing would be a field nobody reads, which is the mistake
+`play.loft`'s own `PlayState.cam` comment records from the other side (*a
+field nobody reads is a decision validated by nothing*).  ⚠ The trigger is
+[`plans/20`](../20-entity-art/README.md), and it inherits **two** changes
+rather than one: what the mover is drawn at, and what the camera looks at.
+Doing the first alone leaves a seventh of the jump.
+
+**No re-derivation of `CAMERA_EASE_RATE`.**  L5 measured that its own
+justification — a steady trail of `v / k = 0.649 m`, *"under half a hex"* —
+assumes a CONTINUOUS mover, and against dryopea's the real trail is
+**2.395 m**, 3.7x the figure.  The constant is not changed: it is also what
+sizes the azimuth's 180° reversal, and the trail becomes the derived number
+the moment a drawn mover is continuous.  ⚠ Pinned by
+`tests/26_l5::test_the_ease_rate_was_derived_for_a_continuous_mover` so the
+re-derivation is a decision rather than a rediscovery.
 
 **No conversion of the tower's CHARGE** — the eighth *do-not-lose-a-fraction*
 site, which § 2 never counted.  It is a hand-rolled `bank_gain` and belongs to
@@ -618,8 +693,18 @@ is last.
    case does not fit without an answer.  Not L-anything's today — dryopea
    saves a map, never a run — but the first phase that saves a run inherits
    it.
-6. **Is alpha a complement to the ease or a replacement?**  L5, and it is
-   allowed to answer *neither*.
+6. ✅ **Is alpha a complement to the ease or a replacement?**  ⚠⚠
+   ***Neither*, and the permitted third answer turned out to be the right
+   one** (`@M035`).  Alpha is what the target ease was **standing in for**:
+   the ease cannot smooth the mover at all (it moves the mover's jump from
+   the world onto it, 14.9 px of ground becoming 96.1 px of mover), and alpha
+   applied to the mover alone leaves 14.1 px behind because the camera is
+   still easing toward a step function.  A camera following the DRAWN point
+   reads 0.0 px on the mover and beats the eased camera on the ground too.
+   ⚠ So they are not two smoothings to add in two places — **applying one
+   without the other is what leaves the residual**, and the ease's remaining
+   jobs are the azimuth, the boom and the deliberate trail
+   (`docs/RENDERER.md` § R2b).
 
 ## See also
 

@@ -1,0 +1,849 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 26 phase L5 — alpha, and what a lattice mover is DRAWN at.
+//
+// ── The one claim ───────────────────────────────────────────────
+//
+// > **A fixed simulation and a free frame rate meet at one number, and
+// > that number is the clock's.  What a renderer DOES with it is a
+// > presentation decision the clock must not make — and at a 2/3 s step
+// > the textbook answer is the most expensive of the three.**
+//
+// `plans/26` § Open questions 6 asks whether alpha is a COMPLEMENT to
+// the camera's ease or a REPLACEMENT for it, and allows the answer
+// *neither*.  Measured, it is neither: **alpha is what the target ease
+// was standing in for**, and the two of them applied in different places
+// leave a seventh of the fault behind.
+//
+// ── ⚠⚠ WHAT L5 MEASURED, AND THE FIRST READING IS ABOUT THIS PLAN'S
+//    OWN GATE FOR THE FOURTH PHASE RUNNING ─────────────────────────
+//
+// The L5 row asks that *"the vehicle drawn at alpha moves on **>200 of
+// 240 frames** un-eased"*.  Measured, interpolating moves on **exactly
+// 200** — so the gate as worded **fails by one for the correct
+// policy**, and passes for nothing else (drawing the hex moves on 6).
+//
+// ⚠ The missing frames are not noise and not a fixture accident: three
+// of the four policies read a PREVIOUS position, and a mover that has
+// not stepped yet has none.  For the first forty frames `prev` is `cur`
+// and every policy draws the hex — so a threshold within one frame of
+// 240 is a threshold decided by whether the fixture starts warm.
+// *`@M031` was a gate that could not see, `@M033` a gate whose control
+// agreed for the wrong reason, `@M034` a gate that could not fail; this
+// one is off by one.*
+//
+// ── ⚠⚠ THE EASE DOES NOT REMOVE THE JUMP — IT MOVES IT, AND IT GROWS
+//
+// A lattice mover steps two whole hexes on the tick it moves.  Measured
+// on screen, over 240 frames of a straight drive at 960x720, as the
+// worst single-frame move in pixels:
+//
+// | camera | mover drawn at | mover | ground |
+// |---|---|---|---|
+// | raw, follows the hex   | hex   | **0.0** px | **14.918** px |
+// | eased (shipped)        | hex   | **96.111** px | 1.287 px |
+// | eased (shipped)        | alpha | 14.116 px | 1.287 px |
+// | raw, follows the DRAWN point | alpha | **0.0** px | **0.329** px |
+//
+// ⚠⚠ **Row 1 against row 2 is the finding.**  An eased follow camera
+// does not remove a discrete mover's jump; it moves it off the world and
+// onto the mover — and the jump gets six times BIGGER doing so, because
+// the mover is a metre from the lens and the ground it replaced was
+// twenty.  The one object in the frame an eased follow camera cannot
+// smooth is the object it is following.
+//
+// ⚠ **Row 3 is why alpha alone is not the whole answer.**  Drawing the
+// mover between its two hexes takes 96 px to 14, and no further: the
+// camera is still easing toward the mover's HEX, so its target is still
+// a step function and the eye still lurches on the tick.
+//
+// ⚠⚠ **Row 4 is the answer.**  A camera that looks at what is DRAWN has
+// a continuous target and nothing left to lurch about — and it is
+// smoother than the eased camera on the GROUND as well (0.329 px against
+// 1.287), because the point it follows moves at a constant velocity
+// where the eased camera's still recovers from a step forty times a
+// second.
+//
+// ── ⚠⚠ AND THE POLICY THE TEXTBOOK WARNS ABOUT IS THE EXACT ONE ──
+//
+// Measured with **no camera in it at all** — the drawn position against
+// the continuous ideal, in metres, over the frames after the mover's
+// first step:
+//
+// | policy | moves on | worst frame | worst cruising | lag |
+// |---|---|---|---|---|
+// | hex (today) | 6/240 | 2.598 m | — | 0 → 2.533 m sawtooth |
+// | **interpolate** | 200/240 | 0.065 m | 0.065 m | **2.598 m, always** |
+// | **extrapolate** | 200/240 | **2.598 m** | 0.065 m | **9.5e-16 m** |
+// | ease, k = 6 | 240/240 | 0.252 m | 0.252 m | 1.882 m |
+//
+// ⚠⚠ **`lerp(prev, cur, alpha)` draws the tick that has ALREADY
+// happened, so it is a whole step behind for ever — and a step here is
+// 2/3 of a second.**  That is four times the trail the camera's ease
+// already has, and it is the axis nobody prices when they reach for the
+// textbook line.
+//
+// ⚠⚠ **And `cur + alpha·(cur − prev)` is EXACT to machine precision**,
+// because a lattice mover's hex at a tick boundary *is* its true
+// position at that instant — so stepping forward by alpha lands on the
+// truth rather than guessing at it.  ⚠ Its price is a whole step's jump
+// at every CHANGE of velocity: **2.598 m** on the frame the mover starts
+// and **2.533 m** on the frame the player lets go.
+//
+// ⚠ So the three are a genuine choice and not a ranking — *always a
+// tick behind*, *exact but wrong whenever the player turns*, or
+// *smooth, memory-of-its-own-picture, and lagging between the two* — and
+// which one is right depends on how long the step is.  **A clock that
+// picked one would be wrong for every consumer whose step is a different
+// length**, which is why `clock_alpha` ships and no policy does.
+//
+// ── ⚠ The negative control the row names, and why it shapes the file
+//
+// > *Alpha and the ease must be measured SEPARATELY, or a green reading
+// > is the ease's.*
+//
+// So the policy sweep has **no camera in it at all**, and the camera
+// sections take their readings through four cameras of which two are
+// un-eased.  Each row of the 2x2 is the other's control: every camera
+// policy is smooth for exactly one of the two points, so no row can be
+// green by the instrument reading nothing.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS: integer = 5;
+
+// One frame at 60 fps.  ⚠ 50 000 base units divides 2 000 000 exactly,
+// so forty frames are one tick and alpha lands on 0.0 at every tick —
+// which is what lets § The alpha is the bank read as a fraction assert
+// an exact boundary rather than a band.
+const FRAME_UNITS:   integer = 50000;
+const FRAME_SECONDS: float   = 1.0 / 60.0;
+const FRAMES:        integer = 240;
+
+// What the vehicle is drawn at, in metres above its hex — the camera's
+// own target height, so the drawn point and the followed point are the
+// same point.
+const DRAW_Z: float = 0.85;
+
+// The window the screen measurements are taken through.
+const SCREEN_W: float = 960.0;
+const SCREEN_H: float = 720.0;
+const ASPECT:   float = 960.0 / 720.0;
+
+// ─── The four policies ──────────────────────────────────────────
+//
+// Every one of them answers *where is the mover drawn on THIS frame*,
+// and they differ only in what they read.
+//
+//   * `HEX`   — the simulation's hex, which is what dryopea draws today
+//               (or would, if anything drew an entity at all).
+//   * `LERP`  — the textbook alpha: `lerp(prev, cur, alpha)`.
+//   * `EXTRA` — `cur + alpha * (cur - prev)`, the one the textbook warns
+//               about.
+//   * `EASE`  — a first-order approach toward the hex, which is what
+//               `camera_rig_step` already does to the CAMERA.
+const POLICY_HEX:   integer = 0;
+const POLICY_LERP:  integer = 1;
+const POLICY_EXTRA: integer = 2;
+const POLICY_EASE:  integer = 3;
+
+fn policy_name(p: integer) -> text {
+    if p == POLICY_LERP  { return "interpolate"; }
+    if p == POLICY_EXTRA { return "extrapolate"; }
+    if p == POLICY_EASE  { return "ease"; }
+    "hex"
+}
+
+// ─── Fixtures ───────────────────────────────────────────────────
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+// Flat grass, and far enough east that the vehicle never runs out of
+// ground: twelve hexes in 240 frames, and the drive target is beyond
+// that so the mover is never *arriving* during the sweep.
+fn field_pw() -> PaintedWorld {
+    fp_pw = painted_empty();
+    for fp_r in -6..7 {
+        for fp_q in -4..26 { paint(fp_pw, fp_q, fp_r, as_u8(GRASS)); }
+    }
+    fp_pw
+}
+
+fn parked(q: integer, r: integer) -> Vehicle {
+    pk_v = vehicle_empty();
+    vehicle_place(pk_v, q, r);
+    pk_v
+}
+
+// A rig that has already arrived, so the sweep measures the drive and
+// not the camera's opening approach.
+fn settled(v: const Vehicle, pw: PaintedWorld) -> CameraRig {
+    st_rig = camera_rig_new();
+    for _ in 0..200 {
+        camera_rig_step(st_rig, v, pal(), pw, height_layer_empty(), FRAME_SECONDS);
+    }
+    st_rig
+}
+
+fn world_of(q: integer, r: integer) -> Vec3 {
+    wo_p = lat_to_world(Hex { q: q, r: r }, DRAW_Z);
+    wo_p
+}
+
+fn dist3(a: const Vec3, b: const Vec3) -> float {
+    d3_x = a.x - b.x;
+    d3_y = a.y - b.y;
+    d3_z = a.z - b.z;
+    sqrt(d3_x * d3_x + d3_y * d3_y + d3_z * d3_z) ?? 0.0
+}
+
+// How far apart two hexes are along a row, in metres.
+//
+// ⚠⚠ **Read off the lattice, never off `HEX_FLAT_TO_FLAT`, and the
+// difference is measurable.**  The constant is √3 × 0.75 written to
+// seven digits; `lat_to_metres` delegates to `hex_grid` and is exact.
+// Over the 15.6 m this sweep covers the two disagree by **1.3 µm** —
+// which is nothing to any policy here except extrapolation, and
+// extrapolation is exact, so the constant's own rounding was the whole
+// of its measured error until this function replaced it.  *A reference
+// rounded to seven digits cannot certify a policy that is exact.*
+//
+// ⚠ Declared above every caller, and not for tidiness: binding a call
+// whose callee is lower in the file panics loft's parser
+// ([loft#918](https://github.com/loft-lang/loft/issues/918)).
+fn hex_east_metres() -> float {
+    he_a = lat_to_metres(Hex { q: 0, r: 0 });
+    he_b = lat_to_metres(Hex { q: 1, r: 0 });
+    he_b.0 - he_a.0
+}
+
+// One tick's worth of travel for a cruising vehicle, in metres — the
+// unit every reading in § The three policies, priced is stated in.
+fn tick_travel() -> float {
+    tt_hex = hex_east_metres();
+    VEHICLE_SPEED_HEX_PER_SECOND * tt_hex
+        * (TICK_STEP_UNITS as float) / (CLOCK_UNITS_PER_SECOND as float)
+}
+
+// Where a policy puts the mover this frame.
+//
+// ⚠ `last` is only read by `EASE`, and that asymmetry is the finding in
+// miniature: three of the four policies are a pure function of the
+// simulation and the clock, and the fourth needs a memory of its own
+// picture.  A replay draws the same frames under the first three and
+// not under the fourth.
+fn drawn_at(policy: integer, prev_q: integer, prev_r: integer,
+            cur_q: integer, cur_r: integer, alpha: float,
+            last: const Vec3, dt: float) -> Vec3 {
+    da_prev = world_of(prev_q, prev_r);
+    da_cur  = world_of(cur_q, cur_r);
+    if policy == POLICY_LERP {
+        return vec3(da_prev.x + (da_cur.x - da_prev.x) * alpha,
+                    da_prev.y + (da_cur.y - da_prev.y) * alpha,
+                    da_prev.z + (da_cur.z - da_prev.z) * alpha);
+    }
+    if policy == POLICY_EXTRA {
+        return vec3(da_cur.x + (da_cur.x - da_prev.x) * alpha,
+                    da_cur.y + (da_cur.y - da_prev.y) * alpha,
+                    da_cur.z + (da_cur.z - da_prev.z) * alpha);
+    }
+    if policy == POLICY_EASE {
+        return vec3(cam_approach(last.x, da_cur.x, CAMERA_EASE_RATE, dt),
+                    cam_approach(last.y, da_cur.y, CAMERA_EASE_RATE, dt),
+                    cam_approach(last.z, da_cur.z, CAMERA_EASE_RATE, dt));
+    }
+    da_cur
+}
+
+// ─── The cruise sweep: one policy, no camera ────────────────────
+
+// What one policy did over 240 frames of a straight drive.
+//
+// ⚠⚠ **WARM and cold are separated, and the first run is why.**  Three
+// of the four policies read a PREVIOUS position, and a mover that has
+// not stepped yet has none — so for the first forty frames `prev` is
+// `cur` and every policy draws the hex.  Pooled with the rest, that
+// warm-up diluted interpolation's lag from 2.598 m to 2.387 m and
+// charged extrapolation with a 2.598 m jump it makes at the start of
+// motion rather than during it.  Both are real readings; neither is the
+// cruise, and they are different claims.
+struct Reading {
+    // Frames on which the drawn point moved at all.
+    moved:      integer,
+    // The worst single-frame move over the WHOLE sweep, in metres —
+    // including the frame the mover starts on.
+    worst:      float,
+    // The same over the frames after the mover's first step: what a
+    // player sees while nothing about the velocity is changing.
+    worst_warm: float,
+    // The worst and the total distance from where the mover TRULY is,
+    // over the warm frames.  ⚠ *Truly* is the continuous ideal — a
+    // mover at 3 hex/s is 3·t hexes east after t seconds, and the
+    // simulation's own hex agrees with it exactly at every tick
+    // boundary, which is what makes the comparison fair to all four.
+    lag_max:    float,
+    lag_sum:    float,
+    warm:       integer,
+    ticks:      integer,
+}
+
+// Drive east at a constant 3 hex/s for 240 frames and watch one policy.
+//
+// ⚠ **The vehicle is stepped by `vehicle_tick`, not placed by hand**, so
+// *two hexes a tick* is measured rather than assumed — and a change to
+// `VEHICLE_SPEED_HEX_PER_SECOND` moves these readings instead of
+// silently invalidating them.
+fn sweep_cruise(policy: integer) -> Reading {
+    sc_pal = pal();
+    sc_pw  = field_pw();
+    sc_hl  = height_layer_empty();
+    sc_v   = parked(0, 0);
+    vehicle_drive(sc_v, 24, 0);
+
+    sc_clk    = clock_new(TICK_STEP_UNITS);
+    sc_prev_q = sc_v.q;
+    sc_prev_r = sc_v.r;
+    sc_drawn  = world_of(sc_v.q, sc_v.r);
+
+    sc_moved   = 0;
+    sc_worst   = 0.0;
+    sc_worst_w = 0.0;
+    sc_lag_max = 0.0;
+    sc_lag_sum = 0.0;
+    sc_warm    = 0;
+    sc_ticks   = 0;
+    sc_hex_m   = hex_east_metres();
+
+    for sc_f in 0..FRAMES {
+        // ⚠ Read BEFORE the clock advances: the frame that takes the
+        // mover's first step is still a cold frame, because `prev` was
+        // `cur` when this frame's picture was decided.
+        sc_hot = sc_ticks >= 1;
+        sc_due = clock_advance(sc_clk, FRAME_UNITS);
+        if sc_due > 0 {
+            sc_prev_q = sc_v.q;
+            sc_prev_r = sc_v.r;
+            for _ in 0..sc_due {
+                vehicle_tick(sc_v, sc_pal, sc_pw, sc_hl, TICK_STEP_UNITS);
+            }
+            sc_ticks = sc_ticks + sc_due;
+        }
+
+        sc_was   = vec3(sc_drawn.x, sc_drawn.y, sc_drawn.z);
+        sc_drawn = drawn_at(policy, sc_prev_q, sc_prev_r, sc_v.q, sc_v.r,
+                            clock_alpha(sc_clk), sc_was, FRAME_SECONDS);
+
+        sc_step = dist3(sc_drawn, sc_was);
+        if sc_step > 1e-9    { sc_moved = sc_moved + 1; }
+        if sc_step > sc_worst { sc_worst = sc_step; }
+
+        if sc_hot {
+            if sc_step > sc_worst_w { sc_worst_w = sc_step; }
+            sc_t    = ((sc_f + 1) as float) * FRAME_SECONDS;
+            sc_true = VEHICLE_SPEED_HEX_PER_SECOND * sc_t * sc_hex_m;
+            sc_lag  = abs(sc_drawn.x - sc_true);
+            if sc_lag > sc_lag_max { sc_lag_max = sc_lag; }
+            sc_lag_sum = sc_lag_sum + sc_lag;
+            sc_warm    = sc_warm + 1;
+        }
+    }
+
+    Reading { moved: sc_moved, worst: sc_worst, worst_warm: sc_worst_w,
+              lag_max: sc_lag_max, lag_sum: sc_lag_sum,
+              warm: sc_warm, ticks: sc_ticks }
+}
+
+fn lag_mean(r: const Reading) -> float {
+    if r.warm <= 0 { return 0.0; }
+    (r.lag_sum / (r.warm as float)) ?? 0.0
+}
+
+// ─── The alpha itself ───────────────────────────────────────────
+
+// ⚠ **One assertion carrying every reading**, per `CLAUDE.md` § Several
+// counts in one test function are RANKED: the four rows below are one
+// claim about one subject, so three separate assertions would leave
+// three of them unmaintained the moment the first one failed.
+pub fn test_the_alpha_is_the_bank_read_as_a_fraction() {
+    ta_clk = clock_new(TICK_STEP_UNITS);
+
+    ta_out    = 0;          // frames whose alpha left [0, 1)
+    ta_wrong  = 0;          // frames where alpha * step != banked
+    ta_zeroed = 0;          // frames that landed exactly on a boundary
+    ta_ticks  = 0;
+
+    for _ in 0..FRAMES {
+        ta_ticks = ta_ticks + clock_advance(ta_clk, FRAME_UNITS);
+        ta_a = clock_alpha(ta_clk);
+        if ta_a < 0.0 || ta_a >= 1.0 { ta_out = ta_out + 1; }
+        if ta_a == 0.0 { ta_zeroed = ta_zeroed + 1; }
+        // The round trip: alpha is the bank, so it must give it back.
+        ta_back = (ta_a * (clock_step_units(ta_clk) as float) + 0.5) as integer? ?? -1;
+        if ta_back != clock_banked(ta_clk) { ta_wrong = ta_wrong + 1; }
+    }
+
+    assert(ta_out == 0 && ta_wrong == 0 && ta_zeroed == 6 && ta_ticks == 6,
+           "over {FRAMES} frames: {ta_out} alphas outside [0,1), {ta_wrong} that did "
+           + "not give the bank back, {ta_zeroed} exact boundaries against 6, "
+           + "{ta_ticks} ticks against 6");
+    print("alpha: {ta_out} out of range, {ta_wrong} bad round trips, "
+        + "{ta_zeroed} exact zeros over {ta_ticks} ticks");
+}
+
+// ⚠⚠ **The half-open end is what a lerp depends on**, so it gets its
+// own reading rather than riding on the sweep above: an alpha of
+// exactly 1.0 would draw the NEXT state on the frame BEFORE the tick
+// that produces it.
+//
+// ⚠ And the control is in the same function — a clock restored to one
+// unit short of its step is the largest alpha reachable, and it is
+// asserted to be both under 1.0 and *near* it.  Without the second half
+// this is green for a `clock_alpha` that returns 0.0 always.
+pub fn test_the_alpha_cannot_reach_one() {
+    tc_clk = clock_new(TICK_STEP_UNITS);
+    clock_restore(tc_clk, TICK_STEP_UNITS - 1);
+    tc_high = clock_alpha(tc_clk);
+
+    tc_fresh = clock_alpha(clock_new(TICK_STEP_UNITS));
+
+    // A step's worth of time lands the bank back on 0.
+    tc_run = clock_new(TICK_STEP_UNITS);
+    clock_advance(tc_run, TICK_STEP_UNITS);
+    tc_after = clock_alpha(tc_run);
+
+    assert(tc_high < 1.0 && tc_high > 0.9999 && tc_fresh == 0.0 && tc_after == 0.0,
+           "one unit short of a step reads {tc_high}, a fresh clock {tc_fresh}, "
+           + "a clock that just ticked {tc_after}");
+}
+
+// The game's door is the clock's own number — through the seam, on a
+// live session, so a `play_alpha` reading some other field cannot pass.
+pub fn test_the_games_door_is_the_clocks_own_alpha() {
+    tg_s  = play_field();
+    tg_ps = live();
+    play_begin(tg_ps, tg_s);
+
+    tg_dis = 0;
+    tg_max = 0.0;
+    for _ in 0..90 {
+        play_step_units(tg_ps, tg_s, editor_input_empty(), FRAME_UNITS);
+        if play_alpha(tg_ps) != clock_alpha(tg_ps.clock) { tg_dis = tg_dis + 1; }
+        if play_alpha(tg_ps) > tg_max { tg_max = play_alpha(tg_ps); }
+    }
+
+    assert(tg_dis == 0 && tg_max > 0.9,
+           "{tg_dis} frames where the game's alpha and the clock's disagreed, and the "
+           + "highest alpha the run reached was {tg_max} — under 0.9 means the seam "
+           + "never banked anything and the agreement is two zeros");
+}
+
+// ⚠ An EDIT session banks no time, so its alpha stands still — the same
+// number gates the clock, the camera and this.
+pub fn test_an_edit_frames_alpha_stands_still() {
+    te_s  = play_field();
+    te_ps = live();
+    play_begin(te_ps, te_s);
+    for _ in 0..7 { play_step_units(te_ps, te_s, editor_input_empty(), FRAME_UNITS); }
+
+    te_live = play_alpha(te_ps);
+    te_ps.playing = false;
+    for _ in 0..7 {
+        play_step_units(te_ps, te_s, editor_input_empty(),
+                        play_frame_units(te_ps, 16667));
+    }
+
+    assert(te_live > 0.0 && play_alpha(te_ps) == te_live,
+           "a live session reached alpha {te_live} and seven edit frames left it at "
+           + "{play_alpha(te_ps)}");
+}
+
+fn play_field() -> EditorState {
+    pf_s = editor_state_new(PALETTE);
+    for pf_r in -6..7 {
+        for pf_q in -4..26 { paint(pf_s.pw, pf_q, pf_r, as_u8(GRASS)); }
+    }
+    place_marker(pf_s.mw, 0, 0, MARKER_KIND_TARGET as u8, 0 as u8);
+    pf_s
+}
+
+fn live() -> PlayState {
+    lv_ps = play_state_new();
+    lv_ps.playing = true;
+    lv_ps
+}
+
+// ─── ⚠⚠ The gate this phase was given, measured ─────────────────
+
+// The L5 row asks that *"the vehicle drawn at alpha moves on >200 of 240
+// frames un-eased"*.  This is that reading, taken beside the reading for
+// the policy it is meant to rule out.
+pub fn test_the_row_s_own_threshold_lands_on_the_boundary() {
+    tr_lerp = sweep_cruise(POLICY_LERP);
+    tr_hex  = sweep_cruise(POLICY_HEX);
+
+    assert(tr_lerp.moved == 200 && tr_hex.moved == 6,
+           "interpolating moved on {tr_lerp.moved} of {FRAMES} frames and drawing the "
+           + "hex on {tr_hex.moved} — the row's threshold is >200");
+    print("the row's gate: interpolate {tr_lerp.moved}/{FRAMES}, hex {tr_hex.moved}/"
+        + "{FRAMES}, threshold >200");
+}
+
+// ─── ⚠⚠ The ease moves the jump; it does not remove it ──────────
+
+// What one camera policy did to two points on the screen.
+struct Screen {
+    veh_worst:  float,     // worst single-frame move of the MOVER, px
+    mark_worst: float,     // worst single-frame move of a fixed WORLD point, px
+    veh_moved:  integer,
+    mark_moved: integer,
+}
+
+// Which camera the screen positions are taken through.
+//
+// ⚠⚠ **`CAM_DRAWN` is the row the first run demanded.**  Drawing the
+// mover at alpha under the shipped camera took its jump from 96 px to
+// 14 px and no further, because `camera_rig_step` eases toward the
+// mover's HEX — a discontinuous target keeps a seventh of the jump
+// alive however smoothly the mover itself is drawn.  This row asks what
+// is left when the camera looks at what is DRAWN.
+const CAM_RAW:   integer = 0;   // un-eased, following the simulated hex
+const CAM_EASED: integer = 1;   // the shipped rig
+const CAM_DRAWN: integer = 2;   // un-eased, following the DRAWN point
+
+// Drive east for 240 frames and measure two points in pixels: the mover
+// itself, and a hex of ground it is driving toward.
+//
+// ⚠ The landmark is AHEAD of the vehicle rather than behind it, so it
+// stays in front of the camera for the whole sweep — a point that
+// crosses the eye plane projects to nonsense and would swamp every
+// reading with one frame.
+fn sweep_screen(policy: integer, camera: integer) -> Screen {
+    sn_pal = pal();
+    sn_pw  = field_pw();
+    sn_hl  = height_layer_empty();
+    sn_v   = parked(0, 0);
+    vehicle_drive(sn_v, 24, 0);
+
+    sn_rig = settled(sn_v, sn_pw);
+    sn_raw = render_camera_default();
+    camera_follow_vehicle(sn_v, DRAW_Z, sn_raw);
+
+    sn_mark = world_of(22, 0);
+    sn_clk  = clock_new(TICK_STEP_UNITS);
+    sn_prev_q = sn_v.q;
+    sn_prev_r = sn_v.r;
+    sn_drawn  = world_of(sn_v.q, sn_v.r);
+
+    sn_vw = 0.0;
+    sn_mw = 0.0;
+    sn_vm = 0;
+    sn_mm = 0;
+    sn_was_vx = 0.0;
+    sn_was_vy = 0.0;
+    sn_was_mx = 0.0;
+    sn_was_my = 0.0;
+
+    for sn_f in 0..FRAMES {
+        sn_due = clock_advance(sn_clk, FRAME_UNITS);
+        if sn_due > 0 {
+            sn_prev_q = sn_v.q;
+            sn_prev_r = sn_v.r;
+            for _ in 0..sn_due {
+                vehicle_tick(sn_v, sn_pal, sn_pw, sn_hl, TICK_STEP_UNITS);
+            }
+        }
+
+        sn_last  = vec3(sn_drawn.x, sn_drawn.y, sn_drawn.z);
+        sn_drawn = drawn_at(policy, sn_prev_q, sn_prev_r, sn_v.q, sn_v.r,
+                            clock_alpha(sn_clk), sn_last, FRAME_SECONDS);
+
+        camera_follow_vehicle(sn_v, DRAW_Z, sn_raw);
+        // ⚠ The orbit stays the follow camera's — only the point it
+        // looks AT changes, so this row differs from `CAM_RAW` in one
+        // thing and the comparison means something.
+        if camera == CAM_DRAWN {
+            sn_raw.target = vec3(sn_drawn.x, sn_drawn.y, sn_drawn.z);
+        }
+        sn_vp = camera_view_projection(sn_raw, ASPECT);
+        if camera == CAM_EASED {
+            camera_rig_step(sn_rig, sn_v, sn_pal, sn_pw, sn_hl, FRAME_SECONDS);
+            sn_vp = camera_view_projection(sn_rig.cam, ASPECT);
+        }
+
+        sn_vs = camera_screen(sn_vp, sn_drawn, SCREEN_W, SCREEN_H);
+        sn_ms = camera_screen(sn_vp, sn_mark,  SCREEN_W, SCREEN_H);
+
+        if sn_f > 0 {
+            sn_dv = sqrt((sn_vs.0 - sn_was_vx) * (sn_vs.0 - sn_was_vx)
+                       + (sn_vs.1 - sn_was_vy) * (sn_vs.1 - sn_was_vy)) ?? 0.0;
+            sn_dm = sqrt((sn_ms.0 - sn_was_mx) * (sn_ms.0 - sn_was_mx)
+                       + (sn_ms.1 - sn_was_my) * (sn_ms.1 - sn_was_my)) ?? 0.0;
+            if sn_dv > sn_vw { sn_vw = sn_dv; }
+            if sn_dm > sn_mw { sn_mw = sn_dm; }
+            if sn_dv > 1e-6 { sn_vm = sn_vm + 1; }
+            if sn_dm > 1e-6 { sn_mm = sn_mm + 1; }
+        }
+        sn_was_vx = sn_vs.0;
+        sn_was_vy = sn_vs.1;
+        sn_was_mx = sn_ms.0;
+        sn_was_my = sn_ms.1;
+    }
+
+    Screen { veh_worst: sn_vw, mark_worst: sn_mw, veh_moved: sn_vm, mark_moved: sn_mm }
+}
+
+// ⚠⚠ **THE FINDING.**  An eased follow camera does not remove a lattice
+// mover's jump — it MOVES it, off the world and onto the mover, because
+// the mover is the one thing in the frame the camera is chasing.
+//
+// The 2x2 is what makes that readable, and it is also its own control:
+// each camera policy is smooth for exactly one of the two points, so
+// neither row can be green by the instrument reading nothing.
+pub fn test_the_ease_moves_the_jump_onto_the_thing_it_follows() {
+    tj_raw   = sweep_screen(POLICY_HEX, CAM_RAW);
+    tj_eased = sweep_screen(POLICY_HEX, CAM_EASED);
+
+    print("raw camera:   mover {tj_raw.veh_worst} px worst, ground {tj_raw.mark_worst} px");
+    print("eased camera: mover {tj_eased.veh_worst} px worst, ground {tj_eased.mark_worst} px");
+
+    // The two rows swap which point is still and which jumps, and each
+    // row is the other's control: neither can be green by the
+    // instrument reading nothing.
+    assert(tj_raw.veh_worst < 0.01 && tj_raw.mark_worst > 10.0
+        && tj_eased.mark_worst < tj_raw.mark_worst * 0.2
+        && tj_eased.veh_worst > tj_raw.mark_worst,
+           "raw camera: mover {tj_raw.veh_worst} px / ground {tj_raw.mark_worst} px; "
+           + "eased: mover {tj_eased.veh_worst} px / ground {tj_eased.mark_worst} px "
+           + "— the jump did not move from the world onto the mover");
+}
+
+// ⚠ And alpha is what takes it off the mover — under the SAME eased
+// camera, with the mover drawn between its two hexes instead of on one.
+//
+// ⚠⚠ **But not all of it, and the residual is the phase's second
+// finding.**  What is left is the camera's own reaction: `camera_rig_step`
+// eases toward the mover's HEX, so its target is still a step function
+// and the eye still lurches on the tick — see § A camera that follows
+// what is drawn.
+pub fn test_alpha_takes_most_of_the_jump_off_the_mover() {
+    tk_hex   = sweep_screen(POLICY_HEX,  CAM_EASED);
+    tk_lerp  = sweep_screen(POLICY_LERP, CAM_EASED);
+
+    assert(tk_lerp.veh_worst < tk_hex.veh_worst * 0.25
+        && tk_lerp.veh_worst > 1.0
+        && tk_lerp.mark_worst == tk_hex.mark_worst,
+           "under one eased camera the mover's worst frame is {tk_hex.veh_worst} px "
+           + "drawn at its hex and {tk_lerp.veh_worst} px drawn at alpha, while the "
+           + "ground reads {tk_hex.mark_worst} / {tk_lerp.mark_worst} px — the ground "
+           + "must not move, or the two sweeps are not the same camera");
+    print("alpha on screen: mover {tk_hex.veh_worst} px -> {tk_lerp.veh_worst} px, "
+        + "ground unchanged at {tk_hex.mark_worst} px");
+}
+
+// ⚠⚠ **And this is where the residual goes.**  A camera that looks at
+// the point the mover is DRAWN at — rather than at the hex the
+// simulation put it on — has a continuous target, and there is nothing
+// left for it to lurch about.
+//
+// ⚠ That is the answer to `plans/26` § Open questions 6 stated as a
+// measurement: alpha is not a complement to the target ease and not a
+// replacement for it either — **it is what the target ease was standing
+// in for**, and applying it in one place and not the other leaves a
+// seventh of the fault behind.
+pub fn test_a_camera_that_follows_what_is_drawn_has_nothing_left_to_lurch_about() {
+    td_eased = sweep_screen(POLICY_LERP, CAM_EASED);
+    td_drawn = sweep_screen(POLICY_LERP, CAM_DRAWN);
+    // The control: the same camera looking at the HEX, which is the
+    // only difference between this row and the one above it.
+    td_hexed = sweep_screen(POLICY_LERP, CAM_RAW);
+
+    assert(td_drawn.veh_worst < 0.01 && td_drawn.mark_worst < td_hexed.mark_worst * 0.2
+        && td_hexed.mark_worst > 10.0 && td_eased.veh_worst > 1.0,
+           "following the drawn point: mover {td_drawn.veh_worst} px / ground "
+           + "{td_drawn.mark_worst} px; following the hex: mover {td_hexed.veh_worst} px "
+           + "/ ground {td_hexed.mark_worst} px; the shipped eased camera leaves "
+           + "{td_eased.veh_worst} px on the mover");
+    print("follow the drawn point: mover {td_drawn.veh_worst} px, ground "
+        + "{td_drawn.mark_worst} px — against the hex-following raw camera's "
+        + "{td_hexed.mark_worst} px of ground");
+}
+
+// ⚠⚠ **`CAMERA_EASE_RATE`'s derivation assumes a CONTINUOUS mover.**
+// The constant is chosen so that an approach chasing something moving at
+// `v` settles at a lag of `v / k` — *"under half a hex"*.  dryopea's
+// mover does not move at `v`; it stands still for 40 frames and jumps
+// two hexes, so the trail is not the steady-state figure at all.
+//
+// ⚠ This is a measurement of the shipped camera, not a complaint about
+// it: the number is still the right size for what it was chosen to do
+// (the azimuth's 180 degree reversal), and § What L5 did not change says
+// why nothing moves.
+pub fn test_the_ease_rate_was_derived_for_a_continuous_mover() {
+    tw_pal = pal();
+    tw_pw  = field_pw();
+    tw_hl  = height_layer_empty();
+    tw_v   = parked(0, 0);
+    vehicle_drive(tw_v, 24, 0);
+
+    tw_rig = settled(tw_v, tw_pw);
+    tw_clk = clock_new(TICK_STEP_UNITS);
+
+    tw_trail = 0.0;
+    for _ in 0..FRAMES {
+        tw_due = clock_advance(tw_clk, FRAME_UNITS);
+        for _ in 0..tw_due { vehicle_tick(tw_v, tw_pal, tw_pw, tw_hl, TICK_STEP_UNITS); }
+        camera_rig_step(tw_rig, tw_v, tw_pal, tw_pw, tw_hl, FRAME_SECONDS);
+        tw_d = abs(tw_rig.cam.target.x - world_of(tw_v.q, tw_v.r).x);
+        if tw_d > tw_trail { tw_trail = tw_d; }
+    }
+
+    // What the constant's own derivation promises.
+    tw_promised = VEHICLE_SPEED_HEX_PER_SECOND * HEX_FLAT_TO_FLAT / CAMERA_EASE_RATE;
+
+    assert(tw_trail > tw_promised * 3.0,
+           "the camera trailed the vehicle by at most {tw_trail} m against the "
+           + "{tw_promised} m its rate was derived for — if these agree, the mover in "
+           + "this fixture is not stepping in whole hexes");
+    print("ease trail: {tw_trail} m worst against the derivation's {tw_promised} m");
+}
+
+// ─── ⚠⚠ The three policies, priced ──────────────────────────────
+
+// The textbook answer, and at a 2/3 s step it is the most expensive one
+// on the axis nobody prices: it draws the tick that has ALREADY
+// happened, so it is a whole step behind for ever.
+pub fn test_interpolating_costs_a_whole_tick_of_lag() {
+    ti_r = sweep_cruise(POLICY_LERP);
+    ti_step = tick_travel();
+
+    assert(abs(lag_mean(ti_r) - ti_step) < 1e-6 && abs(ti_r.lag_max - ti_step) < 1e-6
+        && ti_r.worst < ti_step * 0.05,
+           "interpolating lags a mean {lag_mean(ti_r)} m and a worst {ti_r.lag_max} m "
+           + "against one tick's {ti_step} m, worst frame {ti_r.worst} m");
+    print("interpolate: worst frame {ti_r.worst} m ({ti_r.worst_warm} m warm), "
+        + "lag mean {lag_mean(ti_r)} m, max {ti_r.lag_max} m");
+}
+
+// ⚠⚠ **And the one the textbook warns about is EXACT here**, because the
+// simulation's hex at a tick boundary IS the continuous position at that
+// instant — so stepping forward by alpha lands on the truth rather than
+// guessing at it.
+pub fn test_extrapolating_is_exact_while_the_velocity_holds() {
+    tx_r = sweep_cruise(POLICY_EXTRA);
+    tx_step = tick_travel();
+
+    assert(tx_r.lag_max < 1e-9 && tx_r.worst_warm < tx_step * 0.05,
+           "extrapolating strayed {tx_r.lag_max} m from the truth, worst cruising "
+           + "frame {tx_r.worst_warm} m against a tick's {tx_step} m");
+    print("extrapolate: worst frame {tx_r.worst} m ({tx_r.worst_warm} m warm), "
+        + "lag mean {lag_mean(tx_r)} m, max {tx_r.lag_max} m");
+}
+
+// ⚠⚠ **And the price is paid at every CHANGE of velocity, not only at
+// the stop.**  The mover's first step is a change too: `prev` was `cur`
+// while it stood still, so the drawn point is on the hex — and one
+// frame later it is a whole tick's travel ahead of it.
+pub fn test_extrapolating_jumps_a_whole_step_when_the_velocity_changes() {
+    tv_r = sweep_cruise(POLICY_EXTRA);
+    tv_step = tick_travel();
+
+    assert(abs(tv_r.worst - tv_step) < 1e-6 && tv_r.worst_warm < tv_step * 0.05,
+           "starting to move cost {tv_r.worst} m in one frame against a tick's "
+           + "{tv_step} m, while the worst cruising frame was {tv_r.worst_warm} m");
+}
+
+// ⚠⚠ **And this is what it costs.**  A mover that stops has a `prev`
+// equal to its `cur`, so the drawn point stops being ahead — in ONE
+// frame, from wherever the extrapolation had reached.  At a 2/3 s step
+// that snap is most of two hexes, and it happens on exactly the frame
+// the player let go.
+pub fn test_extrapolating_snaps_back_when_the_mover_stops() {
+    ts_pal = pal();
+    ts_pw  = field_pw();
+    ts_hl  = height_layer_empty();
+    ts_v   = parked(0, 0);
+    vehicle_drive(ts_v, 24, 0);
+
+    ts_clk    = clock_new(TICK_STEP_UNITS);
+    ts_prev_q = ts_v.q;
+    ts_prev_r = ts_v.r;
+    ts_drawn  = world_of(ts_v.q, ts_v.r);
+    ts_snap   = 0.0;
+    ts_ahead  = 0.0;
+
+    for ts_f in 0..FRAMES {
+        // The player lets go a third of the way in — spelled the way
+        // `play_actions` spells it, drive to where you already are.
+        if ts_f == 100 { vehicle_drive(ts_v, ts_v.q, ts_v.r); }
+
+        ts_due = clock_advance(ts_clk, FRAME_UNITS);
+        if ts_due > 0 {
+            ts_prev_q = ts_v.q;
+            ts_prev_r = ts_v.r;
+            for _ in 0..ts_due {
+                vehicle_tick(ts_v, ts_pal, ts_pw, ts_hl, TICK_STEP_UNITS);
+            }
+        }
+
+        ts_was   = vec3(ts_drawn.x, ts_drawn.y, ts_drawn.z);
+        ts_drawn = drawn_at(POLICY_EXTRA, ts_prev_q, ts_prev_r, ts_v.q, ts_v.r,
+                            clock_alpha(ts_clk), ts_was, FRAME_SECONDS);
+
+        if ts_f > 100 {
+            ts_d = dist3(ts_drawn, ts_was);
+            if ts_d > ts_snap { ts_snap = ts_d; }
+            ts_a = abs(ts_drawn.x - world_of(ts_v.q, ts_v.r).x);
+            if ts_a > ts_ahead { ts_ahead = ts_a; }
+        }
+    }
+
+    assert(ts_snap > 2.0,
+           "after the player let go the worst frame was {ts_snap} m and the drawing "
+           + "ran {ts_ahead} m past the vehicle — under two metres means this fixture "
+           + "never had a step to snap back from");
+    print("extrapolate on a stop: {ts_snap} m in one frame, {ts_ahead} m ahead");
+}
+
+// ⚠ The third policy is the one dryopea already ships — on the camera.
+// Applied to the mover it is smooth, needs no previous state, and lags
+// between the other two.
+pub fn test_easing_the_mover_lags_between_the_other_two() {
+    tz_ease  = sweep_cruise(POLICY_EASE);
+    tz_lerp  = sweep_cruise(POLICY_LERP);
+    tz_extra = sweep_cruise(POLICY_EXTRA);
+
+    assert(tz_ease.worst_warm > tz_lerp.worst_warm * 3.0
+        && tz_ease.worst_warm < tick_travel() * 0.2
+        && lag_mean(tz_ease) > lag_mean(tz_extra)
+        && lag_mean(tz_ease) < lag_mean(tz_lerp),
+           "easing the mover: worst cruising frame {tz_ease.worst_warm} m against "
+           + "alpha's {tz_lerp.worst_warm} m, lag mean {lag_mean(tz_ease)} m — against "
+           + "extrapolate {lag_mean(tz_extra)} m and interpolate {lag_mean(tz_lerp)} m");
+    print("ease: worst frame {tz_ease.worst} m ({tz_ease.worst_warm} m warm), "
+        + "lag mean {lag_mean(tz_ease)} m, max {tz_ease.lag_max} m");
+}
+
+// ⚠⚠ **The control for the whole table**: the policy dryopea has today
+// is the only one of the four that is not smooth, and it is the one with
+// no lag at a tick boundary.  Without this row every reading above could
+// be a sweep that never moved the vehicle.
+pub fn test_drawing_the_hex_is_the_only_policy_that_is_not_smooth() {
+    th_r = sweep_cruise(POLICY_HEX);
+    th_step = tick_travel();
+
+    assert(th_r.moved == th_r.ticks && abs(th_r.worst - th_step) < 1e-6,
+           "drawing the hex moved on {th_r.moved} frames over {th_r.ticks} ticks, "
+           + "worst frame {th_r.worst} m against a tick's {th_step} m");
+    print("{policy_name(POLICY_HEX)}: moves on {th_r.moved}/{FRAMES} frames, "
+        + "worst {th_r.worst} m, lag mean {lag_mean(th_r)} m, max {th_r.lag_max} m");
+}

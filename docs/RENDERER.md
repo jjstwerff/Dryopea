@@ -257,6 +257,45 @@ boom.  Measured over one drive (`@M023`): the un-eased camera moves on
 under-describing itself: a camera easing the boom alone would ease the
 one quantity the player changes least.
 
+### ⚠⚠ And there is a FOURTH thing it does not ease — the mover  `@M035` `@X085`
+
+**`@M023` above measured the camera's own target, and the reading it
+takes is not the reading a player gets.**  Plan 26 L5 measured the same
+drive in PIXELS, and the worst single-frame move splits by which point
+you look at:
+
+| camera | mover drawn at | mover | ground |
+|---|---|---|---|
+| raw, follows the hex | hex | **0.0 px** | **14.918 px** |
+| eased (shipped) | hex | **96.111 px** | 1.287 px |
+| eased (shipped) | alpha | 14.116 px | 1.287 px |
+| raw, follows the DRAWN point | alpha | **0.0 px** | **0.329 px** |
+
+⚠⚠ **An eased follow camera does not REMOVE the jump; it MOVES it — off
+the world and onto the mover — and the jump gets six times bigger doing
+so**, because the mover is a metre from the lens and the ground it
+replaced is twenty.  The one object in the frame a follow camera cannot
+smooth is the object it is following, and `@M023` is blind to it by
+construction: it measures `cam.target`, which is the thing being eased.
+
+⚠ **Nothing is wrong with the shipped camera and nothing changed.**
+dryopea draws no entity yet, so today the world is all there is and rows
+1-2 say the ease is doing its job.  What rows 3-4 say is what happens the
+day [`plans/20`](../plans/20-entity-art/README.md) draws one: drawing the
+mover between its two hexes is **half** the fix, and the other half is
+the camera looking at the point the mover is DRAWN at rather than at the
+hex the simulation put it on.  Do the first alone and a seventh of the
+jump survives.
+
+⚠⚠ **`CAMERA_EASE_RATE`'s own derivation is the collateral finding.**
+The constant is chosen so an approach chasing something moving at `v`
+settles at a lag of `v / k` — *"under half a hex"*, **0.649 m**.  That
+formula assumes a CONTINUOUS mover; against one that stands still for
+forty frames and jumps two hexes, the measured trail is **2.395 m**, 3.7x
+the figure.  The constant is not changed — it also sizes the azimuth's
+180° reversal, and the derivation becomes true again the moment a drawn
+mover is continuous.
+
 ### ⚠⚠ And the azimuth wraps — reachable with the keys that ship
 
 Holding **A** drives due west, bearing `atan2(0, −1) = π`, azimuth

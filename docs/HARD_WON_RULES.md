@@ -422,6 +422,38 @@ the shipped way against ONE roster-wide `tower_sees` pass, 51% measured
 against 1200% for the naive shape.  Reach for that whenever the thing
 you changed is a small share of a gate that has room to spare.
 
+⚠⚠ **A SMOOTHER MEASURED ON THE THING IT SMOOTHS CANNOT SEE WHAT IT
+FAILS TO SMOOTH** (`@M035`, plan 26 L5).  `@M023` proved the camera's
+ease works by reading `cam.target` — un-eased it moves on 12 frames of
+240, eased on 221 — and every one of those numbers is true.  Measured in
+PIXELS, on the same drive, the eased camera leaves **96 px** of jump on
+the vehicle where the un-eased one leaves **0**, and the un-eased one
+throws 14.9 px at the ground where the eased leaves 1.3.  **The ease does
+not remove a discrete mover's jump; it moves it off the world and onto
+the mover, and it grows six times doing so** — because the one object a
+follow camera cannot smooth is the object it is chasing, and the target
+is exactly what `@M023` chose to read.
+⚠ The generic form is worth more than the camera: **a gate pointed at the
+mechanism reports the mechanism, so point it at the ARTEFACT** — here the
+pixels a player would see, which is `25_m3`'s *never gate on counts
+alone, ask WHERE* arriving from the other direction.
+⚠ And the second half is that a fix applied to half the composition
+leaves a fraction behind rather than nothing: drawing the mover at alpha
+under a camera still easing toward its HEX takes 96 px to **14**, and
+only a camera following the DRAWN point takes it to 0.  *Two things
+composed are one decision.*
+
+⚠ **A REFERENCE ROUNDED TO SEVEN DIGITS CANNOT CERTIFY A POLICY THAT IS
+EXACT** (plan 26 L5).  The same sweep priced a drawn position against
+`VEHICLE_SPEED × t × HEX_FLAT_TO_FLAT`, and charged the one exact policy
+with **1.3 µm** of error over 15.6 m — which was the constant's own
+truncation of `√3 × 0.75`, not the policy's.  `lat_to_metres` is exact,
+so the fix was to read the lattice's own spacing instead of a rounded
+copy of it, and the residual fell to 9.5e-16 m.  ⚠ It only shows up
+against a candidate good enough to be measured at that scale, which is
+why it is worth writing down: the instrument was fine for three of the
+four policies and wrong for the one that mattered.
+
 ## Profiling the suite — and why the wall clock cannot do it
 
 `LC_ALL=C LOFT_PROFILE=1 loft test > out.txt 2>&1` gives one merged

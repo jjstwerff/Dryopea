@@ -614,6 +614,31 @@ pub fn play_step(ps: PlayState, s: EditorState, input: EditorInput,
     play_step_units(ps, s, input, play_units_from_seconds(seconds))
 }
 
+// How far this frame falls between two ticks, in `[0, 1)` — plan 26 L5.
+//
+// ⚠ **A reader, and dryopea draws nothing with it yet.**  It is what a
+// renderer needs to put a lattice mover between the two hexes it stepped
+// across, and `tests/26_l5_the_alpha.loft` is the measurement of what
+// that is worth here (`@M035`).  The number ships and the policy does
+// not — `plans/20` is where a drawn entity decides.
+//
+// ⚠⚠ **And when it does, the camera has to move with it.**  Measured:
+// the shipped ease does not remove a lattice mover's jump, it moves it
+// off the world and onto the mover (**14.9 px of ground becomes 96.1 px
+// of mover**), and drawing the mover at alpha takes that to 14.1 px and
+// no further — because `camera_rig_step` eases toward the mover's HEX,
+// so its target is still a step function.  A camera that follows the
+// DRAWN point has nothing left to lurch about.  ⚠ Nothing is changed
+// today because nothing is drawn today; `plans/26` § What L5 did not
+// change says so out loud rather than leaving it to be rediscovered.
+//
+// ⚠ It is the CLOCK's alpha and never the mode's: an edit session banks
+// no time (`play_frame_units`), so its alpha stands still at whatever
+// the last live frame left, which is the same thing its camera does.
+pub fn play_alpha(ps: const PlayState) -> float {
+    clock_alpha(ps.clock)
+}
+
 // Base units back to float seconds, for the things that are genuinely
 // float — the camera's ease, and a caller reporting a duration.
 //
