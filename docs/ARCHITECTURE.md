@@ -584,6 +584,12 @@ src/
                    the sets live in a field; the sibling rule — a
                    struct STORED in a field is a COPY — points the
                    other way.
+                   ⚠ `ground_gl_bake` (one tile, one kind, flattened)
+                   is the SHARED DOOR the cost gate measures through:
+                   `ground_gl_upload_chunks` cannot be called from
+                   `loft test` at all (a GL call answers "native
+                   function not loaded"), so without it tests/25_m4
+                   would price a second implementation.
   gl_gate.loft     THE THIRD GATE (plan 25 M3) — `gl_gate_all`
                    sweeps `tests/gl/*.keys`, draws each through a
                    real context, captures with `gl_screenshot`,

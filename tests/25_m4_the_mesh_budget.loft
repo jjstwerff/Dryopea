@@ -1,0 +1,382 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 25 phase M4 — what the mesher COSTS.
+//
+// ── ⚠⚠ The instrument is the FLOAT COUNT, not the clock ────────
+//
+// The phase was written expecting a timing ratio, the way
+// `tests/11_f8` measures the tick.  Measured, this file cannot afford
+// one for most of what it wants to say:
+//
+//   - `CLAUDE.md` § Cost — a standalone probe timing an UNCHANGED file
+//     answered 173 / 737 / 754 ms on three runs, because discarded
+//     structs are not freed and the process degrades as it measures;
+//   - the box is shared — plan 25 M1 read the suite at 293 s against a
+//     documented 177 s with another project's `rustc` at 336 %;
+//   - ⚠⚠ and while this file was being written, **two IDENTICAL calls
+//     back to back differed by 5.4x** (1.84 s against 0.34 s), because
+//     a registry fetch timed out inside the first one.
+//
+// A ratio survives a uniformly slow machine.  It does not survive a
+// 1.5-second stall landing inside one of its two halves.
+//
+// ⚠ So the load-bearing gates here count **floats baked** — the size of
+// the buffer `gl_upload_vertices` is handed.  That is deterministic,
+// machine-independent, and it is what a cost regression in a mesher
+// actually looks like: geometry that should not be there.  ⚠⚠ It is
+// exactly the instrument M1 needed and did not have — *"no guard draws
+// every faced edge twice … invisible and pure cost"* and *"`<` instead
+// of `<=` grows a zero-area sliver at every hex boundary in the
+// world"*, both pixel-identical, both a change in this number.
+//
+// ⚠ The clock is still read, and still as a ratio — but only where the
+// two halves are large and the claim is coarse.  Every absolute
+// microsecond reading is PRINTED and none is asserted.
+//
+// ── ⚠ What this file measures, and what it cannot ──────────────
+//
+// It measures `ground_gl_bake` and `ground_chunk_kinds` — essentially
+// all the work `ground_gl_upload_chunks` does.  ⚠ It cannot measure the
+// uploader itself: a GL call inside `loft test` answers *"native
+// function not loaded"*.  So the loop around them (a dozen integer
+// comparisons per tile) and `gl_upload_vertices` (the driver's) are not
+// priced.  ⚠ `ground_gl_bake` exists so this file prices the code the
+// renderer runs rather than a second copy of it.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+
+// examples/palette.json, in file order.
+const GRASS: integer = 5;
+const WALL:  integer = 9;
+
+// ⚠⚠ **No deadline is asserted here, because nothing pays this cost
+// yet.**  M3 gave the ground a gate, not a window: `play_mode` still
+// draws through the software rasteriser, so `ground_gl_upload_edit` has
+// no caller with a clock on it.  The deadlines it WOULD face —
+// `PAINT_DEBOUNCE_US` (50 ms) for a brush stroke, the tick's 667 ms for
+// a play-mode terrain change — and the readings against them are
+// `@M028`, measured once and dated.
+//
+// ⚠ They are NOT re-derived per suite run: the first version of this
+// file did that and cost **63 s** of a suite that hard-kills at 300 s.
+// `docs/PROFILING.md`'s own lesson, met in a test file.
+
+// ⚠ pos (3) + normal (3) — `GROUND_GL_STRIDE`, restated so the
+// arithmetic below reads as arithmetic.  `mesh_to_floats` DE-INDEXES,
+// so a triangle costs three whole vertices however many it shares.
+const FLOATS_PER_VERTEX:   integer = 6;
+const VERTS_PER_TRIANGLE:  integer = 3;
+
+// One hex's top face is a six-triangle fan (`ground_top_face`).
+const TRIS_PER_TOP:  integer = 6;
+// One side face is a quad, so two triangles (`ground_side_faces`).
+const TRIS_PER_SIDE: integer = 2;
+
+fn floats_for(triangles: integer) -> integer {
+    triangles * VERTS_PER_TRIANGLE * FLOATS_PER_VERTEX
+}
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+// ─── The instrument ─────────────────────────────────────────────
+
+// Total floats baked over these tiles — the CPU half of an upload, and
+// the size of the buffers the GPU is handed.
+//
+// ⚠ `ground_chunk_kinds` then `ground_gl_bake` per kind, which is the
+// order `ground_gl_upload_chunks` runs them in.
+fn bake_floats(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+               cks: vector<ChunkKey>) -> integer {
+    bf_n = 0;
+    for bf_k in cks {
+        for bf_kind in ground_chunk_kinds(pal, pw, hl, bf_k.cx, bf_k.cy) {
+            bf_n += len(ground_gl_bake(pal, pw, hl, bf_k.cx, bf_k.cy, bf_kind));
+        }
+    }
+    bf_n
+}
+
+// Microseconds for one bake of these tiles, averaged over `n_runs`.
+//
+// ⚠ `n_runs`, never `ticks` — that is loft's clock builtin, and
+// shadowing it turns a reading into a function reference.  It cost plan
+// 11 F8 a probe that reported a tick 4x cheaper than it was.
+fn us_to_bake(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+              cks: vector<ChunkKey>, n_runs: integer) -> integer {
+    ub_t0 = ticks();
+    for _ in 0..n_runs { bake_floats(pal, pw, hl, cks); }
+    ((ticks() - ub_t0) / n_runs) ?? 0
+}
+
+fn one_tile(q: integer, r: integer) -> vector<ChunkKey> {
+    ot: vector<ChunkKey> = [];
+    ot += [mesh_chunk_of(q, r)];
+    ot
+}
+
+// ─── The fixtures ───────────────────────────────────────────────
+
+// A world of MANY tiles.
+//
+// ⚠⚠ The tile count is the point: on a two-tile world "one edit
+// re-meshes one tile" is 50 % and says nothing about whether the
+// chunking works.
+fn wide_world() -> PaintedWorld {
+    ww_pw   = painted_empty();
+    ww_span = mesh_chunk_span();
+    // Exactly a 2x2 block of tiles, solidly painted — the smallest world
+    // in which one hex can sit in a tile's MIDDLE and another on a tile
+    // CORNER, which is the whole claim.  ⚠ It was four times this until
+    // the suite's 300 s hard-kill said no: `plans/25` § M4 § The gate had
+    // to be affordable.
+    for ww_r in 0..ww_span * 2 {
+        for ww_q in 0..ww_span * 2 { paint(ww_pw, ww_q, ww_r, as_u8(GRASS)); }
+    }
+    // Something that STANDS, so side faces are exercised — a mesher that
+    // only ever emitted tops would price cheaper than the one that ships.
+    for ww_q2 in 0..ww_span { paint(ww_pw, ww_q2, ww_span, as_u8(WALL)); }
+    ww_pw
+}
+
+// One tile, filled with flat ground and nothing else.  ⚠ Sized off
+// `mesh_chunk_span()`, never a literal 32: a fixture that hard-codes the
+// constant it is measuring against cannot survive the sweep that
+// measures it, which is how the first version of § the per-kind walk
+// refused itself at every shift but the shipped one.
+fn flat_tile() -> PaintedWorld {
+    ft_pw   = painted_empty();
+    ft_span = mesh_chunk_span();
+    for ft_r in 0..ft_span {
+        for ft_q in 0..ft_span { paint(ft_pw, ft_q, ft_r, as_u8(GRASS)); }
+    }
+    ft_pw
+}
+
+// ─── ⚠⚠ The gates that cannot be moved by a busy machine ────────
+
+// ⚠⚠ **THE COST GATE M1 NEEDED AND DID NOT HAVE.**
+//
+// A tile of flat ground has no height differences in it, so `@X046`'s
+// `hh <= nh` skips every edge and the whole tile is TOP FACES: six
+// triangles a hex and not one side quad.  That makes the float count
+// exactly predictable — and both of M1's invisible breaks change it:
+//
+//   * the guard deleted        every faced edge twice — no change HERE
+//                              (flat ground has no faced edges) but see
+//                              § a wall's sides below;
+//   * `<` instead of `<=`      a zero-area sliver at EVERY hex boundary
+//                              in the world, so six extra quads a hex:
+//                              108 floats becomes 324.
+//
+// ⚠ Neither changes a single pixel.  This number is what sees them.
+//
+// @DRY-011 — flat ground bakes six triangles a hex and nothing else
+pub fn test_flat_ground_bakes_only_top_faces() {
+    tfg_pal  = pal();
+    tfg_pw   = flat_tile();
+    tfg_hl   = height_layer_empty();
+    tfg_span = mesh_chunk_span();
+
+    tfg_got = bake_floats(tfg_pal, tfg_pw, tfg_hl, one_tile(0, 0));
+
+    // Every hex of the tile is drawn — it is solid grass — so the count
+    // is the tile's area times one top face.
+    tfg_hexes = tfg_span * tfg_span;
+    tfg_want  = tfg_hexes * floats_for(TRIS_PER_TOP);
+
+    assert(tfg_got == tfg_want,
+           "a solid tile of flat ground bakes {tfg_got} floats and six triangles a hex over {tfg_hexes} hexes is {tfg_want} — a difference here is geometry nobody can see and everybody uploads");
+    print("m4: flat ground {(tfg_got / tfg_hexes) ?? 0} floats/hex over {tfg_hexes} hexes");
+}
+
+// ⚠⚠ **The other half of M1's pair — and this is the one the missing
+// guard moves.**  A lone wall in flat ground stands above all six
+// neighbours, so it owns six side quads; nothing else in the tile owns
+// any.  Delete the guard and every one of those faces is emitted TWICE,
+// once from each side, and the second copy is back-facing — pixel
+// identical, twice the geometry.
+//
+// @DRY-012 — a wall's sides are emitted once, counted in floats
+pub fn test_a_standing_wall_bakes_each_side_once() {
+    tsw_pal  = pal();
+    tsw_pw   = flat_tile();
+    tsw_hl   = height_layer_empty();
+    tsw_span = mesh_chunk_span();
+
+    tsw_mid = (tsw_span / 2) ?? 1;
+    paint(tsw_pw, tsw_mid, tsw_mid, as_u8(WALL));
+
+    tsw_got   = bake_floats(tsw_pal, tsw_pw, tsw_hl, one_tile(0, 0));
+    tsw_hexes = tsw_span * tsw_span;
+
+    // Every hex still has its top; ONE hex additionally has six sides.
+    tsw_want = tsw_hexes * floats_for(TRIS_PER_TOP)
+             + 6 * floats_for(TRIS_PER_SIDE);
+
+    assert(tsw_got == tsw_want,
+           "a tile with one wall in it bakes {tsw_got} floats, expected {tsw_want} — six side quads emitted once each, by the column that STANDS");
+
+    // ⚠ The control: the wall really did add geometry, or this is the
+    // flat-ground assertion wearing a different name.
+    tsw_flat = tsw_hexes * floats_for(TRIS_PER_TOP);
+    assert(tsw_got > tsw_flat,
+           "the wall added {tsw_got - tsw_flat} floats — it is not standing above anything");
+    print("m4: one wall adds {tsw_got - tsw_flat} floats = {((tsw_got - tsw_flat) / floats_for(TRIS_PER_SIDE)) ?? 0} side quads");
+}
+
+// ⚠⚠ **An edit's cost is set by the TILE, not by the edit** — the
+// finding the phase that wires GL into `play_mode` inherits, and it is
+// gated in FLOATS so a busy machine cannot argue with it.
+//
+// One hex changes; `mesh_chunks_touched` names its tile and its
+// neighbours'; every one of those is re-meshed WHOLE.  So an edit at a
+// tile CORNER bakes about four tiles' worth of geometry and an edit in
+// the MIDDLE of a tile bakes one — for the same one-hex change.
+//
+// ⚠ The day something learns to mesh less than a whole tile, this ratio
+// collapses and the assertion says so.
+//
+// @DRY-013 — a one-hex edit re-bakes whole tiles
+pub fn test_an_edits_cost_is_its_tiles_not_its_hex() {
+    tae_pal  = pal();
+    tae_pw   = wide_world();
+    tae_hl   = height_layer_empty();
+    tae_span = mesh_chunk_span();
+
+    // The middle of a tile touches one tile; a tile corner touches four.
+    tae_mid_ck    = mesh_chunks_touched(tae_span + (tae_span / 2) ?? 1,
+                                        tae_span + (tae_span / 2) ?? 1);
+    tae_corner_ck = mesh_chunks_touched(tae_span, tae_span);
+
+    assert(len(tae_mid_ck) == 1,
+           "a hex in the middle of a tile touches {len(tae_mid_ck)} tiles, expected 1");
+    assert(len(tae_corner_ck) >= 3,
+           "a hex on a tile corner touches {len(tae_corner_ck)} tiles — the expensive case is not being measured");
+
+    tae_mid    = bake_floats(tae_pal, tae_pw, tae_hl, tae_mid_ck);
+    tae_corner = bake_floats(tae_pal, tae_pw, tae_hl, tae_corner_ck);
+
+    assert(tae_mid > 0, "the interior edit bakes nothing — its ratio is a statement about an empty mesh");
+
+    // ⚠⚠ **Measured against the HEX, not against another tile.**  The
+    // first version compared a corner edit with an interior one and read
+    // 880 % over four tiles, which looked like a broken gate and was a
+    // broken FIXTURE: the two probe hexes sat in tiles with different
+    // amounts of paint in them, so the ratio was about the map rather
+    // than about the tiling.  ⚠ The claim does not need a second tile —
+    // it is that a ONE-HEX change re-bakes thousands of hexes' worth,
+    // and one hex's own top face is the honest denominator.
+    tae_hex   = floats_for(TRIS_PER_TOP);
+    tae_waste = (tae_corner / tae_hex) ?? 0;
+    print("m4: a one-hex edit re-bakes {tae_corner} floats = {tae_waste} hexes' worth, over {len(tae_corner_ck)} tiles ({tae_mid} for an interior edit)");
+    assert(tae_waste > 500,
+           "a one-hex edit re-bakes only {tae_waste} hexes' worth of geometry — something now meshes less than a whole tile, and `@M028`'s table is stale");
+}
+
+// ⚠ A tile costs what its TILE costs, not what its PAINT costs:
+// `ground_chunk_mesh` walks all of a tile's hexes whatever is painted in
+// it.  ⚠ Worth pinning because it is what a reader would guess wrong,
+// and because it is the trigger for the one-pass rewrite — if a sparse
+// tile ever became much cheaper, the walk would have stopped being a
+// coordinate walk and `@M025`'s coverage argument would be gone with it.
+//
+// @DRY-014 — the walk is by coordinate, so a sparse tile is still walked
+pub fn test_a_sparse_tile_is_still_walked_whole() {
+    tas_pal  = pal();
+    tas_hl   = height_layer_empty();
+    tas_span = mesh_chunk_span();
+    tas_mid  = (tas_span / 2) ?? 1;
+
+    tas_thin = painted_empty();
+    paint(tas_thin, tas_mid, tas_mid, as_u8(GRASS));
+
+    // It BAKES almost nothing — one hex plus its one-hex ring.
+    tas_f_thin = bake_floats(tas_pal, tas_thin, tas_hl, one_tile(tas_mid, tas_mid));
+    tas_full_pw = flat_tile();
+    tas_f_full = bake_floats(tas_pal, tas_full_pw, tas_hl, one_tile(tas_mid, tas_mid));
+    assert(tas_f_full > tas_f_thin * 10,
+           "the dense tile bakes {tas_f_full} floats and the sparse one {tas_f_thin} — they are not different fixtures");
+
+    // …and yet it is not proportionally cheaper, because the WALK is the
+    // tile's.  ⚠ A ratio of two large timings taken back to back, which
+    // is the one shape a busy machine leaves alone — and the bound is
+    // deliberately loose, because § the instrument is the float count
+    // records two identical calls differing 5.4x.
+    tas_us_thin = us_to_bake(tas_pal, tas_thin, tas_hl, one_tile(tas_mid, tas_mid), 2);
+    tas_us_full = us_to_bake(tas_pal, tas_full_pw, tas_hl, one_tile(tas_mid, tas_mid), 2);
+    assert(tas_us_full > 0 && tas_us_thin > 0,
+           "the clock said something: {tas_us_full} / {tas_us_thin} us");
+
+    tas_pct = (tas_us_thin * 100 / tas_us_full) ?? 0;
+    print("m4: a 1-hex tile bakes {tas_f_thin} floats against {tas_f_full} ({(tas_f_thin * 1000 / tas_f_full) ?? 0} per mille) but costs {tas_pct}% of the time");
+    assert(tas_pct > 5,
+           "a tile with one hex in it costs {tas_pct}% of a full one — the walk is no longer by coordinate, and `@M025`'s coverage argument went with it");
+}
+
+// ⚠⚠ **Pricing the ALTERNATIVE — `plans/25` § M2's parked cost note, and
+// the trigger it named was this file.**
+//
+// `ground_chunk_mesh` walks its tile once PER KIND and
+// `ground_chunk_kinds` walks it again to find them, so a tile holding K
+// kinds is walked K+1 times.  The one-pass shape — a `Mesh` per kind
+// held together — is unwritten because a struct in a container is a copy
+// in loft.
+//
+// ⚠⚠ **The first version of this test priced the WRONG alternative**, and
+// it is an easy mistake to repeat: it compared the shipped bake against
+// `ground_chunk_kinds` and reported *"5634 % of one pass"*.  But a kind
+// census does no MESH BUILDING, so almost all of that number is work the
+// rewrite would still have to do.  The rewrite saves only the REDUNDANT
+// FILTER WALKS — K extra traversals deciding which hex belongs to which
+// kind — so that is what is measured, and it is a far smaller number.
+//
+// @DRY-015 — what the redundant per-kind walks cost, against the total
+pub fn test_the_per_kind_walk_is_priced_against_the_total() {
+    tpk_pal  = pal();
+    tpk_hl   = height_layer_empty();
+    tpk_span = mesh_chunk_span();
+
+    // A tile holding several kinds, so K is not 1 and the multi-pass
+    // shape has something to be expensive about.
+    tpk_pw = flat_tile();
+    tpk_a  = (tpk_span / 4) ?? 1;
+    for tpk_q2 in 0..tpk_span { paint(tpk_pw, tpk_q2, tpk_a,     as_u8(WALL)); }
+    for tpk_q3 in 0..tpk_span { paint(tpk_pw, tpk_q3, tpk_a * 2, as_u8(4)); }   // sand
+    for tpk_q4 in 0..tpk_span { paint(tpk_pw, tpk_q4, tpk_a * 3, as_u8(7)); }   // rock
+
+    tpk_kinds = ground_chunk_kinds(tpk_pal, tpk_pw, tpk_hl, 0, 0);
+    assert(len(tpk_kinds) >= 4,
+           "the fixture holds {len(tpk_kinds)} kinds — a per-kind walk over one kind is a single pass and prices nothing");
+
+    // ONE filter walk of the tile: `mesh_hex_drawn` + `hex_surface_index`
+    // per hex, and no mesh building at all.
+    tpk_t0 = ticks();
+    for _ in 0..2 { ground_chunk_kinds(tpk_pal, tpk_pw, tpk_hl, 0, 0); }
+    tpk_walk = ((ticks() - tpk_t0) / 2) ?? 0;
+
+    tpk_shipped = us_to_bake(tpk_pal, tpk_pw, tpk_hl, one_tile(0, 0), 2);
+    assert(tpk_walk > 0 && tpk_shipped > 0,
+           "the clock said something: {tpk_walk} / {tpk_shipped} us");
+
+    tpk_saving = tpk_walk * len(tpk_kinds);
+    tpk_pct    = (tpk_saving * 100 / tpk_shipped) ?? 0;
+    print("m4: {len(tpk_kinds)} redundant filter walks are {tpk_saving} us of {tpk_shipped} us = {tpk_pct}% — all a one-pass rewrite could save");
+
+    // ⚠ **A TRIGGER, not a performance requirement.**  Below it, the
+    // rewrite `plans/25` § M2 parked is not worth its cost; above it, it
+    // is.  ⚠ K is what grows it, so adding palette kinds is what
+    // eventually trips this.
+    assert(tpk_pct < 25,
+           "redundant per-kind walks are {tpk_pct}% of a tile's bake over {len(tpk_kinds)} kinds — the one-pass rewrite `plans/25` § M2 parked has become worth doing");
+}

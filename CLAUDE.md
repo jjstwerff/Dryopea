@@ -88,7 +88,8 @@ exists today.
 | ⚠⚠ **THE GROUND IS NOT MESHED YET** — and the job is HALF what plan 21 sized it at.  dryopea's ground is a flat plane with pillars on it (`height_override` non-null on **2 of 12** palette kinds), so moros's corner-height MEAN is a no-op at every hex and the mesher does not blend (`@X072`); `mesh3d::mesh_to_floats` + `graphics::GroupVboSet` already publish the whole GPU-side chunk cache.  ⚠ Colour is a **UNIFORM**, one mesh per palette kind (`@X074`) — a flat-unlit frame built that way can only contain palette colours, which is what keeps the exact classification alive.  ⚠⚠ **A reversed fan changes no count, no height and no vertex position — and draws NOTHING under `GL_CULL_FACE`**, so M0 gates the winding as DATA three phases before anything is drawn | [25](plans/25-the-terrain-mesh/README.md), M0 shipped |
 | A COLUMN HAS SIDES: one vertical quad per edge where a hex stands above its neighbour, emitted **once**, by the side that STANDS.  ⚠⚠ **Both halves of `hh <= nh` fail invisibly** — no guard draws every faced edge twice and the copy is back-facing; `<` grows a zero-area sliver at every hex boundary in the world — so it is gated as four COUNTS on four fixtures (**6 / 10 / 0 / 5+6**).  ⚠⚠ A quad's NORMAL (from the two centres) and its WINDING (from the corner ring) are two facts that can disagree, and the test asserts they AGREE | [25](plans/25-the-terrain-mesh/README.md), M1 shipped |
 | THE WORLD, IN TILES: 32×32 hexes meshed one palette kind at a time, compared by folding the geometry to an integer, and the mesher's reach **measured** against `MESH_HALO_K` rather than restated — so plan 02's blend goes red here.  ⚠⚠ **The drawn region is the painted set plus a ONE-HEX RING** (`@X075`) — sea is stored as ABSENCE, so meshing what is stored leaves an erased region as a hole in the ground at the height of the land round it.  ⚠⚠ **M2's headline gate could not fail and its own control said so**: loft's keyed collections iterate in KEY order, not insertion order (`@M025`) | [25](plans/25-the-terrain-mesh/README.md), M2 shipped |
-| **AND IT IS DRAWN, AND GATED**: `make validate-gl` meshes a `.keys` world, draws it flat-unlit through real GL under `xvfb`, captures it and counts every pixel with **`classify_canvas` itself** — `other == 0` over 691 200 px.  ⚠⚠ **A per-kind COUNT cannot see a MIRRORED world** — every band stays green while the world is reflected, and only a LANDMARK against `camera_screen` sees it, at **490.8 px** (`@M027`, `@X078`).  ⚠ A landmark must be FLAT: a column draws its sides in the same colour, 29 px off | [25](plans/25-the-terrain-mesh/README.md), M3 shipped — M4 next |
+| **AND IT IS DRAWN, AND GATED**: `make validate-gl` meshes a `.keys` world, draws it flat-unlit through real GL under `xvfb`, captures it and counts every pixel with **`classify_canvas` itself** — `other == 0` over 691 200 px.  ⚠⚠ **A per-kind COUNT cannot see a MIRRORED world** — every band stays green while the world is reflected, and only a LANDMARK against `camera_screen` sees it, at **490.8 px** (`@M027`, `@X078`).  ⚠ A landmark must be FLAT: a column draws its sides in the same colour, 29 px off | [25](plans/25-the-terrain-mesh/README.md), M3 shipped |
+| AND IT IS PRICED: a one-hex edit re-bakes **~4 000 hexes' worth** of geometry, because a tile is re-meshed whole (`@M028`).  ⚠⚠ The gate counts **FLOATS**, not seconds — the clock could not carry it (two identical calls differed **5.4x**) — and it prices M1's *invisible* breaks at last: a zero-area sliver **triples the world's geometry** and draws no pixel (`@M029`) | [25](plans/25-the-terrain-mesh/README.md), M4 shipped — plan **complete** |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
 is derived rather than picked: **a single-hex body ramp onto a structure
@@ -104,7 +105,20 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 1237/1237 green under `scripts/test.sh`** (~177 s re-measured
+⚠⚠ **`loft test` HARD-KILLS AT 300 s BY DEFAULT, and the suite is close
+enough to it that a busy box kills the run** — `[timeout] hard-kill after
+300s+2s grace: phase=parse fn=? file=tests/__loft_test_base.loft`, which
+reads exactly like the cdylib fault below and is not it.  Measured
+2026-08-17: the suite is **224 s** with another project's `dotnet` at
+100%, and it died at 302 s when that project started a `cargo` build.
+⚠ **`LOFT_TIMEOUT=1500 scripts/test.sh` is the way through it**;
+`LOFT_TIMEOUT_GRACE` sets the grace.  ⚠ It is also a real budget
+constraint on new tests — plan 25 M4's first version cost 63 s on its
+own and pushed the whole run over the cliff, and profiling it found ONE
+test re-deriving an expensive value twice to print it (63 s → **5 s**,
+every reading preserved).
+
+**Suite: 1242/1242 green under `scripts/test.sh`** (~177 s re-measured
 2026-08-17 — the `frame` measurements classify full 960x720 frames, the
 cost gate ticks a radius-40 world twice, and since plan 13 a dozen tests
 run whole scenarios to their fall.  ⚠ This line carried "~35 s" from
@@ -532,6 +546,24 @@ than the painted set), never determinism.  So **the right code with the
 wrong justification** is what to look for when a gate refuses to fail.
 ⚠ The other direction is plan 12 B3's fence tripwire: written to go red the
 day a steering rule landed, still green when it did (`@M020`).
+
+⚠⚠ **A COST GATE CAN BE A COUNT INSTEAD OF A CLOCK, AND USUALLY SHOULD
+BE** (plan 25 M4, `@M029`).  M4 was specified as a timing RATIO — the
+`11_f8` shape — and the clock could not carry it: two IDENTICAL
+back-to-back calls differed **5.4x** (1.84 s against 0.34 s) when a
+registry fetch stalled inside one of them.
+⚠ **A ratio survives a uniformly slow machine; it does not survive a
+1.5-second stall landing inside one of its two halves.**  `11_f8` never
+meets that because both its halves are `wave_tick` and neither touches
+the disk — so *"cost is a ratio"* is a rule about `wave_tick`, not about
+cost.
+⚠⚠ **What a mesher's cost regression IS, is geometry that should not be
+there** — so count the FLOATS uploaded.  Deterministic, immune to a busy
+box, and it priced M1's two invisible breaks for the first time: a
+zero-area sliver at every hex boundary bakes **331 776 floats against
+110 592**, exactly 3x, and draws not one pixel.
+⚠ Ask what the change would actually DO before reaching for a stopwatch;
+the artefact is often countable.
 
 ⚠⚠ **A COUNT IS PERMUTATION-INVARIANT, SO IT CANNOT SEE A MIRRORED
 WORLD** (plan 25 M3, `@M027`).  Reflect the drawn world in y — tops and
@@ -1287,7 +1319,8 @@ signature.
 | Judge what another CREW MEMBER is worth | [plans/14](plans/14-helpers/README.md) § Status — three scenarios that differ only in their crew lines, and the measured clock (⚠ **123 / 135 / 138** since plan 16 W2, from 77 / 214 / 242).  ⚠ A roster buys COVERAGE, not throughput — but the base can now barely express it: the pre-walk window means far fewer ramps form for a crew to clear, so the whole spread is 15 ticks where it was 165 |
 | Hurt or kill an enemy | `src/spawn.loft::enemy_hurt` lands damage and never kills; `wave_deaths` (the tick's, after the move loop) is the ONE death path, so B5's tower and a script's `hit` cannot drift.  ⚠ A fatal hit is followed by one last STEP — the tick moves before it kills, so the body lands one hex down the route from where the shot landed |
 | Validate the GAME (not a function) | `scripts/validate.sh` — then [plans/08-game-validation/README.md](plans/08-game-validation/README.md) |
-| Check a change did not cost anything | `tests/11_f8_the_tick_budget.loft` — a RATIO gate, because a copy changes no behaviour and no other test can see it |
+| Check a change did not cost anything | `tests/11_f8_the_tick_budget.loft` — a RATIO gate, because a copy changes no behaviour and no other test can see it.  ⚠⚠ **For anything that BUILDS an artefact, count the artefact instead** (`tests/25_m4`, `@M029`): the clock could not carry M4's claim at all — two identical back-to-back calls differed 5.4x — while the floats a mesher uploads are deterministic and are exactly what its cost regression looks like |
+| Ask what a mesh EDIT costs, or wire the GL path into play mode | [`plans/25`](plans/25-the-terrain-mesh/README.md) § M4 and `@M028` — ⚠⚠ **a one-hex edit re-bakes ~4 000 hexes' worth**, because `mesh_chunks_touched` names whole tiles and each is re-meshed whole.  At the shipped 32×32 that is **335 ms** against a 50 ms paint stroke (`PAINT_DEBOUNCE_US`) and a 667 ms tick.  ⚠ The sweep is in the plan: 8×8 buys **8.6×** and costs 12× the draw calls, which `loft test` cannot price — so M4 measured it and changed NOTHING.  ⚠ Nothing pays this today: M3 gave the ground a gate, not a window |
 | Make the SIMULATION cheaper | [`plans/22`](plans/22-the-field-cache/README.md) — ⚠ the field, not the roster.  `flow_sweep` is **17.6% self and ~69% with its passability family** (re-profiled 2026-08-17, third reading in agreement), it is UNBOUNDED, and it is only read inside the 25-hex bubble, so ~60% of every sweep is never looked at.  ⚠ The field is a pure function of `(pal, pw, hl, climb, core)` and its invalidation surface is **two functions** (`height_raise` / `height_clear`) plus `paint` — so caching is exact, and `11_f8::test_the_field_a_tick_uses_equals_a_fresh_build` is the gate, written in advance and currently vacuous |
 | Judge a simulation-LOD idea (coarser away from the player) | ⚠ **Granularity must NOT follow the CAMERA** — if it does, where the player looks changes the outcome, which is unfalsifiable from inside.  The boundary is the interaction radii (tower range 15, bubble 25, nibble reach 1, salvage reach 1, blocker = same hex), which are stable under camera movement.  ⚠ And ticking distant things every N ticks with N× movement is the `n × TICK_SECONDS` defect again — bank progress, never multiply it.  [`plans/22`](plans/22-the-field-cache/README.md) § What this plan does NOT build carries the trigger |
 | Find out what the SUITE spends its time on | `LC_ALL=C LOFT_PROFILE=1 loft test > out.txt 2>&1` — § Profiling the suite.  Read the op count, never the wall clock |

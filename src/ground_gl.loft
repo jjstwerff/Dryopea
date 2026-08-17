@@ -202,6 +202,28 @@ fn ground_gl_bounds(cx: integer, cy: integer) -> (float, float, float, float) {
     )
 }
 
+// One tile's one kind, meshed and flattened for `gl_upload_vertices`.
+//
+// ⚠⚠ **This exists so the cost gate measures the code the renderer
+// runs.**  `ground_gl_upload_chunks` cannot be called from `loft test`
+// at all — a GL call there answers *"native function not loaded"* — so
+// without a shared door `tests/25_m4` would have to re-implement the
+// meshing and would then be pricing a second implementation.  That is
+// the same trap `measure.loft` names for a classifier that renders its
+// own input.
+//
+// ⚠ What the gate still cannot see is the LOOP around this and the GL
+// calls inside it.  The loop is a dozen integer comparisons per tile and
+// the uploads are the driver's; everything that costs anything is here
+// and in `ground_chunk_kinds`, which the gate also calls.
+pub fn ground_gl_bake(pal: vector<GroundType>, pw: PaintedWorld,
+                      hl: const HeightLayer, cx: integer, cy: integer,
+                      kind: integer) -> vector<single> {
+    ggb_m = mesh("ground");
+    ground_chunk_mesh(ggb_m, pal, pw, hl, cx, cy, kind);
+    mesh_to_floats(ggb_m)
+}
+
 // Re-mesh and re-upload exactly these tiles.
 //
 // ⚠ **Every kind, not only the kinds present.**  A tile whose last wall
@@ -241,9 +263,8 @@ pub fn ground_gl_upload_chunks(gg: GroundGl, pal: vector<GroundType>, pw: Painte
                 continue;
             }
 
-            ggu_m = mesh("ground");
-            ground_chunk_mesh(ggu_m, pal, pw, hl, ggu_k.cx, ggu_k.cy, ggu_i);
-            group_vbos_upsert(ggu_set, ggu_k.ck, mesh_to_floats(ggu_m),
+            group_vbos_upsert(ggu_set, ggu_k.ck,
+                              ground_gl_bake(pal, pw, hl, ggu_k.cx, ggu_k.cy, ggu_i),
                               ggu_b.0 as single, ggu_b.1 as single,
                               ggu_b.2 as single, ggu_b.3 as single);
         }

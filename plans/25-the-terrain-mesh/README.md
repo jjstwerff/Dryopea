@@ -9,17 +9,33 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**M0 + M1 + M2 + M3 done** (2026-08-17).  Suite **1237** green
-(1198 + 4 + 9 + 16 + 10), gate 33 scripts / **654 measurements unchanged**
-across all four — a mesher is not a simulation, and the day it re-prices a
+**COMPLETE** — M0-M4 done (2026-08-17).  Suite **1242** green
+(1198 + 4 + 9 + 16 + 10 + 5), gate 33 scripts / **654 measurements unchanged**
+across all five — a mesher is not a simulation, and the day it re-prices a
 scenario is the day something is reading it that should not be.  **M3 adds a
 THIRD gate**: `scripts/validate_gl.sh`, 2 fixtures / 26 measurements, under
 `xvfb`.
 
-⚠ **Every test in all four phases passed on the first run, which is when to
-check the gate can FAIL.**  Twenty-two load-bearing assertions were falsified
-deliberately and all twenty-two fired, each at the value predicted for it.
-§ M0, § M1, § M2 and § M3 have the tables.
+⚠ **Every test in every phase passed on the first run, which is when to check
+the gate can FAIL.**  Twenty-four load-bearing assertions were falsified
+deliberately and all twenty-four fired, each at the value predicted for it.
+§ M0, § M1, § M2, § M3 and § M4 have the tables.
+
+⚠⚠ **M3's headline is that the gate everyone would have written is BLIND to
+the defect `render_camera.loft` is most afraid of.**  A fully mirrored world
+passes `other == 0`, passes `sea == 0`, and passes every per-kind pixel count
+in band — because a count is permutation-invariant.  Only a LANDMARK, compared
+against `camera_screen`'s own prediction, can see it, and it sees it at
+**490.8 px** (`@M027`).  § M3.
+
+⚠⚠ **M4's headline is that the phase's own stated invariant was wrong.**  It
+was specified as a timing RATIO and the clock cannot carry it here — two
+IDENTICAL back-to-back calls differed by **5.4x** when a registry fetch stalled
+inside one of them.  The gate counts **floats baked** instead, which is
+deterministic and is what a mesher's cost regression actually is.  ⚠ It then
+prices M1's two *invisible* breaks for the first time: a zero-area sliver at
+every hex boundary **triples the world's geometry** and draws not one pixel.
+§ M4.
 
 ⚠⚠ **M3's headline is that the gate everyone would have written is BLIND to
 the defect `render_camera.loft` is most afraid of.**  A fully mirrored world
@@ -202,7 +218,7 @@ costs.  `@X073`.
 | **M1** — the sides | M | `tests/25_m1_the_sides.loft` (9 fns) — a quad per faced edge, emitted from the standing side only, over `lat_edge_corners`.  ⚠ Five breaks tried, five fired | **Done** (2026-08-17) |
 | **M2** — the world, in chunks | M | `tests/25_m2_the_rebuild.loft` (16 fns) — `mesh_crc` (ported, and it folds the TRIANGLES too), the drawn region, one-tile == all-tiles, and the reach measured against `MESH_HALO_K`.  ⚠ Eight breaks tried, eight fired | **Done** (2026-08-17) |
 | **M3** — it is DRAWN, and gated | MH | `scripts/validate_gl.sh` — 2 fixtures under `xvfb`, 26 measurements; plus `tests/25_m3_the_ground_gl.loft` (10 fns) for the half that needs no context.  ⚠ Seven breaks tried, seven fired | **Done** (2026-08-17) |
-| **M4** — cost | S | `tests/25_m4_the_mesh_budget.loft` — a ratio, the `11_f8` shape | **Next** |
+| **M4** — cost | S | `tests/25_m4_the_mesh_budget.loft` (5 fns) — ⚠ **float counts, not a ratio**: the clock could not carry the claim.  Two breaks tried, two fired | **Done** (2026-08-17) |
 
 ## M0 — the top face (2026-08-17)
 
@@ -684,6 +700,127 @@ RANKED, not independent, exactly as M1 found for a bundled test function.
 ⚠ Here that is `validate.loft`'s deliberate contract (*the first failure is the
 verdict*) rather than an accident — but it means **a falsification has to be
 clean, or it proves a different assertion than the one you aimed at.**
+
+## M4 — cost (2026-08-17)
+
+`tests/25_m4_the_mesh_budget.loft` (5 fns) + `ground_gl.loft::ground_gl_bake`.
+**Suite 1237 → 1242**, gate 33 scripts / 654 measurements and the GL gate's 26
+all unchanged.
+
+### ⚠⚠ The phase's own invariant was wrong: the CLOCK could not carry it
+
+M4 was specified as *"a RATIO inside `loft test`"*, the `tests/11_f8` shape.
+Built that way it does not work here, and the reasons are all on the record:
+
+- `CLAUDE.md` § Cost — an UNCHANGED file timed **173 / 737 / 754 ms** on three
+  interpreter runs, because discarded structs are not freed;
+- the box is shared — M1 read the suite at 293 s against a documented 177 s;
+- ⚠⚠ **and while this file was being written, two IDENTICAL back-to-back calls
+  differed by 5.4x** (1.84 s against 0.34 s), because a registry fetch timed
+  out inside the first one.
+
+A ratio survives a uniformly slow machine.  It does not survive a 1.5-second
+stall landing inside one of its two halves — which is the failure mode `11_f8`
+never met because both its halves are `wave_tick` and neither touches the disk.
+
+⚠ **So the load-bearing gates count FLOATS BAKED** — the size of the buffer
+`gl_upload_vertices` is handed.  Deterministic, machine-independent, and it is
+what a cost regression in a mesher actually IS: geometry that should not be
+there.  The clock is still read for the two coarse claims, and **no absolute
+microsecond figure is asserted anywhere**.
+
+### ⚠⚠ It is the cost gate M1 needed and did not have
+
+M1's two invisible breaks are *pure cost* — `plans/25` § M1 says so in prose
+(*"nothing — the second copy is back-facing"*, *"nothing — a sliver has no
+area"*) and gates them as COUNTS on four small fixtures.  M4 prices them, and
+the price is the surprise:
+
+| the break | flat tile bakes | the world |
+|---|---|---|
+| shipped | 110 592 floats (**108/hex** = 6 triangles) | 1.29 s |
+| `<` instead of `<=` | **331 776** — exactly **3x** | **3.2 s** |
+| the guard deleted | **331 776** | 3.2 s |
+
+⚠ A zero-area sliver at every hex boundary **triples the world's geometry** and
+draws not one pixel.  Both breaks were tried and both fired at the predicted
+value.
+
+### ⚠⚠ THE FINDING: a one-hex edit re-bakes ~4 000 hexes' worth
+
+`mesh_chunks_touched` names the edited hex's tile and its neighbours', and
+every one is re-meshed WHOLE.  At a tile corner that is four tiles of 1024
+hexes to move one hex — **447 048 floats, 4 139 hexes' worth**, gated in floats
+so a busy machine cannot argue with it.
+
+⚠ Swept over `MESH_CHUNK_SHIFT`, the worst-case edit and the cold build of one
+world (`@M028`):
+
+| tile | worst-case edit | cold build | tiles |
+|---|---|---|---|
+| 8x8 | **38.7 ms** | 1.16 s | 192 |
+| 16x16 | 96.1 ms | 1.18 s | 48 |
+| **32x32 (shipped)** | **334.8 ms** | 1.72 s | 16 |
+
+⚠⚠ **The edit tracks tile AREA and the cold build barely moves** — the biggest
+tile is in fact the *slowest* cold build, because a 32x32 tile at the world's
+edge walks more hexes that are not drawn.  So shrinking the tile is nearly free
+on the CPU side.
+
+⚠ **It is NOT free on the GPU side** — 192 tiles instead of 16 is twelve times
+the draw calls, and `GroupVboSet` has no frustum cull — and that half cannot be
+measured from `loft test`.  **So M4 measures the table and changes nothing**,
+which is `plans/22`'s discipline: do not optimise against an unmeasured half.
+
+⚠ **Nothing pays this cost today**: M3 gave the ground a gate, not a window, so
+`ground_gl_upload_edit` has no caller with a clock on it.  The deadlines it
+*would* face are `PAINT_DEBOUNCE_US` (50 ms) for a brush stroke and the tick
+(667 ms) for a play-mode terrain change — so at 32x32 an edit is **7x over** a
+paint stroke and half a tick.  **That is the number the phase that wires GL
+into `play_mode` inherits**, and `@M028` is where it is written down.
+
+### ⚠ M2's parked one-pass rewrite: measured, and NOT worth doing
+
+`ground_chunk_mesh` walks its tile once per kind and `ground_chunk_kinds` walks
+it again, so a tile holding K kinds is walked K+1 times.  § M2 parked the
+one-pass rewrite and named M4's ratio as the trigger.
+
+**Measured: the redundant walks are 7 % of a tile's bake.**  The other 93 % is
+mesh building, which a one-pass shape would still have to do.  ⚠ So the rewrite
+buys at most 7 % for a structure loft makes awkward (a struct in a container is
+a copy), and the test is written as a **trigger at 25 %** — K is what grows it,
+so adding palette kinds is what eventually trips it.
+
+⚠⚠ **The first version of that test priced the WRONG alternative** and it is an
+easy mistake to repeat: it compared the shipped bake against `ground_chunk_kinds`
+and reported *"5634 % of one pass"*.  A kind census does no mesh building, so
+almost all of that number is work the rewrite could never save.  **Pricing an
+alternative means pricing the DIFFERENCE, not the whole.**
+
+### ⚠⚠ The gate had to be affordable, and the suite's watchdog said so
+
+The first version cost **63 s** — and `loft test` hard-kills at **300 s**.  The
+suite is **224 s** without it, so M4 pushed the whole run over the cliff and it
+died in the parse phase of an unrelated file, which is exactly the symptom
+`CLAUDE.md` documents for a cdylib build in flight.  ⚠ **The diagnosis was
+wrong twice before it was right**: the registry fetches timing out in the log
+looked like the cause (they were not — failing them fast changed nothing), and
+the cdylib looked like the cause (every `.so` was present).
+
+⚠ Profiled, **every one of the seven hottest paths was one test** — the one
+that re-derived the whole world's bake twice to `print` two numbers that belong
+in `@M028`.  Deleting it and shrinking the fixture to the four tiles the claim
+actually needs took the file **63 s → 5 s** with every reading preserved.
+⚠ That is `docs/PROFILING.md`'s own lesson arriving in a test file: *a test that
+RE-DERIVES an expensive value a sibling already computed is the cheapest thing
+to find.*
+
+### ⚠ Two breaks tried, two fired
+
+| the break | what the gate said |
+|---|---|
+| `<` instead of `<=` | **two**: *a solid tile of flat ground bakes **331 776** floats and six triangles a hex over 1024 hexes is 110 592*, and *a tile with one wall bakes 331 560, expected 110 808* |
+| the guard deleted | **two**, the same pair at 331 776 — geometry nobody can see and everybody uploads |
 
 ## What this plan does NOT build
 

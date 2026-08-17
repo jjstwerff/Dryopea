@@ -91,6 +91,8 @@ pub const GROUND_TOP_OFFSET: float = 0.0;
 // six, and a four-triangle strip across the diagonal would put two
 // vertices of unequal height on one edge the day plan 02 lands.  The
 // centre vertex is what a later slope solver writes into.
+//
+// Example: @DRY-011
 pub fn ground_top_face(m: Mesh, pal: vector<GroundType>, pw: PaintedWorld,
                        hl: const HeightLayer, q: integer, r: integer) {
     gtf_h    = Hex { q: q, r: r };
@@ -159,6 +161,8 @@ pub fn ground_top_face(m: Mesh, pal: vector<GroundType>, pw: PaintedWorld,
 // centres is an outward direction by construction; `tests/25_m1`
 // asserts the WINDING agrees with it, which is the pair that licenses
 // `GL_CULL_FACE`.
+//
+// Example: @DRY-012
 pub fn ground_side_faces(m: Mesh, pal: vector<GroundType>, pw: PaintedWorld,
                          hl: const HeightLayer, q: integer, r: integer) {
     gsf_h  = Hex { q: q, r: r };
@@ -207,6 +211,8 @@ pub fn ground_side_faces(m: Mesh, pal: vector<GroundType>, pw: PaintedWorld,
 // order and therefore an upload order; taken off a hash it would differ
 // between two builds of one map, which is the thing `mesh_crc` exists to
 // notice.
+//
+// Example: @DRY-015
 pub fn ground_chunk_kinds(pal: vector<GroundType>, pw: PaintedWorld,
                           hl: const HeightLayer, cx: integer, cy: integer)
                           -> vector<integer> {
@@ -250,9 +256,18 @@ pub fn ground_chunk_kinds(pal: vector<GroundType>, pw: PaintedWorld,
 // ⚠ It walks the tile once PER KIND, and `ground_chunk_kinds` walks it
 // again to find them: ~6 passes over 1024 hexes for a typical tile.  The
 // one-pass shape is a `Mesh` per kind held together, and `CLAUDE.md`
-// § Loft gotchas is why it is not written that way yet — a struct in a
-// container is a copy.  ⚠ The trigger to solve it is M4's ratio, not a
-// hunch.
+// § Loft gotchas is why it is not written that way — a struct in a
+// container is a copy.
+//
+// ⚠⚠ **M4 MEASURED it and the answer is: not worth doing.**  The
+// redundant filter walks are **7 %** of a tile's bake; the other 93 % is
+// mesh building a one-pass shape would still have to do, so the rewrite
+// buys almost nothing for a structure loft makes awkward.  ⚠ K is what
+// grows it, so **adding palette kinds** is what would change the answer
+// — `tests/25_m4` is written as a trigger at 25 % rather than as a
+// requirement.  `@M028`.
+//
+// Example: @DRY-014
 pub fn ground_chunk_mesh(m: Mesh, pal: vector<GroundType>, pw: PaintedWorld,
                          hl: const HeightLayer, cx: integer, cy: integer,
                          kind: integer) {
