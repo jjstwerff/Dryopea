@@ -38,4 +38,17 @@ mkdir -p "$ROOT"/tests/actual
 rm -f "$ROOT"/tests/actual/*.png "$ROOT"/tests/actual/*.json
 
 cd "$ROOT"
+
+# The worked-example gate — `docs/EXAMPLES.md`.  A text scan costing
+# milliseconds against a suite costing ~177 s, so it runs FIRST: a
+# dangling `Example:` citation is a two-second fix and finding it after
+# three minutes of tests is three minutes wasted.
+#
+# ⚠ Its own `--self-test` is what stops it passing vacuously — with no
+# citations in the repo it is green over an empty set, which is
+# `plans/21` § R1's trap.
+if ! bash "$ROOT"/scripts/examples.sh; then
+    exit 1
+fi
+
 exec "$LOFT" test "$@"

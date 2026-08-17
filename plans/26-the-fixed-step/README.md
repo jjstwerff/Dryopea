@@ -313,6 +313,15 @@ makes it the example, and the example cannot drift from working code because
 it *is* working code.  ⚠ Gated at L6 — every row above has a named test, and
 the docs reference each by name.  A door with no linked test is not shipped.
 
+⚠⚠ **The mechanism for this is BUILT and is not this plan's to design** —
+[`docs/EXAMPLES.md`](../../docs/EXAMPLES.md) is the convention and
+`scripts/examples.sh` is the gate (landed 2026-08-17, self-tested against
+five fixtures, wired into `scripts/test.sh`).  A test carries a marker
+`<abbrev><NNN>` in its name and the function cites it as `// Example: fs001`;
+dangling, duplicate and orphan citations all fail.  **This plan's library
+takes abbreviation `fs` and is its first consumer** — so L6 opts its files in
+with `// #examples` and the coverage half of the gate does the rest.
+
 ⚠ **And this is already how this repo teaches its own seams** — `.keys`
 scenarios in `tests/scripts/` are simultaneously the gate and the worked
 example of the editor's door, and `plans/08` is the plan that made them so.
