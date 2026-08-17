@@ -374,6 +374,69 @@ pub fn hex_height(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLay
     painted_height_of(pal, pw, q, r) + height_rise(hl, q, r)
 }
 
+// ─── The line over the top: what stands in the way of a SIGHT ───
+//
+// `can_step` asks whether a mover may cross the ground between two
+// hexes; this asks whether anything on that ground reaches above a
+// straight line drawn OVER it.  Two questions about the same heights,
+// which is why they live in one file.
+//
+// ⚠ **It answers WHERE, not whether**, and that is what lets two very
+// different callers share one walker.  A tower only needs the boolean
+// (`tower.loft::tower_sees`) — but a camera needs the distance, because
+// a blocked view is answered by SHORTENING THE BOOM to just short of
+// whatever blocked it (`render_camera.loft::camera_boom_free`).  A
+// predicate cannot say how far, and a second line-walker written to say
+// it is a second answer about one world.
+
+// How far above the sight line an obstacle has to reach before it
+// blocks — a metre-scale rule decided at 1 nanometre.
+//
+// ⚠ **Not defensive noise: without it a float ulp decides whether a
+// tower works.**  The canonical geometry lands ON the boundary — a
+// 6 m tower, a 3 m wall halfway to a 1 m target, ray height exactly
+// 3.0 — and the ratios that produce it (1/2, 1/3, 3/10) are exact in
+// binary for some placements and a hair either side for others.  The
+// tie goes to the LOOKER: a wall the line grazes is grazed, not hit.
+//
+// ⚠ Was `tower.loft::TOWER_SIGHT_EPSILON` until plan 21 R2 moved the
+// walker down here; the reasoning above is the tower's and survives
+// unchanged, because a camera grazing a wall wants the same answer.
+pub const SIGHT_EPSILON: float = 1.0e-9;
+
+// The first cell along `from → to` whose surface stands above the
+// straight line from `from_h` to `to_h`, as its index along
+// `lat_line`, or **−1** when the line is clear.
+//
+// ⚠ **The ENDPOINTS are walked too**, which `tower_sees` used not to
+// do — and for a tower it makes no difference, measured and asserted
+// (`tests/21_r2_the_boom.loft` § An endpoint cannot block its own
+// line): a tower's eye is its hex's surface plus a positive height and
+// its aim is the target's surface plus a positive height, so neither
+// end can stand above a ray that starts on top of it.  ⚠ For the CAMERA
+// it makes every difference — the far end of the camera's line is the
+// EYE, and terrain there is precisely the case of the eye parked inside
+// a hillside.  Excluding it would leave the one caller that needs the
+// check unable to ask for it.
+pub fn sight_first_block(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+                         from: const Hex, to: const Hex,
+                         from_h: float, to_h: float) -> integer {
+    sfb_n = lat_distance(from, to);
+    // A hex cannot stand between itself and its neighbour.
+    if sfb_n <= 1 { return -1; }
+
+    sfb_inv = (1.0 / (sfb_n as float)) ?? 0.0;
+    sfb_i = 0;
+    for sfb_c in lat_line(from, to) {
+        sfb_ray = from_h + (to_h - from_h) * ((sfb_i as float) * sfb_inv);
+        if hex_height(pal, pw, hl, sfb_c.q, sfb_c.r) > sfb_ray + SIGHT_EPSILON {
+            return sfb_i;
+        }
+        sfb_i = sfb_i + 1;
+    }
+    -1
+}
+
 // ─── Question 1: the surface ────────────────────────────────────
 
 // Is this hex's SURFACE one an enemy stands on at all?

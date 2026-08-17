@@ -215,6 +215,102 @@ it directly.
 
 ---
 
+## R2b — the boom: the ease, and what shortens it  `@X068`-`@X071`
+
+⚠ **The numbering diverges here, and it is not a mistake.**  This file's
+R0–R5 are DECISIONS and `plans/21`'s R0–R5 are PHASES; they agree through
+R1 and part company at R2, where the plan builds the boom and § R2 below
+decides the pipeline.  This section is the plan's R2 (built 2026-08-17);
+§ R2 below is still the pipeline and is unchanged.
+
+**The one rule: the live camera is a function of ELAPSED TIME and the
+world — never of how the frames were cut.**
+
+### ⚠⚠ The ease is exponential, because `play.loft` already promised this
+
+moros spells the approach `f = k · dt`, clamped to 1.  dryopea cannot,
+and the reason is one repo over rather than one library over: plan 19 P0
+measured that **1200 frames of 1/60 s and one frame of 20 s reach the
+same simulation state**, and it is the property nothing here would
+survive losing.  A camera easing linearly would break it for the one
+artefact a player actually sees.
+
+`1 − e^(−k·dt)` composes — sixty factors of `e^(−k/60)` are one factor of
+`e^(−k)` — so it is EXACT rather than close, and `@M023` measures both
+forms side by side: exponential 0.9975212478233336 either way, linear
+1.0 against 0.9982.  ⚠ The linear pair is measured *in the same test*,
+as R1's generic control demands: a gate that only shows the good form
+agreeing is green for an ease stubbed to a constant.
+
+### ⚠⚠ Three valves, and the reason is the LATTICE
+
+moros eases a camera following a character whose position is three
+floats.  dryopea's vehicle is `(q, r)` — two integers — and it moves a
+whole hex, **1.299 m**, on the tick it steps.  So the ease is not a
+polish pass here; it is what makes a discrete simulation look like a
+moving world, and it carries the TARGET and the AZIMUTH as well as the
+boom.  Measured over one drive (`@M023`): the un-eased camera moves on
+**12 of 240** frames, worst frame 1.299 m; the eased one on **221 of
+240**, worst frame **0.143 m**.
+
+⚠ `plans/21` § R2 names only the boom.  That is the phase
+under-describing itself: a camera easing the boom alone would ease the
+one quantity the player changes least.
+
+### ⚠⚠ And the azimuth wraps — reachable with the keys that ship
+
+Holding **A** drives due west, bearing `atan2(0, −1) = π`, azimuth
+**360°**.  Adding **S** sends the vehicle to the odd-r south-west
+neighbour at −120°, azimuth **60°**.  Eased as plain numbers that is a
+**−300°** swing on one extra keypress — five sixths of a circle the
+wrong way, on a camera that tracks and eases and looks correct
+throughout.  `cam_wrap_delta` folds the difference into `(−180, 180]`.
+
+⚠ **60° and not the 45° the key names**, because `vehicle_facing` reads
+the velocity between hex CENTRES (`@X067`).  The lattice decides where
+the camera swings to, not the finger.
+
+### ⚠ The occlusion asks the walker the TOWERS ask
+
+`passable.loft::sight_first_block` is now the one line-walker, and it
+answers **where** rather than **whether** (`@X071`) — a tower needs the
+boolean, a camera needs the distance, and two walkers would be two
+answers about one world.  ⚠ It walks both endpoints where `tower_sees`
+used to skip them; the skip was never load-bearing (a looker's eye sits
+on top of its own hex) and the camera's far endpoint is the EYE, which
+is precisely the case that has to be checkable.
+
+Measured (`@M024`): the resting boom is **5.831 m**; a `wall_high` across
+the whole line lends **0.708 m**; one `wall_high` at the far cell lends
+**3.624 m**; a plain `wall` at that same cell lends the **whole** boom,
+because the ray there is 3.10 m up.  ⚠ Near the vehicle the two kinds
+are indistinguishable — one hex out the ray is 1.6 m and both stop it —
+so the camera reads a HEIGHT and never a kind, which is § R4's own claim
+one looker over.
+
+⚠ **The free length is quantised to hex steps**, because the walker
+walks hexes: at the resting boom the line is four cells long.  It is
+smoothed in TIME rather than in space.  The trigger for a sub-hex march
+is terrain elevation (plan 02) — a hillside occludes for a long time
+where a wall occludes for a moment.
+
+### ⚠ What R2 deliberately did NOT build
+
+**No pitch assist.**  moros lifts the pitch to look over a sustained
+obstruction and shortens the boom for a transient one, and that division
+of labour is the right one — but dryopea's occluders are walls the
+vehicle drives past, which is the boom's case.  The trigger for the
+pitch half is terrain the player stands *below*, which is plan 02 again.
+
+**No shoulder slide, no body hiding, no head-lamp.**  All three are
+moros's answers to an INTERIOR (`@X015`), and dryopea's bases have no
+roofs.
+
+**Still no mouse binding.**  `camera_rig_zoom` joins `camera_orbit` in
+existing and being pressed by nothing.
+
+---
+
 ## R2 — the pipeline: geometry is shared, rasterisation is not  `@X010`
 
 **The decision: one geometry layer, and the rasteriser below it is swappable.**
@@ -476,6 +572,11 @@ size, a travel mechanic or what is out there.
    editor's.  *Decision: a `RenderCamera` on `PlayState`, beside the roster and
    the clock — it is a property of a live session, the same argument plan 19 P3
    made for `playing`.*
+   ⚠ **BUILT, R2** — as a `CameraRig`, which is the `RenderCamera` plus the one
+   fact the world cannot supply: the boom the PLAYER asked for (`@X070`).  ⚠ It
+   waited a phase on purpose: until the ease existed there was nothing for a
+   session to REMEMBER between frames, and a field nobody reads is a decision
+   validated by nothing.
 
 5. **Does dryopea depend on `moros_render`, or port the camera?**  Same shape as
    `PARTS.md` § D1 and the same answer for now: `moros_render` is unpublished and

@@ -56,6 +56,10 @@
 
 use lattice;
 use vehicle;
+use palette;
+use painted;
+use height;
+use passable;
 use mesh3d;
 
 // π.  loft has no builtin, and `mesh3d` exports none.
@@ -158,17 +162,28 @@ pub fn lat_to_world(h: const Hex, z: float) -> Vec3 {
 
 // ─── Where the eye is ───────────────────────────────────────────
 
-// Eye position, from the spherical coordinates around the target.
-pub fn camera_eye(cam: const RenderCamera) -> Vec3 {
+// Eye position for a boom of `d`, from the spherical coordinates around
+// the target.
+//
+// ⚠ The length is a PARAMETER rather than `cam.distance`, because the
+// occlusion solve has to ask *where would the eye be if the boom were
+// its full length* before deciding whether it may have that length
+// (§ camera_boom_free).
+pub fn camera_eye_at(cam: const RenderCamera, d: float) -> Vec3 {
     ce_d2r  = CAM_PI / 180.0;
     ce_az   = cam.azimuth * ce_d2r;
     ce_el   = cam.elevation * ce_d2r;
-    ce_horiz = cam.distance * cos(ce_el);
+    ce_horiz = d * cos(ce_el);
     vec3(
         cam.target.x + ce_horiz * cos(ce_az),
         cam.target.y + ce_horiz * sin(ce_az),
-        cam.target.z + cam.distance * sin(ce_el),
+        cam.target.z + d * sin(ce_el),
     )
+}
+
+// Eye position, from the spherical coordinates around the target.
+pub fn camera_eye(cam: const RenderCamera) -> Vec3 {
+    camera_eye_at(cam, cam.distance)
 }
 
 pub fn camera_view_matrix(cam: const RenderCamera) -> Mat4 {
@@ -342,4 +357,329 @@ pub fn camera_follow_vehicle(v: const Vehicle, z: float, cam: RenderCamera) {
     } else {
         cam.target = cfv_at;
     }
+}
+
+// ─── The ease (plan 21 R2) ──────────────────────────────────────
+//
+// ⚠⚠ **THE EASE IS NOT A POLISH PASS — it is what makes a DISCRETE
+// simulation look like a moving world.**
+//
+// moros eases a camera that follows a character with a floating-point
+// position: there, the ease smooths a small residual and the picture is
+// already continuous without it.  dryopea's vehicle stands on a LATTICE.
+// Its position is `(q, r)` — two integers — and it changes by a whole
+// hex, 1.299 m, on the tick it steps.  An un-eased follow camera would
+// therefore sit perfectly still for two thirds of a second and then jump
+// a hex; that is not a camera with a rough edge, it is a slide show.
+//
+// So the ease carries three valves and not one: the TARGET (which turns
+// hex steps into motion), the AZIMUTH (which turns eight discrete WASD
+// headings into a swing) and the BOOM (which is moros's own case — a
+// correction the world imposes).  ⚠ `plans/21` § R2 names only the
+// boom, and that is the phase under-describing itself rather than a
+// scope creep: a camera that eased the boom alone would ease the one
+// quantity the player changes least.
+//
+// ── ⚠⚠ AND THE APPROACH IS EXPONENTIAL, NOT LINEAR ──────────────
+//
+// moros spells the step `f = k · dt`, clamped to 1.  dryopea cannot:
+// **that form is frame-rate DEPENDENT**, and `play.loft` is built on
+// the opposite property — *"1200 frames of 1/60 s and one frame of 20 s
+// reach the same state"*, which is plan 19 P0's finding and the one
+// nothing in the repo would survive losing.
+//
+// Measured before this was written, easing 0 → 1 over one second:
+//
+//     linear       one frame of 1 s   1.0             sixty of 1/60 s   0.9982029897
+//     exponential  one frame of 1 s   0.9975212478    sixty of 1/60 s   0.9975212478
+//
+// — identical to the bit, because `1 − e^(−k·dt)` composes: sixty
+// factors of `e^(−k/60)` are one factor of `e^(−k)`.  ⚠ That is an
+// EXACT property of the function rather than a tolerance, and it is
+// what lets a gate photograph the camera after N seconds without
+// asking how the frames were cut.
+
+// Gap fraction per second for the FRAMING valves — the target and the
+// azimuth.
+//
+// ⚠ **Derived from the vehicle's speed, not chosen.**  An exponential
+// approach chasing something moving at `v` settles at a steady lag of
+// `v / k`.  A cruising vehicle covers `VEHICLE_SPEED_HEX_PER_SECOND`
+// (3 hex/s = 3.897 m/s), and the camera should trail it by under half a
+// hex — so `k ≥ 3.897 / 0.6495 = 6.0`.
+//
+// ⚠ At BOOST (6 hex/s) the same rate trails by a whole hex, and that is
+// kept rather than corrected: a camera that falls behind under boost and
+// catches up afterwards is the boost reading as speed.  ⚠ It also sizes
+// the azimuth's worst case, which is the 180° reversal a WASD flip asks
+// for: `180 · e^(−6·0.5) = 9°` left after half a second.
+pub const CAMERA_EASE_RATE: float = 6.0;
+
+// The boom's two rates, and the asymmetry is moros's design decision
+// ported with its reason: **coming IN is a correction and wants to be
+// prompt; going OUT is a return to rest and wants to be unnoticed.**
+pub const CAMERA_BOOM_IN:  float = 12.0;
+pub const CAMERA_BOOM_OUT: float = 2.5;
+
+// How close counts as ARRIVED — see § camera_rig_step's snap.
+pub const CAMERA_REST_EPSILON: float = 1.0e-4;
+
+// How far short of an obstruction the eye stops.
+//
+// ⚠ **Half a hex plus a margin, and the half is what matters.**  The
+// walker reports a block on a HEX, and a hex is `HEX_FLAT_TO_FLAT`
+// across centred on its centre — so a skin under half of that stops the
+// boom INSIDE the obstruction, with the far face of a wall a hand's
+// breadth from the lens.  moros measured exactly this failure (its
+// `CAM_SKIN` was under half a wall band, and every wall-limited boom
+// parked the eye in the masonry); dryopea takes the derivation rather
+// than the number, because dryopea's obstructions are hexes and moros's
+// are edge bands.
+pub const CAMERA_SKIN: float = 0.749519;   // HEX_FLAT_TO_FLAT * 0.5 + 0.10
+
+// What the camera looks at, in metres above the hex the vehicle stands
+// on: the hover clearance plus half the body.
+//
+// ⚠ Both halves are somebody else's number — `VEHICLE_CLIMB_METRES` is
+// the hover gap the simulation already uses as a climb, and the 0.9 m
+// body is `docs/PROXY_ART.md` § Player vehicle.  When [`plan
+// 20`](../plans/20-entity-art/README.md) makes the body a constant this
+// becomes the expression it is written as.
+pub const CAMERA_TARGET_HEIGHT_METRES: float = 0.85;   // 0.4 + 0.9 / 2
+
+// What one frame of `dt` closes of a gap.
+//
+// ⚠ **`1 − e^(−k·dt)`, and the header says why it may not be `k·dt`.**
+// Zero for a frame with no time in it, which is what an edit frame
+// hands down (`play_frame_seconds`).
+fn cam_ease_fraction(k: float, dt: float) -> float {
+    if dt <= 0.0 { return 0.0; }
+    1.0 - exp(-(k * dt))
+}
+
+// Move `now` toward `want` by one frame's worth.
+pub fn cam_approach(now: float, want: float, k: float, dt: float) -> float {
+    now + (want - now) * cam_ease_fraction(k, dt)
+}
+
+// An angle in degrees, folded into `[0, 360)`.
+pub fn cam_wrap_deg(a: float) -> float {
+    cwg = a % 360.0;
+    if cwg < 0.0 { cwg = cwg + 360.0; }
+    cwg
+}
+
+// A DIFFERENCE of angles, folded into `(−180, 180]` — the short way
+// round.
+//
+// ⚠⚠ **This is not defensive tidying; the shipped key set reaches the
+// wrong-way swing.**  Holding A drives due west, whose bearing is
+// `atan2(0, −1) = π`, so the camera's azimuth is 360°.  Adding S sends
+// it south-west, azimuth **60°**.  The true turn is 60°; eased as plain
+// numbers it is **−300°**, and the camera spins five sixths of a circle
+// the wrong way on one extra keypress.  ⚠ It looks like a camera the
+// whole time, which is why it needs a test rather than an eye.
+//
+// ⚠ **60° and not 45°, and the difference is the lattice.**  A/S is a
+// heading in METRES, so the key names a 45° direction — but the vehicle
+// arrives at a hex, and `vehicle_facing` reads the velocity between hex
+// CENTRES (`@X067`).  Pointy-top odd-r puts the south-west neighbour at
+// −120°, so the camera swings to the hex the vehicle reached rather than
+// to the compass point the finger asked for.  Measured in
+// `tests/21_r2_the_boom.loft` § The shipped keys reach the wrong-way
+// swing, which is where the numbers above come from.
+pub fn cam_wrap_delta(d: float) -> float {
+    cwd = d % 360.0;
+    if cwd > 180.0   { cwd = cwd - 360.0; }
+    if cwd <= -180.0 { cwd = cwd + 360.0; }
+    cwd
+}
+
+// Move an ANGLE toward another by one frame's worth, the short way.
+pub fn cam_approach_angle(now: float, want: float, k: float, dt: float) -> float {
+    cam_wrap_deg(now + cam_wrap_delta(want - now) * cam_ease_fraction(k, dt))
+}
+
+// ─── What the world lets the boom have ──────────────────────────
+
+// The longest boom that keeps the vehicle in sight, given the camera's
+// current target and orbit and the length the player asked for.
+//
+// The line is `passable.loft::sight_first_block` — the SAME walker
+// `tower_sees` asks, which is what stops the camera and the towers
+// disagreeing about what a wall blocks.  The eye is put at the full
+// `want`, the walker is asked where the view first fails, and the boom
+// is cut to just short of that.
+//
+// ⚠ **A clear line takes the WHOLE boom, with no skin taken off it.**
+// The skin is a clearance FROM SOMETHING, and moros shipped the
+// unconditional subtraction for as long as that camera existed — every
+// unobstructed boom came back one skin short, which is a ninth of
+// dryopea's at rest and reads as a camera that never quite pulls out.
+//
+// ⚠ **The free length is quantised to hex steps**, because the walker
+// walks hexes: at the resting boom the line is three or four cells
+// long, so the answer moves in quarters.  It is smoothed in TIME by the
+// ease rather than in space, which is enough while the only occluders
+// are `wall`-height structures the vehicle drives past.  The trigger for
+// a sub-hex march is a visible step when the camera is otherwise still —
+// terrain elevation (plan 02) is what would produce one, because a
+// hillside occludes for a long time rather than for a moment.
+pub fn camera_boom_free(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+                        cam: const RenderCamera, want: float) -> float {
+    cbf_eye = camera_eye_at(cam, want);
+    // ⚠ Back out of the CAMERA's world (+y north) into the lattice's
+    // metres (+y south) — `lat_to_world`'s negation, undone.  A second
+    // site that forgets it asks about a hex mirrored across the core.
+    cbf_at = lat_from_metres(cam.target.x, -cam.target.y);
+    cbf_to = lat_from_metres(cbf_eye.x, -cbf_eye.y);
+
+    cbf_n = lat_distance(cbf_at, cbf_to);
+    if cbf_n <= 1 { return want; }
+
+    cbf_i = sight_first_block(pal, pw, hl, cbf_at, cbf_to, cam.target.z, cbf_eye.z);
+    if cbf_i < 0 { return want; }
+
+    // The blocked cell is `i` of `n` along the ground, and the boom's
+    // ground projection is uniform in the boom — so `i/n` of the boom is
+    // where the view fails, in the same fraction the ray's own lerp uses.
+    cbf_free = want * (((cbf_i as float) / (cbf_n as float)) ?? 0.0) - CAMERA_SKIN;
+    // ⚠ Never zero: `mat4_look_at` needs a non-zero eye-to-target
+    // vector, and at zero the whole view basis is `normalize(0)`.
+    if cbf_free < CAMERA_DISTANCE_MIN { return CAMERA_DISTANCE_MIN; }
+    cbf_free
+}
+
+// ─── The rig: a live camera, and what it is easing toward ───────
+
+// The camera a session is looking through, plus the one thing that is
+// not derivable from the world: the boom the PLAYER asked for.
+//
+// ⚠ **Two booms, and they are different facts.**  `cam.distance` is
+// what the eye HAS this frame — eased, and cut short by whatever is in
+// the way.  `boom` is what the player wants, which the wheel sets and
+// occlusion may lend less of.  Collapse them into one and a wall in the
+// way permanently rewrites the player's zoom: the camera would pull in
+// behind the wall and stay there after it had gone.
+pub struct CameraRig {
+    cam:  RenderCamera,
+    boom: float,
+    // Has everything arrived?  Read by the snap, and by a test that
+    // wants to know whether the ease is still working.
+    rested: boolean,
+}
+
+pub fn camera_rig_new() -> CameraRig {
+    CameraRig {
+        cam:    render_camera_default(),
+        boom:   CAMERA_FOLLOW_DISTANCE,
+        rested: false,
+    }
+}
+
+// The wheel: change the boom the PLAYER wants, never the one the eye
+// has.
+//
+// ⚠ `camera_zoom` is the other door and it writes `cam.distance`
+// directly — which is right for an overview, where nothing is easing
+// and nothing occludes, and wrong here, where the next frame's ease
+// would erase it.
+pub fn camera_rig_zoom(rig: CameraRig, delta: float) {
+    crz_d = rig.boom + delta;
+    if crz_d < CAMERA_DISTANCE_MIN { crz_d = CAMERA_DISTANCE_MIN; }
+    if crz_d > CAMERA_DISTANCE_MAX { crz_d = CAMERA_DISTANCE_MAX; }
+    rig.boom = crz_d;
+}
+
+// The framing valves, one frame's worth.
+//
+// ⚠ Takes the camera as a PARAMETER rather than reaching through
+// `rig.cam`: a struct in a field of another struct is a COPY in loft,
+// and a parameter aliases.  Every write to the live camera in this file
+// goes through a function shaped like this one.
+fn camera_ease_pose(cam: RenderCamera, want: const Vec3, want_az: float, dt: float) {
+    cam.target = vec3(
+        cam_approach(cam.target.x, want.x, CAMERA_EASE_RATE, dt),
+        cam_approach(cam.target.y, want.y, CAMERA_EASE_RATE, dt),
+        cam_approach(cam.target.z, want.z, CAMERA_EASE_RATE, dt),
+    );
+    cam.azimuth = cam_approach_angle(cam.azimuth, want_az, CAMERA_EASE_RATE, dt);
+}
+
+// The boom, one frame's worth — fast in, slow out.
+fn camera_ease_boom(cam: RenderCamera, free: float, dt: float) {
+    ceb_k = CAMERA_BOOM_OUT;
+    if free < cam.distance { ceb_k = CAMERA_BOOM_IN; }
+    cam.distance = cam_approach(cam.distance, free, ceb_k, dt);
+}
+
+// Is every valve within `CAMERA_REST_EPSILON` of where it is going?
+fn camera_at_rest(cam: const RenderCamera, want: const Vec3, want_az: float,
+                  free: float) -> boolean {
+    abs(cam.target.x - want.x)  < CAMERA_REST_EPSILON
+        && abs(cam.target.y - want.y)  < CAMERA_REST_EPSILON
+        && abs(cam.target.z - want.z)  < CAMERA_REST_EPSILON
+        && abs(cam_wrap_delta(cam.azimuth - want_az)) < CAMERA_REST_EPSILON
+        && abs(cam.distance - free) < CAMERA_REST_EPSILON
+}
+
+// Put every valve exactly where it was going.
+fn camera_snap(cam: RenderCamera, want: const Vec3, want_az: float, free: float) {
+    cam.target = vec3(want.x, want.y, want.z);
+    cam.azimuth = cam_wrap_deg(want_az);
+    cam.distance = free;
+}
+
+// ─── One frame of camera ────────────────────────────────────────
+
+// Bring the camera `dt` seconds closer to where the vehicle is, where
+// it is pointing, and how much boom the world will lend.
+//
+// ⚠⚠ **This runs on EVERY frame — never only on frames where the
+// vehicle moved, and never only on frames that spent a tick.**  That is
+// the fault moros shipped one level over: its solve sat inside `if
+// moved`, so a converged camera never left the server, and the failure
+// was invisible in precisely the case a follow camera exists for — the
+// player standing still and looking at something.  Here the equivalent
+// mistake is putting this inside `play_advance`'s tick loop, where at
+// 60 fps it would run on one frame in forty and the ease would be a
+// stutter with the same average.  `tests/21_r2_the_boom.loft` § A frame
+// that spends no tick still moves the camera is the control.
+//
+// ⚠ **A camera with no vehicle does not ease anywhere.**  There is
+// nothing to follow, so the last pose stands — which is what an edit
+// session sees, and what a run sees between a wreck and the respawn.
+pub fn camera_rig_step(rig: CameraRig, v: const Vehicle,
+                       pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+                       dt: float) {
+    if !vehicle_present(v) { return; }
+
+    // Where it wants to be.
+    crs_z    = hex_height(pal, pw, hl, v.q, v.r) + CAMERA_TARGET_HEIGHT_METRES;
+    crs_want = lat_to_world(Hex { q: v.q, r: v.r }, crs_z);
+    // ⚠ A PARKED vehicle keeps the azimuth it had — `vehicle_facing`
+    // answers a pair for exactly this reason (R1, `@X067`).
+    crs_face = vehicle_facing(v);
+    crs_az   = rig.cam.azimuth;
+    if crs_face.1 { crs_az = crs_face.0 * 180.0 / CAM_PI + 180.0; }
+
+    camera_ease_pose(rig.cam, crs_want, crs_az, dt);
+
+    // ⚠ **The occlusion is solved AFTER the pose has moved**, from the
+    // orbit the eye is actually on this frame.  Solving it against the
+    // pose the camera is heading for would shorten the boom for a wall
+    // it has not swung behind yet.
+    crs_free = camera_boom_free(pal, pw, hl, rig.cam, rig.boom);
+    camera_ease_boom(rig.cam, crs_free, dt);
+
+    // ⚠⚠ **REST MEANS ARRIVED, NOT NEARLY ARRIVED.**  An exponential
+    // approach is asymptotic: without this the camera would sit a
+    // millionth short of its target for ever, and WHERE in that band it
+    // stopped would be a function of how the frames happened to fall.
+    // moros measured a 0.025-unit spread in a resting eye from exactly
+    // this, over two runs of one gate on one build.  The step this
+    // closes is at most `CAMERA_REST_EPSILON`, which is a bound already
+    // chosen as invisible — so it cannot be seen, only measured.
+    rig.rested = camera_at_rest(rig.cam, crs_want, crs_az, crs_free);
+    if rig.rested { camera_snap(rig.cam, crs_want, crs_az, crs_free); }
 }

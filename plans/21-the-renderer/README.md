@@ -9,8 +9,19 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**R0 + R1 done** (R1 2026-08-17).  R2 is next.  Suite **1177** green, gate 33
-scripts / **654 measurements unchanged** — the camera touches no simulation.
+**R0 + R1 + R2 done** (R2 2026-08-17).  R3 is next.  Suite **1198** green, gate
+33 scripts / **654 measurements unchanged** — the camera touches no simulation,
+and R2 moved none of them either.
+
+⚠⚠ **R2's headline is a rule dryopea already had and the camera nearly broke**:
+`play.loft` is frame-rate independent by construction (`19-P0`), so moros's
+linear `f = k·dt` ease could not be ported.  `1 − e^(−k·dt)` composes exactly —
+one frame of a second and sixty of a sixtieth land on the same bits (`@M023`).
+
+⚠⚠ **And the ease turned out to be load-bearing for a reason moros does not
+have**: dryopea's vehicle is a LATTICE position, so it jumps 1.299 m on the tick
+it steps.  Un-eased the camera moves on 12 frames of 240; eased, on 221, with a
+worst frame nine times smaller.
 
 ⚠⚠ **R1 corrected the design in three places, and one of them was this
 document's own frame note.**  `docs/RENDERER.md` § Open 5 warns that
@@ -77,7 +88,7 @@ Implements, and does not restate:
 |---|---|---|---|
 | **R0** ✓ | a GL frame captured under `xvfb` and decoded: red 9 600 px = exactly 120×80, green 8 005 ≈ π·50², **`other` = 0** | classification is an EXACT lookup and survives GL → PNG → decode | ⚠ `gl_screenshot` returning `true` proves NOTHING about pixels — probe 1 alone would have "passed" against a black frame, which is why probe 2 exists and is the one that counts |
 | **R1** ✓ | `camera_follow` puts the eye behind the vehicle's velocity at all four cardinal headings; `camera_overview` at 89° reproduces the editor's view to **0.0014 rad and 0.56% of scale** (`@M022`) | one camera, two presets — the editor's existing view is a MODE of the game's camera | ⚠ **read the eye out of the VIEW MATRIX** (`eye = −Rᵀt`), never out of the camera's own trace.  ⚠⚠ **TWO controls FIRED and a third was missing**: § The moros formula puts the camera abeam fired as designed; `@M021`'s south-frame sweep fired (zero azimuths of eight); and the overview gate itself **read a perfect 0.0 rad twice while measuring nothing** — the missing control was *"can this gate produce a non-trivial reading at all?"*, now an assertion |
-| **R2** | the boom eases toward its target over ticks after the vehicle stops | the ease is PUBLISHED, not merely solved | ⚠⚠ **the exact bug moros shipped**: the solve sat inside `if moved`, so a converged camera never left the server and the fault was invisible in precisely the case the camera exists for.  The control is a frame captured with the vehicle STANDING STILL |
+| **R2** ✓ | the ease is exponential and lands on the same camera at 60 fps and 10 fps (`@M023`); a `wall_high` on the sight line takes the boom 5.831 m → 3.624 m, a `wall` at the same cell takes nothing (`@M024`) | the ease is PUBLISHED, not merely solved | ⚠⚠ **the exact bug moros shipped**: the solve sat inside `if moved`, so a converged camera never left the server and the fault was invisible in precisely the case the camera exists for.  The control is § A standing vehicle still brings the camera home, plus § A frame that spends no tick still moves the camera — a 0.1 s frame buys zero ticks and must still move the eye.  ⚠ The linear ease is measured BESIDE the exponential one and asserted to disagree, so a stubbed ease cannot pass |
 | **R3** | a hex carrying rubble meshes at `hex_height` (structure **+** layer) and colours from `hex_ground` (`rubble`) | the surface is not the painted kind (`CLAUDE.md`'s oldest trap) | ⚠ get it backwards and piling debris on a wall LOWERS it — visibly, and no existing test would fail |
 | **R4** | the same scenario, drawn by GL and classified, lands in the same bands the software path reports | one geometry layer under two rasterisers (§ R2) | ⚠ **lighting breaks exact classification** — a shaded frame turns one palette colour into a range and `unknown` stops meaning "fault".  The gate renders FLAT UNLIT; loosening to nearest-colour would discard what R0 measured |
 | **R5** | a frame-cost RATIO inside `loft test` | cost is a ratio, never a stopwatch | ⚠ `CLAUDE.md` § Cost: an unchanged file timed 173 / 737 / 754 ms on three interpreter runs, and discarded structs are not freed — a standalone stopwatch here measures the harness |
@@ -88,8 +99,8 @@ Implements, and does not restate:
 |---|---|---|---|
 | **R0** — can a GL frame be gated headlessly? | XS | two probes: `xvfb` + GL context + `gl_screenshot`, then `imaging::png` + exact classification.  **Measured: `other` = 0 over 76 800 px** | **Done** (2026-08-15) |
 | **R1** — the camera | M | `tests/21_r1_the_camera.loft` (15 fns) — `RenderCamera` ported with moros's fields; follow puts the eye behind the VELOCITY; overview at 89° matches the editor's projection to 0.08° and 0.56%.  ⚠ Asserted on the VIEW MATRIX, not on the struct | **Done** (2026-08-17) |
-| **R2** — the boom: ease and occlusion | M | `tests/21_r2_the_boom.loft` — the ease converges with the vehicle still; a `wall_high` between eye and vehicle moves the boom.  ⚠ Occlusion asks `tower_sees`, not a second line-walker.  ⚠ Carries R1's deferred half: the `RenderCamera` field on `PlayState` (`@X014`), which needs an ease to have something to remember between frames | **Next** |
-| **R3** — the terrain mesh | **H** — ⚠ probably its own plan | `tests/21_r3_the_mesh.loft` — top faces at `hex_height`, side quads to lower neighbours, rubble surfaces coloured from `hex_ground`, rebuilt per dirty chunk | Blocked on R1 |
+| **R2** — the boom: ease and occlusion | M | `tests/21_r2_the_boom.loft` (21 fns) — the ease is exponential and frame-rate independent, the azimuth wraps the short way, the boom shortens behind a wall on the line and not beside it, and rest is EXACT.  ⚠ Occlusion asks the walker `tower_sees` asks, which R2 factored out into `passable.loft::sight_first_block`.  ⚠ Carried R1's deferred half: `PlayState.cam` (`@X014`), as a `CameraRig` | **Done** (2026-08-17) |
+| **R3** — the terrain mesh | **H** — ⚠ probably its own plan | `tests/21_r3_the_mesh.loft` — top faces at `hex_height`, side quads to lower neighbours, rubble surfaces coloured from `hex_ground`, rebuilt per dirty chunk | **Next** |
 | **R4** — the GL path and the gate chain | MH | `scripts/validate.sh` gains GL scenarios under `xvfb`; `classify_world` reads a decoded capture.  Flat-unlit render mode for the gate | Blocked on R3 |
 | **R5** — cost | S | `tests/21_r5_the_frame_budget.loft` — a RATIO, the shape `11_f8` already uses | Blocked on R4 |
 
@@ -180,6 +191,88 @@ plan before it is started, and the phase table says so rather than pretending.
 **R4 after R3** because a gate over an empty world is not a gate — the same
 lesson `tests/11_f8_the_tick_budget.loft` learned when it ticked a MARKERLESS
 world and could not have seen a line-of-sight regression.
+
+## R2 — the boom (2026-08-17)
+
+`src/render_camera.loft` § The ease onward, `src/passable.loft::sight_first_block`,
+`PlayState.cam`, and `tests/21_r2_the_boom.loft` (21 fns).  The decisions are
+[`docs/RENDERER.md`](../../docs/RENDERER.md) § R2b and are not restated;
+`@X068`-`@X071` and `@M023`-`@M024` are the codes.  What belongs here is what the
+phase LEARNED.
+
+### ⚠⚠ The ease could not be ported, and the reason was in another plan
+
+moros's `cam_approach` is `f = k · dt`, clamped.  It is the obvious shape, it is
+what every engine writes, and it is **frame-rate dependent** — 0→1 over one
+second reads 1.0 as one frame and 0.9982 as sixty.
+
+dryopea cannot have that, and the reason is not aesthetic: plan 19 P0 measured
+that *1200 frames of 1/60 s and one frame of 20 s reach the same state*, and
+`play.loft` § And there is no epsilon is built on it.  A camera that disagreed
+would put a frame-rate dependence into the one artefact the player looks at,
+under a gate chain (§ R4) whose whole job is to photograph frames.
+
+⚠ **The lesson is about where to look for a port's constraints.**  The camera's
+came from `play.loft` — a file the camera does not call, in a plan two numbers
+away.  *Before porting a routine, ask what the RECEIVING system has already
+promised*, because the donor made no such promise and its code cannot say so.
+
+### ⚠⚠ The ease turned out to be doing a different job here
+
+moros eases a camera following floats.  dryopea's vehicle is `(q, r)`, two
+integers, and it moves a whole hex on the tick it steps.  So the ease is not
+smoothing a residual — it is the entire reason the picture moves between ticks.
+Measured over 240 frames with the vehicle stepping every twentieth:
+
+| | frames that moved | worst single frame |
+|---|---|---|
+| un-eased (`camera_follow_vehicle`) | **12 / 240** | 1.299 m |
+| eased (`camera_rig_step`) | **221 / 240** | **0.143 m** |
+
+⚠ That is why the ease carries THREE valves where the phase's own title names
+one.  A camera easing the boom alone would ease the quantity the player changes
+least and leave the two that jump.
+
+### ⚠⚠ The azimuth bug is reachable with the shipped keys, and it looks fine
+
+Holding **A** is due west — azimuth 360°.  Adding **S** sends the vehicle to the
+odd-r south-west neighbour — azimuth 60°.  Eased as plain numbers that is
+**−300°**: the camera swings five sixths of a circle the wrong way, smoothly,
+decelerating properly, on a rig that is working in every other respect.
+
+⚠ **60° and not 45°**, and the gap is the lattice: A/S names a metre heading at
+45°, but `vehicle_facing` reads the velocity between hex CENTRES (`@X067`), and
+odd-r puts that neighbour at −120°.  ⚠ The first draft of the test asserted 45°
+and the source comment claimed it; the measurement corrected both.
+
+### ⚠ Two tests failed on the FIXTURE, and each named something real
+
+Both were written expecting the code to be wrong and found the fixture wrong
+instead — which is the same cheap design review R1 recorded, one layer down.
+
+| the test assumed | what is true | what it changed |
+|---|---|---|
+| `wall_high` is 6 m (a tower's height, misremembered) | it is **5 m**; `wall` is 3 m | the assertion now reads the two heights out of the palette and asserts the PRECONDITION (both ends stand on something, each looker is above its own surface) rather than a number |
+| a wall anywhere on the line separates the two kinds | near the vehicle the ray is only **1.6 m** up and BOTH kinds stop it | the test now FINDS the cell whose ray falls between 3 m and 5 m, and fails loudly if none does |
+
+⚠ The second one is the one to keep: walling the whole line read the same boom
+twice and looked exactly like *a camera that reads a kind rather than a height*
+— a false red that would have been "fixed" by adding the kind table
+`12-B5b` exists to forbid.
+
+### ⚠ One walker, and the endpoint skip was never load-bearing
+
+`tower_sees` walked its own line and skipped both endpoints with a comment
+calling the skip essential.  It is not: a tower's eye is its hex plus 6 m and
+its aim is the target's hex plus the body, so **neither end can stand above a
+ray that starts on top of it**.  The skip was a restatement of the heights.
+
+Deleting it is what lets the camera share the walker, because the camera's far
+endpoint is the EYE and terrain there is exactly the eye-inside-the-hillside
+case.  ⚠ The walker moved to `passable.loft` — it is a question about
+`hex_height`, and putting it there means the camera does not depend on towers.
+`tower_sight_fault` now asks it too, so the predicate and the message it
+explains cannot disagree.
 
 ## Cross-repo coordination
 

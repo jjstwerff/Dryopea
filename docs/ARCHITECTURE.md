@@ -84,11 +84,18 @@ src/
                    Also owns VIEW_W / VIEW_H / VIEW_PPM (the window
                    size IS the shot size).  Never mutates the state
   play.loft        the GAME's seam (plan 19 P1) — PlayState { wave,
-                   banked, ticks, prev, playing } + play_state_new /
-                   play_core / play_ticks / play_advance / play_step,
-                   plus the play ACTIONS (P2) and the MODE (P3:
-                   play_mode / play_set_mode / play_begin /
-                   play_frame_seconds).
+                   banked, ticks, prev, playing, cam } +
+                   play_state_new / play_core / play_ticks /
+                   play_advance / play_step, plus the play ACTIONS
+                   (P2) and the MODE (P3: play_mode / play_set_mode /
+                   play_begin / play_frame_seconds).
+                   ⚠ `cam` is the game's CameraRig (plan 21 R2,
+                   @X014).  `play_step` ends by stepping it — on
+                   EVERY frame, including frames that spend no tick,
+                   because the ease is a function of elapsed time.
+                   Putting it inside `play_advance`'s tick loop is
+                   the mistake: at 60 fps it would run on one frame
+                   in forty and stutter with the right average.
                    ⚠ **`play_one_tick` is the ONE call to `wave_tick`
                    in the repo**, and that is the whole invariant: a GL
                    loop that ticked the game itself, or a script verb
@@ -370,6 +377,27 @@ src/
                    RenderCamera { target: Vec3, azimuth,
                    elevation, distance, fov_y, near, far,
                    up: Vec3 }  (mesh3d owns Vec3 / Mat4)
+                   ⚠ And since plan 21 R2 the EASE — CameraRig
+                   { cam, boom, rested } + camera_rig_step, which
+                   is what `PlayState.cam` holds.
+                   ⚠⚠ The approach is `1 − e^(−k·dt)`, NOT moros's
+                   `k·dt`: the linear form is frame-rate dependent
+                   and `play.loft` is built on the opposite
+                   property (19-P0).  Exponential composes, so any
+                   subdivision of a second lands on the same bits
+                   (@M023).
+                   ⚠⚠ THREE valves ease, not just the boom — the
+                   vehicle is a LATTICE position and jumps 1.299 m
+                   on the tick it steps, so the target and the
+                   azimuth are what make the picture move at all.
+                   ⚠ The azimuth eases the SHORT way round: A then
+                   A+S is a real −300° swing otherwise (@M024).
+                   ⚠ Rest SNAPS — an asymptote stopped by a
+                   tolerance rests wherever the frames fell.
+                   ⚠ Occlusion asks `passable.loft::
+                   sight_first_block`, the same walker the towers
+                   ask; the boom's free length is quantised to hex
+                   steps and smoothed in TIME.
   painted.loft     PaintedHex { q, r, kind: u8 }
                    + PaintedWorld { painted: hash<PaintedHex[q, r]> }
                    + paint(), lookup_painted(), paint_line()
@@ -736,7 +764,19 @@ src/
                    F6) — the enemy KIND discriminants + climb_limit()
                    + hex_height() + can_stand() / can_step() /
                    can_occupy(), each with a `*_fault` twin that names
-                   the numbers.  TWO questions: is the SURFACE one this
+                   the numbers.
+                   ⚠ Since plan 21 R2 it also owns the SIGHT line —
+                   `sight_first_block` + SIGHT_EPSILON.  `can_step`
+                   asks what a mover may cross; this asks what
+                   reaches above a line drawn OVER it, and both are
+                   questions about `hex_height`.
+                   ⚠ It answers WHERE (the blocking cell's index),
+                   never whether: `tower_sees` is the boolean door
+                   and `camera_boom_free` the distance one.  A
+                   predicate cannot say how far to pull a boom in.
+                   ⚠ It walks BOTH endpoints, which `tower_sees`
+                   used to skip — a looker's eye sits on top of its
+                   own hex, so the skip only restated the heights.  TWO questions: is the SURFACE one this
                    class stands on (`walk_ground`), and is the STEP
                    within its climb.
                    ⚠ Since plan 12 B1 every surface question takes the
@@ -796,7 +836,8 @@ suite redirects its own shots into `tests/actual/`.
 | `EditorState` | `editor_step.loft` | the whole editor session — layers, camera, picker, mode, history, chunk dirty set |
 | `EditorInput` | `editor_step.loft` | one frame of player intent (hover hex + action flags) |
 | `EditorCamera` | `camera.loft` | `{ pos: Hex, zoom: integer }` |
-| `RenderCamera` | `render_camera.loft` | `{ target: Vec3, azimuth, elevation, distance, fov_y, near, far, up: Vec3 }` — the GAME's camera (plan 21 R1).  ⚠ Its world is `+y` NORTH with `+z` up, which is not dryopea's metre frame; `lat_to_world` is the one conversion.  ⚠ Not on `PlayState` yet (`@X014`, lands in R2) |
+| `RenderCamera` | `render_camera.loft` | `{ target: Vec3, azimuth, elevation, distance, fov_y, near, far, up: Vec3 }` — the GAME's camera (plan 21 R1).  ⚠ Its world is `+y` NORTH with `+z` up, which is not dryopea's metre frame; `lat_to_world` is the one conversion |
+| `CameraRig` | `render_camera.loft` | `{ cam: RenderCamera, boom: float, rested: boolean }` — the LIVE camera plus what the world cannot supply (plan 21 R2, `@X070`).  ⚠ **Two booms, and they are different facts**: `boom` is what the player asked for and the wheel writes; `cam.distance` is what the eye HAS after easing and occlusion.  Collapse them and a wall the vehicle drove past permanently rewrites the zoom.  ⚠ Lives on `PlayState.cam`, which closes `@X014` |
 | `InputState` | `camera.loft` | per-frame camera flags (in_pan_*, in_zoom_*) — folds into `EditorInput` in plan 08 V0b |
 | `PaintedHex` | `painted.loft` | `{ q, r, kind: u8 }` — one painted cell |
 | `PaintedWorld` | `painted.loft` | wrapper holding `hash<PaintedHex[q, r]>` |
@@ -805,7 +846,7 @@ suite redirects its own shots into `tests/actual/`.
 | `MapFile` | `map_file.loft` | save record (6 fields; see Known constraints) |
 | `GroundEntry` | `map_file.loft` | one persisted hex with kind as text name |
 | `ScriptRun` | `script.loft` | one `.keys` run — ok / failing line / message / counts, plus the pointer, the shots directory and the GAME it is playing.  ⚠ `run.play.wave` / `run.play.ticks` since plan 19 P1: the wave and the clock are ONE record, because `play_ticks` takes a `PlayState` and a run holding the pieces separately could only hand over copies |
-| `PlayState` | `play.loft` | a game in progress — the roster, the clock, the seconds banked toward the next tick, last frame's input, and whether the session is LIVE.  ⚠ What a live session has that an edited one does not; the world is passed in, never owned, because a struct in a field is a copy.  ⚠ `playing` (plan 19 P3) gates the CLOCK and never the seam — `EditorInput.in_playing` is the other, per-frame half and says what the KEYS mean |
+| `PlayState` | `play.loft` | a game in progress — the roster, the clock, the seconds banked toward the next tick, last frame's input, whether the session is LIVE, and the camera it is looking through.  ⚠ What a live session has that an edited one does not; the world is passed in, never owned, because a struct in a field is a copy.  ⚠ `playing` (plan 19 P3) gates the CLOCK and never the seam — `EditorInput.in_playing` is the other, per-frame half and says what the KEYS mean |
 | `FrameCounts` | `measure.loft` | one classified frame — pixels per bucket, `unknown` (not a palette colour = a fault), `total` |
 | `WaveState` | `spawn.loft` | the enemy roster + round-robin cursor + the runtime rubble layer + the structure damage ledger + every tower's banked charge + the run's wallet + the crew + the cargo — runtime, not editor state |
 | `Vehicle` | `vehicle.loft` | the player: where it is, where it is pointed, and whether it is in the world at all — ⚠ `parked` is separate because (0, 0) is a real hex and is the core in every scenario |

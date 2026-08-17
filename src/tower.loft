@@ -175,16 +175,9 @@ pub const TOWER_REPAIR_EPSILON: float = 1.0e-9;
 // `CARGO_REACH_HEXES` by arithmetic rather than by copying.
 pub const TOWER_REPAIR_REACH_HEXES: integer = 1;
 
-// How far above the sight line an obstacle has to reach before it
-// blocks the shot — a metre-scale rule decided at 1 nanometre.
-//
-// ⚠ **Not defensive noise: without it a float ulp decides whether a
-// tower works.**  The canonical geometry lands ON the boundary — a
-// 6 m tower, a 3 m wall halfway to a 1 m target, ray height exactly
-// 3.0 — and the ratios that produce it (1/2, 1/3, 3/10) are exact in
-// binary for some placements and a hair either side for others.  The
-// tie goes to the SHOOTER: a wall the line grazes is grazed, not hit.
-pub const TOWER_SIGHT_EPSILON: float = 1.0e-9;
+// ⚠ The sight epsilon moved to `passable.loft::SIGHT_EPSILON` in plan
+// 21 R2, with the tower's own reasoning intact — it is a property of
+// drawing a line over heights, and the camera draws one too.
 
 // ─── What a tower remembers between ticks ───────────────────────
 
@@ -564,43 +557,31 @@ pub fn tower_eye(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLaye
 // Can a tower at `from` put a shot into something `target_height`
 // metres tall standing at `to`?
 //
-// The line is `lat_line` and the arithmetic is one lerp: at the `i`th
-// of `n` cells the shot is `i/n` of the way from the eye down to the
-// target's top, and a cell that reaches above that stops it.
+// The line and the lerp are `passable.loft::sight_first_block`'s — the
+// ONE walker, shared with the camera's boom since plan 21 R2.  This is
+// the tower's door onto it: the eye is the tower's, the aim is the
+// target's top, and the answer is a yes/no because a shot either lands
+// or does not.
 //
-// ⚠ **Both endpoints are skipped, and neither is an off-by-one.**  The
-// tower stands ON the first cell — its own 3 m wall does not blind it
-// — and the enemy stands ON the last, so the ground under its feet is
-// not an obstacle between them.  Including either makes a tower on a
-// wall unable to shoot at all, which is the failure that looks like
-// "towers do not work" rather than like a bad line.
+// ⚠ **The endpoints are walked and CANNOT block, which used to be an
+// explicit skip.**  The tower stands ON the first cell — its own 3 m
+// wall does not blind it — and the enemy stands ON the last.  Both fall
+// out of the heights rather than out of an index test: the eye is
+// `hex_height(from) + TOWER_HEIGHT_METRES` and the aim is
+// `hex_height(to) + target_height`, so each end's own surface is BELOW
+// the ray that starts on top of it whenever those two offsets are
+// non-negative — which they are, by construction.  ⚠ Measured, not
+// argued: `tests/21_r2_the_boom.loft` § An endpoint cannot block its
+// own line, and the whole LOS corpus green either way.
 //
 // ⚠ Aimed at the target's TOP, not at its feet: a shot that reaches
 // any part of the body hits.  See `damage.loft::ENEMY_HEIGHT_METRES`
 // for why the difference is not cosmetic.
 pub fn tower_sees(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
                   from: const Hex, to: const Hex, target_height: float) -> boolean {
-    ts_n = lat_distance(from, to);
-    // Nothing can stand between a tower and its own hex or its
-    // neighbour, so the line is not worth walking.
-    if ts_n <= 1 { return true; }
-
-    ts_eye = tower_eye(pal, pw, hl, from);
-    ts_aim = hex_height(pal, pw, hl, to.q, to.r) + target_height;
-    ts_inv = (1.0 / (ts_n as float)) ?? 0.0;
-    ts_line = lat_line(from, to);
-
-    ts_i = 0;
-    for ts_c in ts_line {
-        if ts_i > 0 && ts_i < ts_n {
-            ts_ray = ts_eye + (ts_aim - ts_eye) * ((ts_i as float) * ts_inv);
-            if hex_height(pal, pw, hl, ts_c.q, ts_c.r) > ts_ray + TOWER_SIGHT_EPSILON {
-                return false;
-            }
-        }
-        ts_i = ts_i + 1;
-    }
-    true
+    sight_first_block(pal, pw, hl, from, to,
+                      tower_eye(pal, pw, hl, from),
+                      hex_height(pal, pw, hl, to.q, to.r) + target_height) < 0
 }
 
 // What stopped the shot, in the numbers that stopped it — the `*_fault`
@@ -616,24 +597,25 @@ pub fn tower_sight_fault(pal: vector<GroundType>, pw: PaintedWorld, hl: const He
 
     tsf_eye = tower_eye(pal, pw, hl, from);
     tsf_aim = hex_height(pal, pw, hl, to.q, to.r) + target_height;
-    tsf_inv = (1.0 / (tsf_n as float)) ?? 0.0;
-    tsf_line = lat_line(from, to);
 
-    tsf_i = 0;
-    for tsf_c in tsf_line {
-        if tsf_i > 0 && tsf_i < tsf_n {
-            tsf_ray = tsf_eye + (tsf_aim - tsf_eye) * ((tsf_i as float) * tsf_inv);
-            tsf_h = hex_height(pal, pw, hl, tsf_c.q, tsf_c.r);
-            if tsf_h > tsf_ray + TOWER_SIGHT_EPSILON {
-                return "blocked at ({tsf_c.q}, {tsf_c.r}), {tsf_i}/{tsf_n} along: "
-                     + "{tsf_h:5.2} m of {hex_ground_name(pal, pw, hl, tsf_c.q, tsf_c.r)} "
-                     + "under a shot at {tsf_ray:5.2} m "
-                     + "(eye {tsf_eye:5.2} m, aim {tsf_aim:5.2} m)";
-            }
-        }
-        tsf_i = tsf_i + 1;
+    // ⚠ **Asks the same walker `tower_sees` does, rather than repeating
+    // its arithmetic.**  A `*_fault` twin that walks its own line can
+    // disagree with the predicate it explains — and the case it would
+    // disagree in is exactly the one somebody is reading it to
+    // understand.
+    tsf_at = sight_first_block(pal, pw, hl, from, to, tsf_eye, tsf_aim);
+    if tsf_at < 0 {
+        return "clear — the shot from {tsf_eye:5.2} m reaches {tsf_aim:5.2} m over {tsf_n} hexes";
     }
-    "clear — the shot from {tsf_eye:5.2} m reaches {tsf_aim:5.2} m over {tsf_n} hexes"
+
+    tsf_line = lat_line(from, to);
+    tsf_c = tsf_line[tsf_at];
+    tsf_ray = tsf_eye + (tsf_aim - tsf_eye) * (((tsf_at as float) / (tsf_n as float)) ?? 0.0);
+    tsf_h = hex_height(pal, pw, hl, tsf_c.q, tsf_c.r);
+    "blocked at ({tsf_c.q}, {tsf_c.r}), {tsf_at}/{tsf_n} along: "
+        + "{tsf_h:5.2} m of {hex_ground_name(pal, pw, hl, tsf_c.q, tsf_c.r)} "
+        + "under a shot at {tsf_ray:5.2} m "
+        + "(eye {tsf_eye:5.2} m, aim {tsf_aim:5.2} m)"
 }
 
 // ─── Choosing what to shoot, and firing ─────────────────────────

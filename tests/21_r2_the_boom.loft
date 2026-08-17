@@ -1,0 +1,652 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 21 phase R2 — the boom: the ease, and what shortens it.
+//
+// ── The one rule under test ─────────────────────────────────────
+//
+// **The live camera is a function of ELAPSED TIME and the world — never
+// of how the frames were cut.**  Everything below is a corollary:
+//
+//   * the approach is `1 − e^(−k·dt)`, which composes, so any
+//     subdivision of a second lands on the same number;
+//   * it runs on every frame, including frames that spend no tick and
+//     frames where nothing moved;
+//   * and it ARRIVES exactly, because an asymptote that is stopped by a
+//     tolerance rests wherever the frames happened to fall.
+//
+// ── ⚠⚠ Every gate here carries its own negative control ─────────
+//
+// R1's most transferable lesson was a gate that read a PERFECT 0.0 rad
+// twice while measuring nothing.  The generic control it produced —
+// *can this gate produce a non-trivial reading at all?* — is cheap, so
+// the frame-rate test measures the LINEAR form beside the exponential
+// one and asserts that it DOES differ.  A test that only shows the good
+// form agreeing is green when both forms are stubbed to a constant.
+//
+// ── ⚠ And the ease is asserted through the VIEW MATRIX ──────────
+//
+// Where a claim is about where the camera IS, it is read with
+// `camera_eye_of_view` — R1's instrument, and the reason is moros's
+// four wrong diagnoses of a camera whose every valve read healthy.
+// Where a claim is about the SOLVE (a rate, a wrap, a free length) the
+// number itself is the subject and is read directly.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+
+const GRASS:     integer = 5;
+const WALL:      integer = 9;
+const WALL_HIGH: integer = 10;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+// Flat grass everywhere the camera can look.
+fn field_pw() -> PaintedWorld {
+    fp_pw = painted_empty();
+    for fp_r in -8..9 {
+        for fp_q in -8..9 { paint(fp_pw, fp_q, fp_r, as_u8(GRASS)); }
+    }
+    fp_pw
+}
+
+// A vehicle parked at a hex, pointing nowhere.
+fn parked(q: integer, r: integer) -> Vehicle {
+    pk_v = vehicle_empty();
+    vehicle_place(pk_v, q, r);
+    pk_v
+}
+
+// A rig looking at `v` from rest — the pose the ease converges on,
+// reached by giving it enough time to arrive rather than by writing the
+// fields.  ⚠ Writing them would make every test below assert against a
+// fixture built by the code under test.
+fn settled(v: const Vehicle, pw: PaintedWorld) -> CameraRig {
+    st_rig = camera_rig_new();
+    for _ in 0..200 {
+        camera_rig_step(st_rig, v, pal(), pw, height_layer_empty(), 1.0 / 60.0);
+    }
+    st_rig
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ The ease is FRAME-RATE INDEPENDENT, and that is why it is
+// exponential
+// ─────────────────────────────────────────────────────────────────
+
+// The linear approach moros ships — `f = k·dt`, clamped — so this file
+// can measure the difference rather than assert it.
+fn linear_approach(now: float, want: float, k: float, dt: float) -> float {
+    la_f = k * dt;
+    if la_f > 1.0 { la_f = 1.0; }
+    now + (want - now) * la_f
+}
+
+// ⚠⚠ **The phase's headline.**  One frame of a second and sixty frames
+// of a sixtieth reach the SAME number, exactly — because sixty factors
+// of `e^(−k/60)` are one factor of `e^(−k)`.
+//
+// ⚠ And the negative control is in the same function: the linear form
+// is measured over the identical pair and asserted to DISAGREE.  Without
+// it this test is green for an ease that ignores `dt` entirely.
+pub fn test_the_ease_is_frame_rate_independent() {
+    tf_k = CAMERA_EASE_RATE;
+
+    tf_one = cam_approach(0.0, 1.0, tf_k, 1.0);
+    tf_many = 0.0;
+    for _ in 0..60 { tf_many = cam_approach(tf_many, 1.0, tf_k, 1.0 / 60.0); }
+
+    assert(abs(tf_one - tf_many) < 1e-12,
+           "one frame of 1 s gave {tf_one} and sixty of 1/60 s gave {tf_many}");
+
+    // The control: can this comparison see a difference at all?
+    tl_one = linear_approach(0.0, 1.0, tf_k, 1.0);
+    tl_many = 0.0;
+    for _ in 0..60 { tl_many = linear_approach(tl_many, 1.0, tf_k, 1.0 / 60.0); }
+
+    assert(abs(tl_one - tl_many) > 1e-3,
+           "the linear form agreed to {abs(tl_one - tl_many)} — this gate cannot "
+           + "tell the two forms apart, so its green means nothing");
+    print("ease over 1 s: exponential {tf_one} both ways; "
+        + "linear {tl_one} vs {tl_many}");
+}
+
+// A frame with no time in it moves nothing — which is what an edit
+// session hands down through `play_frame_seconds`.
+pub fn test_a_frame_with_no_time_moves_nothing() {
+    assert(cam_approach(2.0, 9.0, CAMERA_EASE_RATE, 0.0) == 2.0,
+           "a zero-length frame moved the ease");
+    assert(cam_approach(2.0, 9.0, CAMERA_EASE_RATE, -1.0) == 2.0,
+           "a negative frame moved the ease");
+}
+
+// It DECELERATES into the target — each frame closes less ground than
+// the one before.  That is the difference between a camera arriving and
+// a camera sliding to a stop.
+pub fn test_the_ease_decelerates() {
+    td_now = 0.0;
+    td_prev = 2.0;
+    for _ in 0..10 {
+        td_next = cam_approach(td_now, 1.0, CAMERA_EASE_RATE, 1.0 / 60.0);
+        td_step = td_next - td_now;
+        assert(td_step > 0.0, "the ease stalled short of its target");
+        assert(td_step < td_prev, "step {td_step} did not shrink under {td_prev}");
+        td_prev = td_step;
+        td_now = td_next;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ The azimuth turns the SHORT way, and the shipped keys reach it
+// ─────────────────────────────────────────────────────────────────
+
+// From 360° toward 45° the turn is +45°, not −315°.
+pub fn test_the_azimuth_turns_the_short_way() {
+    ts_got = cam_approach_angle(360.0, 45.0, CAMERA_EASE_RATE, 1.0 / 60.0);
+    // One sixtieth at k = 6 closes 9.5% of the gap: 4.3° the short way,
+    // or 329.7° the long way.
+    assert(ts_got > 0.0 && ts_got < 45.0,
+           "eased from 360° toward 45° and landed on {ts_got}° — the long way round");
+}
+
+// ⚠⚠ **And it is REACHABLE with the keys the game ships.**  Holding A
+// drives due west, whose bearing is `atan2(0, −1) = π`, so the azimuth
+// is 360°.  Adding S sends it south-west — azimuth **60°**, because the
+// vehicle arrives at the odd-r south-west NEIGHBOUR at −120° rather
+// than at the 45° the metre heading names.  Eased as plain numbers that
+// is a **−300°** swing on one extra keypress.
+pub fn test_the_shipped_keys_reach_the_wrong_way_swing() {
+    // Due west: one hex west of where it stands.
+    tw_w = parked(0, 0);
+    vehicle_drive(tw_w, -1, 0);
+    tw_fw = vehicle_facing(tw_w);
+    assert(tw_fw.1, "driving west gave no bearing at all");
+    tw_azw = cam_wrap_deg(tw_fw.0 * 180.0 / CAM_PI + 180.0);
+
+    // South-west: `lat_neighbour` direction 2 from the origin.
+    tw_sw_at = lat_neighbour(Hex { q: 0, r: 0 }, 2);
+    tw_s = parked(0, 0);
+    vehicle_drive(tw_s, tw_sw_at.q, tw_sw_at.r);
+    tw_fs = vehicle_facing(tw_s);
+    assert(tw_fs.1, "driving south-west gave no bearing at all");
+    tw_azs = cam_wrap_deg(tw_fs.0 * 180.0 / CAM_PI + 180.0);
+
+    tw_naive = tw_azs - tw_azw;
+    tw_short = cam_wrap_delta(tw_naive);
+
+    assert(abs(tw_naive) > 180.0,
+           "west→south-west is a naive turn of {tw_naive}° — under half a circle, so "
+           + "this fixture no longer reaches the swing it exists to catch");
+    assert(abs(tw_short) <= 180.0 && abs(tw_short) < abs(tw_naive),
+           "the wrapped turn {tw_short}° is not shorter than the naive {tw_naive}°");
+    print("west {tw_azw}° → south-west {tw_azs}°: naive {tw_naive}°, short {tw_short}°");
+}
+
+// The wrap is exact at the boundaries, in both directions.
+pub fn test_the_wrap_is_exact_at_half_a_turn() {
+    assert(cam_wrap_delta(180.0) == 180.0, "+180° must stay +180°");
+    assert(cam_wrap_delta(-180.0) == 180.0, "−180° folds to +180°, not to itself");
+    assert(cam_wrap_delta(540.0) == 180.0, "540° is half a turn");
+    assert(cam_wrap_deg(-90.0) == 270.0, "−90° is 270°");
+    assert(cam_wrap_deg(720.0) == 0.0, "two whole turns is zero");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠ An endpoint cannot block its own line
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ `sight_first_block` walks BOTH endpoints, where `tower_sees` used
+// to skip them explicitly.  The skip was not load-bearing: a looker's
+// eye sits on top of its own hex and its aim on top of the target's, so
+// neither end can stand above a ray that starts there.  This is the
+// measurement that licenses the deletion — and it is what lets the
+// camera, whose far end is the EYE, ask about that end at all.
+pub fn test_an_endpoint_cannot_block_its_own_line() {
+    te_pw = field_pw();
+    paint(te_pw, 0, 0, as_u8(WALL_HIGH));      // the tower stands on it
+    paint(te_pw, 6, 0, as_u8(WALL_HIGH));      // and the target on another
+
+    te_from = Hex { q: 0, r: 0 };
+    te_to   = Hex { q: 6, r: 0 };
+    te_hf   = hex_height(pal(), te_pw, height_layer_empty(), 0, 0);
+    te_ht   = hex_height(pal(), te_pw, height_layer_empty(), 6, 0);
+    te_eye  = tower_eye(pal(), te_pw, height_layer_empty(), te_from);
+    te_aim  = te_ht + ENEMY_HEIGHT_METRES;
+
+    // ⚠ The precondition the claim rests on, asserted rather than
+    // assumed: BOTH ends stand on something tall, and each looker's
+    // height is above the surface it stands on.  A fixture whose
+    // endpoints are flat ground cannot tell an endpoint skip from its
+    // absence.
+    assert(te_hf > 0.0 && te_ht > 0.0,
+           "the fixture's ends are {te_hf} m and {te_ht} m — nothing to be blocked by");
+    assert(te_eye > te_hf, "the tower's eye is under its own hex");
+    assert(te_aim > te_ht, "the target's top is under its own hex");
+
+    te_at = sight_first_block(pal(), te_pw, height_layer_empty(),
+                              te_from, te_to, te_eye, te_aim);
+    assert(te_at < 0,
+           "a tower on a wall_high shooting a robot on a wall_high was blocked at "
+           + "cell {te_at} — by one of its own endpoints");
+    assert(tower_sees(pal(), te_pw, height_layer_empty(), te_from, te_to,
+                      ENEMY_HEIGHT_METRES),
+           "and `tower_sees` agrees it cannot see, which is the same defect");
+}
+
+// It answers WHERE, which is the whole reason two callers can share it:
+// a tower needs the boolean and the camera needs the distance.
+pub fn test_the_walker_names_the_cell_that_blocked() {
+    tn_pw = field_pw();
+    paint(tn_pw, 3, 0, as_u8(WALL_HIGH));
+
+    tn_at = sight_first_block(pal(), tn_pw, height_layer_empty(),
+                              Hex { q: 0, r: 0 }, Hex { q: 6, r: 0 }, 1.0, 1.0);
+    assert(tn_at == 3, "the wall_high at (3, 0) reported as cell {tn_at}");
+
+    tn_clear = sight_first_block(pal(), tn_pw, height_layer_empty(),
+                                 Hex { q: 0, r: 0 }, Hex { q: 6, r: 0 }, 20.0, 20.0);
+    assert(tn_clear < 0, "a line 20 m up was stopped by a 6 m wall at cell {tn_clear}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠ The boom: what the world lends
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠⚠ **A clear line takes the WHOLE boom** — no skin comes off it.
+// moros shipped the unconditional subtraction for the life of that
+// camera: every unobstructed boom came back one skin short, which here
+// is an eighth of the resting boom.  The skin is a clearance FROM
+// something, and in an open field there is nothing to clear.
+pub fn test_a_clear_line_takes_the_whole_boom() {
+    tc_rig = settled(parked(0, 0), field_pw());
+    tc_free = camera_boom_free(pal(), field_pw(), height_layer_empty(),
+                               tc_rig.cam, tc_rig.boom);
+    assert(tc_free == tc_rig.boom,
+           "an open field lent {tc_free} m of a {tc_rig.boom} m boom");
+}
+
+// A `wall_high` standing behind the vehicle, on the camera's own line,
+// shortens it.
+//
+// ⚠ The wall is placed by ASKING the camera where its eye is, not by
+// picking a hex that looks right: the resting azimuth is the vehicle's
+// bearing plus half a turn, and a fixture that guessed it would silently
+// stop testing anything the day the follow rule changed.
+pub fn test_a_wall_between_eye_and_vehicle_shortens_the_boom() {
+    tb_v = parked(0, 0);
+    vehicle_drive(tb_v, 4, 0);                 // heading east, so the eye is west
+    tb_pw = field_pw();
+    tb_rig = settled(tb_v, tb_pw);
+
+    tb_eye = camera_eye_at(tb_rig.cam, tb_rig.boom);
+    tb_at = lat_from_metres(tb_eye.x, -tb_eye.y);
+    assert(tb_at.q != 0 || tb_at.r != 0,
+           "the eye is over the vehicle's own hex — this fixture cannot occlude");
+
+    tb_open = camera_boom_free(pal(), tb_pw, height_layer_empty(),
+                               tb_rig.cam, tb_rig.boom);
+    assert(tb_open == tb_rig.boom, "the control run was already occluded");
+
+    // Wall the whole line, from the vehicle's neighbour out to the eye.
+    for tb_c in lat_line(Hex { q: 0, r: 0 }, tb_at) {
+        if tb_c.q != 0 || tb_c.r != 0 { paint(tb_pw, tb_c.q, tb_c.r, as_u8(WALL_HIGH)); }
+    }
+
+    tb_free = camera_boom_free(pal(), tb_pw, height_layer_empty(),
+                               tb_rig.cam, tb_rig.boom);
+    assert(tb_free < tb_rig.boom,
+           "a wall_high across the whole sight line lent the full {tb_free} m boom");
+    assert(tb_free >= CAMERA_DISTANCE_MIN,
+           "the boom collapsed to {tb_free} m — `mat4_look_at` needs a non-zero one");
+    print("boom: {tb_rig.boom} m open, {tb_free} m behind a wall_high");
+}
+
+// ⚠ And the SAME wall off the line lends the whole boom — which is what
+// makes the test above about the line rather than about the palette.
+pub fn test_and_the_same_wall_off_the_line_does_not() {
+    to_v = parked(0, 0);
+    vehicle_drive(to_v, 4, 0);
+    to_pw = field_pw();
+    to_rig = settled(to_v, to_pw);
+
+    // Four rows north of everything the camera looks along.
+    for to_q in -8..9 { paint(to_pw, to_q, 4, as_u8(WALL_HIGH)); }
+
+    to_free = camera_boom_free(pal(), to_pw, height_layer_empty(),
+                               to_rig.cam, to_rig.boom);
+    assert(to_free == to_rig.boom,
+           "a wall four rows off the line took the boom to {to_free} m");
+}
+
+// ⚠ The two wall kinds are 3 m and 5 m, and the camera tells them apart
+// by HEIGHT rather than by a table — the same claim
+// `tests/12_b5b_los_budget.loft` makes for a shot, one looker over.
+//
+// ⚠⚠ **And WHERE matters as much as WHICH: near the vehicle both kinds
+// block.**  The resting boom climbs from 0.85 m at the vehicle to
+// 3.85 m at the eye, so a hex one step out is under a ray only 1.6 m
+// up and a plain `wall` stops the camera exactly as a `wall_high` does.
+// The discriminating cell is the far one, and this test FINDS it rather
+// than assuming it — the first attempt walled the whole line, read the
+// same boom twice and looked like a camera that could not tell a kind
+// from a height.
+pub fn test_the_two_wall_kinds_differ_by_their_height() {
+    tk_v = parked(0, 0);
+    vehicle_drive(tk_v, 4, 0);
+    tk_rig = settled(tk_v, field_pw());
+    tk_eye = camera_eye_at(tk_rig.cam, tk_rig.boom);
+    tk_at = lat_from_metres(tk_eye.x, -tk_eye.y);
+    tk_n = lat_distance(Hex { q: 0, r: 0 }, tk_at);
+    assert(tk_n >= 2, "the eye is {tk_n} hexes out — no interior cell to test with");
+
+    // The first cell whose ray clears a 3 m wall but not a 5 m one.
+    tk_pick = -1;
+    tk_ray = 0.0;
+    for tk_i in 1..=tk_n {
+        tk_h = tk_rig.cam.target.z
+             + (tk_eye.z - tk_rig.cam.target.z) * (((tk_i as float) / (tk_n as float)) ?? 0.0);
+        if tk_pick < 0 && tk_h > 3.0 && tk_h < 5.0 { tk_pick = tk_i; tk_ray = tk_h; }
+    }
+    assert(tk_pick > 0,
+           "no cell of the resting boom carries a ray between 3 m and 5 m — this "
+           + "fixture cannot separate the two wall kinds");
+
+    tk_cell = lat_line(Hex { q: 0, r: 0 }, tk_at)[tk_pick] ?? Hex { q: 0, r: 0 };
+    tk_low = field_pw();
+    tk_high = field_pw();
+    paint(tk_low,  tk_cell.q, tk_cell.r, as_u8(WALL));
+    paint(tk_high, tk_cell.q, tk_cell.r, as_u8(WALL_HIGH));
+
+    tk_fl = camera_boom_free(pal(), tk_low,  height_layer_empty(), tk_rig.cam, tk_rig.boom);
+    tk_fh = camera_boom_free(pal(), tk_high, height_layer_empty(), tk_rig.cam, tk_rig.boom);
+    assert(tk_fl == tk_rig.boom,
+           "a 3 m wall under a {tk_ray} m ray took the boom to {tk_fl} m");
+    assert(tk_fh < tk_rig.boom,
+           "a 5 m wall under a {tk_ray} m ray lent the whole {tk_fh} m boom");
+    print("cell {tk_pick}/{tk_n}, ray {tk_ray} m: boom behind a wall {tk_fl} m, "
+        + "behind a wall_high {tk_fh} m");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ Rest means ARRIVED, and the camera comes home to a still vehicle
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **The phase's named control: a vehicle STANDING STILL.**  The camera
+// starts at the origin looking at nothing, the vehicle never moves, and
+// the eye has to arrive anyway — which is the case moros's `if moved`
+// made invisible.
+pub fn test_a_standing_vehicle_still_brings_the_camera_home() {
+    tv_v = parked(5, -3);
+    tv_pw = field_pw();
+    tv_rig = camera_rig_new();
+
+    tv_start = camera_eye_of_view(camera_view_matrix(tv_rig.cam));
+    tv_want = lat_to_world(Hex { q: 5, r: -3 },
+                           hex_height(pal(), tv_pw, height_layer_empty(), 5, -3)
+                               + CAMERA_TARGET_HEIGHT_METRES);
+    tv_gap = sqrt((tv_start.x - tv_want.x) * (tv_start.x - tv_want.x)
+                + (tv_start.y - tv_want.y) * (tv_start.y - tv_want.y)) ?? 0.0;
+    assert(tv_gap > 5.0,
+           "the camera already starts on the vehicle — nothing here can ease");
+
+    for _ in 0..200 {
+        camera_rig_step(tv_rig, tv_v, pal(), tv_pw, height_layer_empty(), 1.0 / 60.0);
+    }
+
+    assert(tv_rig.rested, "the camera never declared rest over 200 still frames");
+    // ⚠ EXACT — the snap is what makes this an equality rather than a
+    // tolerance, and a tolerance is what let moros's resting eye vary by
+    // 0.025 units between two runs of one gate.
+    assert(tv_rig.cam.target.x == tv_want.x && tv_rig.cam.target.y == tv_want.y
+        && tv_rig.cam.target.z == tv_want.z,
+           "a rested camera is looking at ({tv_rig.cam.target.x}, {tv_rig.cam.target.y}, "
+           + "{tv_rig.cam.target.z}) rather than exactly at the vehicle");
+    assert(tv_rig.cam.distance == tv_rig.boom,
+           "a rested camera in an open field holds {tv_rig.cam.distance} m of a "
+           + "{tv_rig.boom} m boom");
+}
+
+// ⚠ And the eye is BEHIND the vehicle when it rests after driving —
+// read out of the view matrix, so a camera that solves and publishes
+// nothing fails here.
+pub fn test_the_rested_eye_is_behind_the_vehicle() {
+    tr_v = parked(0, 0);
+    vehicle_drive(tr_v, 4, 0);                 // east
+    tr_rig = settled(tr_v, field_pw());
+
+    tr_eye = camera_eye_of_view(camera_view_matrix(tr_rig.cam));
+    assert(tr_eye.x < tr_rig.cam.target.x,
+           "driving EAST put the eye at x {tr_eye.x}, at or ahead of the target "
+           + "at {tr_rig.cam.target.x}");
+    assert(abs(tr_eye.y - tr_rig.cam.target.y) < 1e-6,
+           "the eye is {abs(tr_eye.y - tr_rig.cam.target.y)} m off the driving axis");
+    assert(tr_eye.z > tr_rig.cam.target.z, "the eye is not above the vehicle");
+}
+
+// The whole rig is frame-rate independent, not just `cam_approach` —
+// measured BEFORE it rests, because after the snap any two runs agree
+// for a reason that is not the ease.
+pub fn test_the_rig_reaches_one_camera_at_any_frame_rate() {
+    tg_v = parked(3, 2);
+    tg_pw = field_pw();
+
+    tg_fast = camera_rig_new();
+    for _ in 0..12 {
+        camera_rig_step(tg_fast, tg_v, pal(), tg_pw, height_layer_empty(), 1.0 / 60.0);
+    }
+    tg_slow = camera_rig_new();
+    for _ in 0..2 {
+        camera_rig_step(tg_slow, tg_v, pal(), tg_pw, height_layer_empty(), 1.0 / 10.0);
+    }
+
+    assert(!tg_fast.rested && !tg_slow.rested,
+           "0.2 s was enough to rest — this comparison is measuring the snap");
+
+    tg_a = camera_eye_of_view(camera_view_matrix(tg_fast.cam));
+    tg_b = camera_eye_of_view(camera_view_matrix(tg_slow.cam));
+    tg_d = sqrt((tg_a.x - tg_b.x) * (tg_a.x - tg_b.x)
+              + (tg_a.y - tg_b.y) * (tg_a.y - tg_b.y)
+              + (tg_a.z - tg_b.z) * (tg_a.z - tg_b.z)) ?? 0.0;
+    assert(tg_d < 1e-9, "0.2 s at 60 fps and at 10 fps put the eye {tg_d} m apart");
+}
+
+// ⚠ Occlusion lends the eye a shorter boom; it does not REWRITE what
+// the player asked for.  Two booms is what makes that true — collapse
+// them and a wall the vehicle drove past would shorten the camera for
+// the rest of the run.
+pub fn test_a_wall_does_not_rewrite_the_players_boom() {
+    tp_v = parked(0, 0);
+    vehicle_drive(tp_v, 4, 0);
+    tp_pw = field_pw();
+    tp_rig = settled(tp_v, tp_pw);
+    tp_asked = tp_rig.boom;
+
+    tp_eye = camera_eye_at(tp_rig.cam, tp_rig.boom);
+    tp_at = lat_from_metres(tp_eye.x, -tp_eye.y);
+    for tp_c in lat_line(Hex { q: 0, r: 0 }, tp_at) {
+        if tp_c.q != 0 || tp_c.r != 0 { paint(tp_pw, tp_c.q, tp_c.r, as_u8(WALL_HIGH)); }
+    }
+    for _ in 0..120 {
+        camera_rig_step(tp_rig, tp_v, pal(), tp_pw, height_layer_empty(), 1.0 / 60.0);
+    }
+    assert(tp_rig.cam.distance < tp_asked,
+           "the wall did not pull the eye in at all");
+    assert(tp_rig.boom == tp_asked, "the wall rewrote the player's boom");
+
+    // Take it away again and the eye comes back out to what was asked.
+    for tp_c2 in lat_line(Hex { q: 0, r: 0 }, tp_at) {
+        if tp_c2.q != 0 || tp_c2.r != 0 { paint(tp_pw, tp_c2.q, tp_c2.r, as_u8(GRASS)); }
+    }
+    for _ in 0..600 {
+        camera_rig_step(tp_rig, tp_v, pal(), tp_pw, height_layer_empty(), 1.0 / 60.0);
+    }
+    assert(tp_rig.cam.distance == tp_asked,
+           "the boom returned to {tp_rig.cam.distance} m rather than to {tp_asked} m");
+}
+
+// The wheel sets what the player wants, never what the eye has.
+pub fn test_the_wheel_moves_the_asked_boom_and_the_eye_follows() {
+    tz_v = parked(0, 0);
+    tz_pw = field_pw();
+    tz_rig = settled(tz_v, tz_pw);
+    tz_was = tz_rig.cam.distance;
+
+    camera_rig_zoom(tz_rig, 4.0);
+    assert(tz_rig.boom == tz_was + 4.0, "the wheel did not reach the asked boom");
+    assert(tz_rig.cam.distance == tz_was, "the wheel teleported the eye");
+
+    for _ in 0..600 {
+        camera_rig_step(tz_rig, tz_v, pal(), tz_pw, height_layer_empty(), 1.0 / 60.0);
+    }
+    assert(tz_rig.cam.distance == tz_rig.boom,
+           "the eye eased to {tz_rig.cam.distance} m of a {tz_rig.boom} m boom");
+}
+
+// A camera with no vehicle stays exactly where it was — an edit session,
+// and a run between a wreck and the respawn.
+pub fn test_a_camera_with_no_vehicle_does_not_ease_anywhere() {
+    tn_rig = camera_rig_new();
+    tn_before = camera_eye_of_view(camera_view_matrix(tn_rig.cam));
+    for _ in 0..60 {
+        camera_rig_step(tn_rig, vehicle_empty(), pal(), field_pw(),
+                        height_layer_empty(), 1.0 / 60.0);
+    }
+    tn_after = camera_eye_of_view(camera_view_matrix(tn_rig.cam));
+    assert(tn_before.x == tn_after.x && tn_before.y == tn_after.y
+        && tn_before.z == tn_after.z,
+           "a camera with nothing to follow moved anyway");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ The ease is what turns HEX STEPS into motion
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **This is the reason the target eases at all, and it is dryopea's
+// rather than moros's.**  moros follows a character with a
+// floating-point position; dryopea's vehicle is two integers, and it
+// moves a whole hex — 1.299 m — on the tick it steps.  So the un-eased
+// follow camera sits still for two thirds of a second and then jumps,
+// and the ease is not a polish pass but the thing that makes a discrete
+// simulation look like a moving world.
+//
+// Measured both ways over one drive: the largest single-frame move, and
+// how many frames moved at all.
+pub fn test_a_hex_step_becomes_motion() {
+    th_pw = field_pw();
+    th_v = parked(0, 0);
+    vehicle_drive(th_v, 12, 0);
+
+    th_rig = settled(th_v, th_pw);
+    th_raw = render_camera_default();
+    camera_follow_vehicle(th_v, 0.85, th_raw);
+
+    th_eased_max = 0.0;
+    th_eased_moved = 0;
+    th_raw_max = 0.0;
+    th_raw_moved = 0;
+
+    // Walk the vehicle east a hex every fortieth frame — one hex per
+    // 1/1.5 s tick at 60 fps, which is what a cruising vehicle does.
+    for th_f in 0..240 {
+        if th_f % 20 == 19 {
+            vehicle_place(th_v, th_v.q + 1, th_v.r);
+            vehicle_drive(th_v, 12, 0);
+        }
+
+        th_was = th_rig.cam.target.x;
+        camera_rig_step(th_rig, th_v, pal(), th_pw, height_layer_empty(), 1.0 / 60.0);
+        th_de = abs(th_rig.cam.target.x - th_was);
+        if th_de > th_eased_max { th_eased_max = th_de; }
+        if th_de > 1e-6 { th_eased_moved += 1; }
+
+        th_wasr = th_raw.target.x;
+        camera_follow_vehicle(th_v, 0.85, th_raw);
+        th_dr = abs(th_raw.target.x - th_wasr);
+        if th_dr > th_raw_max { th_raw_max = th_dr; }
+        if th_dr > 1e-6 { th_raw_moved += 1; }
+    }
+
+    assert(th_raw_moved <= 12,
+           "the un-eased camera moved on {th_raw_moved} of 240 frames — the fixture "
+           + "is not stepping the vehicle in whole hexes");
+    assert(th_eased_moved > 200,
+           "the eased camera moved on only {th_eased_moved} of 240 frames");
+    assert(th_eased_max < th_raw_max * 0.5,
+           "the eased camera's worst frame is {th_eased_max} m against the un-eased "
+           + "{th_raw_max} m — the ease is not spreading the step");
+    print("hex step: un-eased moves on {th_raw_moved}/240 frames, worst {th_raw_max} m; "
+        + "eased {th_eased_moved}/240, worst {th_eased_max} m");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ Published, not merely solved — through the SEAM
+// ─────────────────────────────────────────────────────────────────
+
+fn field_state() -> EditorState {
+    fs_s = editor_state_new(PALETTE);
+    for fs_r in -8..9 {
+        for fs_q in -8..9 { paint(fs_s.pw, fs_q, fs_r, as_u8(GRASS)); }
+    }
+    place_marker(fs_s.mw, 0, 0, MARKER_KIND_TARGET as u8, 0 as u8);
+    fs_s
+}
+
+// A session in play mode with the crew on the core.
+fn live() -> PlayState {
+    lv_ps = play_state_new();
+    lv_ps.playing = true;
+    lv_ps
+}
+
+// ⚠⚠ **The control the phase names.**  A tick is 0.667 s; a frame of
+// 0.1 s spends none.  The camera must move anyway — put the step inside
+// `play_advance`'s tick loop and this is the test that goes red, while
+// every clock in the repo stays green.
+pub fn test_a_frame_that_spends_no_tick_still_moves_the_camera() {
+    tq_s = field_state();
+    tq_ps = live();
+    play_begin(tq_ps, tq_s);
+    assert(vehicle_present(tq_ps.wave.player), "the crew never landed");
+
+    tq_before = camera_eye_of_view(camera_view_matrix(tq_ps.cam.cam));
+    tq_ticks = play_step(tq_ps, tq_s, editor_input_empty(), 0.1);
+
+    assert(tq_ticks == 0, "0.1 s bought {tq_ticks} ticks — the fixture is not sub-tick");
+    tq_after = camera_eye_of_view(camera_view_matrix(tq_ps.cam.cam));
+    assert(tq_before.x != tq_after.x || tq_before.y != tq_after.y
+        || tq_before.z != tq_after.z,
+           "a frame that spent no tick left the camera exactly where it was");
+}
+
+// ⚠ And an EDIT frame's camera is frozen exactly as its clock is — one
+// number gates both, which is what `play_frame_seconds` is for.
+pub fn test_an_edit_frames_camera_does_not_move() {
+    tm_s = field_state();
+    tm_ps = play_state_new();                  // never entered play mode
+    vehicle_place(tm_ps.wave.player, 4, 1);    // …but there IS something to follow
+
+    tm_before = camera_eye_of_view(camera_view_matrix(tm_ps.cam.cam));
+    play_step(tm_ps, tm_s, editor_input_empty(),
+              play_frame_seconds(tm_ps, 0.5));
+    tm_after = camera_eye_of_view(camera_view_matrix(tm_ps.cam.cam));
+
+    assert(tm_before.x == tm_after.x && tm_before.y == tm_after.y
+        && tm_before.z == tm_after.z,
+           "an edit frame moved the game's camera");
+
+    // The control: the same frame with the mode ON does move it.
+    tm_ps.playing = true;
+    play_step(tm_ps, tm_s, editor_input_empty(), play_frame_seconds(tm_ps, 0.5));
+    tm_live = camera_eye_of_view(camera_view_matrix(tm_ps.cam.cam));
+    assert(tm_before.x != tm_live.x || tm_before.y != tm_live.y,
+           "the camera does not move in play mode either — this gate is blind");
+}

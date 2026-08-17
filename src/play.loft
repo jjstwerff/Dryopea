@@ -105,6 +105,7 @@ use occupancy;
 use carry;
 use vehicle;
 use spawn;
+use render_camera;
 
 // ─── State ──────────────────────────────────────────────────────
 
@@ -151,6 +152,21 @@ pub struct PlayState {
     // Plan 19 P3.  ⚠ See § The mode is remembered by the SESSION for why
     // it is here and not a local in `main()`.
     playing: boolean,
+
+    // The camera the session is looking through, and the boom the
+    // player has asked for (plan 21 R2, `@X014`).
+    //
+    // ⚠ **Here rather than on `EditorState.cam`**, which is
+    // `EditorCamera` — a hex position and an unwired zoom (`@D002`) —
+    // and belongs to the editor.  This one is a property of a LIVE
+    // session, the same argument P3 made for `playing`, and it is the
+    // reason `docs/RENDERER.md` § Open 4 was decided rather than asked.
+    //
+    // ⚠ It arrived one phase after the camera itself, deliberately:
+    // until the ease existed there was nothing for a session to
+    // REMEMBER between frames, and a field nobody reads is a decision
+    // validated by nothing.
+    cam: CameraRig,
 }
 
 pub fn play_state_new() -> PlayState {
@@ -163,6 +179,7 @@ pub fn play_state_new() -> PlayState {
         // caller written before P3 — the script runner, and all 28 gate
         // scenarios — meaning exactly what it meant.
         playing: false,
+        cam:     camera_rig_new(),
     }
 }
 
@@ -506,5 +523,27 @@ pub fn play_step(ps: PlayState, s: EditorState, input: EditorInput,
     // the gap, firing an edge the player never made.  The same rule
     // `editor_step`'s own `s.prev` keeps, and for the same reason.
     ps.prev = editor_input_copy(input);
-    play_advance(ps, s, seconds)
+    ps_ticks = play_advance(ps, s, seconds);
+
+    // ⚠⚠ **The camera is stepped on EVERY frame, and it is stepped
+    // LAST.**
+    //
+    // Last, because a camera reads the world the ticks just produced —
+    // the same *input, then time* ordering one layer down, with the eye
+    // arriving after both.
+    //
+    // Every frame, because the ease is a function of ELAPSED TIME and
+    // nothing else.  ⚠ Putting this inside `play_advance`'s tick loop is
+    // the mistake to avoid: at 60 fps it would run on one frame in
+    // forty, and the result would be a camera that stutters with the
+    // right average — which reads as a frame-rate problem rather than
+    // as a camera one.  It is also moros's shipped fault in dryopea's
+    // shape (`render_camera.loft` § camera_rig_step).
+    //
+    // ⚠ `seconds` is the SAME seconds the simulation got, so an edit
+    // session's camera is frozen exactly as its clock is — the mode
+    // gates one number and everything downstream of it.
+    camera_rig_step(ps.cam, ps.wave.player, s.picker.palette, s.pw,
+                    ps.wave.heights, seconds);
+    ps_ticks
 }

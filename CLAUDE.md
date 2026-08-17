@@ -83,7 +83,8 @@ exists today.
 | ⚠ Composition is legible: three waves of twelve fall at **94 / 126 / never**.  ⚠⚠ Its headline — *a wave is as dangerous as its FASTEST class and no more* (`@M018`) — is **RETIRED by plan 24** | [23](plans/23-the-small-robots/README.md), K3 shipped — plan **complete** |
 | ⚠⚠ **THE SIEGE FRONT IS THE WALL'S WIDTH**: a besieger attacks the hex it is TOUCHING, so 3 → **4** hexes on a five-row wall and 3 → **6** on a seven-row one — and a wave is worth its front class PLUS what the front cannot COVER (`@M020`).  ⚠ Four screens against a five-hex face leak exactly ONE miner, so *4 scout + 8 miner* went from **never** to **126**.  ⚠ The rule five documents asked for was one we already had (`@M019`) | [24](plans/24-the-siege-front/README.md), W0-W2 shipped — plan **complete** |
 | **AND IT OPENS**: `make play`, press **P**, and waves arrive because TIME PASSED — the crew lands at the core and WASD drives it.  ⚠ **Nothing of the game is DRAWN yet** (P4), so the console echo is the only way to see it.  ⚠ The mode gates the CLOCK and never the seam | [19](plans/19-the-interactive-loop/README.md), P3 shipped — P4 next |
-| A CAMERA that comes to the vehicle: an orbit camera whose azimuth is the VELOCITY's and whose elevation and boom are the player's.  ⚠⚠ **`camera_overview` at 89° IS the editor's view** — measured against the software rasteriser at **0.0014 rad of bearing and 0.56% of scale** (`@M022`), so it is one camera with two presets.  ⚠⚠ The 3-D world frame is **+y NORTH** and `lat_to_world` is the ONE negation | [21](plans/21-the-renderer/README.md), R1 shipped — R2 next |
+| A CAMERA that comes to the vehicle: an orbit camera whose azimuth is the VELOCITY's and whose elevation and boom are the player's.  ⚠⚠ **`camera_overview` at 89° IS the editor's view** — measured against the software rasteriser at **0.0014 rad of bearing and 0.56% of scale** (`@M022`), so it is one camera with two presets.  ⚠⚠ The 3-D world frame is **+y NORTH** and `lat_to_world` is the ONE negation | [21](plans/21-the-renderer/README.md), R1 shipped |
+| AND IT EASES: the camera lives on `PlayState`, steps on every frame, and shortens its boom behind a wall.  ⚠⚠ The approach is **`1 − e^(−k·dt)`** and moros's linear `k·dt` was REFUSED — `play.loft` is frame-rate independent and the linear form is not (`@M023`).  ⚠⚠ **The ease is what makes a LATTICE look like a moving world**: un-eased the camera moves on 12 frames of 240 and jumps a whole hex, eased on 221 with a worst frame nine times smaller | [21](plans/21-the-renderer/README.md), R2 shipped — R3 next |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
 is derived rather than picked: **a single-hex body ramp onto a structure
@@ -99,7 +100,7 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 1177/1177 green under `scripts/test.sh`** (~177 s re-measured
+**Suite: 1198/1198 green under `scripts/test.sh`** (~177 s re-measured
 2026-08-17 — the `frame` measurements classify full 960x720 frames, the
 cost gate ticks a radius-40 world twice, and since plan 13 a dozen tests
 run whole scenarios to their fall.  ⚠ This line carried "~35 s" from
@@ -118,9 +119,9 @@ one refactor that measured as FREE).
 **Gate: 33 scripts green under `scripts/validate.sh`** (~14 s, 654
 measurements).  ⚠ Plan 24 W2 moved **8 of the 33** — a steering change
 re-prices scenarios rather than breaking them, and the numbers of record
-are `@M020`.  ⚠ Plan 21 R1 moved **none of them**, which is the point: a
-camera is not a simulation, and the day it re-prices a scenario is the
-day something is reading it that should not be.
+are `@M020`.  ⚠ Plan 21 R1 **and** R2 moved **none of them**, which is
+the point: a camera is not a simulation, and the day it re-prices a
+scenario is the day something is reading it that should not be.
 
 ⚠ **[loft#939](https://github.com/loft-lang/loft/issues/939) is FIXED
 and CLOSED** (loft `ac8fb1dc`, *"A vector field assigned from a view
@@ -710,7 +711,7 @@ navigational summary of it.
 | `dryopea.loft` | the library aggregator — `use dryopea;` brings every submodule into scope |
 | `main.loft` | the interactive entry — the GL shell (NOT in the aggregator; parse-check it by hand).  ⚠ Since plan 19 P3 it runs the GAME and owns the CLOCK: it measures the frame and hands the seconds over, and decides nothing else |
 | `editor_step.loft` | **the editor's input seam** — `EditorState` + `EditorInput` + `editor_step`.  Every editor action runs through it |
-| `play.loft` | **the game's seam** (plan 19 P1) — `PlayState` + `play_ticks` / `play_advance` / `play_step`, and the ONE call to `wave_tick`.  ⚠ Also the MODE (P3): `play_mode` / `play_set_mode` / `play_begin` / `play_frame_seconds` |
+| `play.loft` | **the game's seam** (plan 19 P1) — `PlayState` + `play_ticks` / `play_advance` / `play_step`, and the ONE call to `wave_tick`.  ⚠ Also the MODE (P3): `play_mode` / `play_set_mode` / `play_begin` / `play_frame_seconds`, and since plan 21 R2 the game's CAMERA, stepped LAST and on every frame |
 | `bindings.loft` | **the ONE key table** — keys → actions → `EditorInput`.  Never add a `gl_key_pressed`.  ⚠ Since plan 19 P2 it carries the PLAY actions too, and `editor_input_from`'s `playing` argument decides whether WASD pans or drives.  ⚠ And since P3 one SHELL action (`toggle_play`, P), filled in BOTH branches — fill it in one and there is no way out of play mode |
 | `script.loft` | the `.keys` script runner and its whole vocabulary — commands name ACTIONS, never keys |
 | `validate.loft` / `validate_main.loft` | the second gate: sweep `tests/scripts/`, sum the measurements, report the FIRST failure |
@@ -723,7 +724,7 @@ navigational summary of it.
 | `lattice.loft` | **THE lattice** — pointy-top odd-r offset, `Hex`, and every `lat_*` verb.  Delegates to `hex_grid` |
 | `relabel.loft` / `convert.loft` | plan 09's old-label → new-label bijection, and the `.keys` converter |
 | `camera.loft` | `EditorCamera` + `camera_update`.  ⚠ pan NORTH is `r += 1` |
-| `render_camera.loft` | **the GAME's camera** (plan 21 R1) — `RenderCamera`, the two presets, and `lat_to_world`.  ⚠⚠ Its world is `+y` **NORTH** with `+z` up, which is NOT dryopea's `+y`-south canvas frame: that one is left-handed once z points up, and `mat4_look_at` MIRRORS it.  ⚠ Assert on `camera_eye_of_view`, never on the struct |
+| `render_camera.loft` | **the GAME's camera** (plan 21 R1) — `RenderCamera`, the two presets, and `lat_to_world`; and since R2 the EASE — `CameraRig`, `camera_rig_step`, `camera_boom_free`.  ⚠⚠ Its world is `+y` **NORTH** with `+z` up, which is NOT dryopea's `+y`-south canvas frame: that one is left-handed once z points up, and `mat4_look_at` MIRRORS it.  ⚠ Assert on `camera_eye_of_view`, never on the struct.  ⚠⚠ The approach is `1 − e^(−k·dt)`, never `k·dt` |
 | `painted.loft` | `PaintedHex` / `PaintedWorld` — sparse, sea-default ground |
 | `palette.loft` | `GroundType` + `load_palette` + `GROUND_RUBBLE` |
 | `markers.loft` / `marker_file.loft` / `marker_render.loft` | the marker layer, its save format and its drawing.  `place_marker` is the ONE dispatch |
@@ -733,7 +734,7 @@ navigational summary of it.
 | `spawn.loft` | **the tick** — `WaveState`, `wave_tick`, enemy movement, targeting, deaths, the schedule, `TICK_SECONDS`, and since plan 23 K2a the banked `enemy_bank` / `enemy_step` pair the mover is built on |
 | `waves.loft` | the authored wave list, its lull, and what a wave is MADE OF — `WavePart` / `wave_schedule_compose`.  ⚠ A wave's size is SUMMED from its parts, never stored |
 | `flow.loft` | the distance field — `flow_build` / `flow_step` / `flow_steps` / `flow_desire` |
-| `passable.loft` | may a class MOVE here? — `can_stand` / `can_step` / `can_occupy`, and `hex_height` |
+| `passable.loft` | may a class MOVE here? — `can_stand` / `can_step` / `can_occupy`, and `hex_height`.  ⚠ Since plan 21 R2 also the SIGHT line: `sight_first_block`, the ONE walker, shared by `tower_sees` and the camera's boom |
 | `occupancy.loft` | who is standing where this tick — enemy counts, and the separate `BlockerMap` |
 | `height.loft` | the RUBBLE layer — metres piled at runtime, and what they are made of |
 | `damage.loft` | what a structure has TAKEN, bracing, and `break_structure` |
@@ -1107,6 +1108,9 @@ signature.
 | Draw an ENTITY, or change what one looks like | [`docs/PARTS.md`](docs/PARTS.md) — a part-tree, and the GEOMETRY is derived from it (plan 20).  ⚠ **Never a shape drawn inline in `editor_view.loft`**: that is the *"second renderer that happens to live in the test harness"* its own header refuses, one layer down.  ⚠ The SIZE is the durable artefact and § D6 gates it against the simulation's constant |
 | Ask where the game's CAMERA lives, or why the editor's view is a mode of it | `src/render_camera.loft` (built, plan 21 R1) and [`docs/RENDERER.md`](docs/RENDERER.md) § R1 — moros's `RenderCamera`, ported.  ⚠ `camera_overview` at elevation 89° reproduces the editor's top-down view **to 0.08° of bearing and 0.56% of scale** (`@M022`), so there is ONE camera with two presets.  ⚠ The game's camera belongs on `PlayState`, never on `EditorState.cam` (that is `EditorCamera`, and its zoom is `@D002`) — ⚠ **not built yet**: `@X014` stands and lands in R2, where an eased boom gives the session something to remember |
 | Put a hex into the CAMERA's world, or ask which way is up in 3-D | `src/render_camera.loft::lat_to_world` — and it is the ONE place that may negate y.  ⚠⚠ **The camera's world is `+y` NORTH**, where every other metre in dryopea is `+y` SOUTH: that is a CANVAS convention, it is left-handed once `+z` is up, and `mat4_look_at` builds a right-handed basis — so carrying it into 3-D **mirrors the world** and no azimuth undoes it (`@M021`: one of eight azimuths works in the north frame, none in the south).  ⚠ The negation cancels `lat_to_metres`', so the camera's frame is `hex_grid`'s own — a library frame is a WORLD frame and dryopea's is a SCREEN frame |
+| Ask why the camera eases, or add a valve to it | `src/render_camera.loft` § The ease (plan 21 R2) and [`docs/RENDERER.md`](docs/RENDERER.md) § R2b.  ⚠⚠ **The approach is `1 − e^(−k·dt)` and moros's `f = k·dt` is REFUSED** — the linear form is frame-rate dependent and `play.loft` is built on the opposite property (`19-P0`), so a linear camera would put a frame-rate dependence into the artefact a gate photographs.  ⚠⚠ **THREE valves ease, not the boom alone**: the vehicle is a lattice position and jumps 1.299 m on the tick it steps, so the target and the azimuth are what make the picture move at all (`@M023`: 12 of 240 frames un-eased, 221 eased).  ⚠ The azimuth eases the SHORT way — A then A+S is a real **−300°** swing otherwise (`@M024`).  ⚠ Rest SNAPS: an asymptote stopped by a tolerance rests wherever the frames fell |
+| Ask what shortens the camera's boom, or add an occluder | `src/render_camera.loft::camera_boom_free` over `passable.loft::sight_first_block` — **the same walker `tower_sees` asks** (`@X071`).  ⚠ It answers WHERE rather than whether, because a boom needs a distance and a shot needs a yes/no.  ⚠ The camera reads a HEIGHT and never a kind: a `wall` at the far cell lends the whole boom and a `wall_high` there does not, while ONE HEX OUT both stop it because the ray is only 1.6 m up (`@M024`).  ⚠ The free length is quantised to hex steps and smoothed in TIME; the trigger for a sub-hex march is terrain elevation (plan 02) |
+| Ask where the game's camera is REMEMBERED between frames | `PlayState.cam` — a `CameraRig`, which is the live `RenderCamera` plus the boom the PLAYER asked for (`@X014`, `@X070`).  ⚠ **Two booms are two facts**: occlusion lends the eye less, it never rewrites the ask, or a wall the vehicle drove past would shorten the camera for the rest of the run.  ⚠ `play_step` steps it LAST and on EVERY frame — inside `play_advance`'s tick loop it would run on one frame in forty at 60 fps and stutter with the right average |
 | Point the camera at the vehicle, or ask which way it is facing | `src/render_camera.loft::camera_follow_vehicle` over `vehicle_facing` — the bearing comes from the **VELOCITY** (`metres(to) − metres(here)`), because a hover unit has no stored facing (`@X067`).  ⚠ It answers a PAIR: plan 19 P2 spells *stop* as `vehicle_drive(v, v.q, v.r)`, so a parked vehicle's velocity is zero and `atan2(0, 0)` would swing the camera east on every key release.  ⚠⚠ **Never paste moros's `azimuth = 270° − facing_deg`** — correct in moros's frame, and in dryopea's it puts the eye exactly ABEAM at all four cardinal headings, where it still tracks and still eases and still looks like a working camera |
 | Gate anything that is DRAWN by GL | [`docs/RENDERER.md`](docs/RENDERER.md) § R0 + § R4 — `xvfb` → GL → `gl_screenshot` → `imaging::png` → `classify_world`, measured at **zero** colour drift.  ⚠ Render FLAT UNLIT for the gate: a shaded frame turns one palette colour into a range and `unknown` stops meaning "fault".  ⚠ Never loosen to nearest-colour — that discards the property R0 measured |
 | Ask what a tower's top is, in the art | `docs/PARTS.md` § D3 — it is a SOCKET, and the simulation has had one since plan 17 T2 (`tower_detach_top` / `tower_mount_top`, which refuses an occupied tower).  ⚠ Which pose a tower draws in is ASKED of `TowerState`, never a second flag beside it |
