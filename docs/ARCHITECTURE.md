@@ -83,112 +83,20 @@ src/
                    editor's frame and not a harness renderer's.
                    Also owns VIEW_W / VIEW_H / VIEW_PPM (the window
                    size IS the shot size).  Never mutates the state
-  tick_clock.loft  the FIXED STEP, in exact integer time (plan 26 L1)
-                   — TickClock + clock_new / clock_advance (a
-                   DURATION) / clock_step (a COUNT) / clock_banked /
-                   clock_restore / clock_units_from_micros, and since
-                   plan 26 L4 the POLICIES: clock_advance_capped /
-                   clock_pump / clock_set_rate / clock_drive.
-                   ⚠⚠ **The base unit is 1/3 of a MICROSECOND**
-                   (CLOCK_UNITS_PER_SECOND = 3 000 000), and µs was
-                   REFUSED on a measurement (@X079, @M031): dryopea's
-                   tick is 2/3 of a second, `1e6 / 1.5` is 666 666.67,
-                   and the 666 667 the plan recommended moves 17 tests
-                   while the 654 gate measurements cannot see it.  1/3
-                   µs is the coarsest unit in which 2/3 s is whole, so
-                   TICK_SECONDS derived from it is BIT-IDENTICAL to the
-                   `1.0 / 1.5` it replaced.
-                   ⚠ **The unit is the CONSUMER's choice** — clock_new
-                   takes a step and the accumulator counts whatever the
-                   caller counts (128 Hz cannot use 3 000 000 either).
-                   What this file promises is the IDENTITY, not a unit.
-                   ⚠ **No callback and no alpha.**  It never calls your
-                   tick; it answers HOW MANY.
-                   ⚠⚠ **The L4 POLICIES are DOORS BESIDE the
-                   arithmetic, never settings inside it** (@X083), and
-                   dryopea consumes NONE of them — moros built two of
-                   the three, which is § FLEXIBLE's whole argument.
-                   `clock_advance` is still uncapped, because
-                   `play_advance`'s refusal of a cap is what 654
-                   measurements rest on.  ⚠⚠ clock_advance_capped
-                   DROPS the excess; clamping the answer and keeping
-                   the backlog is a DEFERRAL that runs the simulation
-                   behind the wall for ever, and both answer fewer
-                   ticks on the stalled frame — 4 vs 24 over one
-                   stream (@M034).  ⚠ clock_set_rate is a RATIONAL
-                   (@X084) applied at ONE private site to every
-                   DURATION door and to NO count door, so a paused
-                   game can still run its own tests; a defaulted
-                   `0 / 0` reads as UNSCALED.  ⚠ clock_drive is a
-                   NAME rather than a fix — `n * step` is already
-                   exact in integers, which is the opposite of
-                   play_ticks.
-                   ⚠ **No tick COUNTER**: `PlayState.ticks` already
-                   counts, and a second counter is two facts that can
-                   disagree.  This owns the STEP and the BANK.
-                   ⚠⚠ clock_seconds_from_units /
-                   clock_units_from_seconds are the seam to float
-                   seconds, and plan 26 L3 did not CLOSE it — it
-                   changed hands.  Every caller used to be a one-shot
-                   TIMER; what is left is `.keys` AUTHORING (a person
-                   writes seconds, exactly where bank_fraction sits)
-                   and the camera's EASE.  A MOVER or a TIMER that
-                   reached for it would be throwing away what
-                   tick_bank and tick_timer were built to keep
-  tick_timer.loft  a ONE-SHOT DURATION that fires once, exactly
-                   (plan 26 L3) — Timer { spent, total } + timer_new /
-                   timer_armed / timer_arm / timer_spend /
-                   timer_running / timer_left / timer_spent /
-                   timer_total / timer_fraction / timer_cancel /
-                   timer_restore_left / timer_restore_spent.
-                   ⚠⚠ **timer_left is `total - spent`, so there are no
-                   longer TWO DIRECTIONS to disagree** — the up-count
-                   and the down-count are one number read two ways,
-                   which is what deletes the direction problem rather
-                   than guarding it.  HELPER_TIMER_EPSILON,
-                   TOWER_REPAIR_EPSILON and VEHICLE_TIMER_EPSILON are
-                   all GONE.
-                   ⚠⚠ **It HOLDS its `total` where a Bank may not hold
-                   its `whole`** (@X082) — same [loft#914] rule,
-                   opposite conclusion: a defaulted `total` of 0 is an
-                   UNARMED timer, which is what every 0.0 seconds field
-                   it replaced already meant (recover / stand / lull /
-                   boost_left all had zero as their neutral).
-                   ⚠ **It is NOT a Bank, and the refutation is
-                   measured**: a one-shot built on bank_gain fires a
-                   SECOND time with nobody re-arming it, and its
-                   residue leaks into the next arming — a 5 s cooldown
-                   costs 8 ticks the first time and 7 the second.
-                   ⚠ No repeat, no callback, no pause, no rate.
-  tick_bank.loft   a RATE consumed in whole units, exactly (plan 26 L2)
-                   — Bank { progress } + bank_new / bank_rate /
-                   bank_gain / bank_most / bank_progress /
-                   bank_fraction / bank_restore /
-                   bank_restore_fraction / bank_reset, over
-                   BANK_RATE_SCALE and BANK_WHOLE.
-                   ⚠⚠ **The ONE implementation of *do not lose a
-                   fraction*.**  There were three copies plus a missing
-                   fourth (@D003 — the player truncated), and both
-                   mover epsilons are DELETED because integer
-                   arithmetic has nothing to nudge.
-                   ⚠⚠ **A Bank holds the CARRY and nothing else**
-                   (@X080): the RATE arrives per call, because @X061
-                   makes it a property of a CONDITION; and `whole` is a
-                   PARAMETER, because a Bank carrying its own scale
-                   would default to 0 in every partial struct literal
-                   and silently freeze that mover ([loft#914]).
-                   ⚠ **The rate is scaled and the time is not** — time
-                   is exact base units, a rate is an authored float, so
-                   bank_rate quantises to millionths.  The reciprocal
-                   form (units per hex) needs no scale and is INEXACT
-                   at 2.25 hex/s, which @M013 already sweeps.
-                   ⚠ **It is NOT a Timer** and must not become one: a
-                   bank's remainder is load-bearing for ever, a
-                   one-shot's dies at its boundary.  L3 builds Timer
-                   beside this, never on top of it.
-                   ⚠ bank_most is the CEILING and spends nothing
-                   (@X081) — `play_steer_reach` asks once per FRAME
-
+  ⚠⚠ tick_clock.loft, tick_bank.loft and tick_timer.loft LEFT src/ at
+     plan 26 L6.  They are the **`fixstep` PACKAGE** now, in
+     loft-libs-game beside `input` — TickClock (clock_advance /
+     clock_step / clock_alpha / the L4 policies), Bank (bank_gain) and
+     Timer (timer_arm / timer_spend), plus the `approach` ease that
+     render_camera.loft used to own.
+     ⚠ `loft api fixstep` is the surface and the package's own README
+     is the guide.  **Do not restate either here** — the whole reason
+     the extraction was worth doing is that there was ONE copy of this
+     arithmetic instead of nine, and a second copy of its DOCS is the
+     same mistake one layer up.
+     ⚠ dryopea's own numbers stay here: TICK_STEP_UNITS and
+     TICK_SECONDS are in spawn.loft, and @X079 is why the base unit is
+     a third of a microsecond rather than a microsecond.
   play.loft        the GAME's seam (plan 19 P1) — PlayState { wave,
                    clock, ticks, prev, playing, cam } +
                    play_state_new / play_core / play_ticks /

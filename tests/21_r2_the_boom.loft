@@ -101,9 +101,9 @@ fn linear_approach(now: float, want: float, k: float, dt: float) -> float {
 pub fn test_the_ease_is_frame_rate_independent() {
     tf_k = CAMERA_EASE_RATE;
 
-    tf_one = cam_approach(0.0, 1.0, tf_k, 1.0);
+    tf_one = approach(0.0, 1.0, tf_k, 1.0);
     tf_many = 0.0;
-    for _ in 0..60 { tf_many = cam_approach(tf_many, 1.0, tf_k, 1.0 / 60.0); }
+    for _ in 0..60 { tf_many = approach(tf_many, 1.0, tf_k, 1.0 / 60.0); }
 
     assert(abs(tf_one - tf_many) < 1e-12,
            "one frame of 1 s gave {tf_one} and sixty of 1/60 s gave {tf_many}");
@@ -123,9 +123,9 @@ pub fn test_the_ease_is_frame_rate_independent() {
 // A frame with no time in it moves nothing — which is what an edit
 // session hands down through `play_frame_seconds`.
 pub fn test_a_frame_with_no_time_moves_nothing() {
-    assert(cam_approach(2.0, 9.0, CAMERA_EASE_RATE, 0.0) == 2.0,
+    assert(approach(2.0, 9.0, CAMERA_EASE_RATE, 0.0) == 2.0,
            "a zero-length frame moved the ease");
-    assert(cam_approach(2.0, 9.0, CAMERA_EASE_RATE, -1.0) == 2.0,
+    assert(approach(2.0, 9.0, CAMERA_EASE_RATE, -1.0) == 2.0,
            "a negative frame moved the ease");
 }
 
@@ -136,7 +136,7 @@ pub fn test_the_ease_decelerates() {
     td_now = 0.0;
     td_prev = 2.0;
     for _ in 0..10 {
-        td_next = cam_approach(td_now, 1.0, CAMERA_EASE_RATE, 1.0 / 60.0);
+        td_next = approach(td_now, 1.0, CAMERA_EASE_RATE, 1.0 / 60.0);
         td_step = td_next - td_now;
         assert(td_step > 0.0, "the ease stalled short of its target");
         assert(td_step < td_prev, "step {td_step} did not shrink under {td_prev}");
@@ -151,7 +151,7 @@ pub fn test_the_ease_decelerates() {
 
 // From 360° toward 45° the turn is +45°, not −315°.
 pub fn test_the_azimuth_turns_the_short_way() {
-    ts_got = cam_approach_angle(360.0, 45.0, CAMERA_EASE_RATE, 1.0 / 60.0);
+    ts_got = approach_angle(360.0, 45.0, CAMERA_EASE_RATE, 1.0 / 60.0);
     // One sixtieth at k = 6 closes 9.5% of the gap: 4.3° the short way,
     // or 329.7° the long way.
     assert(ts_got > 0.0 && ts_got < 45.0,
@@ -170,7 +170,7 @@ pub fn test_the_shipped_keys_reach_the_wrong_way_swing() {
     vehicle_drive(tw_w, -1, 0);
     tw_fw = vehicle_facing(tw_w);
     assert(tw_fw.1, "driving west gave no bearing at all");
-    tw_azw = cam_wrap_deg(tw_fw.0 * 180.0 / CAM_PI + 180.0);
+    tw_azw = wrap_deg(tw_fw.0 * 180.0 / CAM_PI + 180.0);
 
     // South-west: `lat_neighbour` direction 2 from the origin.
     tw_sw_at = lat_neighbour(Hex { q: 0, r: 0 }, 2);
@@ -178,10 +178,10 @@ pub fn test_the_shipped_keys_reach_the_wrong_way_swing() {
     vehicle_drive(tw_s, tw_sw_at.q, tw_sw_at.r);
     tw_fs = vehicle_facing(tw_s);
     assert(tw_fs.1, "driving south-west gave no bearing at all");
-    tw_azs = cam_wrap_deg(tw_fs.0 * 180.0 / CAM_PI + 180.0);
+    tw_azs = wrap_deg(tw_fs.0 * 180.0 / CAM_PI + 180.0);
 
     tw_naive = tw_azs - tw_azw;
-    tw_short = cam_wrap_delta(tw_naive);
+    tw_short = wrap_delta(tw_naive);
 
     assert(abs(tw_naive) > 180.0,
            "west→south-west is a naive turn of {tw_naive}° — under half a circle, so "
@@ -193,11 +193,11 @@ pub fn test_the_shipped_keys_reach_the_wrong_way_swing() {
 
 // The wrap is exact at the boundaries, in both directions.
 pub fn test_the_wrap_is_exact_at_half_a_turn() {
-    assert(cam_wrap_delta(180.0) == 180.0, "+180° must stay +180°");
-    assert(cam_wrap_delta(-180.0) == 180.0, "−180° folds to +180°, not to itself");
-    assert(cam_wrap_delta(540.0) == 180.0, "540° is half a turn");
-    assert(cam_wrap_deg(-90.0) == 270.0, "−90° is 270°");
-    assert(cam_wrap_deg(720.0) == 0.0, "two whole turns is zero");
+    assert(wrap_delta(180.0) == 180.0, "+180° must stay +180°");
+    assert(wrap_delta(-180.0) == 180.0, "−180° folds to +180°, not to itself");
+    assert(wrap_delta(540.0) == 180.0, "540° is half a turn");
+    assert(wrap_deg(-90.0) == 270.0, "−90° is 270°");
+    assert(wrap_deg(720.0) == 0.0, "two whole turns is zero");
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -432,7 +432,7 @@ pub fn test_the_rested_eye_is_behind_the_vehicle() {
     assert(tr_eye.z > tr_rig.cam.target.z, "the eye is not above the vehicle");
 }
 
-// The whole rig is frame-rate independent, not just `cam_approach` —
+// The whole rig is frame-rate independent, not just `approach` —
 // measured BEFORE it rests, because after the snap any two runs agree
 // for a reason that is not the ease.
 pub fn test_the_rig_reaches_one_camera_at_any_frame_rate() {

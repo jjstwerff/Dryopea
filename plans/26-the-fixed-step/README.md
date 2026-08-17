@@ -9,10 +9,41 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**Opened 2026-08-17.  L0 through L5 shipped 2026-08-17; L6 next.**  This
+**Opened 2026-08-17.  L0 through L6 shipped 2026-08-17 — the plan is COMPLETE on the dryopea side; publishing and the moros half remain.**  This
 plan came out of a comparison of dryopea's tick pacing against moros's, run
 before it was written; the readings are § What was measured first and three of
 them are defects nothing in either repo can currently see.
+
+⚠⚠ **L6 EXTRACTED the library and it is a MOVE, not a rewrite** — `scripts/test.sh`
+**1322 green** and `scripts/validate.sh` **654 measurements green and unmoved**, with
+`tick_clock.loft`, `tick_bank.loft` and `tick_timer.loft` gone from `src/` and the
+camera's ease gone from `render_camera.loft`.  ⚠ **It lives in `loft-libs-game`**
+(project owner, 2026-08-17: *"something like this is needed for every game that is
+built"*), which is that chunk's own stated remit — *runtime game services … consumed by
+every game*.  ⚠⚠ **And the chunk's README had been advertising the slot since
+bootstrap**: its `time/` row reads *"frame counter, dt, scheduling"* while `time` shipped
+as date arithmetic, so the per-frame clock was a planned package that never landed.
+`fixstep` fills it, and the stale row is corrected in the same change.
+
+⚠ **What L6 shipped**: `fixstep 0.1.0` — `TickClock`, `Bank`, `Timer` and `approach`,
+zero dependencies, 13 tests, **one per door**, each carrying the `@FIX-0NN` tag its
+function cites.  The example half of the gate is REAL: run against the library the
+citation checker reports **28 citations, 0 faults**, and it caught its own first
+version — a tag in a section header is separated from its `fn` by a blank line, which
+breaks the binding, so **all thirteen were dangling while looking correct**.
+
+⚠⚠ **Two loft gaps found, and one of them changed the plan.**  `loft test` **ignores
+`--lib`**, so an in-tree path dep cannot run a consumer's suite at all — which is why
+`lib/fixstep` was abandoned for the sibling-repo shape rather than kept as an interim.
+And `loft test --native-wasm` is **silently ignored** (it reports *"ran on the
+interpreter only"*), so that target is UNVERIFIED rather than passing.  Both are in
+`QUESTIONS_FOR_LOFT.md`.  ⚠ The parity gate stands at **interpreter 13/13 and
+`--native` 13/13, identical**; the package claims no target it has not run.
+
+⚠ **What L6 did NOT do**: publish.  The package is consumed from a local install while
+it is proved against its first consumer, and the registry submission — plus the moros
+half of § Cross-repo coordination, where `cam_approach` is the LINEAR form — is
+deliberately a separate, reversible step.
 
 ⚠⚠ **L5's headline is that an eased follow camera does not REMOVE a lattice
 mover's jump — it MOVES it, off the world and onto the mover, and the jump
@@ -573,7 +604,7 @@ example of the editor's door, and `plans/08` is the plan that made them so.
 | **L3** — `Timer`: one-shot, UP and DOWN, and the family boundary | S | `tests/26_l3_the_timers.loft` — both directions on one target, plus the `Timer`-as-`Bank` refutation | **Done** 2026-08-17 — `src/tick_timer.loft`, 16 tests; all five one-shot timers converted and `HELPER_TIMER_EPSILON` / `TOWER_REPAIR_EPSILON` / `VEHICLE_TIMER_EPSILON` deleted.  ⚠ `@D004` found AND closed in the phase: the two timers that never had a guard were the broken ones.  ⚠ `@X082`: a `Timer` holds its `total` where a `Bank` may not hold its `whole` — same [loft#914] rule, opposite conclusion.  ⚠ § 2's count was seven and there are EIGHT — the tower's CHARGE is a hand-rolled bank, pinned rather than converted |
 | **L4** — the policies dryopea does NOT need: cap, rate, composition | S | `tests/26_l4_the_policies.loft` — capped vs uncapped, and a nested clock | **Done** 2026-08-17 — four doors on `src/tick_clock.loft` (`clock_advance_capped` / `clock_pump` / `clock_set_rate` / `clock_drive`), 20 tests, and dryopea consumes none of them.  ⚠ `@M034`: **this row's composition clause cannot fail** — the pair it names is commensurate — and its cap control passes for a DEFERRING cap, which is the mistake a driver actually writes.  ⚠ `@X083`: a policy is a door, and the cap DROPS.  ⚠ `@X084`: the rate is a rational, exempt from the count door, and its defaulted `0 / 0` is the third [loft#914] answer in this plan |
 | **L5** — alpha, or the finding that the ease already covers it | S | `tests/26_l5_the_alpha.loft` — frames moved, alpha and ease measured apart.  ⚠ May be CUT | **Done** 2026-08-17 — `clock_alpha` + `play_alpha`, 17 tests, and **no policy**: three of them measured, all three priced, none shipped.  ⚠ **NOT cut** — the ease is the one thing that cannot smooth the mover, because the mover is what it is chasing (`@M035`).  ⚠ `@X085`: the alpha is the clock's and the policy is the renderer's, and the two have to be applied in the SAME place or a seventh of the fault survives.  ⚠ The row's own frame count is off by one, for a reason that is in the arithmetic |
-| **L6** — extract; a door per use case, each with the test that IS its example | M | both suites, both digests, and one named test per door that the docs link to | Next |
+| **L6** — extract; a door per use case, each with the test that IS its example | M | both suites, both digests, and one named test per door that the docs link to | **Done (dryopea half)** 2026-08-17 — `fixstep 0.1.0` in `loft-libs-game`, 13 tests, 13 doors, 28 citations 0 faults.  ⚠ dryopea 1322 + 654 **unmoved**, which is the *a move, not a rewrite* half of the gate.  ⚠ **moros's digests are NOT done** — that repo still holds the linear `cam_approach` and consumes nothing; it is the remaining half and it is another repo's change.  ⚠ Publishing deferred deliberately |
 
 ⚠ **L0 before L1 is not ceremony.**  `design-protocol` § step 3 asks for the
 cheapest test that could prove the design UNNECESSARY, and L0 is it: if every
@@ -659,12 +690,19 @@ is last.
 
 ## Open questions
 
-1. **Where does the library live, and what is it called?**  *Recommendation:
-   a new registry package, and **not** `tick` — `ticks()` is a loft builtin
-   and `CLAUDE.md` § Loft language gotchas already records a probe that
-   shadowed it and reported a tick 4× cheaper than it was.  `fixstep` says
-   what it is and cannot collide; `sim_clock` is the alternative.*  L6
-   decides, and the ownership half is the project owner's.
+1. ✅ **Where does the library live, and what is it called?**  **`fixstep`, in
+   `loft-libs-game`** (project owner, 2026-08-17: *"something like this is needed
+   for every game that is built"*).  ⚠ The name recommendation held for a second
+   reason found while checking: **moros already has a `tick` module**
+   (`hex_editor/src/tick.loft`, the `Walker`), so `tick` would have read as the
+   same thing while being a body rather than a clock — on top of `ticks()` being a
+   loft builtin.  ⚠⚠ **A standalone repo was considered and refused on the owner's
+   argument**: the surveyed evidence found only one other duplicated candidate
+   (`approach`, which ships INSIDE the package), so a themed repo looked like
+   over-building — but *every game needs this* is a stronger admission test than
+   *two games happen to have written it*, and `loft-libs-game` already exists for
+   exactly that class.  ⚠ `moros_map` was floated as a second tenant and is NOT
+   one: it is a world model and belongs beside `hex_world` in `loft-libs-world`.
 2. ✅ **What is the chosen step?**  ⚠⚠ **ANSWERED, and the recommendation
    above was WRONG** — 666 667 µs moves **seventeen tests** (`@M031`), because
    `0.666667` is not `0.6666666666666666` and a dozen assertions are pinned to

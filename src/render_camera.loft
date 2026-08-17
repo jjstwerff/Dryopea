@@ -55,6 +55,7 @@
 // the artefact rather than the intent.
 
 use lattice;
+use fixstep;
 use vehicle;
 use palette;
 use painted;
@@ -447,59 +448,6 @@ pub const CAMERA_SKIN: float = 0.749519;   // HEX_FLAT_TO_FLAT * 0.5 + 0.10
 // becomes the expression it is written as.
 pub const CAMERA_TARGET_HEIGHT_METRES: float = 0.85;   // 0.4 + 0.9 / 2
 
-// What one frame of `dt` closes of a gap.
-//
-// ⚠ **`1 − e^(−k·dt)`, and the header says why it may not be `k·dt`.**
-// Zero for a frame with no time in it, which is what an edit frame
-// hands down (`play_frame_seconds`).
-fn cam_ease_fraction(k: float, dt: float) -> float {
-    if dt <= 0.0 { return 0.0; }
-    1.0 - exp(-(k * dt))
-}
-
-// Move `now` toward `want` by one frame's worth.
-pub fn cam_approach(now: float, want: float, k: float, dt: float) -> float {
-    now + (want - now) * cam_ease_fraction(k, dt)
-}
-
-// An angle in degrees, folded into `[0, 360)`.
-pub fn cam_wrap_deg(a: float) -> float {
-    cwg = a % 360.0;
-    if cwg < 0.0 { cwg = cwg + 360.0; }
-    cwg
-}
-
-// A DIFFERENCE of angles, folded into `(−180, 180]` — the short way
-// round.
-//
-// ⚠⚠ **This is not defensive tidying; the shipped key set reaches the
-// wrong-way swing.**  Holding A drives due west, whose bearing is
-// `atan2(0, −1) = π`, so the camera's azimuth is 360°.  Adding S sends
-// it south-west, azimuth **60°**.  The true turn is 60°; eased as plain
-// numbers it is **−300°**, and the camera spins five sixths of a circle
-// the wrong way on one extra keypress.  ⚠ It looks like a camera the
-// whole time, which is why it needs a test rather than an eye.
-//
-// ⚠ **60° and not 45°, and the difference is the lattice.**  A/S is a
-// heading in METRES, so the key names a 45° direction — but the vehicle
-// arrives at a hex, and `vehicle_facing` reads the velocity between hex
-// CENTRES (`@X067`).  Pointy-top odd-r puts the south-west neighbour at
-// −120°, so the camera swings to the hex the vehicle reached rather than
-// to the compass point the finger asked for.  Measured in
-// `tests/21_r2_the_boom.loft` § The shipped keys reach the wrong-way
-// swing, which is where the numbers above come from.
-pub fn cam_wrap_delta(d: float) -> float {
-    cwd = d % 360.0;
-    if cwd > 180.0   { cwd = cwd - 360.0; }
-    if cwd <= -180.0 { cwd = cwd + 360.0; }
-    cwd
-}
-
-// Move an ANGLE toward another by one frame's worth, the short way.
-pub fn cam_approach_angle(now: float, want: float, k: float, dt: float) -> float {
-    cam_wrap_deg(now + cam_wrap_delta(want - now) * cam_ease_fraction(k, dt))
-}
-
 // ─── What the world lets the boom have ──────────────────────────
 
 // The longest boom that keeps the vehicle in sight, given the camera's
@@ -599,18 +547,18 @@ pub fn camera_rig_zoom(rig: CameraRig, delta: float) {
 // goes through a function shaped like this one.
 fn camera_ease_pose(cam: RenderCamera, want: const Vec3, want_az: float, dt: float) {
     cam.target = vec3(
-        cam_approach(cam.target.x, want.x, CAMERA_EASE_RATE, dt),
-        cam_approach(cam.target.y, want.y, CAMERA_EASE_RATE, dt),
-        cam_approach(cam.target.z, want.z, CAMERA_EASE_RATE, dt),
+        approach(cam.target.x, want.x, CAMERA_EASE_RATE, dt),
+        approach(cam.target.y, want.y, CAMERA_EASE_RATE, dt),
+        approach(cam.target.z, want.z, CAMERA_EASE_RATE, dt),
     );
-    cam.azimuth = cam_approach_angle(cam.azimuth, want_az, CAMERA_EASE_RATE, dt);
+    cam.azimuth = approach_angle(cam.azimuth, want_az, CAMERA_EASE_RATE, dt);
 }
 
 // The boom, one frame's worth — fast in, slow out.
 fn camera_ease_boom(cam: RenderCamera, free: float, dt: float) {
     ceb_k = CAMERA_BOOM_OUT;
     if free < cam.distance { ceb_k = CAMERA_BOOM_IN; }
-    cam.distance = cam_approach(cam.distance, free, ceb_k, dt);
+    cam.distance = approach(cam.distance, free, ceb_k, dt);
 }
 
 // Is every valve within `CAMERA_REST_EPSILON` of where it is going?
@@ -619,14 +567,14 @@ fn camera_at_rest(cam: const RenderCamera, want: const Vec3, want_az: float,
     abs(cam.target.x - want.x)  < CAMERA_REST_EPSILON
         && abs(cam.target.y - want.y)  < CAMERA_REST_EPSILON
         && abs(cam.target.z - want.z)  < CAMERA_REST_EPSILON
-        && abs(cam_wrap_delta(cam.azimuth - want_az)) < CAMERA_REST_EPSILON
+        && abs(wrap_delta(cam.azimuth - want_az)) < CAMERA_REST_EPSILON
         && abs(cam.distance - free) < CAMERA_REST_EPSILON
 }
 
 // Put every valve exactly where it was going.
 fn camera_snap(cam: RenderCamera, want: const Vec3, want_az: float, free: float) {
     cam.target = vec3(want.x, want.y, want.z);
-    cam.azimuth = cam_wrap_deg(want_az);
+    cam.azimuth = wrap_deg(want_az);
     cam.distance = free;
 }
 

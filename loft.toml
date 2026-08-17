@@ -82,3 +82,19 @@ imaging = ">=0.2.0"
 # Not published to the registry, so it stays a path-dep — into the
 # moros checkout, which is where the shared world model now lives.
 moros_map = { path = "../moros/lib/moros_map" }
+
+# Plan 26 L6 — the fixed step, extracted.  `src/tick_clock.loft`,
+# `tick_bank.loft` and `tick_timer.loft` moved here unchanged: dryopea
+# had SEVEN hand-rolled *do-not-lose-a-fraction* sites and moros two
+# more, and every one of them existed because there was nothing to
+# consume.  ⚠ Zero dependencies of its own, deliberately — a timing
+# library that pulled in a lattice or a renderer could not be consumed
+# by the next game.
+#
+# ⚠ It lives in `loft-libs-game` beside `input`, and the reason is the
+# repo's own: that chunk is *"runtime game services … consumed by every
+# game"*, and a fixed timestep is needed by every game that is built.
+# ⚠⚠ Its README has advertised the slot since bootstrap — the `time/`
+# row reads *"frame counter, dt, scheduling"* — and `time` shipped as
+# date arithmetic instead, so the slot was never filled.  This fills it.
+fixstep = ">=0.1"

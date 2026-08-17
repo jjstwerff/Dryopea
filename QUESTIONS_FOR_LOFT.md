@@ -31,6 +31,53 @@ fix / feature, move it to **Resolved**.
 
 ## Open
 
+### `loft test` ignores `--lib`, so a path-dep library cannot be tested by its consumer
+
+Found 2026-08-17, plan 26 L6, interpreter.
+
+`loft --lib lib/ prog.loft` resolves a package at `lib/<name>/src/<name>.loft`
+correctly — verified with a one-line probe that calls into it and prints the
+right answer.  **`loft test --lib lib/ tests/x.loft` does not**, and neither
+does `loft --lib lib/ test …`: every `use <name>;` fails with
+
+```
+Error: Library '<name>' not found — searched lib/, lib_dirs, and sibling packages
+```
+
+The message names `lib_dirs` as a searched location, which is exactly what
+`--lib` populates, so the flag appears to be parsed and dropped rather than
+rejected (no "unknown argument").
+
+⚠ **Impact**: a library developed in-tree as a path dependency cannot run its
+consumer's test suite at all.  The only workaround is `loft install <dir>`,
+which copies to `~/.loft/lib/<name>` — a stale global copy that then SHADOWS
+the registry, which is the failure moros's `Makefile` documents at length for
+`web` (loft-lang/loft#667).  So the workaround for one gap re-arms another.
+
+⚠ dryopea hit this moving `fixstep` out of `src/` and abandoned the in-tree
+path-dep shape because of it.
+
+### `loft test --native-wasm` is silently ignored
+
+Found 2026-08-17, plan 26 L6.
+
+`loft test --native-wasm` runs, exits 0, and reports:
+
+```
+test result: ok. 13 passed; 1 file  [ran on the interpreter only —
+native not exercised: loft test --native; …]
+```
+
+— i.e. it ran the INTERPRETER and said so in a banner that reads like a
+recommendation rather than a warning.  `--native` is honoured on the same
+command line, so this is specific to `--native-wasm`.
+
+⚠ **Impact**: the wasm column of the target matrix cannot be gated from
+`loft test`, so a library either claims a target it has not run or omits it.
+`fixstep` omits it, per `loft-ship`'s *a claimed-but-broken target is worse
+than an honestly-omitted one*.
+
+
 ### `imaging::Pixel` has no alpha, so a PNG cannot round-trip a sprite
 
 - **Found while:** designing [`docs/PARTS.md`](docs/PARTS.md) (plan 20) —
