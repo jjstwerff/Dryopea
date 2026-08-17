@@ -1,0 +1,57 @@
+// A file-scope `const vector` whose literal contains a NEGATIVE number
+// reads back EMPTY.
+//
+// Trigger:  a `const` at file scope, declared `vector<integer>` or
+//           `vector<float>`, initialised from a literal in which at
+//           least one element is negative.
+//
+// Observed: `len()` is 0 and every index answers `null(oob)`.  No
+//           parse error, no warning, no advice — `loft --native-emit`
+//           is clean too.
+// Expected: the vector the literal spells.
+//
+// ⚠ The sign is the whole trigger, not the length and not the position:
+//   [10, 9, 5, 0]      -> 4   correct
+//   [1,2,3,4,5,6,7,8,9,10,11,12] -> 12  correct
+//   [10, -5, 9]        -> 0   WRONG
+//   [-1, 2, 3]         -> 0   WRONG
+//   [1.0, -2.0]        -> 0   WRONG
+//
+// ⚠ A LOCAL vector with the same literal is correct, so the workaround
+// is to move the value inside the function that reads it.
+//
+// Why this is worse than a wrong answer: a loop over an empty vector
+// runs zero times, so every assertion inside it is vacuously true.  It
+// cost dryopea a camera test that compared two projections of a ring of
+// twelve hexes and reported perfect agreement while iterating over
+// nothing — the reading was *exactly* 0.0 rad out of a comparison
+// between integer pixels and a floating-point projection, which is not
+// a value a real projection can produce.
+//
+// Run: loft --interpret loft_repros/const_vector_with_a_negative_is_empty.loft
+
+const ALL_POSITIVE: vector<integer> = [10, 9, 5, 0];
+const HAS_A_NEGATIVE: vector<integer> = [10, -5, 9];
+const LEADS_WITH_A_NEGATIVE: vector<integer> = [-1, 2, 3];
+const TWELVE_POSITIVE: vector<integer> = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+const FLOATS_WITH_A_NEGATIVE: vector<float> = [1.0, -2.0];
+
+pub fn main() {
+    println("ALL_POSITIVE           len = {len(ALL_POSITIVE)}   expected 4");
+    println("TWELVE_POSITIVE        len = {len(TWELVE_POSITIVE)}  expected 12");
+    println("HAS_A_NEGATIVE         len = {len(HAS_A_NEGATIVE)}   expected 3");
+    println("LEADS_WITH_A_NEGATIVE  len = {len(LEADS_WITH_A_NEGATIVE)}   expected 3");
+    println("FLOATS_WITH_A_NEGATIVE len = {len(FLOATS_WITH_A_NEGATIVE)}   expected 2");
+
+    // The silent half: this loop is expected to print three lines and
+    // prints none, so any assertion inside it holds vacuously.
+    println("--- iterating HAS_A_NEGATIVE ---");
+    for cv_x in HAS_A_NEGATIVE {
+        println("  saw {cv_x}");
+    }
+    println("--- done ---");
+
+    // A local with the identical literal is correct.
+    cv_local = [10, -5, 9];
+    println("local  [10, -5, 9]     len = {len(cv_local)}   expected 3");
+}

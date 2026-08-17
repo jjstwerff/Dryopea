@@ -143,6 +143,76 @@ happen**, and the instrument that ends that class of bug reads the eye **out of
 the view matrix the renderer actually used** (`eye = −Rᵀt`), never out of the
 camera's own trace.
 
+### ⚠⚠ R1 as BUILT (2026-08-17) — and the frame note above was the trap
+
+`src/render_camera.loft`, `tests/21_r1_the_camera.loft` (15 fns).  Three
+things this section had to correct while the code went in.
+
+**1. The world frame is +y NORTH, not +y south.**  § Open 5 warns that
+*"dryopea is `+y` south with `+z` up"* is the convention that must not be
+ported wrong — and read as an instruction it is the wrong frame.  ⚠ +y
+south is a **CANVAS** convention (`render.loft::world_to_canvas`: *"no
+flip — world & screen both grow south"*), and a screen's y grows
+downward because screens do.  A 3-D world is not a screen: (east, south,
+up) is **left-handed**, `mat4_look_at` builds a right-handed basis
+(`s = f × up`, `u = s × f`), and the product is a **MIRROR**.
+
+⚠⚠ **No camera setting undoes it, because no rotation undoes a
+mirror** — and that is measured rather than argued (`@M021`).  Eight
+azimuths at 89°, asked whether east lands screen-right AND north
+screen-up: the north frame answers yes at **exactly one** of them and
+the south frame at **none**, getting one or the other and never both.
+
+So there is ONE conversion — `lat_to_world`, which negates y — and it is
+the only place that may.  ⚠ Its negation cancels `lat_to_metres`', which
+means the camera's world **is `hex_grid`'s own frame**.  That is a
+finding, not a coincidence: the library's frame is a WORLD frame, and
+dryopea's is a SCREEN frame.  `@X065`.
+
+**2. `camera_overview` pins the AZIMUTH too**, at 270° — a deliberate
+deviation from `moros_render`, which sets only elevation and distance
+because a map view there is free to rotate.  dryopea's editor view has
+no rotation at all, so an unpinned overview reproduces it from one orbit
+position and is a rotated picture of it from every other.  `@X066`.
+
+⚠ **And the reproduction is now a number**: twelve hexes on a ring, put
+through the game camera and through `world_to_canvas` on the editor's
+own 960×720, agree to **0.0014 rad of bearing** (0.08°) with the scale
+uniform to **0.56%** — a similarity, not merely "both top-down"
+(`@M022`).  ⚠ Compare in PIXELS, never in NDC: the aspect ratio lives in
+the projection's x term, so NDC is anisotropic by construction and the
+same comparison there reads 0.126 rad of disagreement that is not there.
+
+**3. moros's follow formula puts the camera ABEAM, not backwards.**
+`azimuth = 270° − facing_deg` is correct in moros's frame, where facing
+0 means `+Z` and bearings run clockwise.  dryopea's bearing is a world
+bearing (0 = east, `atan2(north, east)`), so behind is `facing + 180°`.
+⚠ Ported verbatim, the along-track component is **exactly zero at all
+four cardinal headings** — the eye sits square on the vehicle's flank,
+tracking it, easing correctly, looking in every way like a working
+follow camera.  `@X067`, and `tests/21_r1` § The moros formula puts the
+camera abeam is the tripwire.
+
+**⚠ Why 89° and not 90°, corrected.**  The expectation was that vertical
+makes `f × up` the zero vector and collapses the view.  It does not:
+`cos(π/2)` is 6.1e-17, so the basis stays well-formed and every valve
+reads healthy.  What dies is the **azimuth** — two opposite azimuths
+move the eye 2.79 m apart at 89° and **2.6e-13 m** at 90°, so the
+screen's roll stops being something the camera decides.
+
+**⚠ What R1 did NOT build.**  The `RenderCamera` field on `PlayState`
+(§ Open 4, `@X014`) — the decision stands, and it lands in R2 where the
+eased boom gives the session something to remember between frames.  R1
+ships the camera as a value with its frame, its presets and its
+instrument, every line of it gated.  No mouse binding either; `DESIGN.md`
+§ 11 records what the buttons will do.
+
+⚠ **`mesh3d` is a direct dependency now** — it owns `Vec3` / `Mat4` /
+`mat4_look_at` / `mat4_perspective`, which used to live in
+`graphics/src/math.loft` and moved out at graphics 0.4.3.  `graphics`
+already pulls it; dryopea declares it because `render_camera.loft` calls
+it directly.
+
 ---
 
 ## R2 — the pipeline: geometry is shared, rasterisation is not  `@X010`
@@ -371,6 +441,12 @@ size, a travel mechanic or what is out there.
    vehicle's VELOCITY rather than a stored facing — a hover unit that slides
    sideways and keeps its nose forward is correct, and it makes the camera's
    input a thing the sim already computes.*  Decided in the plan's camera phase.
+   ⚠ **SETTLED as recommended, R1, `@X067`** — `vehicle_facing` reads
+   `metres(to) − metres(here)` and answers a bearing PLUS whether there is one.
+   ⚠ The pair is the part that was not obvious: plan 19 P2 spells *stop* as
+   `vehicle_drive(v, v.q, v.r)`, so a stopped vehicle's velocity is the zero
+   vector and `atan2(0, 0)` answers 0.0 — a camera that trusted it would swing
+   to face east every time the player let go of the key.
 
 2. **`DESIGN.md` § 11 and § 12 need editing, not reinterpreting.**  § 12 says
    *locked in pose, no mouse orbit*; § 11 reserves the mouse for UI clicks and
@@ -378,6 +454,15 @@ size, a travel mechanic or what is out there.
    them in the same commit that lands the camera, and record what the mouse does
    instead — because "the mouse is free for placement" was doing real work in
    § 11 and something has to keep doing it.*
+   ⚠ **DONE, R1, in the commit that landed the camera** — as this said it would
+   be.  § 11 now reads **left click = placement and UI** (unchanged, which is
+   the half that was doing the work), **right drag = orbit**, **wheel = boom**;
+   § 12's camera passage is rewritten around an orbit camera whose azimuth is
+   the game's and whose elevation and distance are the player's.  ⚠ Orbit went
+   to the OTHER button rather than sharing the left one: a click that sometimes
+   places and sometimes swings the view is exactly the ambiguity § 11's spatial
+   principle exists to avoid.  ⚠ **No binding is built** — `camera_orbit` and
+   `camera_zoom` exist and nothing presses them yet.
 
 3. **Lighting versus exact classification** (§ R4).  *Recommendation: a flat
    unlit render mode for the gate.*  It is one uniform, it keeps `classify_world`

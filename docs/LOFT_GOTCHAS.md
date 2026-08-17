@@ -64,6 +64,35 @@ site.  Format the fields: `{flow_count(f)}`, never `{f}`.
 
 ## Literals
 
+⚠⚠ **A file-scope `const vector` holding a NEGATIVE number is EMPTY**
+([loft#955](https://github.com/loft-lang/loft/issues/955), filed
+2026-08-17, both backends).  `len()` answers 0, every index answers
+`null(oob)`, and nothing says a word — not the parser, not a warning,
+not `--native-emit`.
+
+```loft
+const A: vector<integer> = [10, 9, 5, 0];   // len 4   — fine
+const B: vector<integer> = [10, -5, 9];     // len 0   — WRONG
+const C: vector<integer> = [-1, 2, 3];      // len 0   — WRONG
+const D: vector<float>   = [1.0, -2.0];     // len 0   — WRONG
+```
+
+⚠ **The sign is the whole trigger** — not the length (a twelve-element
+positive literal is fine) and not the position (leading and middle
+minus signs both do it).
+
+⚠⚠ **A loop over an empty vector runs zero times, so every assertion
+inside it holds VACUOUSLY** — which is why this is worse than a wrong
+answer.  It cost plan 21 R1 a gate that projects a ring of twelve hexes
+two ways and compares them: every hex came back `Hex { q: null,
+r: null }`, they all land on the screen centre, and the gate reported
+perfect agreement — **exactly 0.0 rad** — while measuring nothing.  The
+tell was the exactness: an integer-pixel-versus-floating-point
+comparison cannot produce a true zero.
+
+**Workaround:** a LOCAL with the identical literal is correct, so bind
+it inside the function that reads it.
+
 ⚠ **There is no vector-of-TUPLES literal.**  A table written the
 obvious way —
 

@@ -342,6 +342,34 @@ src/
                    + InputState (moros-style: factories + pure tick
                    + struct of booleans)
                    + camera_update(c: &EditorCamera, input: InputState)
+  render_camera.loft
+                   THE GAME's camera (plan 21 R1) — moros's
+                   `RenderCamera`, ported: an orbit camera in
+                   spherical coordinates around a target.
+                   ⚠⚠ Its world frame is x EAST, y NORTH, z UP —
+                   RIGHT-handed, and NOT dryopea's `+y` south.
+                   That one is a CANVAS convention; it is
+                   left-handed once z points up, `mat4_look_at`
+                   builds a right-handed basis, and the product
+                   is a MIRROR that no azimuth undoes (@M021).
+                   `lat_to_world` is the ONE place that negates,
+                   and its negation cancels `lat_to_metres`' —
+                   so the camera's world is `hex_grid`'s own.
+                   ⚠ Two presets, not two cameras:
+                   `camera_overview` (el 89°, az 270° — the
+                   EDITOR's view, measured at 0.0014 rad and
+                   0.56% of scale against the software
+                   rasteriser, @M022) and `camera_follow`.
+                   ⚠ A follow bearing is `facing + 180°` and
+                   comes from the VELOCITY — never moros's
+                   `270 − facing_deg`, which is right in moros's
+                   frame and puts the eye ABEAM in dryopea's.
+                   ⚠ Assert on `camera_eye_of_view` (eye = −Rᵀt),
+                   never on the struct: a solve nobody is told
+                   about is a solve that did not happen.
+                   RenderCamera { target: Vec3, azimuth,
+                   elevation, distance, fov_y, near, far,
+                   up: Vec3 }  (mesh3d owns Vec3 / Mat4)
   painted.loft     PaintedHex { q, r, kind: u8 }
                    + PaintedWorld { painted: hash<PaintedHex[q, r]> }
                    + paint(), lookup_painted(), paint_line()
@@ -768,6 +796,7 @@ suite redirects its own shots into `tests/actual/`.
 | `EditorState` | `editor_step.loft` | the whole editor session — layers, camera, picker, mode, history, chunk dirty set |
 | `EditorInput` | `editor_step.loft` | one frame of player intent (hover hex + action flags) |
 | `EditorCamera` | `camera.loft` | `{ pos: Hex, zoom: integer }` |
+| `RenderCamera` | `render_camera.loft` | `{ target: Vec3, azimuth, elevation, distance, fov_y, near, far, up: Vec3 }` — the GAME's camera (plan 21 R1).  ⚠ Its world is `+y` NORTH with `+z` up, which is not dryopea's metre frame; `lat_to_world` is the one conversion.  ⚠ Not on `PlayState` yet (`@X014`, lands in R2) |
 | `InputState` | `camera.loft` | per-frame camera flags (in_pan_*, in_zoom_*) — folds into `EditorInput` in plan 08 V0b |
 | `PaintedHex` | `painted.loft` | `{ q, r, kind: u8 }` — one painted cell |
 | `PaintedWorld` | `painted.loft` | wrapper holding `hash<PaintedHex[q, r]>` |

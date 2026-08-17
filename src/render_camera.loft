@@ -1,0 +1,345 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// The game's camera — an orbit camera around a target, in spherical
+// coordinates, and the world frame it orbits in.
+//
+// Plan 21 phase R1.  The decisions are `docs/RENDERER.md` § R1 and are
+// not restated here; what IS here is the two things that changed on the
+// way across from moros, both because dryopea's frame is not moros's.
+//
+// ── One camera, two presets ─────────────────────────────────────
+//
+// `camera_overview` pins elevation near vertical and IS dryopea's
+// editor view; `camera_follow` orbits behind the vehicle.  They are two
+// settings of one struct rather than two cameras, which is what makes
+// the eventual migration of the editor onto the GL path a migration
+// rather than a rewrite (`docs/RENDERER.md` § R2).
+//
+// ── ⚠⚠ THE WORLD FRAME IS +y NORTH, and that is NOT dryopea's ────
+//
+// Everywhere else in dryopea **+y is SOUTH** — `lat_to_metres` negates
+// `hex_grid`'s y precisely to get there, and `render.loft`'s
+// `world_to_canvas` says "no flip — world & screen both grow south".
+// That is a CANVAS convention: a screen's y grows downward, so a 2-D
+// world that is only ever drawn on one may as well agree with it.
+//
+// A 3-D world is not a canvas, and carrying the convention across
+// **mirrors the world**.  `mat4_look_at` builds a right-handed view
+// basis (`s = f × up`, `u = s × f`); feed it (east, south, up), which
+// is left-handed, and the image comes out reflected.  ⚠ **No camera
+// setting fixes it, because no rotation undoes a mirror** — measured
+// rather than argued, in `tests/21_r1_the_camera.loft`
+// § test_no_azimuth_saves_the_south_frame: over eight azimuths the
+// south frame gets east-right OR north-up and never both, while the
+// north frame gets both at exactly one of the eight.
+//
+// So there is ONE conversion into the camera's world — `lat_to_world`
+// — it negates y, and it is the only place that may.  ⚠ The negation
+// cancels `lat_to_metres`', which means the camera's world frame is
+// `hex_grid`'s own.  That is a finding rather than a coincidence: the
+// library's frame is a WORLD frame and dryopea's is a SCREEN frame,
+// and going 3-D is going back to the world.
+//
+//   x = EAST      y = NORTH      z = UP (metres, all three)
+//
+// ── ⚠ The instrument: read the eye out of the VIEW MATRIX ───────
+//
+// `camera_eye_of_view` recovers the eye from the matrix the renderer
+// actually used (`eye = −Rᵀt`), and every assertion about where the
+// camera IS goes through it rather than through `camera_eye`.  moros
+// spent four wrong diagnoses on a camera whose every valve read healthy
+// while the eye was in the wrong room; the lesson its
+// `CAMERA_INDOORS.md` draws is that **a solve nobody is told about is a
+// solve that did not happen**, and the only way to see that is to ask
+// the artefact rather than the intent.
+
+use lattice;
+use vehicle;
+use mesh3d;
+
+// π.  loft has no builtin, and `mesh3d` exports none.
+pub const CAM_PI: float = 3.14159265358979;
+
+// The overview preset — elevation near vertical, and an azimuth that
+// is NOT free.
+//
+// ⚠ **89° rather than 90° avoids the gimbal clamp**: at exactly
+// vertical the eye-to-target vector is parallel to `up` and
+// `f × up` is the zero vector, so the view basis is undefined.
+//
+// ⚠⚠ **The azimuth is pinned, which is a deviation from moros** —
+// `moros_render::camera_overview` sets only elevation and distance,
+// because a map view there is free to rotate.  dryopea's editor view
+// has no rotation at all, so an overview that left the azimuth alone
+// would reproduce the editor from one orbit position and be a rotated
+// picture of it from every other.  270° is the one that puts east to
+// the right and north up the screen, and § test_the_overview_azimuth_
+// is_the_only_one_that_works measures that it is the only one.
+pub const CAMERA_OVERVIEW_ELEVATION: float = 89.0;
+pub const CAMERA_OVERVIEW_AZIMUTH: float = 270.0;
+
+// Below this the overview is zoomed too far in to be an overview.
+pub const CAMERA_OVERVIEW_MIN_DISTANCE: float = 20.0;
+pub const CAMERA_OVERVIEW_DISTANCE: float = 80.0;
+
+// Orbit limits.  Elevation stops one degree short of the poles for the
+// same reason the overview does.
+pub const CAMERA_ELEVATION_MAX: float = 89.0;
+pub const CAMERA_ELEVATION_MIN: float = -89.0;
+pub const CAMERA_DISTANCE_MIN: float = 0.1;
+pub const CAMERA_DISTANCE_MAX: float = 10000.0;
+
+// The resting pose — `DESIGN.md` § 12's *"~3 m above and ~5 m behind
+// the vehicle"*, written as the spherical pair that produces it:
+// `atan2(3, 5)` = 30.96° and `√34` = 5.831 m.
+//
+// ⚠ **Derived from the design's two numbers rather than picked**, which
+// is what `tests/21_r1_the_camera.loft` § The default pose is the
+// design's pose asserts — in METRES up and back, read out of the view
+// matrix, so the assertion says what § 12 says instead of restating a
+// constant.  moros's own default is 30° at 10 units and means nothing
+// here; a boom of 10 m is nearly seven hexes.
+pub const CAMERA_FOLLOW_ELEVATION: float = 30.96375653207352;
+pub const CAMERA_FOLLOW_DISTANCE: float = 5.830951894845301;
+
+// An orbit camera: a target it looks at, plus where the eye sits
+// relative to it in spherical coordinates.
+//
+// Field names are `moros_render::RenderCamera`'s, deliberately —
+// `docs/RENDERER.md` § Open 5 ports the camera rather than depending on
+// the library, and keeping the names identical is what makes the two
+// readable against each other when the libraries are published.
+//
+// `azimuth` is degrees CCW in the ground plane, 0 = EAST, 90 = NORTH.
+// `elevation` is degrees above the ground plane (90 = straight down
+// from above).  `distance` is eye-to-target separation in metres.
+pub struct RenderCamera {
+    target:    Vec3,
+    azimuth:   float,
+    elevation: float,
+    distance:  float,
+    fov_y:     float,
+    near:      float,
+    far:       float,
+    up:        Vec3,
+}
+
+// Factory — ⚠ NOT `camera_default`, which is `camera.loft`'s
+// `EditorCamera` factory and is a different camera for a different job
+// (a hex position and a zoom level, `@D002`).  loft's namespace is
+// flat, so the two cannot share a name; the game's is the one that
+// says which camera it is.
+pub fn render_camera_default() -> RenderCamera {
+    RenderCamera {
+        target:    vec3(0.0, 0.0, 0.0),
+        azimuth:   CAMERA_OVERVIEW_AZIMUTH,
+        elevation: CAMERA_FOLLOW_ELEVATION,
+        distance:  CAMERA_FOLLOW_DISTANCE,
+        fov_y:     60.0,
+        near:      0.1,
+        far:       1000.0,
+        up:        vec3(0.0, 0.0, 1.0),
+    }
+}
+
+// ─── The frame ──────────────────────────────────────────────────
+
+// A hex, at a height in metres, as a point in the camera's world.
+//
+// ⚠ **The one place dryopea's south-positive y becomes north-positive**
+// — see the header.  A second site that negates, or one that forgets
+// to, mirrors part of the world against the rest, and the symptom is a
+// base that reads as its own reflection rather than as an error.
+pub fn lat_to_world(h: const Hex, z: float) -> Vec3 {
+    ltw_m = lat_to_metres(h);
+    vec3(ltw_m.0, -ltw_m.1, z)
+}
+
+// ─── Where the eye is ───────────────────────────────────────────
+
+// Eye position, from the spherical coordinates around the target.
+pub fn camera_eye(cam: const RenderCamera) -> Vec3 {
+    ce_d2r  = CAM_PI / 180.0;
+    ce_az   = cam.azimuth * ce_d2r;
+    ce_el   = cam.elevation * ce_d2r;
+    ce_horiz = cam.distance * cos(ce_el);
+    vec3(
+        cam.target.x + ce_horiz * cos(ce_az),
+        cam.target.y + ce_horiz * sin(ce_az),
+        cam.target.z + cam.distance * sin(ce_el),
+    )
+}
+
+pub fn camera_view_matrix(cam: const RenderCamera) -> Mat4 {
+    mat4_look_at(camera_eye(cam), cam.target, cam.up)
+}
+
+pub fn camera_projection_matrix(cam: const RenderCamera, aspect: float) -> Mat4 {
+    mat4_perspective(cam.fov_y * CAM_PI / 180.0, aspect, cam.near, cam.far)
+}
+
+// Projection × view — what a vertex is multiplied by.
+pub fn camera_view_projection(cam: const RenderCamera, aspect: float) -> Mat4 {
+    mat4_mul(camera_projection_matrix(cam, aspect), camera_view_matrix(cam))
+}
+
+// A world point in normalised device coordinates: x right, y UP,
+// both −1..1 across the viewport.
+//
+// ⚠ `mesh3d::mat4_transform` cannot do this — it treats the point as
+// affine and drops `w`, which is the perspective divide.  A point
+// behind the eye has `w < 0` and comes back mirrored through the
+// origin; callers that care must check `camera_in_front`.
+pub fn camera_ndc(vp: const Mat4, p: const Vec3) -> (float, float) {
+    cn_x = vp.m[0] * p.x + vp.m[4] * p.y + vp.m[8]  * p.z + vp.m[12];
+    cn_y = vp.m[1] * p.x + vp.m[5] * p.y + vp.m[9]  * p.z + vp.m[13];
+    cn_w = vp.m[3] * p.x + vp.m[7] * p.y + vp.m[11] * p.z + vp.m[15];
+    ((cn_x / cn_w) ?? 0.0, (cn_y / cn_w) ?? 0.0)
+}
+
+// Is the point in front of the eye?  `camera_ndc` is meaningless where
+// this is false.
+pub fn camera_in_front(vp: const Mat4, p: const Vec3) -> boolean {
+    (vp.m[3] * p.x + vp.m[7] * p.y + vp.m[11] * p.z + vp.m[15]) > 0.0
+}
+
+// A world point in PIXELS on a `cw × ch` viewport — x right, y DOWN,
+// which is `render.loft`'s convention and the canvas'.
+//
+// ⚠⚠ **NDC is not a picture and comparing bearings in it is a bug.**
+// The aspect ratio lives in the projection's x term, so NDC is
+// anisotropic by construction: a layout that is a perfect square on
+// screen is 4:3 in NDC.  Measured — the editor and the overview
+// disagreed by 0.126 rad on a ring of hexes read in NDC and by nothing
+// at all once put through this, and 0.126 rad is exactly `atan` of the
+// aspect ratio's worth of stretch.  Anything comparing this camera to
+// the software rasteriser comes through here.
+pub fn camera_screen(vp: const Mat4, p: const Vec3, cw: float, ch: float) -> (float, float) {
+    cs_nd = camera_ndc(vp, p);
+    ((cs_nd.0 + 1.0) * cw * 0.5, (1.0 - cs_nd.1) * ch * 0.5)
+}
+
+// ⚠⚠ **THE INSTRUMENT** — the eye, recovered from the view matrix
+// itself rather than from the camera that was asked for it.
+//
+// `mat4_look_at` writes rows `(s, u, −f)` into the rotation block and
+// `t = −R·eye` into the translation column, so `eye = −Rᵀt`.  The
+// matrix is column-major: `m[col * 4 + row]`.
+//
+// ⚠ Every assertion in `tests/21_r1_the_camera.loft` about where the
+// camera IS goes through this and never through `camera_eye`.  The two
+// agreeing is a *measurement* (§ test_the_matrix_is_the_camera_that_
+// was_asked_for); treating them as interchangeable is how moros shipped
+// a camera frozen mid-ease that every valve reported as healthy.
+pub fn camera_eye_of_view(m: const Mat4) -> Vec3 {
+    vec3(
+        -(m.m[0] * m.m[12] + m.m[1] * m.m[13] + m.m[2]  * m.m[14]),
+        -(m.m[4] * m.m[12] + m.m[5] * m.m[13] + m.m[6]  * m.m[14]),
+        -(m.m[8] * m.m[12] + m.m[9] * m.m[13] + m.m[10] * m.m[14]),
+    )
+}
+
+// ─── Player control ─────────────────────────────────────────────
+
+// Orbit — add to azimuth and elevation, elevation clamped off the
+// poles.
+pub fn camera_orbit(cam: RenderCamera, d_azimuth_deg: float, d_elevation_deg: float) {
+    cam.azimuth = cam.azimuth + d_azimuth_deg;
+    co_el = cam.elevation + d_elevation_deg;
+    if co_el > CAMERA_ELEVATION_MAX { co_el = CAMERA_ELEVATION_MAX; }
+    if co_el < CAMERA_ELEVATION_MIN { co_el = CAMERA_ELEVATION_MIN; }
+    cam.elevation = co_el;
+}
+
+// Zoom — add to the boom's length.
+pub fn camera_zoom(cam: RenderCamera, delta: float) {
+    cz_d = cam.distance + delta;
+    if cz_d < CAMERA_DISTANCE_MIN { cz_d = CAMERA_DISTANCE_MIN; }
+    if cz_d > CAMERA_DISTANCE_MAX { cz_d = CAMERA_DISTANCE_MAX; }
+    cam.distance = cz_d;
+}
+
+// ─── The two presets ────────────────────────────────────────────
+
+// Follow: look at the vehicle, with the eye BEHIND its facing.
+//
+// `facing_rad` is a world-plane bearing — 0 = EAST, π/2 = NORTH, the
+// same convention `azimuth` uses and the one `atan2(north, east)`
+// returns.  Behind is therefore half a turn round: `azimuth =
+// facing + 180°`.
+//
+// ⚠⚠ **moros spells this `azimuth = 270° − facing_deg` and copying that
+// line would put the camera in front of the vehicle.**  It is not a
+// different rule — it is the same rule in a frame where facing 0 means
+// `+Z` and bearings run clockwise, so moros's `270 − f` and dryopea's
+// `f + 180` both read "opposite the facing".  `docs/RENDERER.md`
+// § Open 5 flags the up-axis as the convention that must not be ported
+// wrong; the bearing is the same hazard one axis over, and it is
+// SILENT — a camera in front of the vehicle still tracks it, still
+// eases, and still looks like a camera.
+//
+// ⚠ **Elevation and distance are left alone**, per moros's own note:
+// they stay under the player's control, which is what retires
+// `DESIGN.md` § 12's "locked in pose".
+pub fn camera_follow(head_pos: const Vec3, facing_rad: float, cam: RenderCamera) {
+    cam.target = vec3(head_pos.x, head_pos.y, head_pos.z);
+    cam.azimuth = facing_rad * 180.0 / CAM_PI + 180.0;
+}
+
+// Overview: straight down, from far enough up to be one.
+//
+// ⚠ Pins the AZIMUTH too — see `CAMERA_OVERVIEW_AZIMUTH`.  This is the
+// editor's view, and the editor's view does not rotate.
+pub fn camera_overview(ground_pos: const Vec3, cam: RenderCamera) {
+    cam.target = vec3(ground_pos.x, ground_pos.y, ground_pos.z);
+    cam.elevation = CAMERA_OVERVIEW_ELEVATION;
+    cam.azimuth = CAMERA_OVERVIEW_AZIMUTH;
+    if cam.distance < CAMERA_OVERVIEW_MIN_DISTANCE {
+        cam.distance = CAMERA_OVERVIEW_DISTANCE;
+    }
+}
+
+// ─── Which way the vehicle is pointing ──────────────────────────
+
+// The vehicle's bearing, and whether it has one at all.
+//
+// ⚠⚠ **Derived from the VELOCITY, and the vehicle has no facing
+// field.**  `docs/RENDERER.md` § Open 1 decides this against moros,
+// which stores a facing and refuses to let A/D strafe: *"a strafe would
+// be a second way to change where the character stands relative to the
+// camera"*.  dryopea drives a HOVER unit — it has no reason to turn
+// before it moves, plan 19 P2 gives all four keys a compass heading,
+// and a stored facing would be a second authority over a direction the
+// simulation already computes.
+//
+// ⚠ **A parked vehicle has no bearing**, which is why this answers a
+// pair.  `vehicle_drive(v, v.q, v.r)` is how plan 19 P2 spells *stop*,
+// so a stopped vehicle's destination IS its position and the velocity
+// is the zero vector — `atan2(0, 0)` would answer 0.0 and swing the
+// camera to face east every time the player lets go of the key.
+// Callers keep the azimuth they had.
+pub fn vehicle_facing(v: const Vehicle) -> (float, boolean) {
+    vf_here = lat_to_metres(Hex { q: v.q, r: v.r });
+    vf_to   = lat_to_metres(Hex { q: v.to_q, r: v.to_r });
+    vf_east  = vf_to.0 - vf_here.0;
+    vf_north = -(vf_to.1 - vf_here.1);
+    if vf_east == 0.0 && vf_north == 0.0 { return (0.0, false); }
+    (atan2(vf_north, vf_east), true)
+}
+
+// Point the camera at the vehicle: always re-target, re-orbit only
+// when there is a velocity to orbit behind.
+//
+// `z` is the height the boom looks at, in metres above the vehicle's
+// hex — the caller's, because what the vehicle is standing ON is
+// `passable.loft`'s question and this file does not own it.
+pub fn camera_follow_vehicle(v: const Vehicle, z: float, cam: RenderCamera) {
+    cfv_face = vehicle_facing(v);
+    cfv_at = lat_to_world(Hex { q: v.q, r: v.r }, z);
+    if cfv_face.1 {
+        camera_follow(cfv_at, cfv_face.0, cam);
+    } else {
+        cam.target = cfv_at;
+    }
+}

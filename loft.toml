@@ -41,6 +41,15 @@ input = ">=0.2.0"
 # type and dryopea's metres, never a second implementation.
 hex_grid = ">=0.1.0"
 
+# Plan 21 R1 — the game's camera.  `mesh3d` owns the linear algebra:
+# `Vec3`, `Mat4`, `mat4_look_at`, `mat4_perspective`.  It used to live
+# in `graphics/src/math.loft` and moved out at graphics 0.4.3, so
+# `graphics` already pulls it — declared here anyway because
+# `src/render_camera.loft` calls it DIRECTLY, and a graphics release
+# that stopped depending on it would otherwise break dryopea from a
+# distance.  Zero dependencies of its own.
+mesh3d = ">=0.1.1"
+
 # `moros_map` is the shared world data model — Map / Chunk / Hex with
 # {q,r,cy} multi-floor, height, material, walls, items.  Plan 07 W1
 # will adopt it so world-building routines interchange with moros.

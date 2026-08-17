@@ -2013,7 +2013,22 @@ spatial terms first.
 | **Tab** | Editor mode toggle (ground ↔ marker) |
 | **1-0, -** | Palette select (editor) |
 | **Esc** | Cancel / menu |
-| Mouse / right stick | Reserved for UI clicks (landing-spot pick, editor click, map markers); ~~**NOT camera orbit**~~ ⚠ **superseded** — see § 12's banner and [`RENDERER.md`](RENDERER.md) § R1 |
+| **Left click / drag** | Placement and UI — landing-spot pick, editor click, map markers.  ⚠ **Unchanged**: this is the half that *"the mouse is free for placement"* was protecting, and it keeps doing it |
+| **Right drag** | Orbit the camera (azimuth + elevation) |
+| **Wheel** | Boom length |
+
+⚠ **§ 12's *"NOT camera orbit"* is retired** (2026-08-17, plan 21 R1).
+The camera orbits, so the mouse has to reach it — but the button that
+was doing placement work still does only placement.  Orbit went to the
+**other** button rather than sharing the left one, because a click that
+sometimes places and sometimes swings the view is the ambiguity § 11's
+spatial principle exists to avoid.
+
+⚠ **No binding is built yet.**  Plan 21 R1 shipped the camera and its
+verbs (`camera_orbit`, `camera_zoom`); wiring them to the mouse is a row
+in `src/bindings.loft`'s ONE key table and belongs with the phase that
+gives the player something to orbit *around* — nothing of the game is
+drawn yet.
 
 Full mapping in
 [`../examples/numbers.json`](../examples/numbers.json) §
@@ -2029,27 +2044,35 @@ while paint mode is on (diegetic indicator).
 
 ## 12. Camera + HUD
 
-> ⚠⚠ **THE "LOCKED" HALF OF THIS SECTION IS SUPERSEDED AND NOT YET
-> REWRITTEN** (2026-08-15).  The project owner asked for *"the dynamic
-> camera of ../moros and not a static camera of the base or terrain"*,
-> with elevation and distance under the player's control — so **"locked
-> in pose — no mouse orbit" is false**, and so is § 11's *"Mouse …
-> **NOT** camera orbit"*.
+> ⚠ **REWRITTEN 2026-08-17, by plan 21 R1, in the commit that landed the
+> camera** — as the previous banner said it would be.  The camera is
+> moros's `RenderCamera`, ported: an orbit camera in spherical
+> coordinates, with **elevation and distance under the player's
+> control**.  *"Locked in pose — no mouse orbit"* is gone, and so is
+> § 11's *"Mouse … **NOT** camera orbit"*.
 >
-> [`RENDERER.md`](RENDERER.md) § R1 carries what replaces it; plan 21 R1
-> is the phase that rewrites these two passages, deliberately in the
-> commit that lands the camera rather than ahead of it.
->
-> ⚠ **What SURVIVES is the auto-reframe below**, and it survives
-> unchanged: the boom sweeping to a position that can see the vehicle is
-> moros's occlusion sweep, and `tower.loft::tower_sees` is the query it
-> should ask.  ⚠ Something also has to keep doing the work *"the mouse is
-> free for placement"* was doing in § 11.
+> [`RENDERER.md`](RENDERER.md) § R1 carries the decisions;
+> [`DECISIONS.md`](DECISIONS.md) `@X065`-`@X067` carry what R1 settled
+> while building it.
 
-### Camera — over-the-shoulder, locked, auto-reframe
+### Camera — over-the-shoulder, orbitable, auto-reframe
 
-Camera sits ~3 m above and ~5 m behind the vehicle with a
-slight forward pitch.  **Locked in pose — no mouse orbit.**
+The camera orbits the vehicle: a **target** it looks at, plus an
+azimuth, an elevation and a boom length.  Its resting pose is
+**~3 m above and ~5 m behind** the vehicle — which is the pair
+`elevation 30.96°, distance 5.83 m`, and
+`src/render_camera.loft` derives the constants from these two
+numbers rather than picking them.  ⚠ `tests/21_r1_the_camera.loft`
+§ The default pose is the design's pose asserts them back **in
+metres**, so this paragraph is what the constants answer to.
+
+**Azimuth is the game's, elevation and distance are the player's.**
+The azimuth is derived from the vehicle's **velocity** — a hover unit
+slides sideways and keeps its nose forward, so there is no stored
+facing to disagree with where it is going (`@X067`).  ⚠ A **parked**
+vehicle has no velocity and therefore no bearing, so the camera keeps
+the azimuth it had; swinging to a default on every key release is the
+failure this avoids.
 
 Auto-reframes on two triggers:
 
@@ -2057,7 +2080,15 @@ Auto-reframes on two triggers:
   smooth swing to maintain framing.
 - **Terrain blocks line-of-sight to the vehicle** (wall,
   `wall_high`, `steep_rock`) — smooth swing to a position
-  that can see the vehicle.
+  that can see the vehicle.  ⚠ This is moros's occlusion sweep and
+  the query it asks is `tower.loft::tower_sees`, not a second
+  line-walker that agrees with it today.
+
+⚠ **The editor's top-down view is a PRESET of this camera, not a second
+camera** — elevation 89°, azimuth 270°.  Measured against the software
+rasteriser at 0.08° of bearing and 0.56% of scale (`@M022`), which is
+what makes eventually collapsing the two rasterisers a migration rather
+than a rewrite ([`RENDERER.md`](RENDERER.md) § R2).
 
 Swing easing ~0.5 s — reads as "the camera adjusted," not
 teleported.

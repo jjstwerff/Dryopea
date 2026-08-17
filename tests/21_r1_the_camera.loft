@@ -1,0 +1,500 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 21 phase R1 — the camera.
+//
+// ── ⚠⚠ Every assertion about where the camera IS reads the VIEW
+//    MATRIX, never the camera struct ───────────────────────────────
+//
+// `camera_eye_of_view` recovers the eye from the matrix a renderer
+// would actually have used (`eye = −Rᵀt`).  moros spent four wrong
+// diagnoses on a camera whose every valve read healthy while the eye
+// was in the wrong room, and the lesson its `CAMERA_INDOORS.md` draws
+// is that a solve nobody is told about is a solve that did not happen.
+// § The matrix is the camera that was asked for is the one test here
+// that compares the two — everything else goes through the matrix, so
+// that a camera which solves correctly and publishes nothing fails.
+//
+// ── ⚠⚠ The frame is MEASURED, not asserted ─────────────────────
+//
+// § No azimuth saves the south frame is the phase's real finding.
+// `docs/RENDERER.md` § Open 5 warned that the up-axis is the convention
+// that must not be ported wrong; what the sweep shows is sharper than
+// that — dryopea's own +y-SOUTH frame is left-handed once z points up,
+// `mat4_look_at` builds a right-handed basis, and the product is a
+// MIRROR that no azimuth undoes.  Eight azimuths, zero of them work in
+// the south frame and exactly one works in the north frame.  That is
+// what `lat_to_world`'s negation is for, and it is why there may be
+// only one of them.
+//
+// ── ⚠⚠ Do NOT put the hex ring in a file-scope `const vector` ────
+//
+// A `const vector` whose literal holds a NEGATIVE number reads back
+// EMPTY — no error, no warning, `len()` of 0
+// ([loft#955](https://github.com/loft-lang/loft/issues/955); filed,
+// with the repro in `loft_repros/` and the note in
+// `QUESTIONS_FOR_LOFT.md`).  It cost § The overview IS the
+// editor's view twice over: every hex came back `Hex { q: null,
+// r: null }`, which lands on the screen centre, so twelve identical
+// bearings agreed perfectly and the gate reported a worst disagreement
+// of **exactly 0 rad** while measuring nothing at all.  ⚠ A reading of
+// exactly zero out of a comparison between integer pixels and a
+// floating-point projection is not a good result, it is a tell.
+
+#cwd
+
+use dryopea;
+
+// Angular tolerance when two projections of the same layout are
+// compared.  The overview is 1° off vertical, so it is a perspective
+// rather than an orthographic view and bearings drift slightly, and the
+// editor rounds to whole pixels.  ⚠ **Measured worst over the ring is
+// 0.0014 rad**, so this is 14x headroom — loose enough not to be
+// brittle and far too tight for a mirror, a rotation or an axis swap,
+// each of which moves a bearing by a quarter turn or more.
+const ANGLE_EPS: float = 0.02;      // radians ≈ 1.1°
+
+// ─── The instrument ─────────────────────────────────────────────
+
+// The eye recovered from the matrix is the eye the camera was asked
+// for.  ⚠ This is the ONLY test that compares the two: it is what
+// licenses every other test to read the matrix, and if it fails the
+// rest are measuring a broken instrument rather than a broken camera.
+pub fn test_the_matrix_is_the_camera_that_was_asked_for() {
+    tm_cases = [
+        [0.0, 30.0, 10.0], [270.0, 89.0, 80.0], [45.0, -20.0, 3.5],
+        [180.0, 0.0, 12.0], [123.5, 61.25, 47.0],
+    ];
+    tm_n = 0;
+    for tm_c in tm_cases {
+        tm_n += 1;
+        tm_cam = render_camera_default();
+        tm_cam.target = vec3(4.0, -7.0, 2.5);
+        tm_cam.azimuth = tm_c[0];
+        tm_cam.elevation = tm_c[1];
+        tm_cam.distance = tm_c[2];
+
+        tm_want = camera_eye(tm_cam);
+        tm_view = camera_view_matrix(tm_cam);
+        tm_got = camera_eye_of_view(tm_view);
+
+        assert(abs(tm_got.x - tm_want.x) < 1e-9,
+               "az {tm_c[0]} el {tm_c[1]}: eye.x {tm_got.x} vs {tm_want.x}");
+        assert(abs(tm_got.y - tm_want.y) < 1e-9,
+               "az {tm_c[0]} el {tm_c[1]}: eye.y {tm_got.y} vs {tm_want.y}");
+        assert(abs(tm_got.z - tm_want.z) < 1e-9,
+               "az {tm_c[0]} el {tm_c[1]}: eye.z {tm_got.z} vs {tm_want.z}");
+    }
+    // ⚠ This phase's own lesson, applied to this phase's own test: a
+    // loop over an empty vector runs zero times and every assertion in
+    // it holds vacuously.  `tm_cases` holds a negative (`-20.0`), which
+    // is loft#955's trigger — it is a LOCAL, so it is fine, and this is
+    // what says so out loud.
+    assert(tm_n == 5, "the case table went empty — {tm_n} of 5 ran");
+}
+
+// ─── The frame ──────────────────────────────────────────────────
+
+// Does the overview at `oz_az` reproduce the editor's orientation —
+// east to the RIGHT, north UP, and neither of them tilted?
+//
+// `oz_north_sign` is +1 for a world whose +y is NORTH and −1 for one
+// whose +y is SOUTH, which is the only difference between the two
+// candidate frames.
+fn overview_matches_editor(oz_az: float, oz_north_sign: float) -> boolean {
+    oz_cam = render_camera_default();
+    oz_cam.elevation = CAMERA_OVERVIEW_ELEVATION;
+    oz_cam.azimuth = oz_az;
+    oz_cam.distance = CAMERA_OVERVIEW_DISTANCE;
+    oz_vp = camera_view_projection(oz_cam, 4.0 / 3.0);
+
+    oz_e = camera_ndc(oz_vp, vec3(10.0, 0.0, 0.0));
+    oz_n = camera_ndc(oz_vp, vec3(0.0, 10.0 * oz_north_sign, 0.0));
+
+    oz_e.0 > 0.0 && oz_n.1 > 0.0 && abs(oz_e.1) < 1e-6 && abs(oz_n.0) < 1e-6
+}
+
+// ⚠ **Exactly one azimuth of eight is the editor's view**, and it is
+// the one `camera_overview` pins.  That is why the constant exists:
+// moros leaves the overview's azimuth free because a map view there
+// rotates, and dryopea's editor view does not.
+pub fn test_the_overview_azimuth_is_the_only_one_that_works() {
+    ta_hits = 0;
+    ta_which = -1.0;
+    for ta_i in 0..8 {
+        ta_az = (ta_i as float) * 45.0;
+        if overview_matches_editor(ta_az, 1.0) {
+            ta_hits += 1;
+            ta_which = ta_az;
+        }
+    }
+    assert(ta_hits == 1, "azimuths reproducing the editor: {ta_hits}, expected 1");
+    assert(ta_which == CAMERA_OVERVIEW_AZIMUTH,
+           "the one that works is {ta_which}, but the constant says {CAMERA_OVERVIEW_AZIMUTH}");
+}
+
+// ⚠⚠ **THE FINDING.**  Carry dryopea's +y-SOUTH canvas frame into three
+// dimensions and NO azimuth reproduces the editor — not one of the
+// eight, and not one of any number, because a handedness flip is a
+// mirror and rotations do not undo mirrors.  It gets east-right OR
+// north-up and never both.
+//
+// This is the negative control for `lat_to_world`: delete its negation
+// and the world is drawn reflected, with no error anywhere and every
+// other camera test still green.
+pub fn test_no_azimuth_saves_the_south_frame() {
+    tn_hits = 0;
+    for tn_i in 0..8 {
+        if overview_matches_editor((tn_i as float) * 45.0, -1.0) { tn_hits += 1; }
+    }
+    assert(tn_hits == 0,
+           "the south frame reproduced the editor at {tn_hits} azimuths — it cannot");
+}
+
+// `lat_to_world` negates once, and it is the negation that makes north
+// the +y half of the world.
+pub fn test_lat_to_world_negates_exactly_once() {
+    tl_h = Hex { q: 0, r: 3 };            // three rows NORTH (r grows north)
+    tl_m = lat_to_metres(tl_h);           // dryopea metres: +y is SOUTH
+    tl_w = lat_to_world(tl_h, 1.25);      // camera world:   +y is NORTH
+
+    assert(tl_m.1 < 0.0, "a hex north of the origin should be at negative canvas y, got {tl_m.1}");
+    assert(tl_w.y > 0.0, "a hex north of the origin should be at positive world y, got {tl_w.y}");
+    assert(abs(tl_w.y + tl_m.1) < 1e-12, "world y is not the negation of canvas y");
+    assert(abs(tl_w.x - tl_m.0) < 1e-12, "x must not move");
+    assert(tl_w.z == 1.25, "z is the height it was handed");
+}
+
+// ─── The overview IS the editor's view ──────────────────────────
+
+// ⚠ Not "roughly top-down" — the SAME LAYOUT, up to a uniform scale.
+// A ring of hexes is put through the game camera and through
+// `render.loft`'s `world_to_canvas`, and both the bearing from the
+// screen centre and the distance ratio have to agree.
+//
+// The bearing catches the whole orientation failure class at once: a
+// mirror negates it, a rotation offsets it, an axis swap reflects it
+// about the diagonal.  The RATIO catches what a bearing cannot — a
+// view that is stretched along one axis has every bearing wrong by a
+// different amount and no bearing wrong by a constant, so a per-hex
+// bearing test would pass on the ring's diagonals and fail elsewhere.
+//
+// ⚠⚠ **This gate read 0 rad — perfectly — while measuring nothing**,
+// twice over: once because the ring was null (see `RING_Q`) and once
+// because bearings were compared in NDC, where the aspect ratio is
+// baked in.  A reading of *exactly* zero from an integer-pixel
+// comparison is the tell; it is not achievable by a real projection.
+pub fn test_the_overview_is_the_editors_view() {
+    to_cam = render_camera_default();
+    camera_overview(vec3(0.0, 0.0, 0.0), to_cam);
+    // ⚠ The editor's OWN window and scale (`editor_view.loft`), not a
+    // copy of its numbers — the claim is about the view the player
+    // looks at, so a re-sized editor has to re-ask this question.
+    to_w = VIEW_W as float;
+    to_h = VIEW_H as float;
+    to_vp = camera_view_projection(to_cam, (to_w / to_h) ?? 1.0);
+
+    // ⚠⚠ **A LOCAL, not a file-scope `const vector` — see the header.**
+    // A ring of hexes around the origin, far enough out that the
+    // editor's integer pixel rounding cannot dominate a bearing.
+    to_ring_q = [10, 9, 5, 0, -5, -9, -10, -9, -5, 0, 5, 9];
+    to_ring_r = [0, 5, 9, 10, 9, 5, 0, -5, -9, -10, -9, -5];
+
+    to_ed = camera_at(0, 0, 1);
+    to_worst = 0.0;
+    to_lo = 1e9;
+    to_hi = 0.0;
+
+    for to_i in 0..12 {
+        to_hex = Hex { q: to_ring_q[to_i], r: to_ring_r[to_i] };
+        assert(to_hex.q != 0 || to_hex.r != 0, "ring hex {to_i} is the origin — the ring is empty");
+
+        to_m = lat_to_metres(to_hex);
+        to_px = world_to_canvas(to_ed, to_m.0, to_m.1, VIEW_W, VIEW_H, VIEW_PPM);
+        to_edx = (to_px.0 as float) - to_w * 0.5;
+        to_edy = (to_px.1 as float) - to_h * 0.5;        // canvas y grows DOWN
+
+        // ⚠ In PIXELS, on the same viewport — never in NDC.
+        to_sc = camera_screen(to_vp, lat_to_world(to_hex, 0.0), to_w, to_h);
+        to_cdx = to_sc.0 - to_w * 0.5;
+        to_cdy = to_sc.1 - to_h * 0.5;
+
+        to_d = abs(atan2(to_edy, to_edx) - atan2(to_cdy, to_cdx));
+        if to_d > CAM_PI { to_d = 2.0 * CAM_PI - to_d; }
+        if to_d > to_worst { to_worst = to_d; }
+        assert(to_d < ANGLE_EPS,
+               "hex ({to_hex.q}, {to_hex.r}): the two views disagree by {to_d} rad");
+
+        to_ratio = (sqrt(to_edx * to_edx + to_edy * to_edy)
+                  / sqrt(to_cdx * to_cdx + to_cdy * to_cdy)) ?? 0.0;
+        if to_ratio < to_lo { to_lo = to_ratio; }
+        if to_ratio > to_hi { to_hi = to_ratio; }
+    }
+
+    // ⚠ A real projection disagrees a little: the overview is 1° off
+    // vertical and the editor rounds to whole pixels.  Zero would mean
+    // the gate is not looking.
+    assert(to_worst > 0.0, "a bearing disagreement of exactly 0 means the ring is degenerate");
+    to_spread = ((to_hi - to_lo) / to_lo) ?? 1.0;
+    assert(to_spread < 0.02,
+           "the overview is not a uniform scale of the editor: ratios {to_lo}..{to_hi}");
+    print("overview vs editor: worst bearing {to_worst} rad, scale {to_lo}..{to_hi}");
+}
+
+// ─── Follow: the eye is BEHIND the vehicle ──────────────────────
+
+// For a bearing `tb_face`, is the eye on the far side of the target
+// from it?  Read out of the view matrix.
+fn eye_is_behind(tb_face_rad: float) -> boolean {
+    tb_cam = render_camera_default();
+    tb_cam.elevation = 30.0;
+    tb_cam.distance = 12.0;
+    camera_follow(vec3(3.0, -2.0, 0.5), tb_face_rad, tb_cam);
+
+    tb_eye = camera_eye_of_view(camera_view_matrix(tb_cam));
+    tb_ox = tb_eye.x - 3.0;
+    tb_oy = tb_eye.y + 2.0;
+
+    // The eye's horizontal offset must point OPPOSITE the facing, with
+    // nothing across it.
+    tb_along  = tb_ox * cos(tb_face_rad) + tb_oy * sin(tb_face_rad);
+    tb_across = -tb_ox * sin(tb_face_rad) + tb_oy * cos(tb_face_rad);
+    tb_along < -1e-9 && abs(tb_across) < 1e-9
+}
+
+// ⚠ All four compass bearings, because a formula can be right on one
+// axis and wrong on the other three — which is exactly what copying
+// moros's `270 − facing` would have been.
+pub fn test_the_eye_is_behind_the_facing() {
+    te_names = ["east", "north", "west", "south"];
+    for te_i in 0..4 {
+        te_face = (te_i as float) * CAM_PI / 2.0;
+        assert(eye_is_behind(te_face),
+               "facing {te_names[te_i]}: the eye is not behind the vehicle");
+    }
+}
+
+// ⚠⚠ **The negative control, and it is the line somebody will paste
+// in.**  moros spells follow as `azimuth = 270° − facing_deg`.
+//
+// ⚠ **Measured, and it is worse than "the wrong way round": it puts
+// the camera ABEAM.**  moros's line reflects a bearing where dryopea's
+// rotates it, so at every cardinal heading the along-track component is
+// exactly zero — the eye sits square on the vehicle's flank, tracking
+// it perfectly, easing correctly, looking in every way like a working
+// follow camera.  A camera behind you and a camera beside you are both
+// pictures of a vehicle; only this test can tell them apart.
+pub fn test_the_moros_formula_puts_the_camera_abeam() {
+    tw_behind = 0;
+    tw_worst = 0.0;
+    for tw_i in 0..4 {
+        tw_face = (tw_i as float) * CAM_PI / 2.0;
+
+        tw_cam = render_camera_default();
+        tw_cam.elevation = 30.0;
+        tw_cam.distance = 12.0;
+        tw_cam.target = vec3(3.0, -2.0, 0.5);
+        // moros's line, ported verbatim — the thing NOT to do.
+        tw_cam.azimuth = 270.0 - tw_face * 180.0 / CAM_PI;
+
+        tw_eye = camera_eye_of_view(camera_view_matrix(tw_cam));
+        tw_ox = tw_eye.x - 3.0;
+        tw_oy = tw_eye.y + 2.0;
+        tw_along  = tw_ox * cos(tw_face) + tw_oy * sin(tw_face);
+        tw_across = -tw_ox * sin(tw_face) + tw_oy * cos(tw_face);
+
+        if tw_along < -1e-9 { tw_behind += 1; }
+        if abs(tw_across) > tw_worst { tw_worst = abs(tw_across); }
+        assert(abs(tw_along) < 1e-9,
+               "moros's line was expected to sit abeam; along-track is {tw_along}");
+    }
+    assert(tw_behind == 0,
+           "moros's formula put the eye behind the vehicle at {tw_behind} of 4 bearings");
+    assert(tw_worst > 1.0,
+           "the eye should be a real distance off to the side, worst was {tw_worst}");
+}
+
+// ─── Follow: what the vehicle contributes ───────────────────────
+
+// ⚠ A parked vehicle has no bearing, and the camera keeps the one it
+// had.  Without this, letting go of the key swings the camera to face
+// east — `atan2(0, 0)` is 0.0 and says nothing about it.
+pub fn test_a_parked_vehicle_has_no_bearing() {
+    tp_v = vehicle_empty();
+    tp_v.parked = true;
+    tp_v.q = 4; tp_v.r = 1;
+    tp_v.to_q = 4; tp_v.to_r = 1;          // plan 19 P2 spells "stop" as this
+
+    tp_f = vehicle_facing(tp_v);
+    assert(!tp_f.1, "a stopped vehicle reported a bearing of {tp_f.0}");
+
+    tp_cam = render_camera_default();
+    tp_cam.azimuth = 137.0;
+    camera_follow_vehicle(tp_v, 0.0, tp_cam);
+    assert(tp_cam.azimuth == 137.0,
+           "a stopped vehicle moved the camera to {tp_cam.azimuth}");
+
+    // ⚠ It still RE-TARGETS — the camera looks at where the vehicle is
+    // even when it is not going anywhere.
+    tp_want = lat_to_world(Hex { q: 4, r: 1 }, 0.0);
+    assert(abs(tp_cam.target.x - tp_want.x) < 1e-12
+        && abs(tp_cam.target.y - tp_want.y) < 1e-12,
+           "a stopped vehicle is not being looked at");
+}
+
+// A driving vehicle's bearing comes from the velocity the simulation
+// already computes, and the camera lands behind it.
+pub fn test_the_camera_follows_a_driving_vehicle() {
+    td_v = vehicle_empty();
+    td_v.parked = true;
+    td_v.q = 0; td_v.r = 0;
+    td_v.to_q = 6; td_v.to_r = 0;           // due EAST
+
+    td_f = vehicle_facing(td_v);
+    assert(td_f.1, "a driving vehicle should have a bearing");
+    assert(abs(td_f.0) < 1e-9, "driving east should bear 0 rad, got {td_f.0}");
+
+    td_cam = render_camera_default();
+    td_cam.elevation = 30.0;
+    td_cam.distance = 12.0;
+    camera_follow_vehicle(td_v, 0.75, td_cam);
+
+    td_eye = camera_eye_of_view(camera_view_matrix(td_cam));
+    assert(td_eye.x < td_cam.target.x,
+           "driving east, the eye should be WEST of the vehicle: {td_eye.x} vs {td_cam.target.x}");
+    assert(abs(td_eye.y - td_cam.target.y) < 1e-9,
+           "driving east, the eye should be level with the vehicle");
+    assert(td_eye.z > td_cam.target.z, "the eye should be above the vehicle");
+}
+
+// ⚠ Driving NORTH is the case a lattice gets wrong: odd rows sit half a
+// hex east, so a straight-north drive is not `q` constant for one step
+// — it is over a distance.  The bearing has to come out of METRES.
+pub fn test_driving_north_bears_north() {
+    tdn_v = vehicle_empty();
+    tdn_v.parked = true;
+    tdn_v.q = 0; tdn_v.r = 0;
+    tdn_v.to_q = 0; tdn_v.to_r = 8;
+
+    tdn_f = vehicle_facing(tdn_v);
+    assert(tdn_f.1, "should have a bearing");
+    assert(abs(tdn_f.0 - CAM_PI / 2.0) < 1e-9,
+           "driving north should bear π/2, got {tdn_f.0}");
+}
+
+// ⚠ **The default pose is the DESIGN's pose, in metres.**
+// `DESIGN.md` § 12 asks for the camera *"~3 m above and ~5 m behind the
+// vehicle"*, and `CAMERA_FOLLOW_ELEVATION` / `CAMERA_FOLLOW_DISTANCE`
+// are that pair written in spherical form.  Asserting it back in metres
+// — out of the view matrix — is what keeps the constants answerable to
+// the design rather than to themselves.
+pub fn test_the_default_pose_is_the_designs_pose() {
+    tf_v = vehicle_empty();
+    tf_v.parked = true;
+    tf_v.q = 0; tf_v.r = 0;
+    tf_v.to_q = 6; tf_v.to_r = 0;            // driving EAST
+
+    tf_cam = render_camera_default();
+    camera_follow_vehicle(tf_v, 0.0, tf_cam);
+    tf_eye = camera_eye_of_view(camera_view_matrix(tf_cam));
+
+    // Behind = west of a vehicle heading east.
+    tf_back = tf_cam.target.x - tf_eye.x;
+    tf_up = tf_eye.z - tf_cam.target.z;
+    assert(abs(tf_back - 5.0) < 0.01, "§ 12 says ~5 m behind, got {tf_back}");
+    assert(abs(tf_up - 3.0) < 0.01, "§ 12 says ~3 m above, got {tf_up}");
+}
+
+// ─── The presets and the clamps ─────────────────────────────────
+
+// The overview expands a boom that was zoomed in too close to be one,
+// and leaves an already-distant one alone.
+pub fn test_the_overview_expands_a_close_boom() {
+    tc_cam = render_camera_default();
+    tc_cam.distance = 4.0;
+    camera_overview(vec3(0.0, 0.0, 0.0), tc_cam);
+    assert(tc_cam.distance == CAMERA_OVERVIEW_DISTANCE,
+           "a close boom should expand, got {tc_cam.distance}");
+
+    tc_far = render_camera_default();
+    tc_far.distance = 300.0;
+    camera_overview(vec3(0.0, 0.0, 0.0), tc_far);
+    assert(tc_far.distance == 300.0, "a distant boom should be left alone");
+}
+
+// ⚠⚠ **Why 89° and not 90°, measured — and it does NOT collapse,
+// which is the trap.**
+//
+// The expectation going in was that vertical makes `f × up` the zero
+// vector, `mesh3d::normalize3` answer a zero vector for it (it does,
+// silently, rather than raising) and the whole view degenerate to a
+// point.  It does not: `cos(π/2)` is 6.1e-17 rather than 0, so the
+// basis stays well-formed and every valve reads healthy.
+//
+// ⚠ What actually dies at 90° is the AZIMUTH.  Two opposite azimuths
+// put the eye **2.79 m** apart at 89° and **2.6e-13 m** apart at 90° —
+// so the screen's orientation stops being something the camera decides
+// and becomes floating-point residue.  A view that rolls to a random
+// angle is not a view that fails; it is a view that is wrong on some
+// machines and not others.
+pub fn test_ninety_degrees_makes_the_azimuth_meaningless() {
+    tz_sep = [0.0, 0.0];
+    for tz_i in 0..2 {
+        tz_el = 89.0 + (tz_i as float);
+        tz_a = render_camera_default();
+        tz_a.elevation = tz_el; tz_a.distance = 80.0; tz_a.azimuth = 0.0;
+        tz_b = render_camera_default();
+        tz_b.elevation = tz_el; tz_b.distance = 80.0; tz_b.azimuth = 180.0;
+        tz_sep[tz_i] = length3(sub3(camera_eye(tz_a), camera_eye(tz_b)));
+    }
+    assert(tz_sep[0] > 2.0,
+           "at 89° the azimuth must still move the eye, got {tz_sep[0]} m");
+    assert(tz_sep[1] < 1e-9,
+           "at 90° the azimuth should be geometrically dead, got {tz_sep[1]} m");
+    assert(CAMERA_OVERVIEW_ELEVATION < 90.0 && CAMERA_ELEVATION_MAX < 90.0,
+           "neither the preset nor the clamp may reach 90°");
+
+    // And the clamp is what keeps a player from orbiting into it.
+    tz_orbit = render_camera_default();
+    camera_orbit(tz_orbit, 0.0, 1000.0);
+    assert(tz_orbit.elevation == CAMERA_ELEVATION_MAX,
+           "orbit should clamp at {CAMERA_ELEVATION_MAX}, got {tz_orbit.elevation}");
+    camera_orbit(tz_orbit, 0.0, -10000.0);
+    assert(tz_orbit.elevation == CAMERA_ELEVATION_MIN,
+           "orbit should clamp at {CAMERA_ELEVATION_MIN}, got {tz_orbit.elevation}");
+}
+
+// Orbiting the azimuth is unclamped — it wraps round the target — and
+// zoom stops at both ends.
+pub fn test_orbit_and_zoom_limits() {
+    tq_cam = render_camera_default();
+    tq_az0 = tq_cam.azimuth;
+    camera_orbit(tq_cam, 400.0, 0.0);
+    assert(tq_cam.azimuth == tq_az0 + 400.0, "azimuth should not clamp");
+
+    camera_zoom(tq_cam, -1e6);
+    assert(tq_cam.distance == CAMERA_DISTANCE_MIN, "zoom-in should clamp");
+    camera_zoom(tq_cam, 1e9);
+    assert(tq_cam.distance == CAMERA_DISTANCE_MAX, "zoom-out should clamp");
+}
+
+// ─── Why `camera_ndc` and not `mat4_transform` ──────────────────
+
+// ⚠ `mesh3d::mat4_transform` drops `w`, so it is an AFFINE transform of
+// a projective matrix — it answers a plausible number and no error.
+// A point off the view axis is where the two part company.
+pub fn test_the_perspective_divide_is_not_optional() {
+    tv_cam = render_camera_default();
+    camera_overview(vec3(0.0, 0.0, 0.0), tv_cam);
+    tv_vp = camera_view_projection(tv_cam, 4.0 / 3.0);
+
+    tv_p = vec3(30.0, 20.0, 0.0);
+    tv_ndc = camera_ndc(tv_vp, tv_p);
+    tv_affine = mat4_transform(tv_vp, tv_p);
+
+    assert(abs(tv_ndc.0 - tv_affine.x) > 1e-6,
+           "the divide changed nothing — is the projection still perspective?");
+    assert(camera_in_front(tv_vp, tv_p), "the point should be in front of the eye");
+    assert(!camera_in_front(tv_vp, vec3(0.0, 0.0, 500.0)),
+           "a point above the eye should be behind it");
+}

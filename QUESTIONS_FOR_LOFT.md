@@ -64,9 +64,36 @@ fix / feature, move it to **Resolved**.
 Filed upstream as GitHub issues; kept here as dryopea's own record until
 the fix ships, then moved to Resolved.
 
-⚠ **Empty as of 2026-08-17** — loft#935 and loft#939 both closed on
-2026-08-16 and moved to § Resolved.  Nothing of dryopea's is outstanding
-upstream.
+### A file-scope `const vector` holding a NEGATIVE literal reads back EMPTY
+
+**Filed 2026-08-17 as
+[loft#955](https://github.com/loft-lang/loft/issues/955)** — `bug`,
+`sev:high`, `wa:clean`, `area:codegen`, `both-backends`,
+`hit-by:dryopea`.  Repro:
+[`loft_repros/const_vector_with_a_negative_is_empty.loft`](loft_repros/const_vector_with_a_negative_is_empty.loft).
+
+A `const` at file scope declared `vector<integer>` or `vector<float>`
+and initialised from a literal is EMPTY if any element is negative —
+`len()` of 0, every index `null(oob)`, no diagnostic on either backend
+and none from `--native-emit` either.  ⚠ **The sign is the whole
+trigger**: `[10, 9, 5, 0]` is fine and so is a twelve-element positive
+literal, while `[10, -5, 9]`, `[-1, 2, 3]` and `[1.0, -2.0]` are all
+empty.
+
+⚠⚠ **What makes it worth a `sev:high` argument is that a loop over an
+empty vector runs zero times, so every assertion inside it holds
+VACUOUSLY.**  It cost plan 21 R1's
+`tests/21_r1_the_camera.loft` § The overview IS the editor's view: the
+ring of twelve hexes it projects two ways came back as twelve copies of
+`Hex { q: null, r: null }`, which land on the screen centre, so the
+bearings agreed perfectly and the gate reported a worst disagreement of
+**exactly 0.0 rad**.  The only thing that caught it is that an exact
+zero is not a value a comparison between integer pixels and a
+floating-point projection can produce.
+
+**Workaround (clean):** a LOCAL vector with the identical literal is
+correct, so move the value inside the function that reads it.  That is
+what `21_r1` does, with a ⚠ at the site saying why.
 
 ## Investigated — no bug
 

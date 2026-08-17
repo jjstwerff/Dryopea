@@ -83,6 +83,7 @@ exists today.
 | ⚠ Composition is legible: three waves of twelve fall at **94 / 126 / never**.  ⚠⚠ Its headline — *a wave is as dangerous as its FASTEST class and no more* (`@M018`) — is **RETIRED by plan 24** | [23](plans/23-the-small-robots/README.md), K3 shipped — plan **complete** |
 | ⚠⚠ **THE SIEGE FRONT IS THE WALL'S WIDTH**: a besieger attacks the hex it is TOUCHING, so 3 → **4** hexes on a five-row wall and 3 → **6** on a seven-row one — and a wave is worth its front class PLUS what the front cannot COVER (`@M020`).  ⚠ Four screens against a five-hex face leak exactly ONE miner, so *4 scout + 8 miner* went from **never** to **126**.  ⚠ The rule five documents asked for was one we already had (`@M019`) | [24](plans/24-the-siege-front/README.md), W0-W2 shipped — plan **complete** |
 | **AND IT OPENS**: `make play`, press **P**, and waves arrive because TIME PASSED — the crew lands at the core and WASD drives it.  ⚠ **Nothing of the game is DRAWN yet** (P4), so the console echo is the only way to see it.  ⚠ The mode gates the CLOCK and never the seam | [19](plans/19-the-interactive-loop/README.md), P3 shipped — P4 next |
+| A CAMERA that comes to the vehicle: an orbit camera whose azimuth is the VELOCITY's and whose elevation and boom are the player's.  ⚠⚠ **`camera_overview` at 89° IS the editor's view** — measured against the software rasteriser at **0.0014 rad of bearing and 0.56% of scale** (`@M022`), so it is one camera with two presets.  ⚠⚠ The 3-D world frame is **+y NORTH** and `lat_to_world` is the ONE negation | [21](plans/21-the-renderer/README.md), R1 shipped — R2 next |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
 is derived rather than picked: **a single-hex body ramp onto a structure
@@ -98,7 +99,7 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 1162/1162 green under `scripts/test.sh`** (~177 s re-measured
+**Suite: 1177/1177 green under `scripts/test.sh`** (~177 s re-measured
 2026-08-17 — the `frame` measurements classify full 960x720 frames, the
 cost gate ticks a radius-40 world twice, and since plan 13 a dozen tests
 run whole scenarios to their fall.  ⚠ This line carried "~35 s" from
@@ -117,7 +118,9 @@ one refactor that measured as FREE).
 **Gate: 33 scripts green under `scripts/validate.sh`** (~14 s, 654
 measurements).  ⚠ Plan 24 W2 moved **8 of the 33** — a steering change
 re-prices scenarios rather than breaking them, and the numbers of record
-are `@M020`.
+are `@M020`.  ⚠ Plan 21 R1 moved **none of them**, which is the point: a
+camera is not a simulation, and the day it re-prices a scenario is the
+day something is reading it that should not be.
 
 ⚠ **[loft#939](https://github.com/loft-lang/loft/issues/939) is FIXED
 and CLOSED** (loft `ac8fb1dc`, *"A vector field assigned from a view
@@ -443,6 +446,21 @@ reachable hex and brings the fronts to within three ticks (214 vs 211).
 ⚠ So a scenario that compares two sides of a base must control for
 BRACING first; `q -> -q` is not a symmetry of this lattice.
 
+⚠⚠ **A gate that reads PERFECT is as suspect as one that reads wrong,
+and it is much easier to miss** (plan 21 R1).  The camera gate compares
+a ring of twelve hexes projected two ways and reported a worst bearing
+disagreement of **exactly 0.0 rad** — twice, for two unrelated reasons:
+the ring was an empty `const vector` ([loft#955](https://github.com/loft-lang/loft/issues/955)),
+so twelve null hexes all landed on the screen centre; and once fixed,
+the bearings were compared in **NDC**, where the aspect ratio is baked
+into the projection and the space is anisotropic by construction.
+⚠ **The tell was the exactness** — an integer-pixel-versus-float
+comparison over arbitrary hexes cannot produce a true zero.
+⚠ **The missing control is generic and costs two lines**: *can this
+gate produce a non-trivial reading at all?*  Assert the disagreement is
+`> 0`, and assert the fixture is not degenerate.  Any gate that compares
+two computations of one thing can agree by both being empty.
+
 ⚠ **A gate whose reading is already saturated cannot see the thing you
 built.**  H2's plan said the crewed base's clock would rise again with
 helpers on it; measured, it does not move by a tick, because one tower
@@ -705,6 +723,7 @@ navigational summary of it.
 | `lattice.loft` | **THE lattice** — pointy-top odd-r offset, `Hex`, and every `lat_*` verb.  Delegates to `hex_grid` |
 | `relabel.loft` / `convert.loft` | plan 09's old-label → new-label bijection, and the `.keys` converter |
 | `camera.loft` | `EditorCamera` + `camera_update`.  ⚠ pan NORTH is `r += 1` |
+| `render_camera.loft` | **the GAME's camera** (plan 21 R1) — `RenderCamera`, the two presets, and `lat_to_world`.  ⚠⚠ Its world is `+y` **NORTH** with `+z` up, which is NOT dryopea's `+y`-south canvas frame: that one is left-handed once z points up, and `mat4_look_at` MIRRORS it.  ⚠ Assert on `camera_eye_of_view`, never on the struct |
 | `painted.loft` | `PaintedHex` / `PaintedWorld` — sparse, sea-default ground |
 | `palette.loft` | `GroundType` + `load_palette` + `GROUND_RUBBLE` |
 | `markers.loft` / `marker_file.loft` / `marker_render.loft` | the marker layer, its save format and its drawing.  `place_marker` is the ONE dispatch |
@@ -837,6 +856,16 @@ By name, so you know when to go and read it:
 - A struct literal that **omits a field takes that field's default
   silently** ([loft#914](https://github.com/loft-lang/loft/issues/914))
   — build from `*_empty()`, never a partial literal.
+- ⚠⚠ A file-scope **`const vector` holding a NEGATIVE number is EMPTY**
+  ([loft#955](https://github.com/loft-lang/loft/issues/955), filed
+  2026-08-17, both backends) — `len()` 0, every index `null(oob)`, and
+  no diagnostic anywhere.  The SIGN is the whole trigger: `[10, 9, 5,
+  0]` is fine, `[10, -5, 9]` and `[-1, 2, 3]` and `[1.0, -2.0]` are
+  empty.  ⚠ A **local** with the same literal is correct, so bind it
+  inside the function.  ⚠⚠ **A loop over an empty vector runs zero
+  times, so every assertion inside it holds VACUOUSLY** — it made plan
+  21 R1's camera gate report perfect agreement while iterating over
+  nothing.
 - **Loop variable names** must keep one type per function scope and
   OUTLIVE their loop ([loft#915](https://github.com/loft-lang/loft/issues/915))
   — prefix them per function.
@@ -1076,7 +1105,9 @@ signature.
 | Turn a state you REACHED into a test | [plans/18](plans/18-scenario-capture/README.md) — the tool is BUILT (S0-S4); the loop to capture FROM now exists (plan 19 P3), and wiring a key to it is plan 19 P5.  ⚠ Emits `.keys` and never a state blob: a saved `WaveState` is a golden of the simulation and *a golden agrees with a shear*.  ⚠ The work is making the vocabulary TOTAL over `WaveState` — enemies, towers, wallet and cargo have no setters today.  ⚠ A crop has a MINIMUM radius set by the mechanics (the core, the 25-hex bubble, a tower's range 15), so a naive one silently changes enemy steering |
 | Change what a frame contains | `editor_view.loft::render_editor_frame` — the GL loop and `snap` both draw it, so edit it there, not in `main.loft` |
 | Draw an ENTITY, or change what one looks like | [`docs/PARTS.md`](docs/PARTS.md) — a part-tree, and the GEOMETRY is derived from it (plan 20).  ⚠ **Never a shape drawn inline in `editor_view.loft`**: that is the *"second renderer that happens to live in the test harness"* its own header refuses, one layer down.  ⚠ The SIZE is the durable artefact and § D6 gates it against the simulation's constant |
-| Ask where the game's CAMERA lives, or why the editor's view is a mode of it | [`docs/RENDERER.md`](docs/RENDERER.md) § R1 — moros's `RenderCamera`, ported.  ⚠ `camera_overview` at elevation 89° reproduces the editor's top-down view, so there is ONE camera with two presets.  ⚠ The game's camera belongs on `PlayState`, never on `EditorState.cam` (that is `EditorCamera`, and its zoom is `@D002`) |
+| Ask where the game's CAMERA lives, or why the editor's view is a mode of it | `src/render_camera.loft` (built, plan 21 R1) and [`docs/RENDERER.md`](docs/RENDERER.md) § R1 — moros's `RenderCamera`, ported.  ⚠ `camera_overview` at elevation 89° reproduces the editor's top-down view **to 0.08° of bearing and 0.56% of scale** (`@M022`), so there is ONE camera with two presets.  ⚠ The game's camera belongs on `PlayState`, never on `EditorState.cam` (that is `EditorCamera`, and its zoom is `@D002`) — ⚠ **not built yet**: `@X014` stands and lands in R2, where an eased boom gives the session something to remember |
+| Put a hex into the CAMERA's world, or ask which way is up in 3-D | `src/render_camera.loft::lat_to_world` — and it is the ONE place that may negate y.  ⚠⚠ **The camera's world is `+y` NORTH**, where every other metre in dryopea is `+y` SOUTH: that is a CANVAS convention, it is left-handed once `+z` is up, and `mat4_look_at` builds a right-handed basis — so carrying it into 3-D **mirrors the world** and no azimuth undoes it (`@M021`: one of eight azimuths works in the north frame, none in the south).  ⚠ The negation cancels `lat_to_metres`', so the camera's frame is `hex_grid`'s own — a library frame is a WORLD frame and dryopea's is a SCREEN frame |
+| Point the camera at the vehicle, or ask which way it is facing | `src/render_camera.loft::camera_follow_vehicle` over `vehicle_facing` — the bearing comes from the **VELOCITY** (`metres(to) − metres(here)`), because a hover unit has no stored facing (`@X067`).  ⚠ It answers a PAIR: plan 19 P2 spells *stop* as `vehicle_drive(v, v.q, v.r)`, so a parked vehicle's velocity is zero and `atan2(0, 0)` would swing the camera east on every key release.  ⚠⚠ **Never paste moros's `azimuth = 270° − facing_deg`** — correct in moros's frame, and in dryopea's it puts the eye exactly ABEAM at all four cardinal headings, where it still tracks and still eases and still looks like a working camera |
 | Gate anything that is DRAWN by GL | [`docs/RENDERER.md`](docs/RENDERER.md) § R0 + § R4 — `xvfb` → GL → `gl_screenshot` → `imaging::png` → `classify_world`, measured at **zero** colour drift.  ⚠ Render FLAT UNLIT for the gate: a shaded frame turns one palette colour into a range and `unknown` stops meaning "fault".  ⚠ Never loosen to nearest-colour — that discards the property R0 measured |
 | Ask what a tower's top is, in the art | `docs/PARTS.md` § D3 — it is a SOCKET, and the simulation has had one since plan 17 T2 (`tower_detach_top` / `tower_mount_top`, which refuses an occupied tower).  ⚠ Which pose a tower draws in is ASKED of `TowerState`, never a second flag beside it |
 | Write/edit a `.loft` file | Loft language conventions: see § Important conventions above + loft's own `loft-write` skill |
