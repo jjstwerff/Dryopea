@@ -31,82 +31,45 @@ fix / feature, move it to **Resolved**.
 
 ## Open
 
-### `loft test` ignores `--lib`, so a path-dep library cannot be tested by its consumer
-
-Found 2026-08-17, plan 26 L6, interpreter.
-
-`loft --lib lib/ prog.loft` resolves a package at `lib/<name>/src/<name>.loft`
-correctly — verified with a one-line probe that calls into it and prints the
-right answer.  **`loft test --lib lib/ tests/x.loft` does not**, and neither
-does `loft --lib lib/ test …`: every `use <name>;` fails with
-
-```
-Error: Library '<name>' not found — searched lib/, lib_dirs, and sibling packages
-```
-
-The message names `lib_dirs` as a searched location, which is exactly what
-`--lib` populates, so the flag appears to be parsed and dropped rather than
-rejected (no "unknown argument").
-
-⚠ **Impact**: a library developed in-tree as a path dependency cannot run its
-consumer's test suite at all.  The only workaround is `loft install <dir>`,
-which copies to `~/.loft/lib/<name>` — a stale global copy that then SHADOWS
-the registry, which is the failure moros's `Makefile` documents at length for
-`web` (loft-lang/loft#667).  So the workaround for one gap re-arms another.
-
-⚠ dryopea hit this moving `fixstep` out of `src/` and abandoned the in-tree
-path-dep shape because of it.
-
-### `loft test --native-wasm` is silently ignored
-
-Found 2026-08-17, plan 26 L6.
-
-`loft test --native-wasm` runs, exits 0, and reports:
-
-```
-test result: ok. 13 passed; 1 file  [ran on the interpreter only —
-native not exercised: loft test --native; …]
-```
-
-— i.e. it ran the INTERPRETER and said so in a banner that reads like a
-recommendation rather than a warning.  `--native` is honoured on the same
-command line, so this is specific to `--native-wasm`.
-
-⚠ **Impact**: the wasm column of the target matrix cannot be gated from
-`loft test`, so a library either claims a target it has not run or omits it.
-`fixstep` omits it, per `loft-ship`'s *a claimed-but-broken target is worse
-than an honestly-omitted one*.
-
-
-### `imaging::Pixel` has no alpha, so a PNG cannot round-trip a sprite
-
-- **Found while:** designing [`docs/PARTS.md`](docs/PARTS.md) (plan 20) —
-  entity sprites are cut-outs blitted over the hex ground, so every one
-  of them is mostly transparent.
-- **Kind:** feature
-- **What dryopea needs:** an alpha channel on `imaging::Pixel`.  It is
-  `{ r, g, b }` today (`imaging` 0.2.1), and `png(self: File) -> Image`
-  is the registry's only PNG **decoder** — so a sprite written with
-  transparency comes back opaque.  ⚠ The asymmetry is the sharp part:
-  `graphics::Canvas` already *writes* alpha (`save_png` "automatically
-  uses RGBA if any pixel has alpha < 255") and already *composites* it
-  (`blend_pixel`).  So loft can produce a file it cannot read back.
-- **Workaround in dryopea (if any):** **the design avoids needing it** —
-  `docs/PARTS.md` § D5 renders part-trees straight into `Canvas` sprites
-  and treats PNGs as an ARTEFACT rather than a runtime input, so nothing
-  decodes one.  ⚠ A colour key (magenta = transparent) would also work
-  and is deliberately not taken: it is a 1990s workaround for a problem
-  this design does not have to have.
-  ⚠ **What it does block** is the other pipeline — hand-authored art
-  PNGs from an artist, loaded at runtime.  That is a real future ask,
-  not a hypothetical, which is why this is filed before it bites.
-- **Loft pointer:** `imaging` 0.2.1, `src/imaging.loft` — `Pixel`,
-  `value()` (which packs 24-bit `0xRRGGBB`), `load_png` / `n_load_png`.
-  ⚠ Belongs to whichever repo owns `imaging`; `graphics` moved to
-  `loft-libs-graphics`, so check there before filing against
-  `loft-lang/loft`.
-
 ## Submitted
+
+### A declared PATH dependency suppresses the `--lib` search — [loft#963](https://github.com/loft-lang/loft/issues/963)
+
+Filed 2026-08-17 (plan 26 L6).  ⚠⚠ **The first diagnosis was WRONG and the
+repro is what overturned it.**  From inside dryopea the failure looked exactly
+like *"`loft test` ignores `--lib`"*, and that is what this file said for one
+commit.  It is false: `loft test --lib lib/` resolves a package fine.  What
+breaks it is **declaring that package as a path dependency** —
+
+```
+1. no dep,   --lib lib/                  test result: ok
+2. no dep,   no flag                     test result: FAILED
+3. path dep, --lib lib/                  test result: FAILED
+4. path dep, no flag                     test result: FAILED
+```
+
+— rows 1 and 3 differ only by a `[dependencies]` block.  So the declaration is
+strictly worse than saying nothing.  ⚠ It is the trap
+`loft-libs-world/hex_draw/loft.toml` already documents for REGISTRY deps,
+reaching path deps too.  Repro: `loft_repros/path_dep_suppresses_lib_search/`.
+
+⚠ **The consequence for dryopea**: an in-tree `lib/fixstep` path dep could not
+run the suite, and the workaround (`loft install`) leaves a stale global copy
+that shadows the registry ([loft#667]).  `fixstep` went to `loft-libs-game`
+instead, which is a better home anyway.
+
+### `loft test --native-wasm` is silently ignored — [loft#964](https://github.com/loft-lang/loft/issues/964)
+
+Filed 2026-08-17 (plan 26 L6).  It exits 0, reports success, and runs the
+INTERPRETER, saying so in a banner that reads as a recommendation rather than
+as a dropped flag.  `--native` on the same command line is honoured.
+
+⚠ **Impact**: the wasm column cannot be gated from `loft test`, so `fixstep`
+claims interpreter and `--native` and omits wasm — per `loft-ship`'s *a
+claimed-but-broken target is worse than an honestly-omitted one*.
+
+⚠ Third instance of *a flag honoured on the program path and dropped on the
+test path* ([loft#860], [loft#865]), so the issue suggests the general fix.
 
 Filed upstream as GitHub issues; kept here as dryopea's own record until
 the fix ships, then moved to Resolved.

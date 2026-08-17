@@ -32,12 +32,27 @@ citation checker reports **28 citations, 0 faults**, and it caught its own first
 version — a tag in a section header is separated from its `fn` by a blank line, which
 breaks the binding, so **all thirteen were dangling while looking correct**.
 
-⚠⚠ **Two loft gaps found, and one of them changed the plan.**  `loft test` **ignores
-`--lib`**, so an in-tree path dep cannot run a consumer's suite at all — which is why
-`lib/fixstep` was abandoned for the sibling-repo shape rather than kept as an interim.
-And `loft test --native-wasm` is **silently ignored** (it reports *"ran on the
-interpreter only"*), so that target is UNVERIFIED rather than passing.  Both are in
-`QUESTIONS_FOR_LOFT.md`.  ⚠ The parity gate stands at **interpreter 13/13 and
+⚠⚠ **Two loft gaps found and FILED — and the first diagnosis of one was wrong, which
+the repro is what caught** ([loft#963](https://github.com/loft-lang/loft/issues/963),
+[loft#964](https://github.com/loft-lang/loft/issues/964)).  From inside dryopea the
+first looked exactly like *"`loft test` ignores `--lib`"*, and this document said so
+for one commit.  **It is false**: `loft test --lib lib/` resolves a package fine.  What
+breaks it is **declaring that package as a path dependency** — four cases, rows 1 and 3
+differing only by a `[dependencies]` block:
+
+| | `--lib lib/` | no flag |
+|---|---|---|
+| **no dep declared** | **ok** | FAILED |
+| **path dep declared** | FAILED | FAILED |
+
+So the declaration is strictly worse than saying nothing, and it is the trap
+`loft-libs-world/hex_draw/loft.toml` already documents for REGISTRY deps reaching path
+deps too.  ⚠ **The conclusion survived its own refutation**: the in-tree shape still
+could not run the suite, so `lib/fixstep` was still the wrong home — but for a reason
+one `[dependencies]` line long rather than a broken test runner.  ⚠ The second gap
+stands as first read: `loft test --native-wasm` is accepted, ignored, and runs the
+interpreter, so that target is UNVERIFIED rather than passing.  ⚠ Repro:
+`loft_repros/path_dep_suppresses_lib_search/`.  ⚠ The parity gate stands at **interpreter 13/13 and
 `--native` 13/13, identical**; the package claims no target it has not run.
 
 ⚠ **What L6 did NOT do**: publish.  The package is consumed from a local install while
