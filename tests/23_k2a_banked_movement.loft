@@ -117,7 +117,8 @@ fn desire_for(pw: PaintedWorld) -> FlowField {
 // number worth writing by hand (`tick_bank.loft` § bank_fraction).
 fn walker(q: integer, stand: float, carry: float) -> Enemy {
     w_e = Enemy { q: q, r: 0, kind: as_u8(ENEMY_KIND_REGULAR), heading: 3 as u8,
-                  alive: true, stand: stand, taken: 0.0, bank: bank_new() };
+                  alive: true, stand: timer_armed(clock_units_from_seconds(stand)),
+                  taken: 0.0, bank: bank_new() };
     bank_restore_fraction(w_e.bank, carry, BANK_WHOLE);
     w_e
 }

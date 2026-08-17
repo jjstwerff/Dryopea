@@ -45,7 +45,9 @@ use palette;
 use painted;
 use height;
 use passable;
+use tick_clock;
 use tick_bank;
+use tick_timer;
 
 // ─── The numbers ────────────────────────────────────────────────
 //
@@ -80,17 +82,32 @@ pub const VEHICLE_BOOST_CLIMB_METRES: float = 3.0;
 pub const VEHICLE_HP_BLOCKER: float = 100.0;
 
 // numbers.json § player_vehicle.boost_duration / boost_cooldown.
-pub const VEHICLE_BOOST_DURATION_S: float = 2.0;
-pub const VEHICLE_BOOST_COOLDOWN_S: float = 5.0;
+//
+// ⚠ **The UNITS are the definition and the seconds are DERIVED** since
+// plan 26 L3 — `helper.loft::HELPER_RECOVERY_UNITS` carries the reason.
+//
+// ⚠ **A LITERAL, and it has to be**: a const whose initialiser CASTS
+// another computed const needs a temporary, and loft refuses one in a
+// const ("the slot it names belongs to this declaration").  So the
+// count is written out, the way `TICK_STEP_UNITS` is — and
+// `tests/26_l3_the_timers.loft` § Every duration is a whole number of
+// base units is what stops the literal drifting from the seconds it
+// claims to be.
+pub const VEHICLE_BOOST_DURATION_UNITS: integer = 6000000;    // 2 s
+pub const VEHICLE_BOOST_COOLDOWN_UNITS: integer = 15000000;   // 5 s
+pub const VEHICLE_BOOST_DURATION_S: float = (VEHICLE_BOOST_DURATION_UNITS as float)
+                                            / (CLOCK_UNITS_PER_SECOND as float);
+pub const VEHICLE_BOOST_COOLDOWN_S: float = (VEHICLE_BOOST_COOLDOWN_UNITS as float)
+                                            / (CLOCK_UNITS_PER_SECOND as float);
 
-// ⚠ **A boost is 2.0 s and a tick is `1 / 1.5` s, so three ticks sum
-// to 1.9999999999999998 and a bare `> 0.0` gives the player a FOURTH
-// tick of boost.**  Exactly the trap `tower.loft::TOWER_CHARGE_EPSILON`
-// exists for — a repeating fraction summing a hair short — arriving on
-// a timer instead of a fire interval.  Here it would have been a 33%
-// longer boost than the design says, which is the kind of thing no
-// assertion about "it got over the wall" could ever see.
-pub const VEHICLE_TIMER_EPSILON: float = 1.0e-9;
+// ⚠⚠ **`VEHICLE_TIMER_EPSILON` IS GONE (plan 26 L3), and it was the
+// clearest of the three because the price was VISIBLE.**  A boost is
+// 2.0 s and a tick is `1 / 1.5` s, so three ticks summed to
+// 1.9999999999999998 and a bare `> 0.0` gave the player a FOURTH tick —
+// a 33% longer boost than the design says, which no assertion about
+// "it got over the wall" could ever see.  ⚠ Both timers are integer
+// counts of base units now: 6 000 000 / 2 000 000 is 3 with nothing
+// left over, at this tick length and at every other one (`@M033`).
 
 // numbers.json § player_vehicle.salvage_rate — metres of rubble a
 // second, and **derived rather than picked**: a body is 0.5 m
@@ -147,8 +164,8 @@ pub struct Vehicle {
     to_q:       integer,
     to_r:       integer,
     parked:     boolean,   // false = not in the world at all
-    boost_left: float,     // seconds of boost still burning
-    cool_left:  float,     // seconds before another boost is available
+    boost: Timer,          // the boost, while it burns
+    cool:  Timer,          // the wait before another boost is available
     taken:      float,     // blocker damage ABSORBED, never HP remaining
     bank:       Bank,      // banked ground, always under a whole hex
 }
@@ -156,7 +173,7 @@ pub struct Vehicle {
 // Factory: no vehicle in the world.
 pub fn vehicle_empty() -> Vehicle {
     Vehicle { q: 0, r: 0, to_q: 0, to_r: 0, parked: false,
-              boost_left: 0.0, cool_left: 0.0, taken: 0.0,
+              boost: timer_new(), cool: timer_new(), taken: 0.0,
               bank: bank_new() }
 }
 
@@ -208,8 +225,8 @@ pub fn vehicle_hurt(v: Vehicle, hp: float) {
 // not a fact about it.
 pub fn vehicle_respawn(v: Vehicle, core: const Hex) {
     v.taken      = 0.0;
-    v.boost_left = 0.0;
-    v.cool_left  = 0.0;
+    timer_cancel(v.boost);
+    timer_cancel(v.cool);
     bank_reset(v.bank);
     vehicle_place(v, core.q, core.r);
 }
@@ -218,12 +235,12 @@ pub fn vehicle_respawn(v: Vehicle, core: const Hex) {
 
 // Is the vehicle boosting right now?
 pub fn vehicle_boosting(v: const Vehicle) -> boolean {
-    v.boost_left > VEHICLE_TIMER_EPSILON
+    timer_running(v.boost)
 }
 
 // Could it start a boost this tick?
 pub fn vehicle_boost_ready(v: const Vehicle) -> boolean {
-    v.parked && !vehicle_boosting(v) && v.cool_left <= VEHICLE_TIMER_EPSILON
+    v.parked && !timer_running(v.boost) && !timer_running(v.cool)
 }
 
 // Start a boost.  Answers whether one started.
@@ -236,7 +253,7 @@ pub fn vehicle_boost_ready(v: const Vehicle) -> boolean {
 // boosts would be three seconds.
 pub fn vehicle_boost(v: Vehicle) -> boolean {
     if !vehicle_boost_ready(v) { return false; }
-    v.boost_left = VEHICLE_BOOST_DURATION_S;
+    timer_arm(v.boost, VEHICLE_BOOST_DURATION_UNITS);
     true
 }
 
@@ -515,11 +532,10 @@ pub fn vehicle_tick(v: Vehicle, pal: vector<GroundType>, pw: PaintedWorld,
     v.q = vt_at.q;
     v.r = vt_at.r;
 
-    // ⚠ **The boost and the cooldown are TIMERS and still count float
-    // seconds** — `plans/26` § The invariant keeps them a separate
-    // family and L3 converts them.  `clock_seconds_from_units` is the
-    // one conversion, named so it can be found and deleted.
-    vehicle_burn(v, clock_seconds_from_units(elapsed));
+    // ⚠ **The boost and the cooldown are TIMERS, and since plan 26 L3
+    // they count the same integer base units the bank above does** —
+    // a separate FAMILY (`plans/26` § The invariant) in the same unit.
+    vehicle_burn(v, elapsed);
 }
 
 // Spend one tick of the boost and the cooldown.
@@ -531,16 +547,16 @@ pub fn vehicle_tick(v: Vehicle, pal: vector<GroundType>, pw: PaintedWorld,
 //
 // ⚠ The cooldown is armed as the boost EXPIRES, so the five seconds
 // are five seconds of not boosting rather than three (§ vehicle_boost).
-fn vehicle_burn(v: Vehicle, tick_seconds: float) {
-    if vehicle_boosting(v) {
-        v.boost_left = v.boost_left - tick_seconds;
-        if !vehicle_boosting(v) {
-            v.boost_left = 0.0;
-            v.cool_left  = VEHICLE_BOOST_COOLDOWN_S;
+fn vehicle_burn(v: Vehicle, elapsed: integer) {
+    if timer_running(v.boost) {
+        if timer_spend(v.boost, elapsed) {
+            timer_arm(v.cool, VEHICLE_BOOST_COOLDOWN_UNITS);
         }
         return;
     }
-    if v.cool_left > 0.0 {
-        v.cool_left = max(v.cool_left - tick_seconds, 0.0);
-    }
+    // ⚠ Unconditional, because a timer that is not running answers
+    // false and stays that way — the guard the float version needed
+    // (`if v.cool_left > 0.0`) was there to stop the subtraction going
+    // negative, and there is nothing to go negative any more.
+    timer_spend(v.cool, elapsed);
 }

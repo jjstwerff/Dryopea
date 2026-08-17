@@ -245,7 +245,7 @@ fn test_a_lone_besieger_attacks_one_hex_for_ever() {
     tal_s   = wave_state_empty();
     tal_s.enemies += [Enemy { q: 8, r: 1, kind: ENEMY_KIND_REGULAR as u8,
                               heading: 3 as u8, alive: true,
-                              taken: 0.0, stand: 0.0, bank: bank_new() }];
+                              taken: 0.0, stand: timer_new(), bank: bank_new() }];
 
     // Walk it in until it has arrived and settled.
     for _ in 0..6 { wave_tick(tal_s, tal_pal, tal_pw, marker_empty(), core()); }
@@ -253,7 +253,7 @@ fn test_a_lone_besieger_attacks_one_hex_for_ever() {
     tal_ts = wave_targets(tal_s, tal_pal, tal_pw, core());
     tal_t0 = tal_ts[0] ?? core();
     tal_e0 = tal_s.enemies[0] ?? Enemy { q: 0, r: 0, kind: 0 as u8, heading: 0 as u8,
-                                         alive: false, taken: 0.0, stand: 0.0,
+                                         alive: false, taken: 0.0, stand: timer_new(),
                                          bank: bank_new() };
     tal_q = tal_e0.q;
     tal_r = tal_e0.r;
@@ -295,7 +295,7 @@ fn test_a_routed_enemy_attacks_nothing_on_its_way() {
     tar_s   = wave_state_empty();
     tar_s.enemies += [Enemy { q: 8, r: 1, kind: ENEMY_KIND_REGULAR as u8,
                               heading: 3 as u8, alive: true,
-                              taken: 0.0, stand: 0.0, bank: bank_new() }];
+                              taken: 0.0, stand: timer_new(), bank: bank_new() }];
 
     for _ in 0..4 {
         wave_tick(tar_s, tar_pal, tar_pw, marker_empty(), core());
@@ -303,7 +303,7 @@ fn test_a_routed_enemy_attacks_nothing_on_its_way() {
         tar_t  = tar_ts[0] ?? core();
         tar_e  = tar_s.enemies[0] ?? Enemy { q: 0, r: 0, kind: 0 as u8,
                                              heading: 0 as u8, alive: false,
-                                             taken: 0.0, stand: 0.0, bank: bank_new() };
+                                             taken: 0.0, stand: timer_new(), bank: bank_new() };
         assert(tar_t.q == tar_e.q && tar_t.r == tar_e.r,
                "an enemy with a route through the gap attacks nothing, "
                + "even walking right past the wall: it is at "
@@ -323,7 +323,7 @@ fn test_nothing_is_besieged_where_there_is_no_wall() {
     tnb_s   = wave_state_empty();
     tnb_s.enemies += [Enemy { q: 8, r: 1, kind: ENEMY_KIND_REGULAR as u8,
                               heading: 3 as u8, alive: true,
-                              taken: 0.0, stand: 0.0, bank: bank_new() }];
+                              taken: 0.0, stand: timer_new(), bank: bank_new() }];
 
     for _ in 0..6 {
         wave_tick(tnb_s, tnb_pal, tnb_pw, marker_empty(), core());
@@ -331,7 +331,7 @@ fn test_nothing_is_besieged_where_there_is_no_wall() {
         tnb_t  = tnb_ts[0] ?? core();
         tnb_e  = tnb_s.enemies[0] ?? Enemy { q: 0, r: 0, kind: 0 as u8,
                                              heading: 0 as u8, alive: false,
-                                             taken: 0.0, stand: 0.0, bank: bank_new() };
+                                             taken: 0.0, stand: timer_new(), bank: bank_new() };
         assert(tnb_t.q == tnb_e.q && tnb_t.r == tnb_e.r,
                "open ground is besieged by nobody: at ({tnb_e.q},{tnb_e.r}) "
                + "targeting ({tnb_t.q},{tnb_t.r})");

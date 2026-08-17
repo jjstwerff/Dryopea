@@ -1,0 +1,666 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 26 phase L3 — the one-shot timers, and the family boundary.
+//
+// ── The one claim ───────────────────────────────────────────────
+//
+// > **A one-shot duration is exact because it is an INTEGER, not
+// > because it was nudged — and the two directions it can be counted
+// > in are one arithmetic read two ways.**
+//
+// `CLAUDE.md` § Timers and epsilons carries the rule this phase
+// answers, and it was measured rather than feared: *a banked timer's
+// DIRECTION is half the epsilon rule — counting UP and counting DOWN
+// do not accumulate the same way, and NEITHER IS SAFE.*  Four sites in
+// dryopea re-stated that arithmetic and three carried their own 1e-9
+// nudge, each argued separately because which way it had to lean
+// depended on the direction of the count.
+//
+// ── ⚠⚠ WHAT L3 MEASURED, AND IT INVERTS THE PLAN'S EXPECTATION ───
+//
+// `plans/26` § 2 counted seven *do-not-lose-a-fraction* sites and named
+// the ones with an epsilon as the brittleness.  **The epsilons were
+// doing real work and the sites that never got one are the broken
+// ones** — `@D003`'s shape, a family over.  Measured over seven tick
+// lengths through the shipped code, before any of it was converted:
+//
+// | timer | guard | 667 | 500 | 333 | 200 | 100 | 50 | 33 ms |
+// |---|---|---|---|---|---|---|---|---|
+// | helper recovery 60 s | epsilon |  90 | 120 | 180 |  300 |  600 | 1200 | 1800 |
+// | tower rebuild 20 s   | epsilon |  30 |  40 |  60 |  100 |  200 |  400 |  600 |
+// | boost 2 s            | epsilon |   3 |   4 |   6 |   10 |   20 |   40 |   60 |
+// | **wave lull 15 s**   | **none** |  23 |  30 |  45 | **76** | **151** |  300 | **451** |
+// | **pre-walk 5 s**     | **none** |   8 |  10 | **16** |  25 | **51** | **101** | **151** |
+//
+// against a true 23 / 30 / 45 / 75 / 150 / 300 / 450 and
+// 8 / 10 / 15 / 25 / 50 / 100 / 150.  ⚠ **Both unguarded timers are
+// RIGHT at the shipped 667 ms**, which is why nothing had seen it — the
+// same accident that hid the player's truncation for four phases
+// (`@M030`).  `@M033`.
+//
+// ── ⚠⚠ AND THE SECOND FINDING IS ABOUT THE GATE, NOT THE CODE ────
+//
+// The plan's L3 row asks for *"a Timer counting UP to 20.0 s and one
+// counting DOWN from it both fire on the same tick"*.  That gate would
+// have passed on arithmetic that is wrong.  Measured at the shipped
+// tick, float UP against float DOWN:
+//
+// | T | float UP | float DOWN | true |
+// |---|---|---|---|
+// |  4.0 s |  7 |  7 | **6**  |
+// | 10.0 s | 16 | 16 | **15** |
+// | 20.0 s | 30 | **31** | 30 |
+// | 30.0 s | 45 | 45 | 45 |
+// | 40.0 s | 61 | 61 | **60** |
+// | 60.0 s | 91 | 91 | **90** |
+//
+// ⚠⚠ **At four of the six durations the two directions AGREE and are
+// both a tick long.**  So *the directions agree* is not *the count is
+// right*, and a gate built on the plan's wording would have read
+// agreement at two thirds of its cases and called the arithmetic exact.
+// **The control has to be the TRUE count, not the other direction** —
+// which is `@M022`'s question (*can this gate produce a non-trivial
+// reading at all?*) arriving as a gate that CAN produce one and still
+// measures the wrong pair.
+//
+// ── ⚠ The `Timer`-as-`Bank` refutation, which L2 deferred here ────
+//
+// `plans/26` § The invariant claims a family boundary — *a one-shot's
+// remainder DIES at its boundary; a bank's is load-bearing FOR EVER* —
+// and L2's gate row asked for it to be attacked.  § A one-shot built on
+// a bank is that attack, and it breaks the bank two ways: it fires
+// again, and the residue leaks into the next arming (a 5.0 s cooldown
+// costs 8 ticks the first time and **7** the second).
+//
+// ── What is deliberately NOT here ───────────────────────────────
+//
+// **The tower's CHARGE, which is an EIGHTH site plan 26 § 2 never
+// counted** — and it is on the BANK side of the boundary, not this
+// one: `tower_bank` accumulates seconds and `wave_fire` subtracts one
+// whole interval per shot, carrying the remainder for ever, which is
+// `bank_gain` written by hand.  It still counts float seconds and still
+// has `TOWER_CHARGE_EPSILON`.  ⚠ Converting it is not a rename: the
+// tower may only release a shot it is ALLOWED to fire, so the held
+// count and the carry have to come apart (`tower_hold` caps a
+// capacitor at one).  § The eighth site pins today's behaviour so the
+// follow-up is deliberate.
+//
+// **No cap, no rate scaling, no composition, no alpha** — L4 and L5.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+// The seven tick lengths, in base units — L0's axis, unchanged.
+//
+// ⚠ A FILE-SCOPE `const vector` holding a negative number is EMPTY
+// ([loft#955]) and a loop over an empty vector holds vacuously, so the
+// sweep is built inside a function.
+fn tick_lengths() -> vector<integer> {
+    [TICK_STEP_UNITS, 1500000, TICK_STEP_UNITS / 2, 600000,
+     300000, 150000, 100000]
+}
+
+// The exact answer: how many whole ticks of `dt` a duration of `total`
+// needs, rounding UP — a fractional tick belongs to the timer, because
+// a window is a guarantee (`spawn.loft::wave_stand`).
+fn true_ticks(total: integer, dt: integer) -> integer {
+    ((total + dt - 1) / dt) ?? 0
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The pre-L3 float arithmetic, kept as the control
+//
+// ⚠ These are the two shapes the game used to carry, copied
+// deliberately.  It is `tests/26_l1`'s reimplementation exemption for
+// the same reason: the point is to compare the OLD construction
+// against the new one, and the old one no longer exists to call.
+// ─────────────────────────────────────────────────────────────────
+
+fn float_up_ticks(total: float, dt: float, cap: integer) -> integer {
+    fu_at = 0.0;
+    fu_n  = 0;
+    while fu_n < cap {
+        fu_at += dt;
+        fu_n  += 1;
+        if fu_at >= total { return fu_n; }
+    }
+    -1
+}
+
+fn float_down_ticks(total: float, dt: float, cap: integer) -> integer {
+    fd_at = total;
+    fd_n  = 0;
+    while fd_n < cap {
+        fd_at -= dt;
+        fd_n  += 1;
+        if fd_at <= 0.0 { return fd_n; }
+    }
+    -1
+}
+
+// The shipped construction: one timer, spent `dt` at a time.
+fn timer_ticks(total: integer, dt: integer, cap: integer) -> integer {
+    tt_t = timer_armed(total);
+    tt_n = 0;
+    while tt_n < cap {
+        tt_n += 1;
+        if timer_spend(tt_t, dt) { return tt_n; }
+    }
+    -1
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ The direction, and why agreeing is not the same as being right
+// ─────────────────────────────────────────────────────────────────
+
+fn test_the_two_float_directions_disagree_and_agreement_is_not_exactness() {
+    // ⚠⚠ **The control the whole file rests on**, and it asks all three
+    // readings of the SAME duration in ONE function — so this cannot
+    // pass by every half being empty, and it fires the moment
+    // `timer_spend` starts doing what the float paths did.
+    //
+    // ⚠ Every one of these six durations is an exact multiple of the
+    // tick, which is plan 15 C0's dangerous class: *the trap fires ONLY
+    // where the timer divides the tick exactly, which is the case that
+    // looks safest.*
+    ttf_disagreed = 0;
+    ttf_agreed_wrong = 0;
+    ttf_rows = "";
+    for ttf_secs in [4.0, 10.0, 20.0, 30.0, 40.0, 60.0] {
+        ttf_units = clock_units_from_seconds(ttf_secs);
+        ttf_true  = true_ticks(ttf_units, TICK_STEP_UNITS);
+        ttf_up    = float_up_ticks(ttf_secs, TICK_SECONDS, 500);
+        ttf_down  = float_down_ticks(ttf_secs, TICK_SECONDS, 500);
+        ttf_int   = timer_ticks(ttf_units, TICK_STEP_UNITS, 500);
+
+        assert(ttf_int == ttf_true,
+               "the timer is exact at {ttf_secs} s: {ttf_int} vs a true {ttf_true}");
+
+        if ttf_up != ttf_down { ttf_disagreed += 1; }
+        if ttf_up == ttf_down && ttf_up != ttf_true { ttf_agreed_wrong += 1; }
+        ttf_rows = ttf_rows + " {ttf_secs}s:{ttf_up}/{ttf_down}/{ttf_true}";
+    }
+
+    // ⚠ 20.0 s is the one the tower's own note was written from — UP
+    // lands on the nose and DOWN buys a thirty-first tick — and it is
+    // the ONLY one of the six where the direction shows at all.
+    assert(ttf_disagreed == 1,
+           "the two float directions land on different ticks at exactly ONE "
+           + "of the six durations:{ttf_rows}");
+
+    // ⚠⚠ **And this is the finding.**  At FOUR of the other five they
+    // agree with each other and are BOTH a tick long — so *both
+    // directions fire on the same tick*, which is what `plans/26` § L3
+    // asks for in so many words, would have read as exactness at four
+    // times as many cases as it caught.  **The control has to be the
+    // TRUE count, not the other direction.**
+    assert(ttf_agreed_wrong == 4,
+           "and at FOUR of them they agree with each other and are both "
+           + "WRONG — agreement is not exactness:{ttf_rows}");
+}
+
+fn test_one_number_answers_both_directions() {
+    // ⚠ There are no longer two directions to disagree: `timer_left` is
+    // `total - spent`, so the up-count and the down-count are one
+    // arithmetic read two ways and their sum is the duration at every
+    // instant.
+    ton_t = timer_armed(TOWER_REPAIR_UNITS);
+    ton_n = 0;
+    while timer_running(ton_t) {
+        assert(timer_left(ton_t) + timer_spent(ton_t) == TOWER_REPAIR_UNITS,
+               "left + spent is the whole duration at tick {ton_n}: "
+               + "{timer_left(ton_t)} + {timer_spent(ton_t)}");
+        timer_spend(ton_t, TICK_STEP_UNITS);
+        ton_n += 1;
+    }
+    assert(ton_n == 30, "and twenty seconds is thirty ticks: {ton_n}");
+    assert(timer_left(ton_t) == 0 && timer_spent(ton_t) == 0,
+           "with nothing left and nothing spent, because it is unarmed again");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ Every timer in the game holds its duration at seven tick lengths
+//
+// ⚠ ONE assertion per timer carrying the whole profile, which is plan
+// 25 M1's rule applied rather than restated: loft abandons a function
+// at its first failed assertion, so seven asserts in a row can only
+// report the earliest — and the two rows this phase moved are wrong at
+// three and four of the seven at once.
+// ─────────────────────────────────────────────────────────────────
+
+fn shipped_recovery(dt: integer, cap: integer) -> integer {
+    sr_h = helper_new(0, 0);
+    helper_wreck(sr_h);
+    helper_begin_recovery(sr_h, Hex { q: 0, r: 0 });
+    sr_n = 0;
+    while sr_n < cap {
+        sr_n += 1;
+        if helper_recover_tick(sr_h, dt, Hex { q: 0, r: 0 }) { return sr_n; }
+    }
+    -1
+}
+
+fn shipped_rebuild(dt: integer, cap: integer) -> integer {
+    sb_ts = tower_state_empty();
+    for _ in 0..TOWER_SHOT_BUDGET { tower_spend_shot(sb_ts, 0, 0); }
+    sb_n = 0;
+    while sb_n < cap {
+        sb_n += 1;
+        if tower_repair_tick(sb_ts, 0, 0, dt) { return sb_n; }
+    }
+    -1
+}
+
+fn shipped_lull(dt: integer, cap: integer) -> integer {
+    sl_ws = wave_schedule_of([1, 1], INTER_WAVE_DELAY_SECONDS);
+    wave_schedule_begin(sl_ws);
+    wave_schedule_due(sl_ws, true, dt);          // wave 1 out, lull armed
+    sl_n = 0;
+    while sl_n < cap {
+        sl_n += 1;
+        if wave_schedule_due(sl_ws, true, dt) > 0 { return sl_n; }
+    }
+    -1
+}
+
+// ⚠ The boost goes through `vehicle_tick`, which is the only public
+// door onto `vehicle_burn` — so the row is the SHIPPED path and not a
+// model of it.  The corridor is one hex of grass because the boost
+// burns whether or not the vehicle got anywhere.
+fn shipped_boost(dt: integer, cap: integer) -> integer {
+    sbo_pal = load_palette(PALETTE);
+    sbo_pw  = painted_empty();
+    paint(sbo_pw, 0, 0, as_u8(GRASS));
+    sbo_v = vehicle_empty();
+    vehicle_place(sbo_v, 0, 0);
+    vehicle_boost(sbo_v);
+    sbo_n = 0;
+    while sbo_n < cap {
+        sbo_n += 1;
+        vehicle_tick(sbo_v, sbo_pal, sbo_pw, height_layer_empty(), dt);
+        if !vehicle_boosting(sbo_v) { return sbo_n; }
+    }
+    -1
+}
+
+// ⚠ The pre-walk window's own door (`spawn.loft::wave_stand`) is
+// private and `wave_tick` reads `TICK_STEP_UNITS` as a constant, so the
+// timestep cannot be varied through it.  What `wave_stand` does is
+// `timer_spend(e.stand, elapsed)` and nothing else — there is no
+// arithmetic left at the site to reimplement, which is the phase's
+// whole point — and `enemy_standing` is the shipped predicate.
+fn shipped_stand(dt: integer, cap: integer) -> integer {
+    ss_e = Enemy { q: 0, r: 0, kind: as_u8(ENEMY_KIND_REGULAR),
+                   heading: 3 as u8? ?? 0 as u8, alive: true,
+                   taken: 0.0, stand: timer_armed(PRE_WALK_UNITS),
+                   bank: bank_new() };
+    ss_n = 0;
+    while ss_n < cap {
+        ss_n += 1;
+        timer_spend(ss_e.stand, dt);
+        if !enemy_standing(ss_e) { return ss_n; }
+    }
+    -1
+}
+
+fn true_profile(total: integer) -> text {
+    tp_out   = "";
+    tp_first = true;
+    for tp_dt in tick_lengths() {
+        if !tp_first { tp_out = tp_out + " / "; }
+        tp_out   = tp_out + "{true_ticks(total, tp_dt)}";
+        tp_first = false;
+    }
+    tp_out
+}
+
+fn test_the_helper_recovery_holds_at_every_tick_length() {
+    thr_out   = "";
+    thr_first = true;
+    for thr_dt in tick_lengths() {
+        if !thr_first { thr_out = thr_out + " / "; }
+        thr_out   = thr_out + "{shipped_recovery(thr_dt, 4000)}";
+        thr_first = false;
+    }
+    assert(thr_out == true_profile(HELPER_RECOVERY_UNITS),
+           "60 s of recovery is {thr_out}, against a true "
+           + "{true_profile(HELPER_RECOVERY_UNITS)}");
+}
+
+fn test_the_tower_rebuild_holds_at_every_tick_length() {
+    ttr_out   = "";
+    ttr_first = true;
+    for ttr_dt in tick_lengths() {
+        if !ttr_first { ttr_out = ttr_out + " / "; }
+        ttr_out   = ttr_out + "{shipped_rebuild(ttr_dt, 4000)}";
+        ttr_first = false;
+    }
+    assert(ttr_out == true_profile(TOWER_REPAIR_UNITS),
+           "20 s of rebuild is {ttr_out}, against a true "
+           + "{true_profile(TOWER_REPAIR_UNITS)}");
+}
+
+fn test_the_boost_holds_at_every_tick_length() {
+    tbh_out   = "";
+    tbh_first = true;
+    for tbh_dt in tick_lengths() {
+        if !tbh_first { tbh_out = tbh_out + " / "; }
+        tbh_out   = tbh_out + "{shipped_boost(tbh_dt, 4000)}";
+        tbh_first = false;
+    }
+    assert(tbh_out == true_profile(VEHICLE_BOOST_DURATION_UNITS),
+           "a 2 s boost is {tbh_out}, against a true "
+           + "{true_profile(VEHICLE_BOOST_DURATION_UNITS)}");
+}
+
+// ⚠⚠ **This one and the next were WRONG before this phase**, and the
+// message carries both profiles so the reading is legible rather than
+// merely green.
+fn test_the_wave_lull_holds_at_every_tick_length() {
+    twl_out   = "";
+    twl_first = true;
+    for twl_dt in tick_lengths() {
+        if !twl_first { twl_out = twl_out + " / "; }
+        twl_out   = twl_out + "{shipped_lull(twl_dt, 4000)}";
+        twl_first = false;
+    }
+    assert(twl_out == true_profile(clock_units_from_seconds(INTER_WAVE_DELAY_SECONDS)),
+           "15 s of lull is {twl_out}, against a true "
+           + "{true_profile(clock_units_from_seconds(INTER_WAVE_DELAY_SECONDS))} "
+           + "— it read 23 / 30 / 45 / 76 / 151 / 300 / 451 before plan 26 L3");
+}
+
+fn test_the_pre_walk_window_holds_at_every_tick_length() {
+    tpw_out   = "";
+    tpw_first = true;
+    for tpw_dt in tick_lengths() {
+        if !tpw_first { tpw_out = tpw_out + " / "; }
+        tpw_out   = tpw_out + "{shipped_stand(tpw_dt, 4000)}";
+        tpw_first = false;
+    }
+    assert(tpw_out == true_profile(PRE_WALK_UNITS),
+           "5 s of pre-walk is {tpw_out}, against a true "
+           + "{true_profile(PRE_WALK_UNITS)} "
+           + "— it read 8 / 10 / 16 / 25 / 51 / 101 / 151 before plan 26 L3");
+}
+
+// ⚠⚠ **The negative control for the two rows above**, and it is what
+// makes them a measurement rather than a restatement of `true_ticks`.
+// The float arithmetic those sites carried is reproduced here and
+// asserted WRONG — if this ever goes green with the same numbers as
+// the true profile, the two functions above have stopped discriminating.
+fn test_the_unguarded_float_counters_really_were_a_tick_long() {
+    tuf_lull  = "";
+    tuf_stand = "";
+    tuf_first = true;
+    tuf_bad   = 0;
+    for tuf_dt in tick_lengths() {
+        tuf_secs = clock_seconds_from_units(tuf_dt);
+        tuf_l = float_down_ticks(INTER_WAVE_DELAY_SECONDS, tuf_secs, 4000);
+        tuf_s = float_down_ticks(PRE_WALK_SECONDS, tuf_secs, 4000);
+        if !tuf_first { tuf_lull = tuf_lull + " / "; tuf_stand = tuf_stand + " / "; }
+        tuf_lull  = tuf_lull + "{tuf_l}";
+        tuf_stand = tuf_stand + "{tuf_s}";
+        tuf_first = false;
+        if tuf_l != true_ticks(clock_units_from_seconds(INTER_WAVE_DELAY_SECONDS), tuf_dt) {
+            tuf_bad += 1;
+        }
+        if tuf_s != true_ticks(PRE_WALK_UNITS, tuf_dt) { tuf_bad += 1; }
+    }
+    assert(tuf_bad == 7,
+           "the two unguarded float counters were long at SEVEN of the "
+           + "fourteen readings — lull {tuf_lull}, pre-walk {tuf_stand}");
+
+    // ⚠ And RIGHT at the shipped tick, which is the whole reason nothing
+    // in the corpus had seen it (`@M030`'s accident, one family over).
+    assert(float_down_ticks(INTER_WAVE_DELAY_SECONDS, TICK_SECONDS, 4000) == 23,
+           "and both were right at the shipped 667 ms, which is why it hid");
+    assert(float_down_ticks(PRE_WALK_SECONDS, TICK_SECONDS, 4000) == 8,
+           "the pre-walk window too");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ The refutation: a one-shot is NOT a bank
+//
+// `plans/26` § The invariant asserts the family boundary and L2's gate
+// row asked for it to be attacked here.  Two failures, both silent.
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_one_shot_built_on_a_bank_fires_twice_and_then_early() {
+    // A bank at `1 / 5` units a second releases one unit every five
+    // seconds — which is a 5.0 s timer right up to the moment it fires.
+    tob_b    = bank_new();
+    tob_rate = bank_rate(1.0 / 5.0);
+    tob_first  = 0;
+    tob_second = 0;
+    tob_n = 0;
+    while tob_n < 100 {
+        tob_n += 1;
+        if bank_gain(tob_b, tob_rate, TICK_STEP_UNITS, BANK_WHOLE) > 0 {
+            if tob_first == 0 { tob_first = tob_n; }
+            else { tob_second = tob_n; break; }
+        }
+    }
+
+    // ⚠ **1. It fires again.**  A bank has no boundary, so a cooldown
+    // built on one is a cooldown that expires for ever — and every
+    // one-shot in dryopea is armed by an EVENT, so a second firing is a
+    // helper that rejoins the roster twice.
+    assert(tob_second > 0,
+           "a bank fires a SECOND time with nobody re-arming it: "
+           + "{tob_first} then {tob_second}");
+
+    // ⚠ **2. The residue leaks into the next arming.**  5.0 s is 7.5
+    // ticks, so the first costs 8 and the second costs 7 — the bank
+    // being RIGHT about its own job (a scout's half hex is permanently
+    // half a hex) and wrong about this one.
+    assert(tob_first == 8,
+           "the first fire is at the true eight ticks: {tob_first}");
+    assert(tob_second - tob_first == 7,
+           "and the SECOND is seven ticks later, not eight — half a tick "
+           + "of the first cooldown is still banked: {tob_second - tob_first}");
+
+    // ⚠ The timer does neither, twice over.
+    assert(timer_ticks(VEHICLE_BOOST_COOLDOWN_UNITS, TICK_STEP_UNITS, 100) == 8,
+           "where the timer takes eight ticks");
+    tob_t = timer_armed(VEHICLE_BOOST_COOLDOWN_UNITS);
+    for _ in 0..20 { timer_spend(tob_t, TICK_STEP_UNITS); }
+    assert(!timer_running(tob_t),
+           "and having fired once it stays fired, however long it is spent into");
+    timer_arm(tob_t, VEHICLE_BOOST_COOLDOWN_UNITS);
+    assert(timer_ticks(VEHICLE_BOOST_COOLDOWN_UNITS, TICK_STEP_UNITS, 100) == 8,
+           "and re-arming costs the same eight ticks as the first time");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The neutral value, and the refusals
+// ─────────────────────────────────────────────────────────────────
+
+fn test_an_unarmed_timer_is_the_zero_default() {
+    // ⚠⚠ **This is why `Timer` may hold its `total` where `Bank` may not
+    // hold its `whole`** (`tick_bank.loft` § WHAT THE BANK HOLDS).  loft
+    // defaults an omitted struct field silently ([loft#914]), and a
+    // defaulted `Timer` is UNARMED — which is exactly what every
+    // `0.0`-valued seconds field it replaces already meant.
+    tau_t = Timer { };
+    assert(!timer_running(tau_t), "a defaulted timer is not running");
+    assert(timer_left(tau_t) == 0 && timer_spent(tau_t) == 0,
+           "and reads zero in both directions");
+    assert(!timer_spend(tau_t, TICK_STEP_UNITS * 1000),
+           "and never fires, however much time is spent into it");
+
+    // The five fields it replaced, each at its own site's neutral value.
+    tau_e = Enemy { q: 0, r: 0, kind: as_u8(ENEMY_KIND_REGULAR),
+                    heading: 0 as u8? ?? 0 as u8, alive: true };
+    assert(!enemy_standing(tau_e),
+           "a bare Enemy literal is free to walk, as it was before L3");
+    tau_v = vehicle_empty();
+    assert(!vehicle_boosting(tau_v), "a fresh vehicle is not boosting");
+    tau_h = helper_new(0, 0);
+    assert(!helper_recovering(tau_h), "a fresh helper is not in recovery");
+    tau_ts = tower_state_empty();
+    assert(!tower_repairing(tau_ts, 0, 0),
+           "and a tower nobody has touched is not being rebuilt");
+}
+
+fn test_it_fires_once_and_disarms() {
+    tif_t = timer_armed(TICK_STEP_UNITS * 3);
+    assert(!timer_spend(tif_t, TICK_STEP_UNITS), "one of three");
+    assert(!timer_spend(tif_t, TICK_STEP_UNITS), "two of three");
+    assert(timer_spend(tif_t, TICK_STEP_UNITS), "and the third fires");
+    assert(!timer_running(tif_t), "leaving it unarmed rather than saturated");
+    assert(!timer_spend(tif_t, TICK_STEP_UNITS), "so it cannot fire twice");
+
+    // ⚠ Overshoot is DISCARDED, which is the whole difference from a
+    // bank: a one-shot's residue means nothing once its boundary is
+    // past.
+    tif_big = timer_armed(TICK_STEP_UNITS);
+    assert(timer_spend(tif_big, TICK_STEP_UNITS * 1000), "a huge step still fires");
+    assert(timer_left(tif_big) == 0 && timer_spent(tif_big) == 0,
+           "and keeps none of the 999 steps of overshoot");
+}
+
+fn test_the_refusals() {
+    // A duration of zero DISARMS rather than firing — which is what a
+    // schedule authored with no lull already meant.
+    tr_z = timer_armed(0);
+    assert(!timer_running(tr_z), "a zero duration is not a running timer");
+    tr_n = timer_armed(-5);
+    assert(!timer_running(tr_n), "and neither is a negative one");
+
+    // Time going backwards is dropped, not owed — `clock_advance`'s rule.
+    tr_t = timer_armed(TICK_STEP_UNITS * 2);
+    assert(!timer_spend(tr_t, -TICK_STEP_UNITS * 10), "backwards time buys nothing");
+    assert(timer_left(tr_t) == TICK_STEP_UNITS * 2, "and takes nothing away");
+    assert(!timer_spend(tr_t, 0), "nor does none at all");
+
+    // Re-arming RESTARTS rather than extending — the float version's
+    // behaviour, now stated rather than inherited.
+    timer_spend(tr_t, TICK_STEP_UNITS);
+    timer_arm(tr_t, TICK_STEP_UNITS * 2);
+    assert(timer_left(tr_t) == TICK_STEP_UNITS * 2, "a re-arm is a restart");
+
+    // And cancelling is a DECISION with a name, not `timer_arm(t, 0)`.
+    timer_cancel(tr_t);
+    assert(!timer_running(tr_t), "cancelled");
+}
+
+fn test_a_timer_can_be_put_back_where_it_was() {
+    // ⚠ Both readings, because `emit.loft` writes whichever one its
+    // field was authored in — a tower's rebuild as time BANKED, a
+    // helper's recovery as time LEFT.
+    tpb_l = timer_new();
+    timer_restore_left(tpb_l, TICK_STEP_UNITS * 4, HELPER_RECOVERY_UNITS);
+    assert(timer_left(tpb_l) == TICK_STEP_UNITS * 4, "restored from the DOWN reading");
+    assert(timer_spent(tpb_l) == HELPER_RECOVERY_UNITS - TICK_STEP_UNITS * 4,
+           "with the up-count implied");
+
+    tpb_s = timer_new();
+    timer_restore_spent(tpb_s, TICK_STEP_UNITS * 4, TOWER_REPAIR_UNITS);
+    assert(timer_spent(tpb_s) == TICK_STEP_UNITS * 4, "restored from the UP reading");
+
+    // ⚠ Clamped rather than trusted, for `clock_restore`'s reason: a
+    // reading past the duration is a state `timer_spend` can never leave
+    // behind, and accepting one would fire on a boundary nothing paid
+    // for.
+    timer_restore_left(tpb_l, HELPER_RECOVERY_UNITS * 3, HELPER_RECOVERY_UNITS);
+    assert(timer_left(tpb_l) == HELPER_RECOVERY_UNITS, "an over-full left is capped");
+    timer_restore_left(tpb_l, -5, HELPER_RECOVERY_UNITS);
+    assert(!timer_running(tpb_l), "a spent one is unarmed");
+    timer_restore_spent(tpb_s, TOWER_REPAIR_UNITS, TOWER_REPAIR_UNITS);
+    assert(!timer_running(tpb_s), "and a fully-spent up reading is unarmed too");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Every duration in the game is a whole number of base units
+//
+// ⚠ The constants are LITERALS, because a const whose initialiser casts
+// another computed const needs a temporary and loft refuses one there.
+// This is what stops a literal drifting from the seconds it claims.
+// ─────────────────────────────────────────────────────────────────
+
+fn test_every_duration_is_a_whole_number_of_base_units() {
+    assert(HELPER_RECOVERY_UNITS == 60 * CLOCK_UNITS_PER_SECOND,
+           "60 s of recovery: {HELPER_RECOVERY_UNITS}");
+    assert(TOWER_REPAIR_UNITS == 20 * CLOCK_UNITS_PER_SECOND,
+           "20 s of rebuild: {TOWER_REPAIR_UNITS}");
+    assert(VEHICLE_BOOST_DURATION_UNITS == 2 * CLOCK_UNITS_PER_SECOND,
+           "2 s of boost: {VEHICLE_BOOST_DURATION_UNITS}");
+    assert(VEHICLE_BOOST_COOLDOWN_UNITS == 5 * CLOCK_UNITS_PER_SECOND,
+           "5 s of cooldown: {VEHICLE_BOOST_COOLDOWN_UNITS}");
+    assert(PRE_WALK_UNITS == 5 * CLOCK_UNITS_PER_SECOND,
+           "5 s of pre-walk: {PRE_WALK_UNITS}");
+
+    // ⚠ And the derived seconds are the documented design numbers, to
+    // the bit — `numbers.json` is what a reader checks against, and a
+    // derivation that merely rounded to them would be a second
+    // definition (`tests/26_l1` § The derived second is the one it
+    // replaced, one layer up).
+    assert(HELPER_RECOVERY_SECONDS == 60.0, "numbers.json § helper: {HELPER_RECOVERY_SECONDS}");
+    assert(TOWER_REPAIR_SECONDS == 20.0, "numbers.json § tower: {TOWER_REPAIR_SECONDS}");
+    assert(VEHICLE_BOOST_DURATION_S == 2.0, "§ player_vehicle: {VEHICLE_BOOST_DURATION_S}");
+    assert(VEHICLE_BOOST_COOLDOWN_S == 5.0, "§ player_vehicle: {VEHICLE_BOOST_COOLDOWN_S}");
+    assert(PRE_WALK_SECONDS == 5.0, "§ enemy_regular: {PRE_WALK_SECONDS}");
+}
+
+fn test_the_authoring_door_round_trips_exactly() {
+    // ⚠ `.keys` is a format a person authors, so `emit.loft` writes
+    // SECONDS and `script.loft` reads them back — the same position
+    // `bank_fraction` holds one family over.  A duration is a whole
+    // number of base units and the door ROUNDS, so the integer comes
+    // back exactly.
+    for tad_units in [1, 7, TICK_STEP_UNITS, TICK_STEP_UNITS * 7 + 1,
+                      HELPER_RECOVERY_UNITS, PRE_WALK_UNITS - 1] {
+        tad_back = clock_units_from_seconds(clock_seconds_from_units(tad_units));
+        assert(tad_back == tad_units,
+               "{tad_units} units round-trips through seconds: {tad_back}");
+    }
+    assert(clock_units_from_seconds(-1.0) == 0, "and backwards seconds are none");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ The eighth site — NOT converted, and pinned so it stays visible
+// ─────────────────────────────────────────────────────────────────
+
+fn test_the_tower_charge_is_still_a_hand_rolled_bank() {
+    // `plans/26` § 2 counted SEVEN re-assertions of *do not lose a
+    // fraction*.  There are eight: `tower_bank` accumulates float
+    // seconds and `wave_fire` subtracts one whole `TOWER_FIRE_INTERVAL_S`
+    // per shot, carrying the remainder for ever — which is `bank_gain`
+    // written by hand, on the BANK side of the family boundary rather
+    // than this one.
+    //
+    // ⚠ It is not a rename: a tower may only release a shot it is
+    // ALLOWED to fire, so the held count and the carry have to come
+    // apart (`tower_hold` caps a capacitor at one interval).  Left for
+    // a follow-up, and pinned here so the follow-up is deliberate
+    // rather than a rediscovery.
+    // ⚠ Three BARE additions of 2/3 land on exactly 2.0 — round-half-
+    // to-even, and it is why "the sum is short" is not the way to see
+    // this.  What the tower actually does is bank, FIRE (which subtracts
+    // one whole interval and keeps the remainder), then bank again —
+    // and that is where the hair appears.
+    ttc_ts = tower_state_empty();
+    tower_bank(ttc_ts, 0, 0, TICK_SECONDS);
+    tower_bank(ttc_ts, 0, 0, TICK_SECONDS);
+    assert(tower_charge(ttc_ts, 0, 0) >= TOWER_FIRE_INTERVAL_S,
+           "two ticks buy a shot: {tower_charge(ttc_ts, 0, 0)}");
+    tower_bank(ttc_ts, 0, 0, -TOWER_FIRE_INTERVAL_S);      // the shot
+    tower_bank(ttc_ts, 0, 0, TICK_SECONDS);
+
+    assert(tower_charge(ttc_ts, 0, 0) < TOWER_FIRE_INTERVAL_S,
+           "and the third tick lands a hair SHORT of the second shot: "
+           + "{tower_charge(ttc_ts, 0, 0):20.18}");
+    assert(tower_charge(ttc_ts, 0, 0) > TOWER_FIRE_INTERVAL_S - TOWER_CHARGE_EPSILON,
+           "by less than the epsilon that releases it — a third of the "
+           + "tower's documented DPS rests on that constant");
+}

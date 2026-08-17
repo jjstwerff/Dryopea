@@ -230,7 +230,9 @@ use vehicle;
 use helper;
 use occupancy;
 use spawn;
+use tick_clock;
 use tick_bank;
+use tick_timer;
 use play;
 use graphics;
 
@@ -1316,7 +1318,12 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         if sa_tc == null { return "tower: ({sa_tq}, {sa_tr}) has no cell"; }
         sa_tc.shots       = sa_tsh;
         sa_tc.charge      = sa_tch;
-        sa_tc.repair      = sa_trp;
+        // ⚠ The UP reading — `repair` is time BANKED toward the rebuild
+        // (`tower.loft::tower_repair_progress`), so it restores as spent
+        // rather than as left.
+        timer_restore_spent(sa_tc.repair,
+                            clock_units_from_seconds(sa_trp ?? 0.0),
+                            TOWER_REPAIR_UNITS);
         sa_tc.top_removed = sa_ttp == 0;
         return "";
     }
@@ -1391,8 +1398,12 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
             return "player: <boost>, <cool> and <taken> must be numbers";
         }
         run.play.wave.player.parked     = sa_pp == 1;
-        run.play.wave.player.boost_left = sa_pb ?? 0.0;
-        run.play.wave.player.cool_left  = sa_pc ?? 0.0;
+        timer_restore_left(run.play.wave.player.boost,
+                           clock_units_from_seconds(sa_pb ?? 0.0),
+                           VEHICLE_BOOST_DURATION_UNITS);
+        timer_restore_left(run.play.wave.player.cool,
+                           clock_units_from_seconds(sa_pc ?? 0.0),
+                           VEHICLE_BOOST_COOLDOWN_UNITS);
         run.play.wave.player.taken      = sa_pt ?? 0.0;
         return "";
     }
@@ -1420,7 +1431,9 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         sa_mh.alive    = sa_ma == 1;
         bank_restore_fraction(sa_mh.bank, sa_mp ?? 0.0, BANK_WHOLE);
         sa_mh.taken    = sa_mt ?? 0.0;
-        sa_mh.recover  = sa_mr ?? 0.0;
+        timer_restore_left(sa_mh.recover,
+                           clock_units_from_seconds(sa_mr ?? 0.0),
+                           HELPER_RECOVERY_UNITS);
         return "";
     }
 
@@ -1439,7 +1452,9 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         sa_pr = on_off(tok[4] ?? "");
         if sa_pr < 0 { return "pending: <on|off> for running, not '{tok[4] ?? ""}'"; }
         run.play.wave.schedule.sent    = sa_ps;
-        run.play.wave.schedule.lull    = sa_pl;
+        timer_restore_left(run.play.wave.schedule.lull,
+                           clock_units_from_seconds(sa_pl ?? 0.0),
+                           clock_units_from_seconds(sa_pd ?? 0.0));
         // ⚠ **The delay is here and not on `schedule`**, and finding
         // that out is a plan 18 S2 story worth keeping: S1b's totality
         // test missed this field entirely, because both the script and
@@ -1447,7 +1462,7 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         // field left at its DEFAULT on both sides of a comparison
         // compares equal and proves nothing.  A totality test has to
         // hold every field at a value the default would not produce.
-        run.play.wave.schedule.delay   = sa_pd;
+        run.play.wave.schedule.delay   = clock_units_from_seconds(sa_pd);
         run.play.wave.schedule.running = sa_pr == 1;
         return "";
     }
@@ -1909,7 +1924,8 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         run.play.wave.enemies += [Enemy { q: sc_pv2[0] ?? 0, r: sc_pv2[1] ?? 0,
                                      kind: sc_pk as u8? ?? 0,
                                      heading: sc_phd as u8? ?? 0,
-                                     alive: true, taken: 0.0, stand: 0.0 }];
+                                     alive: true, taken: 0.0,
+                                     stand: timer_new(), bank: bank_new() }];
         println("script: place {enemy_class_name(sc_pk as u8? ?? 0)} at ({sc_pv2[0] ?? 0}, {sc_pv2[1] ?? 0}) heading {sc_phd} — {len(run.play.wave.enemies)} in the roster");
         return "";
     }
@@ -1925,7 +1941,8 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         if sc_sidx < 0 || sc_sidx >= len(run.play.wave.enemies) {
             return "stand: no enemy {sc_sidx} — the roster holds {len(run.play.wave.enemies)}";
         }
-        (run.play.wave.enemies[sc_sidx] ?? Enemy { }).stand = sc_ssec;
+        timer_arm((run.play.wave.enemies[sc_sidx] ?? Enemy { }).stand,
+                  clock_units_from_seconds(sc_ssec ?? 0.0));
         return "";
     }
 
@@ -2058,7 +2075,7 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
             return "boost: no vehicle — `park <q> <r>` puts one in the world first";
         }
         if !vehicle_boost(run.play.wave.player) {
-            return "boost: the vehicle is not ready — {run.play.wave.player.cool_left:4.2} s of cooldown left, boosting = {vehicle_boosting(run.play.wave.player)}";
+            return "boost: the vehicle is not ready — {clock_seconds_from_units(timer_left(run.play.wave.player.cool)):4.2} s of cooldown left, boosting = {vehicle_boosting(run.play.wave.player)}";
         }
         return "";
     }

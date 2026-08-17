@@ -181,7 +181,8 @@ fn test_a_boost_lasts_exactly_three_ticks() {
     assert(vehicle_boosting(tab_s.player), "tick 2: still boosting");
     play(tab_s, tab_pw, 1);
     assert(!vehicle_boosting(tab_s.player),
-           "tick 3: spent — {tab_s.player.boost_left} s left, which must not be a positive dust");
+           "tick 3: spent — {timer_left(tab_s.player.boost)} base units left, "
+           + "which must not be a positive dust");
 }
 
 // ⚠ The cooldown is armed as the boost EXPIRES, so the gap between
@@ -194,13 +195,17 @@ fn test_the_cooldown_starts_when_the_boost_ends() {
     play(tcs_s, tcs_pw, 3);                   // boost just expired
 
     assert(!vehicle_boost_ready(tcs_s.player), "it is cooling down");
-    assert(tcs_s.player.cool_left > VEHICLE_BOOST_COOLDOWN_S - 0.001,
-           "with the WHOLE five seconds ahead of it: {tcs_s.player.cool_left}");
+    // ⚠ **EXACTLY the whole five seconds since plan 26 L3**, where this
+    // used to have to say `> 5.0 - 0.001`: the cooldown is an integer
+    // count of base units and the boost expired on a step boundary, so
+    // there is no dust to allow for.
+    assert(timer_left(tcs_s.player.cool) == VEHICLE_BOOST_COOLDOWN_UNITS,
+           "with the WHOLE five seconds ahead of it: {timer_left(tcs_s.player.cool)}");
 
     // 5.0 s is 7.5 ticks, so the eighth is the first that can boost.
     play(tcs_s, tcs_pw, 7);
     assert(!vehicle_boost_ready(tcs_s.player),
-           "seven ticks is 4.67 s — not yet: {tcs_s.player.cool_left}");
+           "seven ticks is 4.67 s — not yet: {timer_left(tcs_s.player.cool)}");
     play(tcs_s, tcs_pw, 1);
     assert(vehicle_boost_ready(tcs_s.player), "and the eighth is");
 }
@@ -275,10 +280,10 @@ fn test_a_crew_boosts_out_clears_up_and_comes_home() {
     // and it falls straight out of `numbers.json`: nobody designed the
     // ratio.
     assert(!vehicle_boost_ready(tac_s.player),
-           "still stranded with the work done: {tac_s.player.cool_left} s of cooldown");
+           "still stranded with the work done: {timer_left(tac_s.player.cool)} units of cooldown");
     play(tac_s, tac_pw, 5);
     assert(vehicle_boost_ready(tac_s.player),
-           "and now the cooldown is spent — {tac_s.player.cool_left} s");
+           "and now the cooldown is spent — {timer_left(tac_s.player.cool)} units");
     vehicle_boost(tac_s.player);
     vehicle_drive(tac_s.player, 3, 0);
     play(tac_s, tac_pw, 1);

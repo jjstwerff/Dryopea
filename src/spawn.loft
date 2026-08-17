@@ -43,6 +43,7 @@ use carry;
 use waves;
 use tick_clock;
 use tick_bank;
+use tick_timer;
 
 // The radius of the core's comms-jamming bubble, in hexes — the
 // boundary where an enemy stops following its spawn heading and starts
@@ -384,7 +385,24 @@ pub const ENEMY_DAMAGE_TO_BLOCKER_PER_SECOND: float = 5.0;
 // plan invented.  When a class earns its own window it costs a row in
 // the file and a `climb_limit`-shaped lookup here — and nothing else,
 // because `spawn_wave` already writes the window per ENEMY.
-pub const PRE_WALK_SECONDS: float = 5.0;
+// ⚠ **The UNITS are the definition and the seconds are DERIVED** since
+// plan 26 L3 — `helper.loft::HELPER_RECOVERY_UNITS` carries the reason.
+// ⚠⚠ And this is one of the two timers that never had a guard at all:
+// counted down through floats it ran a tick LONG at four of seven tick
+// lengths (`@M033`), exactly as `vehicle_hexes_this_tick` did on the
+// mover side (`@D003`).  It was right at the shipped 667 ms, which is
+// why nothing had seen it.
+//
+// ⚠ **A LITERAL, and it has to be**: a const whose initialiser CASTS
+// another computed const needs a temporary, and loft refuses one in a
+// const ("the slot it names belongs to this declaration").  So the
+// count is written out, the way `TICK_STEP_UNITS` is — and
+// `tests/26_l3_the_timers.loft` § Every duration is a whole number of
+// base units is what stops the literal drifting from the seconds it
+// claims to be.
+pub const PRE_WALK_UNITS:   integer = 15000000;   // 5 s
+pub const PRE_WALK_SECONDS: float   = (PRE_WALK_UNITS as float)
+                                      / (CLOCK_UNITS_PER_SECOND as float);
 
 // The kind discriminants an `Enemy` carries — `ENEMY_KIND_REGULAR`
 // and friends — live in `passable.loft`, because a class IS its
@@ -441,7 +459,7 @@ pub struct Enemy {
     heading: u8,
     alive:   boolean,
     taken:   float,
-    stand:   float,
+    stand:   Timer,
     bank:    Bank,
 }
 
@@ -482,7 +500,7 @@ pub fn enemy_hurt(e: Enemy, hp: float) {
 // occupancy, it is in the roster, and a tower shoots it where it
 // stands, which is the design's *"stand VISIBLE"*.
 pub fn enemy_standing(e: const Enemy) -> boolean {
-    e.stand > 0.0
+    timer_running(e.stand)
 }
 
 // Wave-engine state.  `enemies` is the running roster across
@@ -641,7 +659,7 @@ pub fn spawn_wave(
             kind:    kind,
             heading: sw_m.direction,
             alive:   true,
-            stand:   PRE_WALK_SECONDS,
+            stand:   timer_armed(PRE_WALK_UNITS),
         }];
         state.pick_cursor = state.pick_cursor + 1;
         sw_remaining = sw_remaining - 1;
@@ -1938,7 +1956,7 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     // `wave_repair` is declared below and binding a FORWARD-declared
     // call to a local panics the parser
     // ([loft#918](https://github.com/loft-lang/loft/issues/918)).
-    wave_repair(state, mw, TICK_SECONDS);
+    wave_repair(state, mw, TICK_STEP_UNITS);
 
     wave_deaths(state);
     damage_resolve(pal, pw, state.damage, state.heights);
@@ -2002,10 +2020,11 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     // one are the whole of § 9's *"No automatic respawn — retrieval is
     // the only way back"*: nothing starts this clock except a delivery.
     //
-    // ⚠ 60.0 s is EXACTLY 90 ticks, and the epsilon inside
-    // `helper_recover_tick` is what keeps it 90 rather than 91.
+    // ⚠ 60.0 s is EXACTLY 90 ticks, and since plan 26 L3 it is 90
+    // because 180 000 000 base units divide by 2 000 000 exactly — the
+    // epsilon that used to keep it 90 rather than 91 is deleted.
     for wt_rc in state.crew {
-        helper_recover_tick(wt_rc, TICK_SECONDS, core);
+        helper_recover_tick(wt_rc, TICK_STEP_UNITS, core);
     }
 
     // ⚠ **And the wave spends its pre-walk window here too** (plan 16
@@ -2035,16 +2054,16 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     // rounds up rather than down.  Putting this line before the movers
     // would silently make it 7, with no test able to say which was
     // meant.
-    wave_stand(state, TICK_SECONDS);
+    wave_stand(state, TICK_STEP_UNITS);
 }
 
 // Spend one tick of every enemy's pre-walk window (plan 16 W2).
 //
 // ⚠ The counterpart of `enemy_standing`, and the ONLY writer: one
 // spend per enemy per tick, whatever asked and however often.
-fn wave_stand(state: WaveState, tick_seconds: float) {
+fn wave_stand(state: WaveState, elapsed: integer) {
     for ws_e in state.enemies {
-        if ws_e.stand > 0.0 { ws_e.stand = ws_e.stand - tick_seconds; }
+        timer_spend(ws_e.stand, elapsed);
     }
 }
 
@@ -2083,7 +2102,7 @@ pub const SPAWN_DISABLE_RADIUS: integer = 10;
 // the whole wave still spreads round the markers as one.
 pub fn wave_schedule_step(state: WaveState, mw: MarkerWorld, core: Hex) -> integer {
     wss_due = wave_schedule_due(state.schedule, alive_count(state) == 0,
-                                TICK_SECONDS);
+                                TICK_STEP_UNITS);
     if wss_due <= 0 { return 0; }
 
     wss_parts = wave_schedule_parts(state.schedule,
@@ -2184,13 +2203,13 @@ fn carrier_free(state: const WaveState, owner: integer) -> boolean {
 }
 
 fn wave_repair(state: WaveState, mw: const MarkerWorld,
-               tick_seconds: float) -> integer {
+               elapsed: integer) -> integer {
     wr_done = 0;
 
     if vehicle_present(state.player) && carrier_free(state, BLOCKER_PLAYER) {
         wr_at = Hex { q: state.player.q, r: state.player.r };
         wr_t  = repair_target(state, mw, wr_at);
-        if tower_repair_tick(state.towers, wr_t.q, wr_t.r, tick_seconds) {
+        if tower_repair_tick(state.towers, wr_t.q, wr_t.r, elapsed) {
             wr_done += 1;
         }
     }
@@ -2203,7 +2222,7 @@ fn wave_repair(state: WaveState, mw: const MarkerWorld,
         if wr_h.alive && carrier_free(state, BLOCKER_CREW + wr_ci) {
             wr_hat = Hex { q: wr_h.q, r: wr_h.r };
             wr_ht  = repair_target(state, mw, wr_hat);
-            if tower_repair_tick(state.towers, wr_ht.q, wr_ht.r, tick_seconds) {
+            if tower_repair_tick(state.towers, wr_ht.q, wr_ht.r, elapsed) {
                 wr_done += 1;
             }
         }

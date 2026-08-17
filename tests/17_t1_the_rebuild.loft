@@ -115,15 +115,18 @@ fn test_the_rebuild_divides_the_tick_exactly() {
            "and twenty-nine do not: {ttr_short}");
 }
 
-// ⚠⚠ **The DIRECTION of the count is part of C0's rule**, and this is
-// the measurement that says so.  Counting down from 20.0 leaves a
-// positive residue where counting up to it lands exact — so the same
-// duration needs an epsilon in one direction and not the other.
+// ⚠⚠ **The DIRECTION of the count was part of C0's rule, and plan 26 L3
+// deleted the rule rather than satisfying it.**  Counting DOWN from 20.0
+// through floats left a positive residue where counting UP to it landed
+// exact — so the same duration needed an epsilon in one direction and
+// not the other, and `TOWER_REPAIR_EPSILON` existed to make the number
+// TUNABLE rather than to make 20.0 work.
 //
-// ⚠ Every other banked timer in dryopea counts DOWN; this one counts UP
-// because `repair` has to be *seconds banked* for zero to be the
-// neutral value.  That is what puts it on the other side of the rule.
-fn test_counting_up_and_counting_down_are_not_the_same() {
+// ⚠ **This is kept as the RECORD of what the float arithmetic did**,
+// not as a claim about the shipped code: `tower_repair_tick` counts
+// integer base units now and there is no residue in either direction.
+// `tests/26_l3_the_timers.loft` is where the family is gated.
+fn test_counting_up_and_counting_down_were_not_the_same() {
     tcu_down = TOWER_REPAIR_SECONDS;
     for _ in 0..REBUILD_TICKS { tcu_down = tcu_down - TICK_SECONDS; }
 
@@ -131,41 +134,40 @@ fn test_counting_up_and_counting_down_are_not_the_same() {
     for _ in 0..REBUILD_TICKS { tcu_up = tcu_up + TICK_SECONDS; }
 
     assert(tcu_down > 0.0,
-           "counting DOWN leaves a residue — a bare `> 0.0` would buy a "
+           "counting DOWN left a residue — a bare `> 0.0` bought a "
            + "31st tick: {tcu_down}");
     assert(tcu_up >= TOWER_REPAIR_SECONDS,
-           "counting UP does not: {tcu_up}");
-    assert(tcu_down < TOWER_REPAIR_EPSILON,
-           "and the epsilon covers the residue either way: {tcu_down}");
+           "counting UP did not: {tcu_up}");
 }
 
-// ⚠⚠ **The guard can fire** — and this is the assertion that keeps
-// `TOWER_REPAIR_EPSILON` honest rather than decorative.
+// ⚠⚠ **There is no guard left to fire, and this is the assertion that
+// says the arithmetic no longer needs one** (plan 26 L3).
 //
-// Today's value needs no epsilon at all: 20.0 counting up lands exactly
-// (§ above), so REMOVING the constant leaves every other test in this
-// file green.  Measured, by removing it.  What the epsilon is actually
-// for is the NEIGHBOURING tunings — 10.0, 40.0 and 60.0 seconds all
-// fall short counting up, and each would cost a tick — so it is what
-// makes the number tunable.
+// The function this replaces exercised `TOWER_REPAIR_EPSILON`'s branch
+// directly, by banking a hair under 20.0 s and asserting the rebuild
+// completed anyway — because a bare `>=` over floats would have left
+// the tower black with 19.999999999999 s of work against it.
 //
-// This test exercises the branch directly instead of relying on the
-// tick arithmetic, so a "simplification" of the epsilon goes red here
-// and nowhere else.
-fn test_the_guard_can_fire() {
+// ⚠ The integer version cannot be asked that question: there is no
+// "hair under" in base units, and the thing to prove instead is that
+// the boundary is EXACT from both sides.  One unit short is short; the
+// unit that reaches it finishes.
+fn test_the_boundary_is_exact_from_both_sides() {
     tgc_s = wave_state_empty();
     for _ in 0..TOWER_SHOT_BUDGET { tower_spend_shot(tgc_s.towers, 4, 0); }
 
-    // A hair under the target — inside the epsilon, outside a bare `>=`.
-    tgc_hair = TOWER_REPAIR_SECONDS - 1.0e-12;
-    assert(tgc_hair < TOWER_REPAIR_SECONDS, "it really is short: {tgc_hair}");
-    assert(tgc_hair > TOWER_REPAIR_SECONDS - TOWER_REPAIR_EPSILON,
-           "and inside the epsilon");
+    assert(!tower_repair_tick(tgc_s.towers, 4, 0, TOWER_REPAIR_UNITS - 1),
+           "one base unit short of twenty seconds does NOT finish it");
+    assert(tower_shots(tgc_s.towers, 4, 0) == TOWER_SHOT_BUDGET,
+           "so the tower is still black");
+    assert(tower_repair_progress(tgc_s.towers, 4, 0) == TOWER_REPAIR_UNITS - 1,
+           "with every unit of it banked: {tower_repair_progress(tgc_s.towers, 4, 0)}");
 
-    assert(tower_repair_tick(tgc_s.towers, 4, 0, tgc_hair),
-           "so it COMPLETES — a bare `>=` would leave this tower black "
-           + "with 19.999999999999 s of work banked against it");
+    assert(tower_repair_tick(tgc_s.towers, 4, 0, 1),
+           "and the ONE unit that reaches it completes the rebuild");
     assert(tower_shots(tgc_s.towers, 4, 0) == 0, "and the magazine is full");
+    assert(tower_repair_progress(tgc_s.towers, 4, 0) == 0,
+           "and the timer is unarmed again, not saturated");
 }
 
 fn test_the_constants_are_the_documented_figures() {
@@ -241,7 +243,7 @@ fn test_the_rebuild_leaves_the_charge_alone() {
     assert(trl_before == 0.5, "half a second banked: {trl_before}");
 
     // Repair it in one call, so nothing else can have moved the charge.
-    assert(tower_repair_tick(trl_s.towers, 4, 0, TOWER_REPAIR_SECONDS),
+    assert(tower_repair_tick(trl_s.towers, 4, 0, TOWER_REPAIR_UNITS),
            "one call finishes it");
 
     assert(tower_charge(trl_s.towers, 4, 0) == trl_before,
@@ -291,7 +293,7 @@ fn test_a_firing_tower_refuses_repair() {
 
     assert(!tower_black(taf_s.towers, 4, 0), "it is firing, not black");
     assert(!tower_repairable(taf_s.towers, 4, 0), "so it refuses repair");
-    assert(!tower_repair_tick(taf_s.towers, 4, 0, TOWER_REPAIR_SECONDS),
+    assert(!tower_repair_tick(taf_s.towers, 4, 0, TOWER_REPAIR_UNITS),
            "and a full rebuild's worth of work does nothing");
     assert(tower_shots(taf_s.towers, 4, 0) == 10,
            "its magazine is untouched: {tower_shots(taf_s.towers, 4, 0)}");
@@ -462,10 +464,10 @@ fn test_the_magazine_never_exceeds_the_budget() {
 
     // Repair it, then repair it again — the second call has no black
     // tower to work on and must do nothing.
-    assert(tower_repair_tick(tmn_s.towers, 4, 0, TOWER_REPAIR_SECONDS),
+    assert(tower_repair_tick(tmn_s.towers, 4, 0, TOWER_REPAIR_UNITS),
            "the first rebuild finishes");
     assert(tower_shots(tmn_s.towers, 4, 0) == 0, "full");
-    assert(!tower_repair_tick(tmn_s.towers, 4, 0, TOWER_REPAIR_SECONDS),
+    assert(!tower_repair_tick(tmn_s.towers, 4, 0, TOWER_REPAIR_UNITS),
            "and the second finds nothing to repair");
     assert(tower_budget_left(tmn_s.towers, 4, 0) == TOWER_SHOT_BUDGET,
            "the budget is exactly the budget: "

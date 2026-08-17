@@ -152,21 +152,47 @@ pub fn clock_units_from_micros(us: integer) -> integer {
     us * 3
 }
 
-// The other direction, in SECONDS — and it exists for one family of
-// caller only.
+// The other direction, in SECONDS.
 //
-// ⚠⚠ **This is the seam plan 26 L3 closes, and it is named so that it
-// can be found.**  Movement is banked in integer units and never needs
-// this; the ONE-SHOT TIMERS still count float seconds
-// (`vehicle_burn`'s boost and cooldown, `helper_recover_tick`'s 90
-// ticks, `tower_repair_tick`'s 20 s, the wave lull), and until `Timer`
-// lands they have to be handed a duration in the unit they speak.
+// ⚠⚠ **The seam plan 26 L3 was going to CLOSE, and what it did instead
+// was change hands.**  Before L3 every one-shot timer in the game came
+// through here to count float seconds — the boost and its cooldown, 90
+// ticks of helper recovery, 20 s of tower rebuild, the wave lull — and
+// `tick_timer.loft` took all four into integer units.  What is left is
+// not simulation at all:
 //
-// ⚠ Every caller is a timer.  A MOVER that reached for this would be
-// throwing away exactly what `bank_gain` was built to keep — see
-// `tick_bank.loft` § THE RATE IS SCALED AND THE TIME IS NOT.
+//   * **authoring** — `emit.loft` writes a captured situation as
+//     `.keys` text and a person reads it, and *seconds* is the unit a
+//     person authors in.  Exactly `bank_fraction`'s position one family
+//     over, and exactly as exact: a duration is a whole number of base
+//     units, so the round trip through `clock_units_from_seconds`
+//     recovers the integer this answered.
+//   * **presentation** — the camera's ease is `1 − e^(−k·dt)` over real
+//     frame time and is float by nature (`plans/26` § The invariant).
+//
+// ⚠ **No mover and no timer may call this.**  A mover that did would be
+// throwing away what `bank_gain` was built to keep, and a timer that did
+// would be re-introducing the direction problem `tick_timer.loft` exists
+// to delete.
 pub fn clock_seconds_from_units(units: integer) -> float {
     (units as float) / (CLOCK_UNITS_PER_SECOND as float)
+}
+
+// Float seconds to base units, ROUNDED — the authoring door's other
+// half.
+//
+// ⚠ **Rounding rather than truncating, for `tests/26_l1`'s reason one
+// layer out**: a float second's worth of units is a hair over or under
+// its exact count, and truncating a hair-under value costs a whole unit
+// at every boundary.  The error is ~1e-10 against a step of 2 000 000.
+//
+// ⚠ Negative time answers 0 rather than a negative count — the same
+// refusal `clock_advance` makes, stated here too because the rounding
+// would otherwise turn a small negative into `-0.5` and then into 0 by
+// accident rather than by rule.
+pub fn clock_units_from_seconds(seconds: float) -> integer {
+    if seconds <= 0.0 { return 0; }
+    ((seconds * (CLOCK_UNITS_PER_SECOND as float)) + 0.5) as integer? ?? 0
 }
 
 // Spend elapsed time, and answer the whole steps it bought.
@@ -185,7 +211,7 @@ pub fn clock_seconds_from_units(units: integer) -> float {
 pub fn clock_advance(clk: TickClock, elapsed: integer) -> integer {
     if elapsed <= 0 { return 0; }
     clk.banked = clk.banked + elapsed;
-    ca_whole   = clk.banked / clk.step;
+    ca_whole   = (clk.banked / clk.step) ?? 0;
     clk.banked = clk.banked - ca_whole * clk.step;
     ca_whole
 }
@@ -230,5 +256,5 @@ pub fn clock_banked(clk: const TickClock) -> integer {
 // paid for.
 pub fn clock_restore(clk: TickClock, banked: integer) {
     if banked <= 0 { clk.banked = 0; return; }
-    clk.banked = banked % clk.step;
+    clk.banked = (banked % clk.step) ?? 0;
 }

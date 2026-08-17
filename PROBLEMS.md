@@ -162,6 +162,51 @@ Severity tiers:
   — a vehicle that rounds instead of truncating fires all four while
   overshooting, which is what said the fix had to be a bank.
 
+### @D004 — the two one-shot timers that never got a guard run a tick long at a shorter tick
+
+- **Status:** **FIXED** 2026-08-17, plan 26 L3 — `Enemy.stand` and
+  `WaveSchedule.lull` are `Timer`s over integer base units
+  (`src/tick_timer.loft`), and both now read their true length at all
+  seven tick lengths.
+- **Severity:** was Med — silent, in the shipped simulation, and a
+  **blocker for the shorter tick** exactly as `@D003` was.  It was
+  RIGHT at today's 667 ms, which is why nothing had seen it.
+- **Found while:** plan 26 L3, sweeping the one-shot timers at seven
+  tick lengths before converting any of them — the same instrument L0
+  pointed at the movers, aimed at the other family.
+- **Expected:** a duration is a duration.  A 5 s pre-walk window and a
+  15 s lull last 5 s and 15 s whatever the timestep is.
+- **Observed** (`@M033`), against a true 8 / 10 / 15 / 25 / 50 / 100 /
+  150 and 23 / 30 / 45 / 75 / 150 / 300 / 450:
+
+  | timer | guard | 667 | 500 | 333 | 200 | 100 | 50 | 33 ms |
+  |---|---|---|---|---|---|---|---|---|
+  | helper recovery 60 s | epsilon |  90 | 120 | 180 |  300 |  600 | 1200 | 1800 |
+  | tower rebuild 20 s   | epsilon |  30 |  40 |  60 |  100 |  200 |  400 |  600 |
+  | boost 2 s            | epsilon |   3 |   4 |   6 |   10 |   20 |   40 |   60 |
+  | **wave lull 15 s**   | **none** |  23 |  30 |  45 | **76** | **151** |  300 | **451** |
+  | **pre-walk 5 s**     | **none** |   8 |  10 | **16** |  25 | **51** | **101** | **151** |
+
+- **⚠⚠ Why it is worth a number of its own:** `plans/26` § 2 counted the
+  epsilons as the brittleness and these two rows as fine.  **The
+  epsilons were doing real work at every tick length and the two sites
+  that never got one are the broken ones** — which is `@D003`'s shape
+  in the other family: *the site that never got a guard at all*.  ⚠ Two
+  of the three guarded timers count DOWN, exactly as these do, so the
+  DIRECTION is not what separates them.  A guard is.
+- **Workaround:** none was needed — `TICK_SECONDS` was 2/3 s and both
+  are exact there.
+- **Fix:** [`plans/26`](plans/26-the-fixed-step/README.md) **L3** —
+  `src/tick_timer.loft`, one one-shot type over integer base units, and
+  `HELPER_TIMER_EPSILON` / `TOWER_REPAIR_EPSILON` /
+  `VEHICLE_TIMER_EPSILON` **deleted** with it.
+- **Test:** [`tests/26_l3_the_timers.loft`](tests/26_l3_the_timers.loft)
+  § Every timer in the game holds its duration at seven tick lengths —
+  five profiles, one assertion each, with the pre-L3 float arithmetic
+  reproduced beside them and asserted WRONG at seven of fourteen
+  readings, so a green profile is a measurement rather than a
+  restatement of the arithmetic that produced it.
+
 ### @D001 — clearing `prev.in_mouse_left` mid-step MANUFACTURES the edge it means to suppress
 
 - **Status:** **Fixed 2026-08-12** — all four writes deleted from

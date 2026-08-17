@@ -73,7 +73,7 @@ fn test_a_placed_enemy_equals_one_built_by_hand() {
     tap_want = wave_state_empty();
     tap_want.enemies += [Enemy { q: 8, r: 0, kind: ENEMY_KIND_REGULAR as u8,
                                  heading: 3 as u8, alive: true,
-                                 taken: 0.0, stand: 0.0 }];
+                                 taken: 0.0, stand: timer_new() }];
 
     assert(state_diff(tap_run.play.wave, tap_want) == "",
            "identical: '{state_diff(tap_run.play.wave, tap_want)}'");
@@ -145,7 +145,7 @@ fn test_damage_taken_is_reachable_and_it_is_the_verb_that_existed() {
     tdt_want = wave_state_empty();
     tdt_want.enemies += [Enemy { q: 8, r: 0, kind: ENEMY_KIND_REGULAR as u8,
                                  heading: 3 as u8, alive: true,
-                                 taken: 10.0, stand: 0.0 }];
+                                 taken: 10.0, stand: timer_new() }];
     assert(state_diff(tdt_run.play.wave, tdt_want) == "",
            "ten HP absorbed: '{state_diff(tdt_run.play.wave, tdt_want)}'");
 }
@@ -158,7 +158,7 @@ fn test_the_pre_walk_window_is_reachable() {
     tpw2_want = wave_state_empty();
     tpw2_want.enemies += [Enemy { q: 8, r: 0, kind: ENEMY_KIND_REGULAR as u8,
                                  heading: 3 as u8, alive: true,
-                                 taken: 0.0, stand: 2.5 }];
+                                 taken: 0.0, stand: timer_armed(clock_units_from_seconds(2.5)) }];
     assert(state_diff(tpw2_run.play.wave, tpw2_want) == "",
            "two and a half seconds of window: "
            + "'{state_diff(tpw2_run.play.wave, tpw2_want)}'");
@@ -177,7 +177,7 @@ fn test_an_enemy_can_be_authored_down() {
     tae_want = wave_state_empty();
     tae_want.enemies += [Enemy { q: 8, r: 0, kind: ENEMY_KIND_REGULAR as u8,
                                  heading: 3 as u8, alive: false,
-                                 taken: 0.0, stand: 0.0 }];
+                                 taken: 0.0, stand: timer_new() }];
     assert(state_diff(tae_run.play.wave, tae_want) == "",
            "down: '{state_diff(tae_run.play.wave, tae_want)}'");
 }
@@ -210,7 +210,7 @@ fn test_every_field_of_an_enemy_is_expressible() {
     tef_want = wave_state_empty();
     tef_want.enemies += [Enemy { q: 9, r: 1, kind: ENEMY_KIND_INSECT as u8,
                                  heading: 4 as u8, alive: false,
-                                 taken: 7.5, stand: 1.25 }];
+                                 taken: 7.5, stand: timer_armed(clock_units_from_seconds(1.25)) }];
     assert(state_diff(tef_run.play.wave, tef_want) == "",
            "all seven fields: '{state_diff(tef_run.play.wave, tef_want)}'");
 }

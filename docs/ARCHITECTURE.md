@@ -109,11 +109,40 @@ src/
                    ⚠ **No tick COUNTER**: `PlayState.ticks` already
                    counts, and a second counter is two facts that can
                    disagree.  This owns the STEP and the BANK.
-                   ⚠ clock_seconds_from_units is the ONE seam back to
-                   float seconds and every caller is a one-shot TIMER
-                   (boost, cooldown, recovery, repair, the lull) — L3
-                   closes it.  A MOVER that reached for it would be
-                   throwing away what tick_bank was built to keep
+                   ⚠⚠ clock_seconds_from_units /
+                   clock_units_from_seconds are the seam to float
+                   seconds, and plan 26 L3 did not CLOSE it — it
+                   changed hands.  Every caller used to be a one-shot
+                   TIMER; what is left is `.keys` AUTHORING (a person
+                   writes seconds, exactly where bank_fraction sits)
+                   and the camera's EASE.  A MOVER or a TIMER that
+                   reached for it would be throwing away what
+                   tick_bank and tick_timer were built to keep
+  tick_timer.loft  a ONE-SHOT DURATION that fires once, exactly
+                   (plan 26 L3) — Timer { spent, total } + timer_new /
+                   timer_armed / timer_arm / timer_spend /
+                   timer_running / timer_left / timer_spent /
+                   timer_total / timer_fraction / timer_cancel /
+                   timer_restore_left / timer_restore_spent.
+                   ⚠⚠ **timer_left is `total - spent`, so there are no
+                   longer TWO DIRECTIONS to disagree** — the up-count
+                   and the down-count are one number read two ways,
+                   which is what deletes the direction problem rather
+                   than guarding it.  HELPER_TIMER_EPSILON,
+                   TOWER_REPAIR_EPSILON and VEHICLE_TIMER_EPSILON are
+                   all GONE.
+                   ⚠⚠ **It HOLDS its `total` where a Bank may not hold
+                   its `whole`** (@X082) — same [loft#914] rule,
+                   opposite conclusion: a defaulted `total` of 0 is an
+                   UNARMED timer, which is what every 0.0 seconds field
+                   it replaced already meant (recover / stand / lull /
+                   boost_left all had zero as their neutral).
+                   ⚠ **It is NOT a Bank, and the refutation is
+                   measured**: a one-shot built on bank_gain fires a
+                   SECOND time with nobody re-arming it, and its
+                   residue leaks into the next arming — a 5 s cooldown
+                   costs 8 ticks the first time and 7 the second.
+                   ⚠ No repeat, no callback, no pause, no rate.
   tick_bank.loft   a RATE consumed in whole units, exactly (plan 26 L2)
                    — Bank { progress } + bank_new / bank_rate /
                    bank_gain / bank_most / bank_progress /
@@ -1135,6 +1164,7 @@ suite redirects its own shots into `tests/actual/`.
 | `GroundEntry` | `map_file.loft` | one persisted hex with kind as text name |
 | `ScriptRun` | `script.loft` | one `.keys` run — ok / failing line / message / counts, plus the pointer, the shots directory and the GAME it is playing.  ⚠ `run.play.wave` / `run.play.ticks` since plan 19 P1: the wave and the clock are ONE record, because `play_ticks` takes a `PlayState` and a run holding the pieces separately could only hand over copies |
 | `PlayState` | `play.loft` | a game in progress — the roster, the `TickClock`, the time banked toward the next tick, last frame's input, whether the session is LIVE, and the camera it is looking through.  ⚠ What a live session has that an edited one does not; the world is passed in, never owned, because a struct in a field is a copy.  ⚠ `playing` (plan 19 P3) gates the CLOCK and never the seam — `EditorInput.in_playing` is the other, per-frame half and says what the KEYS mean |
+| `Timer` | `tick_timer.loft` | a one-shot duration as `{spent, total}` in integer base units — the shared half of every *fires once* clock in the game (`recover`, `repair`, `boost`, `cool`, `stand`, `lull`).  ⚠ `total == 0` is UNARMED **and is the zero-default**, which is what makes `Timer { }` correct-neutral at all six sites and is the opposite conclusion to `Bank`'s (`@X082`).  ⚠ `timer_left` and `timer_spent` are one number read two ways, so a site keeps the direction its field was authored in with no second accumulation to disagree |
 | `Bank` | `tick_bank.loft` | the carry toward the next whole unit, as ONE integer — the shared half of every rate in the game, and the reason `Enemy`, `Helper` and `Vehicle` all release whole hexes the same way.  ⚠ It holds neither the rate (`@X061`) nor the scale (`@X080`), which is what makes `Bank { }` correct-neutral in a partial literal.  ⚠ `bank_progress` is what `compare.loft` reads and `bank_fraction` what `emit.loft` writes — an integer inside, hexes on the wire |
 | `TickClock` | `tick_clock.loft` | a fixed step and the time banked toward the next one, both INTEGERS — so `advance(n × step) == step(n)` exactly, where the float bank it replaced was wrong for 602 of the first 1000 `n`.  ⚠ `banked` is always in `[0, step)`, which is what makes it the whole of a rollback's timing state.  ⚠⚠ Its base unit is 1/3 µs and that was MEASURED rather than chosen for tidiness (`@X079`, `@M031`) |
 | `FrameCounts` | `measure.loft` | one classified frame — pixels per bucket, `unknown` (not a palette colour = a fault), `total` |

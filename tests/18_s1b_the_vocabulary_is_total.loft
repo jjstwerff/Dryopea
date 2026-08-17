@@ -100,7 +100,8 @@ fn test_every_field_of_the_state_is_reachable() {
     // anybody should be writing by hand.
     tef_want.enemies += [Enemy { q: 9, r: 1, kind: ENEMY_KIND_INSECT as u8,
                                  heading: 4 as u8, alive: false,
-                                 taken: 7.5, stand: 1.25 }];
+                                 taken: 7.5,
+                                 stand: timer_armed(clock_units_from_seconds(1.25)) }];
     bank_restore_fraction((tef_want.enemies[0] ?? Enemy { }).bank, 0.75, BANK_WHOLE);
     tef_want.pick_cursor = 3;
 
@@ -112,7 +113,8 @@ fn test_every_field_of_the_state_is_reachable() {
     if tef_wc != null {
         tef_wc.shots       = 12;
         tef_wc.charge      = 0.4;
-        tef_wc.repair      = 6.0;
+        timer_restore_spent(tef_wc.repair, clock_units_from_seconds(6.0),
+                            TOWER_REPAIR_UNITS);
         tef_wc.top_removed = true;
     }
 
@@ -121,8 +123,8 @@ fn test_every_field_of_the_state_is_reachable() {
     vehicle_place(tef_want.player, 1, 0);
     vehicle_drive(tef_want.player, 3, 0);
     tef_want.player.parked     = true;
-    tef_want.player.boost_left = 1.5;
-    tef_want.player.cool_left  = 2.5;
+    timer_arm(tef_want.player.boost, clock_units_from_seconds(1.5));
+    timer_arm(tef_want.player.cool,  clock_units_from_seconds(2.5));
     tef_want.player.taken      = 20.0;
 
     tef_want.crew += [helper_new(2, 1)];
@@ -131,7 +133,7 @@ fn test_every_field_of_the_state_is_reachable() {
     tef_wh.alive    = false;
     bank_restore_fraction(tef_wh.bank, 0.5, BANK_WHOLE);
     tef_wh.taken    = 15.0;
-    tef_wh.recover  = 45.0;
+    timer_arm(tef_wh.recover, clock_units_from_seconds(45.0));
 
     tef_oi = cargo_spawn(tef_want.cargo, CARGO_WRECK, 0, 7, 0);
     (tef_want.cargo.items[tef_oi] ?? CarryObject { }).owner = BLOCKER_PLAYER;
@@ -149,7 +151,7 @@ fn test_every_field_of_the_state_is_reachable() {
         [WavePart { wave: 1, count: 2, kind: ENEMY_KIND_MINER },
          WavePart { wave: 1, count: 4, kind: ENEMY_KIND_SCOUT }]);
     tef_want.schedule.sent    = 1;
-    tef_want.schedule.lull    = 5.0;
+    timer_arm(tef_want.schedule.lull, clock_units_from_seconds(5.0));
     tef_want.schedule.running = true;
 
     assert(state_diff(tef_run.play.wave, tef_want) == "",
@@ -167,7 +169,8 @@ fn test_a_towers_whole_top_is_authorable() {
     assert(tower_shots(tat.play.wave.towers, 4, 0) == 12,
            "shots: {tower_shots(tat.play.wave.towers, 4, 0)}");
     assert(tower_charge(tat.play.wave.towers, 4, 0) == 0.4, "charge");
-    assert(tower_repair_progress(tat.play.wave.towers, 4, 0) == 6.0, "repair");
+    assert(tower_repair_progress(tat.play.wave.towers, 4, 0)
+           == clock_units_from_seconds(6.0), "repair");
     assert(!tower_has_top(tat.play.wave.towers, 4, 0), "and the top is off");
 }
 
@@ -231,8 +234,10 @@ fn test_the_players_condition_is_authorable() {
     assert(tpc.ok, "it runs: {script_describe(tpc)}");
     assert(!vehicle_present(tpc.play.wave.player),
            "a player taken OUT of the world");
-    assert(tpc.play.wave.player.boost_left == 1.5, "a boost running");
-    assert(tpc.play.wave.player.cool_left == 2.5, "a cooldown");
+    assert(timer_left(tpc.play.wave.player.boost)
+           == clock_units_from_seconds(1.5), "a boost running");
+    assert(timer_left(tpc.play.wave.player.cool)
+           == clock_units_from_seconds(2.5), "a cooldown");
     assert(vehicle_hp(tpc.play.wave.player) == VEHICLE_HP_BLOCKER - 20.0,
            "and damage taken: {vehicle_hp(tpc.play.wave.player)}");
 }
@@ -259,10 +264,12 @@ fn test_where_the_wave_list_has_got_to_is_authorable() {
     twl = played("schedule 4 6\npending 1 5.0 9.0 on\n");
     assert(twl.ok, "it runs: {script_describe(twl)}");
     assert(wave_schedule_sent(twl.play.wave.schedule) == 1, "one wave sent");
-    assert(wave_schedule_lull(twl.play.wave.schedule) == 5.0, "five seconds of lull");
+    assert(wave_schedule_lull(twl.play.wave.schedule)
+           == clock_units_from_seconds(5.0), "five seconds of lull");
     assert(wave_schedule_running(twl.play.wave.schedule), "and it is running");
-    assert(twl.play.wave.schedule.delay == 9.0,
-           "with a retuned lull LENGTH: {twl.play.wave.schedule.delay}");
+    assert(wave_schedule_delay(twl.play.wave.schedule)
+           == clock_units_from_seconds(9.0),
+           "with a retuned lull LENGTH: {wave_schedule_delay(twl.play.wave.schedule)}");
 }
 
 fn test_the_round_robin_cursor_is_authorable() {

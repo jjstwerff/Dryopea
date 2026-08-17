@@ -177,7 +177,7 @@ fn ticks_in_a_minute(dt: integer) -> integer {
 fn enemy_minute(speed: float, dt: integer) -> integer {
     em_e = Enemy { q: 40, r: 0, kind: as_u8(ENEMY_KIND_REGULAR),
                    heading: 3 as u8? ?? 0 as u8, alive: true,
-                   taken: 0.0, stand: 0.0, bank: bank_new() };
+                   taken: 0.0, stand: timer_new(), bank: bank_new() };
     em_got = 0;
     for _ in 0..ticks_in_a_minute(dt) { em_got = em_got + enemy_bank(em_e, speed, dt); }
     em_got
@@ -191,14 +191,14 @@ fn helper_minute(dt: integer) -> integer {
 }
 
 fn vehicle_minute(boosting: boolean, dt: integer) -> integer {
-    // ⚠ `boost_left` is set directly rather than through
+    // ⚠ The boost timer is armed directly rather than through
     // `vehicle_boost`, because the real boost burns out after
-    // `VEHICLE_BOOST_SECONDS` and this measures the ARITHMETIC of a
-    // boosting vehicle over a whole minute.  What burns it is
+    // `VEHICLE_BOOST_DURATION_UNITS` and this measures the ARITHMETIC
+    // of a boosting vehicle over a whole minute.  What burns it is
     // `vehicle_burn`, which `vehicle_bank` does not call.
     vm_v = vehicle_empty();
     vehicle_place(vm_v, 40, 0);
-    if boosting { vm_v.boost_left = 1.0e9; }
+    if boosting { timer_arm(vm_v.boost, MINUTE_UNITS * 2); }
     vm_got = 0;
     for _ in 0..ticks_in_a_minute(dt) {
         vm_got = vm_got + vehicle_bank(vm_v, dt);
@@ -303,7 +303,7 @@ fn robot_walked(dt: integer) -> integer {
     rw_pw  = corridor();
     rw_e   = Enemy { q: 40, r: 0, kind: as_u8(ENEMY_KIND_REGULAR),
                      heading: 3 as u8? ?? 0 as u8, alive: true,
-                     taken: 0.0, stand: 0.0, bank: bank_new() };
+                     taken: 0.0, stand: timer_new(), bank: bank_new() };
     rw_f   = flow_build(rw_pal, rw_pw, height_layer_empty(),
                         as_u8(ENEMY_KIND_REGULAR), Hex { q: 0, r: 0 });
     rw_d   = flow_desire(rw_pal, rw_pw, height_layer_empty(), Hex { q: 0, r: 0 });

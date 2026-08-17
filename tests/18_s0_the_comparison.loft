@@ -59,7 +59,7 @@ fn peopled() -> WaveState {
 
     p_s.enemies += [Enemy { q: 8, r: 0, kind: ENEMY_KIND_REGULAR as u8,
                             heading: 3 as u8, alive: true, taken: 10.0,
-                            stand: 2.0 }];
+                            stand: timer_armed(clock_units_from_seconds(2.0)) }];
     p_s.enemies += [Enemy { q: 9, r: 1, kind: ENEMY_KIND_REGULAR as u8,
                             heading: 3 as u8, alive: true }];
     p_s.pick_cursor = 3;
@@ -167,7 +167,8 @@ fn test_the_roster_is_discriminated() {
     (tri_7.enemies[0] ?? Enemy { }).taken = 20.0;
     assert(saw(tri_7) != "", "an enemy's damage TAKEN is seen");
     tri_8 = peopled();
-    (tri_8.enemies[0] ?? Enemy { }).stand = 4.0;
+    timer_arm((tri_8.enemies[0] ?? Enemy { }).stand,
+              clock_units_from_seconds(4.0));
     assert(saw(tri_8) != "", "an enemy's pre-walk window is seen");
 
     // ⚠ .progress — the banked sub-hex carry (plan 23 K2a).  Nothing in
@@ -208,7 +209,8 @@ fn test_the_crew_is_discriminated() {
     (tcd_6.crew[0] ?? Helper { }).taken = 15.0;
     assert(saw(tcd_6) != "", "a crew member's damage taken is seen");
     tcd_7 = peopled();
-    (tcd_7.crew[0] ?? Helper { }).recover = 30.0;
+    timer_arm((tcd_7.crew[0] ?? Helper { }).recover,
+              clock_units_from_seconds(30.0));
     assert(saw(tcd_7) != "", "a recovery clock is seen");
 }
 
@@ -223,10 +225,10 @@ fn test_the_player_is_discriminated() {
     tpd_3.player.parked = false;
     assert(saw(tpd_3) != "", "a player NOT IN THE WORLD is seen");
     tpd_4 = peopled();
-    tpd_4.player.boost_left = 1.0;
+    timer_arm(tpd_4.player.boost, clock_units_from_seconds(1.0));
     assert(saw(tpd_4) != "", "a running boost is seen");
     tpd_5 = peopled();
-    tpd_5.player.cool_left = 1.0;
+    timer_arm(tpd_5.player.cool, clock_units_from_seconds(1.0));
     assert(saw(tpd_5) != "", "a boost cooldown is seen");
     tpd_6 = peopled();
     tpd_6.player.taken = 20.0;
@@ -276,7 +278,7 @@ fn test_the_runtime_layers_are_discriminated() {
     assert(saw(thl_8) != "", "a tower's spent shot is seen");
     thl_9 = peopled();
     for _ in 0..TOWER_SHOT_BUDGET { tower_spend_shot(thl_9.towers, 2, 0); }
-    tower_repair_tick(thl_9.towers, 2, 0, 1.0);
+    tower_repair_tick(thl_9.towers, 2, 0, clock_units_from_seconds(1.0));
     assert(saw(thl_9) != "", "a rebuild in progress is seen");
     thl_10 = peopled();
     tower_detach_top(thl_10.towers, 2, 0);
@@ -332,10 +334,10 @@ fn test_the_schedule_is_discriminated() {
     tsd_3.schedule.sent = 1;
     assert(saw(tsd_3) != "", "how far the list has got is seen");
     tsd_4 = peopled();
-    tsd_4.schedule.lull = 5.0;
+    timer_arm(tsd_4.schedule.lull, clock_units_from_seconds(5.0));
     assert(saw(tsd_4) != "", "the lull left is seen");
     tsd_5 = peopled();
-    tsd_5.schedule.delay = 9.0;
+    tsd_5.schedule.delay = clock_units_from_seconds(9.0);
     assert(saw(tsd_5) != "", "a retuned lull LENGTH is seen");
     tsd_6 = peopled();
     tsd_6.schedule.running = false;
@@ -400,15 +402,29 @@ fn test_fill_order_is_not_a_difference() {
 
 // ⚠ **Floats are compared EXACTLY, and an ulp is a difference.**  This
 // is the assertion that stops somebody adding an epsilon for tidiness:
-// a round-trip that lost the last bit of a banked timer is exactly what
+// a round-trip that lost the last bit of a damage ledger is exactly what
 // S2 exists to catch, and an epsilon would hide it.
+//
+// ⚠⚠ **The second half is what plan 26 L3 changed.**  Every one-shot
+// timer used to be a float here, and this function poked one of them.
+// They are integer counts of base units now, so the smallest difference
+// they can hold is not an ulp at all — it is ONE UNIT, a third of a
+// microsecond — and the gate has to be shown to see that too.  A field
+// that went integer under a comparison written for floats is exactly
+// where a gate silently stops discriminating.
 fn test_one_ulp_of_drift_is_a_difference() {
     tou_b = peopled();
-    tou_b.player.boost_left = 0.0 + 1.0e-15;
+    tou_b.player.taken = tou_b.player.taken + 1.0e-15;
 
     assert(saw(tou_b) != "",
            "a difference too small to matter to the game still matters "
            + "to the gate");
+
+    tou_c = peopled();
+    timer_arm(tou_c.player.boost, 1);
+    assert(saw(tou_c) != "",
+           "and one base unit of boost — a third of a microsecond — is "
+           + "a difference as well");
 }
 
 // ─────────────────────────────────────────────────────────────────

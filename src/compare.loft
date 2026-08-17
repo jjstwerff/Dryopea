@@ -56,6 +56,7 @@ use carry;
 use waves;
 use spawn;
 use tick_bank;
+use tick_timer;
 use painted;
 use markers;
 
@@ -88,8 +89,8 @@ fn enemies_diff(a: const WaveState, b: const WaveState) -> text {
         if ed_x.taken != ed_y.taken {
             return "enemies[{ed_i}].taken: {ed_x.taken} vs {ed_y.taken}";
         }
-        if ed_x.stand != ed_y.stand {
-            return "enemies[{ed_i}].stand: {ed_x.stand} vs {ed_y.stand}";
+        if timer_left(ed_x.stand) != timer_left(ed_y.stand) {
+            return "enemies[{ed_i}].stand: {timer_left(ed_x.stand)} vs {timer_left(ed_y.stand)}";
         }
         // ⚠ **The banked sub-hex carry** (plan 23 K2a), which was here
         // as a TRIPWIRE before it could differ — at 1.5 hex/s over a
@@ -135,8 +136,8 @@ fn crew_diff(a: const WaveState, b: const WaveState) -> text {
         if cd_x.taken != cd_y.taken {
             return "crew[{cd_i}].taken: {cd_x.taken} vs {cd_y.taken}";
         }
-        if cd_x.recover != cd_y.recover {
-            return "crew[{cd_i}].recover: {cd_x.recover} vs {cd_y.recover}";
+        if timer_left(cd_x.recover) != timer_left(cd_y.recover) {
+            return "crew[{cd_i}].recover: {timer_left(cd_x.recover)} vs {timer_left(cd_y.recover)}";
         }
         cd_i += 1;
     }
@@ -151,11 +152,11 @@ fn vehicle_diff(a: const Vehicle, b: const Vehicle) -> text {
         return "player heading for ({a.to_q}, {a.to_r}) vs ({b.to_q}, {b.to_r})";
     }
     if a.parked != b.parked { return "player.parked: {a.parked} vs {b.parked}"; }
-    if a.boost_left != b.boost_left {
-        return "player.boost_left: {a.boost_left} vs {b.boost_left}";
+    if timer_left(a.boost) != timer_left(b.boost) {
+        return "player.boost: {timer_left(a.boost)} vs {timer_left(b.boost)}";
     }
-    if a.cool_left != b.cool_left {
-        return "player.cool_left: {a.cool_left} vs {b.cool_left}";
+    if timer_left(a.cool) != timer_left(b.cool) {
+        return "player.cool: {timer_left(a.cool)} vs {timer_left(b.cool)}";
     }
     if a.taken != b.taken { return "player.taken: {a.taken} vs {b.taken}"; }
     // ⚠ **The player's banked carry, and it is K2a's tripwire a second
@@ -228,8 +229,8 @@ fn towers_diff(a: const TowerState, b: const TowerState) -> text {
         if td_x.shots != td_y.shots {
             return "towers ({td_x.q}, {td_x.r}).shots: {td_x.shots} vs {td_y.shots}";
         }
-        if td_x.repair != td_y.repair {
-            return "towers ({td_x.q}, {td_x.r}).repair: {td_x.repair} vs {td_y.repair}";
+        if timer_spent(td_x.repair) != timer_spent(td_y.repair) {
+            return "towers ({td_x.q}, {td_x.r}).repair: {timer_spent(td_x.repair)} vs {timer_spent(td_y.repair)}";
         }
         if td_x.top_removed != td_y.top_removed {
             return "towers ({td_x.q}, {td_x.r}).top_removed: {td_x.top_removed} vs {td_y.top_removed}";
@@ -300,7 +301,9 @@ fn schedule_diff(a: const WaveSchedule, b: const WaveSchedule) -> text {
         kd_i += 1;
     }
     if a.sent != b.sent { return "schedule.sent: {a.sent} vs {b.sent}"; }
-    if a.lull != b.lull { return "schedule.lull: {a.lull} vs {b.lull}"; }
+    if timer_left(a.lull) != timer_left(b.lull) {
+        return "schedule.lull: {timer_left(a.lull)} vs {timer_left(b.lull)}";
+    }
     if a.delay != b.delay { return "schedule.delay: {a.delay} vs {b.delay}"; }
     if a.running != b.running {
         return "schedule.running: {a.running} vs {b.running}";

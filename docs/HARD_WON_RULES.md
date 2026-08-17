@@ -565,9 +565,69 @@ into `clock_advance` with a variable step, but `3 000 000 / 2.25` is
 is exact for every authored number; a rate inverted is not* — which is
 why the two types stayed apart.
 
-⚠ **The one-shot TIMERS are untouched and that is the family boundary
-holding.**  Boost, cooldown, recovery, repair and the lull still count
-float seconds, through `clock_seconds_from_units` — one named seam, so
-it can be found and deleted at L3.  A bank's remainder is load-bearing
-for ever; a one-shot's dies at its boundary, and one primitive serving
-both is the over-unification `plans/26` was written to avoid.
+⚠⚠ **AND THE SIXTH MEMBER IS THE ONE THE FAMILY WAS NAMED AFTER, WHERE
+THE GUARDS TURNED OUT TO BE THE HEALTHY SITES** (plan 26 L3, `@M033`,
+`@D004`).  Boost, cooldown, recovery, repair and the lull were the
+one-shot half, and `plans/26` counted their three 1e-9 nudges as the
+brittleness.  Swept at the same seven tick lengths, through the shipped
+code, before anything was converted:
+
+| timer | guard | 667 | 500 | 333 | 200 | 100 | 50 | 33 ms |
+|---|---|---|---|---|---|---|---|---|
+| helper recovery 60 s | epsilon |  90 | 120 | 180 |  300 |  600 | 1200 | 1800 |
+| tower rebuild 20 s   | epsilon |  30 |  40 |  60 |  100 |  200 |  400 |  600 |
+| boost 2 s            | epsilon |   3 |   4 |   6 |   10 |   20 |   40 |   60 |
+| **wave lull 15 s**   | **none** |  23 |  30 |  45 | **76** | **151** |  300 | **451** |
+| **pre-walk 5 s**     | **none** |   8 |  10 | **16** |  25 | **51** | **101** | **151** |
+
+⚠ **Every guarded timer is exact at every tick length; both unguarded
+ones run a tick long** — and both are right at the shipped 667 ms, which
+is why nothing had seen them.  That is the FOURTH member's rule again —
+*the site that never got a guard at all* — and two of the three healthy
+timers count DOWN exactly as the broken pair does, **so the DIRECTION is
+not the discriminator.  A guard is.**
+
+⚠⚠ **AND THE MOST REUSABLE THING L3 FOUND IS A BLIND GATE, NOT A
+DEFECT.**  `plans/26` § L3's own expected result was *"a `Timer`
+counting UP to 20.0 s and one counting DOWN from it both fire on the
+same tick"*.  Measured at the shipped tick over the six exact-multiple
+durations, float UP / float DOWN / true: **7/7/6, 16/16/15, 30/31/30,
+45/45/45, 61/61/60, 91/91/90**.  The two directions disagree at exactly
+ONE of six and **agree while both being a tick long at FOUR** — so the
+gate as worded would have read agreement at four times as many cases as
+it caught.  ⚠⚠ ***Two agreeing instruments are not a control; the TRUE
+count is.***  This is `@M022`'s question one turn further on: not *can
+this gate produce a non-trivial reading at all* but *is the thing it
+compares against independent of the thing it measures*.
+
+⚠⚠ **AND THEN THE ONE-SHOTS COLLAPSED INTO ONE TOO** (plan 26 L3,
+`@X082`).  `src/tick_timer.loft` holds `{spent, total}` in integer base
+units and `timer_left` is `total − spent`, so **there are no longer two
+directions to disagree** — the up-count and the down-count are one
+number read two ways.  All three epsilons are **deleted**.
+⚠ **A `Timer` MAY hold its `total` where a `Bank` may not hold its
+`whole`, and it is the same [loft#914] rule reaching the opposite
+conclusion**: a defaulted `whole` of 0 is a mover that never moves, a
+defaulted `total` of 0 is an UNARMED timer — which is exactly what every
+`0.0` seconds field it replaced already meant.  ⚠ The family boundary
+was ATTACKED and held: a one-shot built on `bank_gain` fires a SECOND
+time with nobody re-arming it, and its residue leaks into the next
+arming — a 5.0 s cooldown costs 8 ticks the first time and **7** the
+second.  Two small exact types, never one clever one.
+
+⚠ **And the seam did not close, it changed hands.**  `tick_clock.loft`
+predicted L3 would delete `clock_seconds_from_units`.  What is left
+after it is not simulation at all: `.keys` **authoring** (a person
+writes seconds, exactly where `bank_fraction` sits) and the camera's
+**ease**, which the invariant already puts outside.
+
+⚠⚠ **AND THE COUNT WAS SEVEN AND THERE ARE EIGHT.**  The tower's
+CHARGE accumulates float seconds and `wave_fire` subtracts one whole
+fire interval per shot, carrying the remainder for ever — `bank_gain`
+written by hand, still holding `TOWER_CHARGE_EPSILON`.  ⚠ It is on the
+BANK side of the boundary and is NOT converted: a tower may only
+release a shot it is ALLOWED to fire, so the held count and the carry
+have to come apart first.  Pinned by
+`tests/26_l3::test_the_tower_charge_is_still_a_hand_rolled_bank`.
+⚠ **A census taken from the source is itself a measurement and can be
+short** — this one was, by one, in a document that counted carefully.

@@ -52,7 +52,9 @@ use helper;
 use carry;
 use waves;
 use spawn;
+use tick_clock;
 use tick_bank;
+use tick_timer;
 
 // ─── The pieces ─────────────────────────────────────────────────
 
@@ -100,7 +102,12 @@ fn emit_enemies(state: const WaveState) -> text {
         // the situation rather than as a dump: a healthy robot that is
         // free to walk needs no line but its placement.
         if ee_e.taken != 0.0 { ee_out = ee_out + "hit {ee_i} {ee_e.taken}\n"; }
-        if ee_e.stand != 0.0 { ee_out = ee_out + "stand {ee_i} {ee_e.stand}\n"; }
+        // ⚠ **SECONDS, not raw base units** (plan 26 L3) — the same
+        // rule `banked` follows two lines down: `.keys` is a format a
+        // person authors, and the round trip is exact because a
+        // duration is a whole number of units and the door rounds.
+        ee_st = clock_seconds_from_units(timer_left(ee_e.stand));
+        if ee_st != 0.0 { ee_out = ee_out + "stand {ee_i} {ee_st}\n"; }
         // ⚠ **Added by plan 23 K2b, and the tripwire is what found it.**
         // K2a banked movement per enemy and `compare.loft` learned
         // `progress` while no scenario could hold a non-zero one — at
@@ -134,7 +141,8 @@ fn emit_layers(state: const WaveState) -> text {
     }
     for el_t in state.towers.cells {
         el_out = el_out + "tower {el_t.q} {el_t.r} {el_t.shots} "
-                        + "{el_t.charge} {el_t.repair} "
+                        + "{el_t.charge} "
+                        + "{clock_seconds_from_units(timer_spent(el_t.repair))} "
                         + (if el_t.top_removed { "off" } else { "on" }) + "\n";
     }
     if wallet_spent(state.wallet) != 0.0 {
@@ -153,7 +161,8 @@ fn emit_movers(state: const WaveState) -> text {
     em2_out = em2_out + "drive {state.player.to_q} {state.player.to_r}\n";
     em2_out = em2_out + "player "
                       + (if state.player.parked { "on" } else { "off" })
-                      + " {state.player.boost_left} {state.player.cool_left} "
+                      + " {clock_seconds_from_units(timer_left(state.player.boost))}"
+                      + " {clock_seconds_from_units(timer_left(state.player.cool))} "
                       + "{state.player.taken}\n";
 
     em2_i = 0;
@@ -163,7 +172,8 @@ fn emit_movers(state: const WaveState) -> text {
         em2_bk  = bank_fraction(em2_h.bank, BANK_WHOLE);
         em2_out = em2_out + "member {em2_i} "
                           + (if em2_h.alive { "on" } else { "off" })
-                          + " {em2_bk} {em2_h.taken} {em2_h.recover}\n";
+                          + " {em2_bk} {em2_h.taken} "
+                          + "{clock_seconds_from_units(timer_left(em2_h.recover))}\n";
         em2_i += 1;
     }
     em2_out
@@ -217,8 +227,9 @@ fn emit_schedule(state: const WaveState) -> text {
             }
             es_c += 1;
         }
-        es_out = es_out + "pending {state.schedule.sent} {state.schedule.lull} "
-                        + "{state.schedule.delay} "
+        es_out = es_out + "pending {state.schedule.sent} "
+                        + "{clock_seconds_from_units(wave_schedule_lull(state.schedule))} "
+                        + "{clock_seconds_from_units(state.schedule.delay)} "
                         + (if state.schedule.running { "on" } else { "off" })
                         + "\n";
     }

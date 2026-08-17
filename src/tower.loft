@@ -60,6 +60,8 @@ use palette;
 use painted;
 use height;
 use passable;
+use tick_clock;
+use tick_timer;
 
 // ─── The numbers ────────────────────────────────────────────────
 //
@@ -126,44 +128,48 @@ pub const TOWER_CHARGE_EPSILON: float = 1.0e-9;
 // one row.  A separate player figure would be a tunable this plan
 // invented, which is the rule `vehicle.loft` § salvage already keeps —
 // there is no helper salvage RATE for the same reason.
-pub const TOWER_REPAIR_SECONDS: float = 20.0;
+// ⚠ **The UNITS are the definition and the seconds are DERIVED** since
+// plan 26 L3 — `helper.loft::HELPER_RECOVERY_UNITS` carries the reason.
+//
+// ⚠ **A LITERAL, and it has to be**: a const whose initialiser CASTS
+// another computed const needs a temporary, and loft refuses one in a
+// const ("the slot it names belongs to this declaration").  So the
+// count is written out, the way `TICK_STEP_UNITS` is — and
+// `tests/26_l3_the_timers.loft` § Every duration is a whole number of
+// base units is what stops the literal drifting from the seconds it
+// claims to be.
+pub const TOWER_REPAIR_UNITS: integer = 60000000;   // 20 s
+pub const TOWER_REPAIR_SECONDS: float = (TOWER_REPAIR_UNITS as float)
+                                        / (CLOCK_UNITS_PER_SECOND as float);
 
-// ⚠⚠ **The banked-timer rule has a second half, and plan 17 T1 is what
-// found it: the DIRECTION of the count is part of it.**
+// ⚠⚠ **`TOWER_REPAIR_EPSILON` IS GONE (plan 26 L3), and the rule it was
+// discovered for is gone with it rather than merely satisfied.**
 //
-// Plan 15 C0's rule was *"a timer loses a tick exactly when its
-// duration divides the tick length exactly"* — 60.0 s of helper
-// recovery is 90 ticks and a bare `> 0.0` gives 91.  True, and
-// incomplete.  Every other banked timer in dryopea counts DOWN
-// (`helper.recover`, `Vehicle.boost_left`, `Enemy.stand`,
-// `WaveSchedule.lull`); this one counts UP, because `repair` has to be
-// *seconds banked* for zero to be the neutral value.  And the two
-// directions do not accumulate the same way.
-//
-// Measured, over a 1/1.5 s tick, for durations that ARE exact
-// multiples:
+// Plan 17 T1 found the second half of the banked-timer rule here: the
+// DIRECTION of the count is part of it.  Every other banked timer in
+// dryopea counted DOWN and this one counted UP — because `repair` had
+// to be *seconds banked* for zero to be the neutral value — and the two
+// directions do not accumulate the same way.  Measured over a `1 / 1.5`
+// s tick, for durations that ARE exact multiples of it:
 //
 //   | T      | ticks | counting UP        | counting DOWN     |
 //   |---|---|---|---|
 //   |  4.0 s |    6  | 3.9999999999999996 | residue > 0       |
-//   | 10.0 s |   15  | 9.999999999999998  | residue > 0       |
 //   | 20.0 s |   30  | **exactly 20.0**   | residue > 0       |
 //   | 30.0 s |   45  | 30.000000000000018 | residue < 0       |
-//   | 40.0 s |   60  | 39.99999999999999  | residue > 0       |
 //   | 60.0 s |   90  | 59.99999999999992  | residue > 0       |
 //
-// ⚠ **So NEITHER direction is safe, and today's value is exact by
-// LUCK.**  20.0 counting up lands on the nose and needs no epsilon at
-// all; 10.0, 40.0 and 60.0 counting up all fall short and would each
-// cost a tick.  This constant therefore is not what makes 20.0 work —
-// it is what makes the number TUNABLE, and `tests/17_t1_the_rebuild.
-// loft` § The guard can fire is the assertion that keeps it honest
-// rather than decorative.
+// ⚠ So NEITHER direction was safe and 20.0 was exact by LUCK, which is
+// what made the constant a TUNABILITY guard rather than a live one.
 //
-// ⚠ Do not "simplify" this away after checking that the suite stays
-// green: it stays green because of the luck above, and the first person
-// to retune the repair time pays for it.
-pub const TOWER_REPAIR_EPSILON: float = 1.0e-9;
+// ⚠⚠ **In integer time there are no longer two directions to be unsafe
+// in.**  `tick_timer.loft` holds ONE number — base units spent — and
+// `timer_left` is `total - spent`, so the up-count and the down-count
+// are one arithmetic read two ways.  ⚠ And L3 measured that the table
+// above understates the problem: at 4.0, 10.0, 40.0 and 60.0 s the two
+// float directions **agree with each other and are both a tick long**,
+// so a gate that compared UP against DOWN would have read agreement at
+// four of six durations and called it exact (`@M033`).
 
 // How close a vehicle has to be to work on a tower.
 //
@@ -225,7 +231,7 @@ pub struct TowerCharge {
     r:           integer,
     charge:      float,
     shots:       integer,
-    repair:      float,
+    repair:      Timer,
     top_removed: boolean,
 }
 
@@ -270,7 +276,7 @@ pub fn tower_bank(ts: TowerState, q: integer, r: integer, seconds: float) {
         // that omits a field takes its zero SILENTLY, and this is the
         // site where a wrong one would hand out a black tower.
         ts.cells[q, r] = TowerCharge { q: q, r: r, charge: seconds, shots: 0,
-                                       repair: 0.0, top_removed: false };
+                                       repair: timer_new(), top_removed: false };
     } else {
         tb_c.charge = tb_c.charge + seconds;
     }
@@ -313,7 +319,7 @@ pub fn tower_spend_shot(ts: TowerState, q: integer, r: integer) {
     tss_c = ts.cells[q, r];
     if tss_c == null {
         ts.cells[q, r] = TowerCharge { q: q, r: r, charge: 0.0, shots: 1,
-                                       repair: 0.0, top_removed: false };
+                                       repair: timer_new(), top_removed: false };
     } else {
         tss_c.shots = tss_c.shots + 1;
     }
@@ -364,17 +370,26 @@ pub fn tower_repairable(ts: const TowerState, q: integer, r: integer) -> boolean
     tower_has_top(ts, q, r) && tower_black(ts, q, r)
 }
 
-// Seconds banked toward (q, r)'s rebuild.  Zero for a tower nobody is
-// working on, which is also a tower nobody has ever ticked.
-pub fn tower_repair_progress(ts: const TowerState, q: integer, r: integer) -> float {
+// Base time units banked toward (q, r)'s rebuild.  Zero for a tower
+// nobody is working on, which is also a tower nobody has ever ticked.
+//
+// ⚠ **The UP reading**, and it stays the up one: `repair` is *time
+// banked* rather than *time left* so that zero is the neutral value, and
+// `tick_timer.loft` answers both off one number.
+pub fn tower_repair_progress(ts: const TowerState, q: integer, r: integer) -> integer {
     trp_c = ts.cells[q, r];
-    if trp_c == null { return 0.0; }
-    trp_c.repair
+    if trp_c == null { return 0; }
+    timer_spent(trp_c.repair)
 }
 
 // Is somebody part-way through a rebuild here?
+//
+// ⚠ It asks the TIMER rather than comparing its reading to zero, which
+// is what removes the epsilon: "armed" is a state, not a threshold.
 pub fn tower_repairing(ts: const TowerState, q: integer, r: integer) -> boolean {
-    tower_repair_progress(ts, q, r) > TOWER_REPAIR_EPSILON
+    trg_c = ts.cells[q, r];
+    if trg_c == null { return false; }
+    timer_running(trg_c.repair)
 }
 
 // Bank one turn of repair into (q, r).  Answers whether THIS call
@@ -391,10 +406,16 @@ pub fn tower_repairing(ts: const TowerState, q: integer, r: integer) -> boolean 
 // warning on `TowerCharge`.  This is the one line where getting it
 // wrong produces a base that reads exactly like an undefended one.
 //
-// ⚠ The comparison needs `TOWER_REPAIR_EPSILON`: 20.0 s is exactly 30
-// ticks and a bare `>=` gives 31.
+// ⚠ **The comparison used to need `TOWER_REPAIR_EPSILON`**: 20.0 s is
+// exactly 30 ticks and a bare `>=` over floats gives 31.  `elapsed` is
+// integer base units since plan 26 L3, so the thirtieth call lands on
+// the boundary exactly.
+//
+// ⚠ It ARMS on the first turn of work.  A tower nobody has touched has
+// an unarmed timer, which is what makes `tower_repairing` a state rather
+// than a comparison against zero.
 pub fn tower_repair_tick(ts: TowerState, q: integer, r: integer,
-                         seconds: float) -> boolean {
+                         elapsed: integer) -> boolean {
     if !tower_repairable(ts, q, r) { return false; }
     trt_c = ts.cells[q, r];
     // A tower that is black HAS a cell by construction — `tower_black`
@@ -403,13 +424,10 @@ pub fn tower_repair_tick(ts: TowerState, q: integer, r: integer,
     // answer rather than because it is reachable.
     if trt_c == null { return false; }
 
-    trt_c.repair = trt_c.repair + seconds;
-    if trt_c.repair < TOWER_REPAIR_SECONDS - TOWER_REPAIR_EPSILON {
-        return false;
-    }
+    if !timer_running(trt_c.repair) { timer_arm(trt_c.repair, TOWER_REPAIR_UNITS); }
+    if !timer_spend(trt_c.repair, elapsed) { return false; }
 
-    trt_c.repair = 0.0;
-    trt_c.shots  = 0;
+    trt_c.shots = 0;
     true
 }
 
@@ -453,14 +471,14 @@ pub fn tower_detach_top(ts: TowerState, q: integer, r: integer) -> integer {
     if tdt_c == null {
         // A fresh tower nobody has ticked: its top is full.
         ts.cells[q, r] = TowerCharge { q: q, r: r, charge: 0.0, shots: 0,
-                                       repair: 0.0, top_removed: true };
+                                       repair: timer_new(), top_removed: true };
         return 0;
     }
 
     tdt_n = tdt_c.shots;
     tdt_c.top_removed = true;
     tdt_c.charge      = 0.0;
-    tdt_c.repair      = 0.0;
+    timer_cancel(tdt_c.repair);
     tdt_n
 }
 
@@ -489,7 +507,7 @@ pub fn tower_mount_top(ts: TowerState, q: integer, r: integer,
     tmt_c.top_removed = false;
     tmt_c.shots       = shots;
     tmt_c.charge      = 0.0;
-    tmt_c.repair      = 0.0;
+    timer_cancel(tmt_c.repair);
     true
 }
 

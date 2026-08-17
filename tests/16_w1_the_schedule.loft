@@ -120,7 +120,7 @@ fn test_a_schedule_is_inert_until_it_begins() {
     assert(!wave_schedule_running(tai_ws), "not running");
 
     for _ in 0..50 {
-        assert(wave_schedule_due(tai_ws, true, TICK_SECONDS) == 0,
+        assert(wave_schedule_due(tai_ws, true, TICK_STEP_UNITS) == 0,
                "nothing is due");
     }
     assert(wave_schedule_sent(tai_ws) == 0, "and nothing was sent");
@@ -133,7 +133,7 @@ fn test_the_first_wave_goes_out_at_once() {
     tfw_ws = wave_schedule_of([5, 8], INTER_WAVE_DELAY_SECONDS);
     wave_schedule_begin(tfw_ws);
 
-    assert(wave_schedule_due(tfw_ws, true, TICK_SECONDS) == 5,
+    assert(wave_schedule_due(tfw_ws, true, TICK_STEP_UNITS) == 5,
            "wave 1 is five, immediately");
     assert(wave_schedule_sent(tfw_ws) == 1, "and one wave has been sent");
 }
@@ -145,11 +145,11 @@ fn test_the_first_wave_goes_out_at_once() {
 fn test_the_lull_is_fifteen_seconds_after_the_clear() {
     tll_ws = wave_schedule_of([5, 8], INTER_WAVE_DELAY_SECONDS);
     wave_schedule_begin(tll_ws);
-    wave_schedule_due(tll_ws, true, TICK_SECONDS);        // wave 1 out
+    wave_schedule_due(tll_ws, true, TICK_STEP_UNITS);        // wave 1 out
 
     // While the field is not clear, the lull does not even start.
     for _ in 0..40 {
-        assert(wave_schedule_due(tll_ws, false, TICK_SECONDS) == 0,
+        assert(wave_schedule_due(tll_ws, false, TICK_STEP_UNITS) == 0,
                "a wave is still alive, so nothing is due");
     }
 
@@ -157,7 +157,7 @@ fn test_the_lull_is_fifteen_seconds_after_the_clear() {
     tll_got = 0;
     for _ in 0..60 {
         if tll_got > 0 { continue; }
-        tll_got = wave_schedule_due(tll_ws, true, TICK_SECONDS);
+        tll_got = wave_schedule_due(tll_ws, true, TICK_STEP_UNITS);
         tll_n += 1;
     }
 
@@ -184,11 +184,11 @@ fn test_a_finished_list_sends_nothing_more() {
     tfl_ws = wave_schedule_of([2], INTER_WAVE_DELAY_SECONDS);
     wave_schedule_begin(tfl_ws);
 
-    assert(wave_schedule_due(tfl_ws, true, TICK_SECONDS) == 2, "the only wave");
+    assert(wave_schedule_due(tfl_ws, true, TICK_STEP_UNITS) == 2, "the only wave");
     assert(wave_schedule_done(tfl_ws), "the list is finished");
 
     for _ in 0..100 {
-        assert(wave_schedule_due(tfl_ws, true, TICK_SECONDS) == 0,
+        assert(wave_schedule_due(tfl_ws, true, TICK_STEP_UNITS) == 0,
                "and nothing follows it");
     }
     assert(wave_schedule_sent(tfl_ws) == 1, "one wave, ever");

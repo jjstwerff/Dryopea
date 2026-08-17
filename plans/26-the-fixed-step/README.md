@@ -9,10 +9,64 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**Opened 2026-08-17.  L0, L1 and L2 shipped 2026-08-17; L3 next.**  This plan
+**Opened 2026-08-17.  L0, L1, L2 and L3 shipped 2026-08-17; L4 next.**  This plan
 came out of a comparison of dryopea's tick pacing against moros's, run before
 it was written; the readings are § What was measured first and three of them
 are defects nothing in either repo can currently see.
+
+⚠⚠ **L3 measured the timer family before converting it, and the reading
+INVERTS § 2** (`@M033`, `@D004`).  § 2 counted the three 1e-9 nudges as the
+brittleness.  Swept at seven tick lengths through the shipped code, **all three
+guarded timers hold their duration at every one of them** — helper recovery
+90 / 120 / 180 / 300 / 600 / 1200 / 1800, tower rebuild 30 / 40 / 60 / 100 /
+200 / 400 / 600, boost 3 / 4 / 6 / 10 / 20 / 40 / 60 — while the two that never
+got a guard do not: the **wave lull** reads 23 / 30 / 45 / **76** / **151** /
+300 / **451** and the **pre-walk window** 8 / 10 / **16** / 25 / **51** /
+**101** / **151**.  ⚠ Both are right at the shipped 667 ms, which is why
+nothing had seen them.  ⚠⚠ **That is `@D003`'s shape in the other family —
+*the site that never got a guard at all*** — and two of the three guarded
+timers count DOWN exactly as the broken pair does, so the DIRECTION this plan
+was written around is not the discriminator.  A guard is.
+
+⚠⚠ **And the second L3 finding is about THIS DOCUMENT'S OWN GATE.**  The L3
+row below asks for *"a `Timer` counting UP to 20.0 s and one counting DOWN
+from it both fire on the same tick"*.  Measured at the shipped tick over six
+exact-multiple durations, float UP against float DOWN against the true count —
+4 s **7/7/6**, 10 s **16/16/15**, 20 s **30/31/30**, 30 s **45/45/45**, 40 s
+**61/61/60**, 60 s **91/91/90** — the two directions disagree at exactly ONE of
+six and **agree while both being a tick long at FOUR**.  So the gate as worded
+would have read *agreement* at four times as many cases as it caught.
+***Two agreeing instruments are not a control; the TRUE count is.***
+
+⚠ **What L3 shipped**: `src/tick_timer.loft` — one one-shot type, `{spent,
+total}` in integer base units, both readings off one number.  All five timers
+converted (`recover`, `repair`, `boost`, `cool`, `stand`, `lull`), all three
+epsilons **deleted**, and `@D004` filed and closed in the phase that found it.
+⚠⚠ **A `Timer` MAY hold its `total` where a `Bank` may not hold its `whole`,
+and it is the same rule ([loft#914]) reaching opposite conclusions** (`@X082`):
+a defaulted `whole` of 0 is a mover that never moves, a defaulted `total` of 0
+is an UNARMED timer — which is exactly what every `0.0` seconds field it
+replaces already meant.  ⚠ The `Timer`-as-`Bank` refutation L2 deferred here
+was RUN and the boundary held: a one-shot built on `bank_gain` fires a second
+time with nobody re-arming it, and its residue leaks into the next arming — a
+5.0 s cooldown costs 8 ticks the first time and **7** the second.
+
+⚠ **The seam did not CLOSE, it changed hands.**  `tick_clock.loft` predicted
+L3 would delete `clock_seconds_from_units`.  What is left after it is not
+simulation: `.keys` **authoring** (a person writes seconds, exactly where
+`bank_fraction` sits one family over) and the camera's **ease**, which
+§ The invariant already puts outside.  `clock_units_from_seconds` joined it as
+the other half.
+
+⚠⚠ **And § 2's count was SEVEN and there are EIGHT.**  The tower's CHARGE
+accumulates float seconds and `wave_fire` subtracts one whole interval per
+shot, carrying the remainder for ever — `bank_gain` written by hand, on the
+BANK side of the boundary, still holding `TOWER_CHARGE_EPSILON`.  ⚠ It is not
+a rename: a tower may only release a shot it is ALLOWED to fire, so the held
+count and the carry have to come apart (`tower_hold` caps a capacitor at one
+interval).  Left deliberately, and PINNED by
+`tests/26_l3::test_the_tower_charge_is_still_a_hand_rolled_bank` so the
+follow-up is a decision rather than a rediscovery.
 
 ⚠⚠ **L2 closed `@D003` and deleted both mover epsilons**, and the thing
 worth carrying out of it is what the `Bank` deliberately does NOT hold
@@ -420,7 +474,8 @@ example of the editor's door, and `plans/08` is the plan that made them so.
 | ↳ **measured** | **0 of 100 000 disagree**, and the float control disagrees at every one of the seven counts `19_p1` names by hand.  ⚠ The two sweeps are different LENGTHS on purpose: the float path spends a step per iteration, so sweeping it to 100 000 is 5 × 10⁹ subtractions — **the old arithmetic was quadratic as well as inexact**, which nothing had noticed because no frame ever delivered an hour.  (Confirmed by accident: a falsification that put the float body back inside `clock_advance` hung the file.) | `@M031`, `@X079` | ⚠⚠ The control is in the SAME function as the claim, asking both paths the same `n` — so the file cannot pass by both halves being empty, and it fires when `float_ticks_for` is stubbed to be correct.  ⚠ `tests/19_p1:97`'s 602 is **unchanged and now load-bearing**: `TICK_SECONDS` is bit-identical, so it stands exactly where § Open questions 3 recommended, as the control that proves the integer path is doing something |
 | **L2** ✅ | every one of the **1268 tests and 654 measurements** (1269 after this phase splits one) green with `ENEMY_PROGRESS_EPSILON` and `HELPER_PROGRESS_EPSILON` **deleted** (not zeroed — removed) | exact arithmetic needs no guard | ⚠⚠ `@M017` says zeroing the float epsilon today turns the suite RED, so a green integer run is the proof.  ⚠ **And the one-shot timers must be tried as banks and must break** — if they do not, this document's family boundary is wrong and that is the finding |
 | ↳ **measured** | **654 measurements green and UNMOVED, 1269 tests green, both epsilons deleted.**  `@M030`'s sweep now reads **180 × 7** for the player and **360 × 7** boosting.  ⚠ Behaviour at the shipped tick is bit-identical by construction — 3.0 hex/s over a 2 000 000-unit step is exactly 2 hexes with nothing carried — so the change is entirely at timesteps nobody ships yet, which is why the biggest gate has nothing to see for the *second* phase running | `@M032`, `@X080`, `@X081` | ⚠ The negative control was already in the tree and it FIRED: L0's four vehicle functions asserted the wrong numbers as a tripwire, and every one went RED on this phase before going green on the true 180 / 360.  ⚠⚠ **The `Timer`-as-`Bank` refutation this row asked for was NOT run and is deferred to L3** — the one-shot timers were left on float seconds behind one named seam (`clock_seconds_from_units`), so the family boundary is *asserted* here and *tested* there.  Recorded rather than quietly dropped |
-| **L3** | a `Timer` counting UP to 20.0 s and one counting DOWN from it both fire on the **same** tick, with no epsilon in either | a one-shot duration is exact because it is an integer, not because it was nudged | ⚠⚠ `CLAUDE.md` § Timers and epsilons: *neither direction is safe*, measured — 20.0 s counting up lands exactly and counting down leaves a residue.  **Both directions or the gate is half a gate.**  ⚠ And this is where `Timer`-as-`Bank` is attempted and must break |
+| **L3** ✅ | a `Timer` counting UP to 20.0 s and one counting DOWN from it both fire on the **same** tick, with no epsilon in either | a one-shot duration is exact because it is an integer, not because it was nudged | ⚠⚠ `CLAUDE.md` § Timers and epsilons: *neither direction is safe*, measured — 20.0 s counting up lands exactly and counting down leaves a residue.  **Both directions or the gate is half a gate.**  ⚠ And this is where `Timer`-as-`Bank` is attempted and must break |
+| ↳ **measured** | **this row's own expected result is a gate that could not fail**, and the phase's first measurement is what said so.  Over six exact-multiple durations at the shipped tick, float UP vs float DOWN vs true: **7/7/6, 16/16/15, 30/31/30, 45/45/45, 61/61/60, 91/91/90** — the two directions disagree at ONE of six and **agree while both being a tick long at FOUR**.  ⚠ The shipped gate therefore measures against the TRUE count and keeps the up/down pair only as the record.  ⚠⚠ The real defect was elsewhere and is `@D004`: the two timers with NO epsilon (`Enemy.stand`, `WaveSchedule.lull`) run a tick long at four and three of seven tick lengths, while all three GUARDED ones are exact at all seven — § 2 had the brittleness backwards.  **1285 tests green, 654 measurements green and unmoved, three epsilons deleted** | `@M033`, `@D004`, `@X082` | ⚠ The `Timer`-as-`Bank` refutation L2 deferred here was RUN and BROKE the bank twice, both silently: it fires a second time with nobody re-arming it, and a 5.0 s cooldown costs 8 ticks the first time and **7** the second.  ⚠ The negative control for the two converted rows is the pre-L3 float arithmetic reproduced beside them and asserted WRONG at seven of fourteen readings — so a green profile is a measurement rather than a restatement of `true_ticks` |
 | **L4** | a capped driver and an uncapped one produce **different tick counts** and **identical worlds per tick**; a 1 Hz clock driven by a 30 Hz clock's ticks equals one driven from the wall | policy is the DRIVER's, arithmetic is the clock's | ⚠ Identical worlds per tick is the whole assertion — equal tick counts would mean the cap did nothing, and equal wall-clock outcomes would mean it compressed rather than dropped |
 | **L5** | `clock_alpha()` in `[0, 1)`, and the vehicle drawn at alpha moves on **>200 of 240 frames** un-eased | a fixed sim and a free frame rate meet at one number | ⚠ Alpha and the ease must be measured SEPARATELY, or a green reading is the ease's (`@M023` is the prior).  ⚠⚠ If alpha adds nothing over the ease, **L5 is cut** and that is a result |
 | **L6** | dryopea's 1268 + 654 and moros's world digests unchanged across the extraction, and **every door in § A DOOR PER USE CASE has a test named for its case that the docs link to** | a library is a move, not a rewrite — and a door nobody can find is a door a consumer rebuilds | ⚠ Byte-identical digests on BOTH sides; a consumer that only compiles has verified nothing.  ⚠⚠ **And the example gate needs both halves**: a test with no link is invisible, a link to prose is a snippet that rots.  The refutation is a door whose "example" is not a compiled test |
@@ -432,8 +487,8 @@ example of the editor's door, and `plans/08` is the plan that made them so.
 | **L0** — the instrument: is any mover tick-length independent? | S | `tests/26_l0_the_timestep_sweep.loft` — one scenario at three tick lengths.  ⚠ **Expected RED on arrival**; that is the point.  File `@D003` | **Done** 2026-08-17 — 13 tests, **seven** tick lengths not three, `@M030` + `@D003` filed.  ⚠ The four vehicle functions assert today's WRONG numbers as L2's tripwire; the suite stays green and L2 must break them |
 | **L1** — the clock, in integer base units | M | `tests/26_l1_the_clock.loft` — `advance(n × step) == step(n)` over 1..100000, float path kept as control.  `scripts/validate.sh` 654 unchanged | **Done** 2026-08-17 — `src/tick_clock.loft`, 13 tests.  ⚠ **Not µs**: the recommended 666 667 µs step moves 17 tests (`@M031`), so the base unit is 1/3 µs and `TICK_SECONDS` is derived bit-identical (`@X079`).  ⚠ `main.loft` now hands integer µs down; the float door rounds |
 | **L2** — `Bank`: a rate in whole units; both mover epsilons deleted | M | `scripts/test.sh` + `scripts/validate.sh` with `ENEMY_PROGRESS_EPSILON` and `HELPER_PROGRESS_EPSILON` **removed**.  ⚠ And the vehicle gains the bank it never had | **Done** 2026-08-17 — `src/tick_bank.loft`; `@D003` closed, both epsilons deleted, all three movers take INTEGER base units.  ⚠ `@X080`: a `Bank` holds the carry alone — the rate is `@X061`'s and `whole` is a parameter, because a nested struct's silent zero-default would freeze a mover.  ⚠ `@X081`: `vehicle_hexes_per_tick` is a CEILING that spends nothing, because `play_steer_reach` asks once per FRAME |
-| **L3** — `Timer`: one-shot, UP and DOWN, and the family boundary | S | `tests/26_l3_the_timers.loft` — both directions on one target, plus the `Timer`-as-`Bank` refutation | Blocked on L2 |
-| **L4** — the policies dryopea does NOT need: cap, rate, composition | S | `tests/26_l4_the_policies.loft` — capped vs uncapped, and a nested clock | Blocked on L3 |
+| **L3** — `Timer`: one-shot, UP and DOWN, and the family boundary | S | `tests/26_l3_the_timers.loft` — both directions on one target, plus the `Timer`-as-`Bank` refutation | **Done** 2026-08-17 — `src/tick_timer.loft`, 16 tests; all five one-shot timers converted and `HELPER_TIMER_EPSILON` / `TOWER_REPAIR_EPSILON` / `VEHICLE_TIMER_EPSILON` deleted.  ⚠ `@D004` found AND closed in the phase: the two timers that never had a guard were the broken ones.  ⚠ `@X082`: a `Timer` holds its `total` where a `Bank` may not hold its `whole` — same [loft#914] rule, opposite conclusion.  ⚠ § 2's count was seven and there are EIGHT — the tower's CHARGE is a hand-rolled bank, pinned rather than converted |
+| **L4** — the policies dryopea does NOT need: cap, rate, composition | S | `tests/26_l4_the_policies.loft` — capped vs uncapped, and a nested clock | Next |
 | **L5** — alpha, or the finding that the ease already covers it | S | `tests/26_l5_the_alpha.loft` — frames moved, alpha and ease measured apart.  ⚠ May be CUT | Blocked on L4 |
 | **L6** — extract; a door per use case, each with the test that IS its example | M | both suites, both digests, and one named test per door that the docs link to | Blocked on L5 |
 
@@ -473,6 +528,13 @@ needs it and the next consumer would rebuild it; dryopea binds nothing to it.
 
 **No retirement of the ease.**
 
+**No conversion of the tower's CHARGE** — the eighth *do-not-lose-a-fraction*
+site, which § 2 never counted.  It is a hand-rolled `bank_gain` and belongs to
+the `Bank` family, but a tower may only release a shot it is ALLOWED to fire,
+so the held count and the carry have to come apart before `tick_bank.loft` can
+own it.  ⚠ The trigger is a phase that touches `wave_fire`;
+`tests/26_l3::test_the_tower_charge_is_still_a_hand_rolled_bank` is the pin.
+
 ## Cross-repo coordination
 
 ⚠ **There is no timing library today** — `time` (registry 0.3.0) is calendar
@@ -507,18 +569,25 @@ is last.
    original note stands on its other half: the tempting round number (500 000,
    a 2 Hz tick) re-prices every one of the 654 measurements and belongs to
    `plans/22`.
-3. ✅ **What happens to `tests/19_p1`?**  **Kept, unchanged, and now
+3. ✅ **Where does the seconds seam end up?**  ⚠ `tick_clock.loft` predicted
+   L3 would DELETE `clock_seconds_from_units`.  It did not close — it **changed
+   hands**.  After L3 no simulation reads seconds; what is left is `.keys`
+   **authoring** (a person writes seconds, which is `bank_fraction`'s position
+   one family over) and the camera's **ease**, which § The invariant already
+   puts outside.  `clock_units_from_seconds` joined it as the other half.
+
+4. ✅ **What happens to `tests/19_p1`?**  **Kept, unchanged, and now
    load-bearing** — exactly as recommended.  `TICK_SECONDS` is bit-identical
    after L1, so its 602/1000 still measures what it measured, and it is the
    control that proves the integer path is doing something rather than
    agreeing with itself.  ⚠ `tests/26_l1` does not lean on it from a distance:
    it asks BOTH paths the same `n` **in one function**, so the file cannot go
    green by both halves being empty.
-4. **Does a saved game persist `banked`?**  § The four games predicts the RPG
+5. **Does a saved game persist `banked`?**  § The four games predicts the RPG
    case does not fit without an answer.  Not L-anything's today — dryopea
    saves a map, never a run — but the first phase that saves a run inherits
    it.
-5. **Is alpha a complement to the ease or a replacement?**  L5, and it is
+6. **Is alpha a complement to the ease or a replacement?**  L5, and it is
    allowed to answer *neither*.
 
 ## See also

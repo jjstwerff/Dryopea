@@ -59,7 +59,9 @@ use painted;
 use height;
 use passable;
 use vehicle;
+use tick_clock;
 use tick_bank;
+use tick_timer;
 
 // ─── The numbers ────────────────────────────────────────────────
 //
@@ -90,31 +92,38 @@ pub const HELPER_ROSTER_CAP:   integer = 6;
 
 // numbers.json § helper.recovery_time_after_retrieval — the time a
 // retrieved crew member spends at the core before rejoining.
-pub const HELPER_RECOVERY_SECONDS: float = 60.0;
+//
+// ⚠ **The UNITS are the definition and the seconds are DERIVED**, which
+// is the shape `TICK_STEP_UNITS` / `TICK_SECONDS` set at plan 26 L1: a
+// duration is an exact integer count of the clock's base unit, and a
+// float second beside it is a second definition that can disagree.
+// 60 s is exactly 180 000 000 thirds of a microsecond.
+//
+// ⚠ **A LITERAL, and it has to be**: a const whose initialiser CASTS
+// another computed const needs a temporary, and loft refuses one in a
+// const ("the slot it names belongs to this declaration").  So the
+// count is written out, the way `TICK_STEP_UNITS` is — and
+// `tests/26_l3_the_timers.loft` § Every duration is a whole number of
+// base units is what stops the literal drifting from the seconds it
+// claims to be.
+pub const HELPER_RECOVERY_UNITS: integer = 180000000;   // 60 s
+pub const HELPER_RECOVERY_SECONDS: float = (HELPER_RECOVERY_UNITS as float)
+                                           / (CLOCK_UNITS_PER_SECOND as float);
 
-// ⚠ **The epsilon trap, a FOURTH time, and at its least visible**
-// (plan 15 C0).  60.0 s over a `1 / 1.5` s tick is EXACTLY 90 ticks, so
-// a bare `> 0.0` leaves a hair of positive residue after the ninetieth
-// and gives a ninety-FIRST — the same shape as `tower.loft`'s dropped
-// third shot and plan 13 V4's four-tick boost.
+// ⚠⚠ **`HELPER_TIMER_EPSILON` IS GONE (plan 26 L3), and it was doing
+// REAL WORK right up to the moment it was deleted.**  60.0 s over a
+// `1 / 1.5` s tick is exactly 90 ticks, so counting down through floats
+// left a hair of positive residue after the ninetieth and gave a
+// ninety-FIRST — plan 15 C0's *"the trap fires ONLY where the timer
+// divides the tick exactly, which is the case that looks safest"*.
 //
-// ⚠ **The discriminator inverts the intuition**: the 5.0 s boost
-// cooldown is 7.5 ticks — *not* a whole number — and takes 8 ticks
-// either way, so it is immune.  The trap fires ONLY where the timer
-// divides the tick exactly, which is the case that looks safest.
-//
-// ⚠ And this is the appearance no arrival assertion can see: one tick
-// in ninety, against a tower losing a third of its shots and a helper
-// losing 6.7% of its speed.  Only COUNTING the ticks separates them,
-// which is why `tests/15_c2_recovery.loft` counts.
-//
-// ⚠ **This one STAYS, and it is L3's not L2's.**  It is a ONE-SHOT
-// TIMER — 60.0 s that fires once — where the deleted movement epsilon
-// guarded a carry that is load-bearing for ever.  `plans/26`
-// § The invariant keeps the two families apart deliberately, and
-// `tick_bank.loft` § IT IS NOT A TIMER says why one primitive must not
-// serve both.
-pub const HELPER_TIMER_EPSILON: float = 1.0e-9;
+// ⚠ **Measured at seven tick lengths before it was removed, this guard
+// held the recovery at its true length at every one of them** (90 /
+// 120 / 180 / 300 / 600 / 1200 / 1800 ticks), where the two timers that
+// never got a guard did not — `@M033`, `tests/26_l3_the_timers.loft`.
+// What replaces it is `tick_timer.loft`: the recovery is an integer
+// count of base units and 180 000 000 / 2 000 000 is 90 with nothing
+// left over.
 
 // ─── The helper ─────────────────────────────────────────────────
 
@@ -132,13 +141,13 @@ pub struct Helper {
     alive:   boolean,
     bank:    Bank,      // banked ground, always under a whole hex
     taken:   float,     // damage ABSORBED, never HP remaining
-    recover: float,     // seconds of recovery LEFT, 0 when not in it
+    recover: Timer,     // the recovery clock; unarmed when not in it
 }
 
 // Factory: a helper standing at (q, r) with nothing banked.
 pub fn helper_new(q: integer, r: integer) -> Helper {
     Helper { q: q, r: r, to_q: q, to_r: r, alive: true,
-             bank: bank_new(), taken: 0.0, recover: 0.0 }
+             bank: bank_new(), taken: 0.0, recover: timer_new() }
 }
 
 // Point a helper at a hex.  It drives there over the next ticks.
@@ -202,7 +211,7 @@ pub fn helper_wrecked(h: const Helper) -> boolean {
 
 // Is this crew member in recovery at the core?
 pub fn helper_recovering(h: const Helper) -> boolean {
-    !h.alive && h.recover > HELPER_TIMER_EPSILON
+    !h.alive && timer_running(h.recover)
 }
 
 // Is this crew member still lying on the battlefield?
@@ -211,7 +220,7 @@ pub fn helper_recovering(h: const Helper) -> boolean {
 // acts on: a LOST helper needs fetching and a recovering one needs
 // nothing but time.
 pub fn helper_lost(h: const Helper) -> boolean {
-    !h.alive && h.recover <= HELPER_TIMER_EPSILON
+    !h.alive && !timer_running(h.recover)
 }
 
 // Start the recovery clock, at the core.  Answers whether it started.
@@ -230,9 +239,9 @@ pub fn helper_lost(h: const Helper) -> boolean {
 // could not skip it.
 pub fn helper_begin_recovery(h: Helper, core: const Hex) -> boolean {
     if h.alive { return false; }
-    if h.recover > HELPER_TIMER_EPSILON { return false; }
+    if timer_running(h.recover) { return false; }
 
-    h.recover = HELPER_RECOVERY_SECONDS;
+    timer_arm(h.recover, HELPER_RECOVERY_UNITS);
     h.q       = core.q;
     h.r       = core.r;
     h.to_q    = core.q;
@@ -243,22 +252,21 @@ pub fn helper_begin_recovery(h: Helper, core: const Hex) -> boolean {
 // Spend one tick of recovery.  Answers whether the helper rejoined the
 // roster on this tick.
 //
-// ⚠ **The epsilon is the whole function** — see `HELPER_TIMER_EPSILON`.
-// 60.0 s is exactly 90 ticks and a bare `> 0.0` gives 91, which no
-// assertion that the crew member came back can see.
+// ⚠ **The epsilon used to be the whole function** — 60.0 s is exactly
+// 90 ticks and a bare `> 0.0` gave 91, which no assertion that the crew
+// member came back can see.  Since plan 26 L3 the clock is an integer
+// count of base units, so the ninetieth call lands exactly on the
+// boundary and there is nothing to nudge.
 //
 // ⚠ It rejoins WHOLE: the damage that downed it is cleared and the
 // banked progress reset, because what came back is a repaired vehicle
 // rather than the wreck that was carried in.  Anything less would make
 // a retrieved helper wreck again to the next stray attacker, and the
 // roster would decay across a run no matter how well it was played.
-pub fn helper_recover_tick(h: Helper, tick_seconds: float, core: const Hex) -> boolean {
+pub fn helper_recover_tick(h: Helper, elapsed: integer, core: const Hex) -> boolean {
     if !helper_recovering(h) { return false; }
+    if !timer_spend(h.recover, elapsed) { return false; }
 
-    h.recover = h.recover - tick_seconds;
-    if h.recover > HELPER_TIMER_EPSILON { return false; }
-
-    h.recover  = 0.0;
     h.alive    = true;
     h.taken    = 0.0;
     bank_reset(h.bank);

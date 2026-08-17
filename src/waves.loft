@@ -77,6 +77,8 @@
 
 use lattice;
 use passable;
+use tick_clock;
+use tick_timer;
 
 // ─── The authored list ──────────────────────────────────────────
 
@@ -192,8 +194,8 @@ pub struct WaveSchedule {
     parts:   vector<WavePart>,
     length:  integer,     // how many waves the list holds
     sent:    integer,     // waves spawned so far; also the next index
-    lull:    float,       // seconds left before the next wave
-    delay:   float,       // seconds between waves
+    lull:    Timer,       // the wait before the next wave
+    delay:   integer,     // base time units between waves
     running: boolean,
 }
 
@@ -219,8 +221,9 @@ fn regular_parts(counts: vector<integer>) -> vector<WavePart> {
 // the same run.
 pub fn wave_schedule_of(waves: vector<integer>, delay: float) -> WaveSchedule {
     wso_p = regular_parts(waves);
-    WaveSchedule { parts: wso_p, length: len(waves), sent: 0, lull: 0.0,
-                   delay: delay, running: false }
+    WaveSchedule { parts: wso_p, length: len(waves), sent: 0,
+                   lull: timer_new(),
+                   delay: clock_units_from_seconds(delay), running: false }
 }
 
 // Factory: a run with the design's list, not yet started.
@@ -242,7 +245,7 @@ pub fn wave_schedule_new() -> WaveSchedule {
 // something would read as the trigger not having worked.
 pub fn wave_schedule_begin(ws: WaveSchedule) {
     ws.running = true;
-    ws.lull    = 0.0;
+    timer_cancel(ws.lull);
 }
 
 pub fn wave_schedule_running(ws: const WaveSchedule) -> boolean {
@@ -355,9 +358,19 @@ pub fn wave_schedule_size(ws: const WaveSchedule, i: integer) -> integer {
     wss_n
 }
 
-// Seconds left before the next wave.
-pub fn wave_schedule_lull(ws: const WaveSchedule) -> float {
-    ws.lull
+// Base time units left before the next wave.
+//
+// ⚠ **Integer since plan 26 L3.**  It used to be float seconds, and the
+// lull was one of the two timers in the game that never got an epsilon:
+// counted down through floats it ran a tick LONG at three of seven tick
+// lengths (`@M033`).
+pub fn wave_schedule_lull(ws: const WaveSchedule) -> integer {
+    timer_left(ws.lull)
+}
+
+// Base time units between waves, as this schedule was authored.
+pub fn wave_schedule_delay(ws: const WaveSchedule) -> integer {
+    ws.delay
 }
 
 // Spend one tick of the lull, and answer the size of the wave to send
@@ -372,7 +385,7 @@ pub fn wave_schedule_lull(ws: const WaveSchedule) -> float {
 // roster belongs to the wave engine.  It is `alive_count(state) == 0`
 // at the only call site.
 pub fn wave_schedule_due(ws: WaveSchedule, cleared: boolean,
-                         tick_seconds: float) -> integer {
+                         elapsed: integer) -> integer {
     if !ws.running { return 0; }
     if wave_schedule_done(ws) { return 0; }
 
@@ -383,8 +396,8 @@ pub fn wave_schedule_due(ws: WaveSchedule, cleared: boolean,
     // that matters.
     if ws.sent > 0 {
         if !cleared { return 0; }
-        ws.lull = ws.lull - tick_seconds;
-        if ws.lull > 0.0 { return 0; }
+        timer_spend(ws.lull, elapsed);
+        if timer_running(ws.lull) { return 0; }
     }
 
     // ⚠ The SIZE, not the composition: this half of the split knows
@@ -394,6 +407,6 @@ pub fn wave_schedule_due(ws: WaveSchedule, cleared: boolean,
     // "not yet" to the caller and spawns nothing either way.
     wsd_size = wave_schedule_size(ws, ws.sent);
     ws.sent  = ws.sent + 1;
-    ws.lull  = ws.delay;
+    timer_arm(ws.lull, ws.delay);
     wsd_size
 }

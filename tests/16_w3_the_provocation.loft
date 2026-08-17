@@ -261,9 +261,10 @@ fn test_it_fires_once_and_leaves_the_lull_alone() {
     // the player still standing on the marker.  A re-arm would read 0.0.
     for tif_n in 1..=10 {
         wave_tick(tif_s, tif_pal, tif_pw, tif_mw, core());
-        assert(wave_schedule_lull(tif_s.schedule) == INTER_WAVE_DELAY_SECONDS,
+        assert(wave_schedule_lull(tif_s.schedule)
+               == clock_units_from_seconds(INTER_WAVE_DELAY_SECONDS),
                "tick {tif_n}: the lull is still {INTER_WAVE_DELAY_SECONDS} s, "
-               + "not {wave_schedule_lull(tif_s.schedule)}");
+               + "not {wave_schedule_lull(tif_s.schedule)} base units");
     }
     assert(wave_schedule_sent(tif_s.schedule) == 1,
            "and still one wave: {wave_schedule_sent(tif_s.schedule)}");
