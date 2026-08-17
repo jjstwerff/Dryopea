@@ -479,6 +479,81 @@ src/
                    AGREE.  A mesh whose normals point out and whose
                    triangles wind in draws nothing under
                    GL_CULL_FACE with every normal reading healthy.
+                   ── plan 25 M2 ──
+                   `ground_chunk_mesh(m, …, cx, cy, kind)` is one
+                   TILE for one palette kind, and
+                   `ground_chunk_kinds` says which kinds a tile
+                   holds, ASCENDING (a kind list is an upload
+                   order, so it must be a function of the map).
+                   ⚠⚠ The walk is by COORDINATE, and its reason is
+                   COVERAGE rather than determinism (@M025): the
+                   drawn region is wider than the painted set, so a
+                   walk over `pw.painted` cannot reach the
+                   coastline.  Gated at 63 vertices against 0.
+                   ⚠ It walks a tile once PER KIND, and
+                   `ground_chunk_kinds` walks it again — ~6 passes
+                   over 1024 hexes.  The one-pass shape needs a
+                   `Mesh` per kind held together and a struct in a
+                   container is a COPY; the trigger to solve it is
+                   M4's ratio, not a hunch.
+  mesh_chunks.loft THE MESHER'S DOMAIN (plan 25 M2) — which hexes
+                   get drawn, which tile each lands in, and which
+                   tiles an edit invalidates.
+                   ⚠⚠ The drawn region is the painted set PLUS A
+                   ONE-HEX RING (@X075).  `painted.loft` ERASES a
+                   hex painted sea, so meshing only what is stored
+                   leaves an erased region as a HOLE in the ground
+                   at exactly the height of the land round it — and
+                   no side quad covers it, sea and grass both being
+                   0 m.  ⚠ Its limit is that a gap wider than TWO
+                   hexes still holes, and a test pins that so
+                   closing it is deliberate.  The real answer is
+                   water's DROP, which is plan 02's.
+                   ⚠⚠ TWO reaches share the value 1 and do NOT
+                   share a constant: `MESH_HALO_K` is how far an
+                   edit's consequences reach (a side quad reads one
+                   neighbour), the ring is how far past the paint
+                   anything is drawn (sea is stored as absence).
+                   Plan 02's blend moves the first alone.
+                   ⚠⚠ There is NO `ChunkField` here, and that is a
+                   change of plan: `collect_dirty_inputs` SKIPS a
+                   dirty chunk owning no cells — which with a ring
+                   is a tile that still has sea to draw, stale only
+                   ever at a tile edge — and `mark_borders` steps
+                   CHUNK coords rectangularly, where only
+                   `lat_neighbour` may step a coordinate.
+                   ⚠ `mesh_chunks_touched` is ONE mechanism read
+                   two ways: as an edit it is the dirty rule,
+                   summed over the paint it is the tile list.  Two
+                   rules derived separately disagree about an edge.
+                   ⚠ What stays gridmesh's is `chunk_of`, whose
+                   `chunk_div` FLOORS — the arithmetic a hand-rolled
+                   `>>` gets wrong left of the origin.
+  mesh_crc.loft    DO TWO MESH BUILDS AGREE? (plan 25 M2) — the
+                   geometry folded to one integer, because a COUNT
+                   cannot see a mesh with the right number of
+                   vertices in the wrong places and a PICTURE
+                   agrees with a shear.
+                   ⚠⚠ It folds the TRIANGLES too, where moros's
+                   port folds vertices only — `ground_top_face`
+                   SHARES its six rim vertices between the six fan
+                   triangles, so M0's reversed fan moves no vertex
+                   at all and a vertex-only fold is blind to
+                   exactly the defect M0 exists for.
+                   ⚠ It ROUNDS where moros's truncates: every
+                   palette height (0.0, 3.0, 5.0) sits exactly on
+                   truncation's discontinuity.  ⚠ And that guard
+                   was unreachable — every comparison here runs
+                   identical arithmetic on identical inputs — so
+                   `test_the_scale_is_the_tolerance` reaches the
+                   branch directly (3.0 vs 3.0−1e-9 must AGREE).
+                   ⚠⚠ An EMPTY mesh folds to 0, so a mesher
+                   stubbed to emit nothing satisfies every equality
+                   — each one needs a non-zero floor.
+                   ⚠ It belongs in `mesh3d` (adjacent to
+                   `mesh_to_floats`, and moros has a private copy
+                   too, which is two).  Trigger to move it: a
+                   second non-test caller, or plan 20's entities.
   painted.loft     PaintedHex { q, r, kind: u8 }
                    + PaintedWorld { painted: hash<PaintedHex[q, r]> }
                    + paint(), lookup_painted(), paint_line()

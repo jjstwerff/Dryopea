@@ -380,6 +380,28 @@ flattens a `Mesh` to `vector<single>` at stride 6, straight into
 comment reads *"call this only for the DIRTY groups each edit; untouched groups
 keep their cached VBOs."*  What plan 25 writes is a mesher, a shader and a gate.
 
+**3. ⚠⚠ The dirty-chunk set this section counted on does NOT serve the mesher,
+and plan 25 M2 measured why.**  The table below used to say *"a dirty-chunk set,
+so a rebuild is local — `chunks.loft` over `gridmesh`, wired since plan 07"*.
+It is wired, and it is the wrong tool twice over:
+
+- `gridmesh::collect_dirty_inputs` **skips a dirty chunk that owns no cells.**
+  dryopea's drawn region is the painted set plus a one-hex ring (`@X075`), so a
+  tile owning NOTHING can still have sea to draw — a hex painted on a tile
+  boundary puts its ring in the next tile.  The incremental path would leave that
+  tile stale, and only ever at a tile edge.
+- `gridmesh::mark_borders` steps **chunk** coordinates rectangularly in (x, y).
+  Correct here only because odd-r's six neighbours all lie within one step of `q`
+  and of `r` — a property of this lattice the library cannot know, where
+  `CLAUDE.md`'s rule is that nothing may step a coordinate except
+  `lat_neighbour`.
+
+So the mesh tile is `src/mesh_chunks.loft`, its reach is asked through
+`lat_neighbour`, and what stays `gridmesh`'s is `chunk_of` — whose `chunk_div`
+floors rather than truncates, which is the arithmetic a hand-rolled `>>` gets
+wrong left of the origin.  ⚠ `chunks.loft` keeps its `ChunkField` for the
+editor's store windowing, untouched.
+
 ⚠ **The general lesson is about the sizing, not the mesh**: this section sized
 the job by `hex_mesh`'s 3 257 lines.  *Sizing a port by the DONOR's line count
 is sizing it by a world you do not have* — and the correction cost one reading
@@ -394,7 +416,7 @@ What dryopea already has, and it is more than it looks:
 |---|---|
 | which hexes exist, and their kind | `PaintedWorld` (sparse, sea-default) |
 | height per hex | `passable.loft::hex_height` — authored structure **plus** the runtime rubble layer |
-| a dirty-chunk set, so a rebuild is local | `chunks.loft` over `gridmesh`, wired since plan 07 |
+| a dirty-chunk set, so a rebuild is local | ⚠⚠ **NOT `chunks.loft` — see finding 3.**  `src/mesh_chunks.loft` (plan 25 M2) |
 | corner geometry in metres | `lattice.loft::lat_corner_metres` (⚠ clockwise in dryopea's frame — the y-negation) |
 
 ### ⚠⚠ moros has SOLVED this, and the mechanism is not one anybody would derive

@@ -1,0 +1,139 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Do two mesh builds agree? — plan 25 phase M2.
+//
+// ── ⚠ Why a CHECKSUM, and not a count or a picture ──────────────
+//
+// The question M2 asks is whether one chunk rebuilt on its own is the
+// same geometry as that chunk out of a rebuild of everything.  A COUNT
+// cannot answer it — a mesh with the right number of vertices in the
+// wrong places is exactly the failure this exists to catch — and a
+// PICTURE cannot either, because `CLAUDE.md` § Test discipline's oldest
+// rule is that a golden AGREES WITH A SHEAR.  So the comparison is over
+// the geometry itself, folded to one integer.
+//
+// ⚠ **ORDER IS PART OF THE CLAIM**, and that is deliberate rather than
+// an artefact of folding: a build that walked one tile's hexes in a
+// different sequence would draw the identical picture from a different
+// traversal and then diverge the moment anything indexed into it.
+//
+// ⚠ Which does NOT make this a guard against paint order — measured, and
+// it was written expecting the opposite.  loft's keyed collections
+// iterate in KEY order rather than insertion order (`@M025`), so a walk
+// over `pw.painted` would already be map-deterministic.  What
+// `ground_chunk_mesh`'s coordinate walk buys is COVERAGE, not
+// determinism: the drawn region is wider than the painted set, because
+// sea is stored as absence (`@X075`).
+//
+// ⚠ **The scale is the TOLERANCE.**  Floats go in as `round(v · SCALE)`,
+// so this asks *the same to within a micrometre* rather than
+// bit-identical — a whole height step in dryopea is 3 m, so 1e-6 is far
+// below anything the geometry means.  Demanding identical bits would be
+// asserting something about IEEE rounding across backends instead of
+// something about the mesh, and dryopea runs interpreted here and native
+// nowhere yet.
+//
+// ⚠ It ROUNDS where moros's truncates.  Truncation puts a discontinuity
+// at every exact multiple of 1/SCALE, so two computations of "the same"
+// value that differ in the last ulp can land on opposite sides of one —
+// and every height in this repo (0.0, 3.0, 5.0) sits exactly on one.
+//
+// ── ⚠⚠ It folds the TRIANGLES too, and the port does not ────────
+//
+// moros's `hex_mesh::mesh_crc` folds positions and normals only.  That
+// is safe there and is NOT safe here: `ground_top_face` shares its six
+// rim vertices between the six fan triangles, so **M0's reversed fan
+// moves no vertex at all** — same positions, same normals, same order,
+// only the indices differ.  A vertex-only checksum is blind to precisely
+// the defect M0 exists for, which draws nothing under `GL_CULL_FACE`
+// while every other valve reads healthy.
+//
+// ⚠ So the indices are folded after the vertices.  The cost is that this
+// is no longer the same function as moros's and cannot be compared
+// across the two projects — which nothing asks for: moros checksums a
+// client mesh against its own server, and dryopea checksums a build
+// against another build of itself.
+//
+// ── ⚠ This belongs in `mesh3d`, and is here today ───────────────
+//
+// A checksum over a `Mesh` is adjacent to `mesh_to_floats` and reuse is
+// this repo's rule, so the eventual home is the published library rather
+// than either consumer — moros carries a private copy of it too, which
+// is two.  It is local today because M2 needs it now and because the
+// triangle fold above is a dryopea finding that has not been argued
+// upstream yet.  ⚠ The trigger to move it: a second dryopea caller that
+// is not a test, or plan 20 wanting it for entity meshes.
+
+use mesh3d;
+
+// Fixed-point scale — see § The scale is the TOLERANCE.  One part in a
+// million of a metre, against a world whose smallest real step is 1 m of
+// rubble and whose smallest length is a 0.75 m circumradius.
+pub const MESH_CRC_SCALE: float = 1000000.0;
+
+// CRC-32 (reversed polynomial 0xEDB88320) over one byte.
+fn crc_byte(cb_acc: integer, cb_v: integer) -> integer {
+    cb_c = cb_acc ^ (cb_v & 255);
+    for _ in 0..8 {
+        if cb_c & 1 == 1 {
+            cb_c = (cb_c >> 1) ^ 3988292384;
+        } else {
+            cb_c = cb_c >> 1;
+        }
+    }
+    cb_c
+}
+
+// One float, at `MESH_CRC_SCALE`, as eight bytes.
+//
+// ⚠ Rounds away from zero rather than truncating: every height the
+// palette carries is an exact multiple of the scale, so truncation would
+// put the two builds this compares on opposite sides of a step for one
+// ulp of difference.
+fn mesh_crc_f(mcf_acc: integer, mcf_v: float) -> integer {
+    mcf_r = mcf_v * MESH_CRC_SCALE;
+    if mcf_r < 0.0 { mcf_r = mcf_r - 0.5; } else { mcf_r = mcf_r + 0.5; }
+    mcf_n = mcf_r as integer ?? 0;
+    mcf_a = mcf_acc;
+    for mcf_k in 0..8 {
+        mcf_a = crc_byte(mcf_a, (mcf_n >> (mcf_k * 8)) & 255);
+    }
+    mcf_a
+}
+
+// One integer, as eight bytes — a triangle's vertex index.
+fn mesh_crc_i(mci_acc: integer, mci_v: integer) -> integer {
+    mci_a = mci_acc;
+    for mci_k in 0..8 {
+        mci_a = crc_byte(mci_a, (mci_v >> (mci_k * 8)) & 255);
+    }
+    mci_a
+}
+
+// The checksum over a mesh: every vertex's position and normal in
+// emission order, then every triangle's three indices.
+//
+// ⚠ Two meshes agreeing here agree about their geometry AND about how it
+// is wired; two disagreeing have different geometry, never a different
+// name or a different capacity.  ⚠ It is not a hash of the struct: `uv`
+// is deliberately left out, because nothing dryopea draws reads it and a
+// checksum that moved when a placeholder uv did would be noise in the
+// one gate that has to stay quiet.
+pub fn mesh_crc(mc_m: const Mesh) -> integer {
+    mc_acc = 4294967295;
+    for mc_v in mc_m.vertices {
+        mc_acc = mesh_crc_f(mc_acc, mc_v.pos.x);
+        mc_acc = mesh_crc_f(mc_acc, mc_v.pos.y);
+        mc_acc = mesh_crc_f(mc_acc, mc_v.pos.z);
+        mc_acc = mesh_crc_f(mc_acc, mc_v.normal.x);
+        mc_acc = mesh_crc_f(mc_acc, mc_v.normal.y);
+        mc_acc = mesh_crc_f(mc_acc, mc_v.normal.z);
+    }
+    for mc_t in mc_m.triangles {
+        mc_acc = mesh_crc_i(mc_acc, mc_t.a);
+        mc_acc = mesh_crc_i(mc_acc, mc_t.b);
+        mc_acc = mesh_crc_i(mc_acc, mc_t.c);
+    }
+    (mc_acc ^ 4294967295) & 4294967295
+}

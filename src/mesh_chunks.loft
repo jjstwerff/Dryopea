@@ -1,0 +1,218 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// The mesher's DOMAIN — plan 25 phase M2.  Which hexes get drawn, which
+// tile each one lands in, and which tiles an edit invalidates.
+//
+// ── ⚠⚠ The drawn region is the painted set PLUS A ONE-HEX RING ──
+//
+// "Mesh the painted set" is wrong by construction, and the reason is a
+// storage decision two plans older than this one: `painted.loft` ERASES
+// a hex painted `sea`, so the water is not in the painted set at all.
+// Mesh only what is stored and an erased region comes out as a HOLE in
+// the ground at exactly the height of the land around it — and no side
+// quad covers it either, because sea is 0 m and so is grass, so there is
+// no face on that boundary for `ground_side_faces` to find.
+//
+// So the region is the painted set plus every hex touching it.  `@X075`.
+//
+// ⚠ **What that does and does not fix.**  It draws the coastline, and it
+// closes an erased gap up to TWO hexes wide; a wider one still holes.
+// That is an interim and it is named as one — `plans/25` § Open 3 has the
+// three candidates and says why the real answer (give water a DROP, which
+// `examples/palette.json` already carries per kind and nothing reads) is
+// a decision about the SIMULATION and belongs with plan 02.
+//
+// ⚠ And it is the *right* interim rather than the cheap one, because the
+// two rejected candidates each fail on a principle:
+//
+//   - the painted set's BOUNDING BOX draws sea over every gap, so two
+//     bases 500 hexes apart mesh a quarter-million hexes of ocean —
+//     unbounded cost on a sparse world;
+//   - the CHUNK's full extent makes how far the ocean reaches a function
+//     of where the tile boundaries happened to fall.  ⚠ That is
+//     `plans/22`'s rule arriving in a new place: a picture that depends
+//     on an implementation tiling is one nobody can reason about from
+//     inside.
+//
+// A one-hex ring depends on the MAP alone and is bounded by 7x the
+// painted set (~1.3x for any compact region).
+//
+// ⚠ **An erased gap is not silent, and M3 is where it speaks.**  A hole
+// shows the clear colour, which is not a palette colour, so
+// `classify_world` lands those pixels in `unknown` and M3's `other == 0`
+// goes red.  ⚠ Which is a REQUIREMENT on M3's clear colour: set it to a
+// palette colour and this interim's one failure mode becomes invisible.
+//
+// ── ⚠⚠ TWO reaches, both currently 1, and NOT one constant ──────
+//
+// `MESH_HALO_K` is how far an edit's consequences REACH — one hex,
+// because `ground_side_faces` reads one neighbour's height.  The ring
+// above is how far past the painted set anything is DRAWN — also one
+// hex, for the unrelated reason that sea is stored as absence.
+//
+// ⚠ They share a value and must not share a constant: plan 02's slope
+// solver raises the READ reach to two rings (a corner mean reads the
+// hexes sharing that corner) without changing what should be drawn.
+// `tests/25_m2` measures the reach against `MESH_HALO_K` rather than
+// hard-coding it, so a blend added without widening the halo fails there
+// instead of drawing a seam nobody sees until they look at a tile edge.
+//
+// ── ⚠ There is no `ChunkField` here, and that is a change of plan ──
+//
+// `chunks.loft` wraps `gridmesh::ChunkField` for the editor's store
+// windowing at `CHUNK_HALO_K = 0`, and `@X047` says the mesh tile is a
+// separate one.  A second `ChunkField` at halo 1 was the obvious way to
+// spell that and it is the wrong way, for two reasons found while
+// writing it:
+//
+//   - ⚠⚠ `collect_dirty_inputs` SKIPS a dirty chunk that owns no cells.
+//     With a one-hex ring a chunk owning NOTHING can still have sea to
+//     draw — a hex painted on a tile boundary puts its ring in the next
+//     tile — so the incremental path would silently leave that tile's
+//     mesh stale, and only ever at a tile edge.
+//   - ⚠ `mark_borders` steps CHUNK coordinates rectangularly in (x, y).
+//     That is right here only because odd-r's six neighbours all lie
+//     within one step of q and of r — a property of this lattice that
+//     `gridmesh` cannot know, and `CLAUDE.md`'s rule is that nothing may
+//     step a coordinate except `lat_neighbour`.
+//
+// So the reach is asked directly: the chunks a hex touches ARE the chunks
+// of that hex and of its six `lat_neighbour`s.  ⚠ ONE mechanism with two
+// callers — `mesh_chunks_touched` answers both "which tiles does this
+// edit dirty" and, summed over the painted set, "which tiles are there".
+// A dirty rule derived differently from the build rule is two rules that
+// can disagree about a tile edge.
+//
+// ⚠ What is still `gridmesh`'s: `chunk_of`, whose `chunk_div` is floor
+// division rather than truncating, so a coordinate left of the origin
+// lands in the tile it is actually in.  That is the arithmetic worth
+// borrowing and the one a hand-rolled `>>` gets wrong.
+//
+// ── ⚠ The chunk list's ORDER is not part of any claim ───────────
+//
+// It comes off a hash, so it is whatever the hash gives.  Each tile is
+// meshed into its OWN mesh and compared by `ck`, exactly as
+// `compare.loft` compares layers by key — *hash iteration order is not
+// part of the state*.  ⚠ What IS part of the claim is the order WITHIN a
+// tile, and that is a coordinate walk; see `ground_chunk_mesh`.
+
+use lattice;
+use palette;
+use painted;
+use height;
+use passable;
+use gridmesh;
+
+// 32x32 hexes per tile — the same figure `chunks.loft` uses, and
+// moros_map's, so the shared substrate stays consistent.  ⚠ A separate
+// constant all the same: this one sizes a MESH and that one sizes a
+// store window, and the day either wants to move it must not drag the
+// other with it (`@X047`).
+pub const MESH_CHUNK_SHIFT: integer = 5;
+
+// How far an edit's consequences reach, in hexes — see § TWO reaches.
+// One, because `ground_side_faces` reads one neighbour's height.
+pub const MESH_HALO_K: integer = 1;
+
+// Sea's palette index.  ⚠ Named rather than spelled `0` at three call
+// sites, because it is doing real work: `hex_surface_index` answers 0
+// both for "painted sea" and for "never painted", which is what makes
+// the drawn region a question about SURFACES rather than about entries.
+// `tests/25_m2` asserts the palette's first kind really is sea.
+pub const MESH_KIND_SEA: integer = 0;
+
+// Hexes per tile per axis.
+pub fn mesh_chunk_span() -> integer {
+    1 << MESH_CHUNK_SHIFT
+}
+
+// The tile owning a hex.
+pub fn mesh_chunk_of(q: integer, r: integer) -> ChunkKey {
+    chunk_of(q, r, MESH_CHUNK_SHIFT)
+}
+
+// A tile's lowest (q, r) — the corner a coordinate walk starts from.
+pub fn mesh_chunk_origin(cx: integer, cy: integer) -> Hex {
+    mco_span = mesh_chunk_span();
+    Hex { q: cx * mco_span, r: cy * mco_span }
+}
+
+// Is this hex drawn at all? — § The drawn region.
+//
+// True where anything stands (painted, or carrying a runtime pile) and
+// true one hex out from that, which is the coastline.  ⚠ It asks
+// `hex_surface_index` rather than `lookup_painted` so a heap on an
+// unpainted hex counts: nothing puts one there today (an enemy dies only
+// where it could stand, and sea is not walkable) but a drawn region that
+// missed it would drop a pile through the floor.
+pub fn mesh_hex_drawn(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+                      q: integer, r: integer) -> boolean {
+    if hex_surface_index(pal, pw, hl, q, r) != MESH_KIND_SEA { return true; }
+    mhd_h = Hex { q: q, r: r };
+    for mhd_d in 0..6 {
+        mhd_n = lat_neighbour(mhd_h, mhd_d);
+        if hex_surface_index(pal, pw, hl, mhd_n.q, mhd_n.r) != MESH_KIND_SEA {
+            return true;
+        }
+    }
+    false
+}
+
+// Every tile one hex's geometry can reach — its own, plus its six
+// neighbours'.  Deduped; the order is the hash's (§ The chunk list's
+// order).
+//
+// ⚠ **This is the invalidation rule AND half the build rule.**  Read as
+// an edit: paint or erase (q, r) and exactly these tiles' meshes may
+// have moved — the hex's own faces changed, and so did those of every
+// drawn hex within one step of it, including ring hexes that just
+// appeared or vanished.  Read as a build: summed over the painted set it
+// is the tile list.  ⚠ Deriving the two separately is how a tile edge
+// goes stale.
+pub fn mesh_chunks_touched(q: integer, r: integer) -> vector<ChunkKey> {
+    mct_seen: hash<ChunkKey[ck]> = [];
+    mct_h = Hex { q: q, r: r };
+    mct_k = mesh_chunk_of(q, r);
+    // A keyed hash dedups on insert, which is what `gridmesh`'s own
+    // dirty index relies on — so no membership test is needed here.
+    mct_seen += [ChunkKey { ck: mct_k.ck, cx: mct_k.cx, cy: mct_k.cy }];
+    for mct_d in 0..6 {
+        mct_n  = lat_neighbour(mct_h, mct_d);
+        mct_nk = mesh_chunk_of(mct_n.q, mct_n.r);
+        mct_seen += [ChunkKey { ck: mct_nk.ck, cx: mct_nk.cx, cy: mct_nk.cy }];
+    }
+    mct_out: vector<ChunkKey> = [];
+    for mct_e in mct_seen {
+        mct_out += [ChunkKey { ck: mct_e.ck, cx: mct_e.cx, cy: mct_e.cy }];
+    }
+    mct_out
+}
+
+// Every tile the world has anything to draw in.
+//
+// The union of `mesh_chunks_touched` over everything that stands —
+// painted hexes and piled ones both, so a tile holding only a heap is
+// still meshed.  ⚠ A tile can appear here owning no painted hex at all:
+// that is the one-hex ring, and it is exactly the case
+// `collect_dirty_inputs` drops (§ There is no ChunkField here).
+pub fn mesh_chunks_all(pw: PaintedWorld, hl: const HeightLayer) -> vector<ChunkKey> {
+    mca_seen: hash<ChunkKey[ck]> = [];
+    for mca_p in pw.painted {
+        mca_ks = mesh_chunks_touched(mca_p.q, mca_p.r);
+        for mca_k in mca_ks {
+            mca_seen += [ChunkKey { ck: mca_k.ck, cx: mca_k.cx, cy: mca_k.cy }];
+        }
+    }
+    for mca_c in hl.cells {
+        mca_hs = mesh_chunks_touched(mca_c.q, mca_c.r);
+        for mca_j in mca_hs {
+            mca_seen += [ChunkKey { ck: mca_j.ck, cx: mca_j.cx, cy: mca_j.cy }];
+        }
+    }
+    mca_out: vector<ChunkKey> = [];
+    for mca_e in mca_seen {
+        mca_out += [ChunkKey { ck: mca_e.ck, cx: mca_e.cx, cy: mca_e.cy }];
+    }
+    mca_out
+}

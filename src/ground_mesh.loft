@@ -71,6 +71,7 @@ use painted;
 use height;
 use passable;
 use render_camera;
+use mesh_chunks;
 use mesh3d;
 
 // The z of a top face, given the hex's height.  A separate name because
@@ -194,24 +195,89 @@ pub fn ground_side_faces(m: Mesh, pal: vector<GroundType>, pw: PaintedWorld,
     }
 }
 
+// ─── One tile, one palette kind — plan 25 phase M2 ───────────────
+
+// The palette kinds present in one tile's drawn region, ascending.
+//
+// A caller builds one `Mesh` per kind (`@X074`), and asking for a kind
+// that is not in the tile costs a whole tile walk to produce an empty
+// mesh — so this says which walks are worth making.
+//
+// ⚠ ASCENDING rather than discovery order.  The kind list is a build
+// order and therefore an upload order; taken off a hash it would differ
+// between two builds of one map, which is the thing `mesh_crc` exists to
+// notice.
+pub fn ground_chunk_kinds(pal: vector<GroundType>, pw: PaintedWorld,
+                          hl: const HeightLayer, cx: integer, cy: integer)
+                          -> vector<integer> {
+    gck_seen: vector<boolean> = [];
+    for _ in 0..len(pal) { gck_seen += [false]; }
+
+    gck_span = mesh_chunk_span();
+    gck_o    = mesh_chunk_origin(cx, cy);
+    for gck_dr in 0..gck_span {
+        for gck_dq in 0..gck_span {
+            gck_q = gck_o.q + gck_dq;
+            gck_r = gck_o.r + gck_dr;
+            if !mesh_hex_drawn(pal, pw, hl, gck_q, gck_r) { continue; }
+            gck_k = hex_surface_index(pal, pw, hl, gck_q, gck_r);
+            if gck_k >= 0 && gck_k < len(pal) { gck_seen[gck_k] = true; }
+        }
+    }
+
+    gck_out: vector<integer> = [];
+    for gck_j in 0..len(pal) {
+        if gck_seen[gck_j] ?? false { gck_out += [gck_j]; }
+    }
+    gck_out
+}
+
+// One tile's ground, for one palette kind.
+//
+// Every drawn hex in the tile whose SURFACE is `kind`, as a top face
+// plus the side faces that hex owns, appended to `m`.  Which hexes are
+// drawn is `mesh_chunks.loft`'s question, not this one's — sea is stored
+// as absence, so the region is wider than the painted set (`@X075`).
+//
+// ⚠⚠ **The walk is by COORDINATE, and that is the load-bearing half.**
+// Row by row from the tile's own origin, so a tile's mesh is a function
+// of the MAP and not of the sequence it was painted in.  Iterate the
+// painted hash instead and one tile built alone comes out in a different
+// order from the same tile built inside a rebuild of everything —
+// identical geometry, different `mesh_crc`, and M2's invariant is then a
+// statement about hash internals.
+//
+// ⚠ It walks the tile once PER KIND, and `ground_chunk_kinds` walks it
+// again to find them: ~6 passes over 1024 hexes for a typical tile.  The
+// one-pass shape is a `Mesh` per kind held together, and `CLAUDE.md`
+// § Loft gotchas is why it is not written that way yet — a struct in a
+// container is a copy.  ⚠ The trigger to solve it is M4's ratio, not a
+// hunch.
+pub fn ground_chunk_mesh(m: Mesh, pal: vector<GroundType>, pw: PaintedWorld,
+                         hl: const HeightLayer, cx: integer, cy: integer,
+                         kind: integer) {
+    gcm_span = mesh_chunk_span();
+    gcm_o    = mesh_chunk_origin(cx, cy);
+    for gcm_dr in 0..gcm_span {
+        for gcm_dq in 0..gcm_span {
+            gcm_q = gcm_o.q + gcm_dq;
+            gcm_r = gcm_o.r + gcm_dr;
+            if hex_surface_index(pal, pw, hl, gcm_q, gcm_r) != kind { continue; }
+            if !mesh_hex_drawn(pal, pw, hl, gcm_q, gcm_r) { continue; }
+            ground_top_face(m, pal, pw, hl, gcm_q, gcm_r);
+            ground_side_faces(m, pal, pw, hl, gcm_q, gcm_r);
+        }
+    }
+}
+
 // ─── Open, and owned by a later phase ───────────────────────────
 //
-// ⚠ **What draws SEA is not decided, and it is M2's to decide.**
-// `painted.loft` erases a hex painted sea, so the painted set does not
-// contain the water — which means "mesh the painted set" leaves an
-// authored lake as a HOLE in the ground at exactly the height of the
-// land around it.  ⚠ It is not a hole a side quad covers either: sea's
-// height is 0 and so is grass's, so there is no face between them and
-// nothing is drawn on the boundary at all.
-//
-// The three candidates, none of them chosen here: mesh the painted set
-// plus a ring (covers a lake up to one hex wide and holes on a bigger
-// one), mesh the painted set's bounding region (draws sea over every
-// gap, including the infinite outside), or give water a real DROP —
-// which `examples/palette.json` already carries as a field per kind
-// (sea 0, water 1, rapids 3, waterfall 8) and nothing reads.
-//
-// ⚠ The third is the one that is a DESIGN answer rather than a mesher
-// workaround, and it changes `hex_height` for every consumer — so it is
-// a decision about the simulation, not about drawing, and it belongs
-// with plan 02.
+// ⚠ **What draws SEA has an INTERIM as of M2, not an answer.**  The
+// drawn region is the painted set plus a one-hex ring (`@X075`), which
+// draws the coastline and closes an erased gap up to two hexes wide;
+// `mesh_chunks.loft`'s header carries the argument and the two rejected
+// candidates.  The real answer is to give water the DROP
+// `examples/palette.json` already carries per kind (sea 0, water 1,
+// rapids 3, waterfall 8) and nothing reads — ⚠ which changes
+// `hex_height` for every consumer, so it is a decision about the
+// SIMULATION rather than about drawing, and it belongs with plan 02.
