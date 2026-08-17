@@ -146,6 +146,31 @@ pub fn lat_direction(a: const Hex, b: const Hex) -> integer {
     hex_grid::hex_neighbor_dir(a.q, a.r, b.q, b.r)
 }
 
+// The two corners of a hex's ring that bound the edge towards its
+// neighbour in direction `d`, in RING ORDER — consecutive, and the
+// pair WRAPS for one of the six.  Plan 25 M1.
+//
+// ⚠ The order is what a caller depends on: `ground_side_faces` walks
+// a quad up from the FIRST named corner, and that is what makes the
+// face point outward.  A pair given the other way round is a face
+// that draws nothing under `GL_CULL_FACE`.
+//
+// ⚠ Takes no `Hex`: unlike the neighbour LABEL delta, the corner
+// relation does NOT depend on row parity — a hexagon is the same
+// hexagon on both parities, and only its coordinates move.  Same
+// split as `lat_direction_unit`.
+//
+// ⚠ **Delegated and never tabulated**, for `lat_neighbour`'s reason:
+// a hand-written six-row table here is a second lattice, and it would
+// speak the right one only for as long as two copies stayed in step.
+// `tests/25_m1` re-derives the pairing GEOMETRICALLY — the two corners
+// nearest the neighbour's centre — rather than restating the table, so
+// the delegation is checked in dryopea's own frame rather than
+// assumed to survive its two y-negations.
+pub fn lat_edge_corners(d: integer) -> (integer, integer) {
+    hex_grid::hex_edge_corners(d)
+}
+
 // ─── Metric ─────────────────────────────────────────────────────
 
 // Distance in steps.

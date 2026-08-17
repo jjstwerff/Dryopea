@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// The ground, as triangles — plan 25 phase M0.
+// The ground, as triangles — plan 25 phases M0 (tops) and M1 (sides).
 //
 // The decisions are `plans/25-the-terrain-mesh/README.md` and are not
 // restated; what is here is what a reader of THIS file has to know.
@@ -121,6 +121,76 @@ pub fn ground_top_face(m: Mesh, pal: vector<GroundType>, pw: PaintedWorld,
         // (centre, corner j, corner j+1) — counter-clockwise from above,
         // which is why nothing here reverses anything.
         add_triangle(m, gtf_mid, gtf_a, gtf_b);
+    }
+}
+
+// Every side face this hex owns — plan 25 phase M1.
+//
+// One vertical quad per direction in which this column stands ABOVE
+// its neighbour, running from the neighbour's height up to this one's,
+// over the two corners `lat_edge_corners` names.  Emitted into `m`
+// unconditionally, exactly as `ground_top_face` is: a side belongs to
+// the column that STANDS, so it takes that column's surface colour and
+// the caller has already picked the mesh.
+//
+// ── ⚠ `hh <= nh` is the whole rule (`@X046`) ────────────────────
+//
+// The edge between two columns of different heights is ONE face, and
+// both cells can see it.  Without the guard each is emitted twice —
+// once from either side — and the second copy is back-facing, so under
+// `GL_CULL_FACE` it is invisible and pure cost.  ⚠ It is `<=` and not
+// `<` for the other half: two neighbours at the SAME height have no
+// face between them at all, and an unconditional quad there is a
+// zero-area sliver at every hex boundary in the world.
+//
+// ⚠ **Absent is zero, and that is correct.**  `PaintedWorld` is sparse
+// and sea-default, so a wall at the edge of the painted region has a
+// neighbour at height 0 and gets its quad.  The alternative — a lookup
+// that answers "no such hex" and skips — draws a base with one open
+// side, and only where the author stopped painting.
+//
+// ── ⚠ The normal comes from the NEIGHBOUR, not from the winding ──
+//
+// `lat_to_world(neighbour) − lat_to_world(here)`, normalised.  Reading
+// it off the cross product would be the same answer only for as long
+// as the corner ring's sense holds, and this file's header is one long
+// account of two negations that cancel.  Taking it from the two
+// centres is an outward direction by construction; `tests/25_m1`
+// asserts the WINDING agrees with it, which is the pair that licenses
+// `GL_CULL_FACE`.
+pub fn ground_side_faces(m: Mesh, pal: vector<GroundType>, pw: PaintedWorld,
+                         hl: const HeightLayer, q: integer, r: integer) {
+    gsf_h  = Hex { q: q, r: r };
+    gsf_hh = hex_height(pal, pw, hl, q, r);
+    gsf_cw = lat_to_world(gsf_h, 0.0);
+
+    for gsf_d in 0..6 {
+        gsf_n  = lat_neighbour(gsf_h, gsf_d);
+        gsf_nh = hex_height(pal, pw, hl, gsf_n.q, gsf_n.r);
+        if gsf_hh <= gsf_nh { continue; }
+
+        gsf_e = lat_edge_corners(gsf_d);
+        gsf_a = lat_corner_metres(gsf_h, gsf_e.0);
+        gsf_b = lat_corner_metres(gsf_h, gsf_e.1);
+
+        gsf_nw = lat_to_world(gsf_n, 0.0);
+        gsf_nm = normalize3(sub3(gsf_nw, gsf_cw));
+
+        // ⚠ The same y-negation the rim vertices make, for the same
+        // reason: `lat_corner_metres` answers in the SCREEN frame.
+        gsf_ax = gsf_a.0;
+        gsf_ay = -gsf_a.1;
+        gsf_bx = gsf_b.0;
+        gsf_by = -gsf_b.1;
+
+        // (a_bottom, b_bottom, b_top, a_top).  The ring runs
+        // counter-clockwise seen from above, so a quad walked up from
+        // the FIRST named corner faces outward.
+        gsf_i0 = add_vertex(m, vertex(vec3(gsf_ax, gsf_ay, gsf_nh), gsf_nm, vec2(0.0, 0.0)));
+        gsf_i1 = add_vertex(m, vertex(vec3(gsf_bx, gsf_by, gsf_nh), gsf_nm, vec2(1.0, 0.0)));
+        gsf_i2 = add_vertex(m, vertex(vec3(gsf_bx, gsf_by, gsf_hh), gsf_nm, vec2(1.0, 1.0)));
+        gsf_i3 = add_vertex(m, vertex(vec3(gsf_ax, gsf_ay, gsf_hh), gsf_nm, vec2(0.0, 1.0)));
+        add_quad(m, gsf_i0, gsf_i1, gsf_i2, gsf_i3);
     }
 }
 

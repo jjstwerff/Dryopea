@@ -85,7 +85,8 @@ exists today.
 | **AND IT OPENS**: `make play`, press **P**, and waves arrive because TIME PASSED — the crew lands at the core and WASD drives it.  ⚠ **Nothing of the game is DRAWN yet** (P4), so the console echo is the only way to see it.  ⚠ The mode gates the CLOCK and never the seam | [19](plans/19-the-interactive-loop/README.md), P3 shipped — P4 next |
 | A CAMERA that comes to the vehicle: an orbit camera whose azimuth is the VELOCITY's and whose elevation and boom are the player's.  ⚠⚠ **`camera_overview` at 89° IS the editor's view** — measured against the software rasteriser at **0.0014 rad of bearing and 0.56% of scale** (`@M022`), so it is one camera with two presets.  ⚠⚠ The 3-D world frame is **+y NORTH** and `lat_to_world` is the ONE negation | [21](plans/21-the-renderer/README.md), R1 shipped |
 | AND IT EASES: the camera lives on `PlayState`, steps on every frame, and shortens its boom behind a wall.  ⚠⚠ The approach is **`1 − e^(−k·dt)`** and moros's linear `k·dt` was REFUSED — `play.loft` is frame-rate independent and the linear form is not (`@M023`).  ⚠⚠ **The ease is what makes a LATTICE look like a moving world**: un-eased the camera moves on 12 frames of 240 and jumps a whole hex, eased on 221 with a worst frame nine times smaller | [21](plans/21-the-renderer/README.md), R2 shipped — plan **complete** |
-| ⚠⚠ **THE GROUND IS NOT MESHED YET** — and the job is HALF what plan 21 sized it at.  dryopea's ground is a flat plane with pillars on it (`height_override` non-null on **2 of 12** palette kinds), so moros's corner-height MEAN is a no-op at every hex and the mesher does not blend (`@X072`); `mesh3d::mesh_to_floats` + `graphics::GroupVboSet` already publish the whole GPU-side chunk cache.  ⚠ Colour is a **UNIFORM**, one mesh per palette kind (`@X074`) — a flat-unlit frame built that way can only contain palette colours, which is what keeps the exact classification alive.  ⚠⚠ **A reversed fan changes no count, no height and no vertex position — and draws NOTHING under `GL_CULL_FACE`**, so M0 gates the winding as DATA three phases before anything is drawn | [25](plans/25-the-terrain-mesh/README.md), M0 shipped — M1 next |
+| ⚠⚠ **THE GROUND IS NOT MESHED YET** — and the job is HALF what plan 21 sized it at.  dryopea's ground is a flat plane with pillars on it (`height_override` non-null on **2 of 12** palette kinds), so moros's corner-height MEAN is a no-op at every hex and the mesher does not blend (`@X072`); `mesh3d::mesh_to_floats` + `graphics::GroupVboSet` already publish the whole GPU-side chunk cache.  ⚠ Colour is a **UNIFORM**, one mesh per palette kind (`@X074`) — a flat-unlit frame built that way can only contain palette colours, which is what keeps the exact classification alive.  ⚠⚠ **A reversed fan changes no count, no height and no vertex position — and draws NOTHING under `GL_CULL_FACE`**, so M0 gates the winding as DATA three phases before anything is drawn | [25](plans/25-the-terrain-mesh/README.md), M0 shipped |
+| A COLUMN HAS SIDES: one vertical quad per edge where a hex stands above its neighbour, emitted **once**, by the side that STANDS.  ⚠⚠ **Both halves of `hh <= nh` fail invisibly** — no guard draws every faced edge twice and the copy is back-facing; `<` grows a zero-area sliver at every hex boundary in the world — so it is gated as four COUNTS on four fixtures (**6 / 10 / 0 / 5+6**).  ⚠⚠ A quad's NORMAL (from the two centres) and its WINDING (from the corner ring) are two facts that can disagree, and the test asserts they AGREE | [25](plans/25-the-terrain-mesh/README.md), M1 shipped — M2 next |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
 is derived rather than picked: **a single-hex body ramp onto a structure
@@ -101,7 +102,7 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 1202/1202 green under `scripts/test.sh`** (~177 s re-measured
+**Suite: 1211/1211 green under `scripts/test.sh`** (~177 s re-measured
 2026-08-17 — the `frame` measurements classify full 960x720 frames, the
 cost gate ticks a radius-40 world twice, and since plan 13 a dozen tests
 run whole scenarios to their fall.  ⚠ This line carried "~35 s" from
@@ -140,6 +141,16 @@ workload is not a backend answering correctly.**
 
 ⚠ Do not run two `scripts/test.sh` at once — both pre-clean
 `tests/actual/`, so they clobber each other and fail for no reason.
+
+⚠⚠ **And the suite's WALL CLOCK is not yours alone.**  Plan 25 M1 timed
+it at **293 s** twice against a documented ~177 s and nearly rewrote the
+figure; `ps` showed a `rustc` at 336% CPU, a `dotnet` at 101% and
+another project's `loft` probe, all from unrelated sessions on the same
+box.  The figure above was NOT changed on the strength of those
+readings.  ⚠ Before believing any timing here, look at what else is
+running — this is the same rule § Profiling the suite gives for the
+profiler (read the SAMPLE COUNT, never the seconds), arriving one level
+up.
 
 ⚠⚠ **Both gates can be taken out by the `graphics` cdylib, and it is a
 TOOLCHAIN fault every time — but the cause is NOT pinned, so do not
@@ -463,6 +474,19 @@ gate produce a non-trivial reading at all?*  Assert the disagreement is
 `> 0`, and assert the fixture is not degenerate.  Any gate that compares
 two computations of one thing can agree by both being empty.
 
+⚠⚠ **SEVERAL COUNTS IN ONE TEST FUNCTION ARE RANKED, NOT INDEPENDENT**
+(plan 25 M1).  loft abandons a test function at its FIRST failed
+assertion, so a function asserting four counts can only ever report the
+earliest one that breaks — and a break that moves two of them reports
+one.  Measured: the bundled version of `tests/25_m1_the_sides.loft`
+named a single failure where the split version names **three** for the
+identical break.
+⚠ The three quiet ones are not merely unhelpful; they are unmaintained.
+Nothing ever prints them, so nothing ever checks that they can fire.
+⚠ **The test is cheap and it is the same one M0 used**: falsify, and see
+whether the assertion SPEAKS.  A count that can never be the diagnosis
+is decoration, and splitting it into its own function is the whole fix.
+
 ⚠ **A gate whose reading is already saturated cannot see the thing you
 built.**  H2's plan said the crewed base's clock would rise again with
 helpers on it; measured, it does not move by a tick, because one tower
@@ -726,7 +750,7 @@ navigational summary of it.
 | `relabel.loft` / `convert.loft` | plan 09's old-label → new-label bijection, and the `.keys` converter |
 | `camera.loft` | `EditorCamera` + `camera_update`.  ⚠ pan NORTH is `r += 1` |
 | `render_camera.loft` | **the GAME's camera** (plan 21 R1) — `RenderCamera`, the two presets, and `lat_to_world`; and since R2 the EASE — `CameraRig`, `camera_rig_step`, `camera_boom_free`.  ⚠⚠ Its world is `+y` **NORTH** with `+z` up, which is NOT dryopea's `+y`-south canvas frame: that one is left-handed once z points up, and `mat4_look_at` MIRRORS it.  ⚠ Assert on `camera_eye_of_view`, never on the struct.  ⚠⚠ The approach is `1 − e^(−k·dt)`, never `k·dt` |
-| `ground_mesh.loft` | **the GROUND, as triangles** (plan 25 M0) — `ground_top_face`, a six-triangle fan per hex in the CAMERA's world.  ⚠⚠ There is no blend and that is measured, not lazy (`@X072`): the corner mean is a no-op at every hex in both directions.  ⚠ HEIGHT off `hex_height`, COLOUR off `hex_surface_index` — two lookups, and swapping them makes debris LOWER a wall.  ⚠ Colour is a UNIFORM, so it emits one mesh per palette kind (`@X074`); putting it on the vertex throws away the exact classification |
+| `ground_mesh.loft` | **the GROUND, as triangles** (plan 25 M0-M1) — `ground_top_face`, a six-triangle fan per hex in the CAMERA's world, and `ground_side_faces`, one vertical quad per faced edge.  ⚠⚠ There is no blend and that is measured, not lazy (`@X072`): the corner mean is a no-op at every hex in both directions.  ⚠ HEIGHT off `hex_height`, COLOUR off `hex_surface_index` — two lookups, and swapping them makes debris LOWER a wall.  ⚠ Colour is a UNIFORM, so it emits one mesh per palette kind (`@X074`); putting it on the vertex throws away the exact classification.  ⚠⚠ A side face is emitted ONCE, by the column that STANDS (`if hh <= nh { continue; }`) — and **both halves of that guard fail invisibly**, so they are gated as COUNTS |
 | `painted.loft` | `PaintedHex` / `PaintedWorld` — sparse, sea-default ground |
 | `palette.loft` | `GroundType` + `load_palette` + `GROUND_RUBBLE` |
 | `markers.loft` / `marker_file.loft` / `marker_render.loft` | the marker layer, its save format and its drawing.  `place_marker` is the ONE dispatch |
@@ -1114,7 +1138,8 @@ signature.
 | Ask what shortens the camera's boom, or add an occluder | `src/render_camera.loft::camera_boom_free` over `passable.loft::sight_first_block` — **the same walker `tower_sees` asks** (`@X071`).  ⚠ It answers WHERE rather than whether, because a boom needs a distance and a shot needs a yes/no.  ⚠ The camera reads a HEIGHT and never a kind: a `wall` at the far cell lends the whole boom and a `wall_high` there does not, while ONE HEX OUT both stop it because the ray is only 1.6 m up (`@M024`).  ⚠ The free length is quantised to hex steps and smoothed in TIME; the trigger for a sub-hex march is terrain elevation (plan 02) |
 | Ask where the game's camera is REMEMBERED between frames | `PlayState.cam` — a `CameraRig`, which is the live `RenderCamera` plus the boom the PLAYER asked for (`@X014`, `@X070`).  ⚠ **Two booms are two facts**: occlusion lends the eye less, it never rewrites the ask, or a wall the vehicle drove past would shorten the camera for the rest of the run.  ⚠ `play_step` steps it LAST and on EVERY frame — inside `play_advance`'s tick loop it would run on one frame in forty at 60 fps and stutter with the right average |
 | Point the camera at the vehicle, or ask which way it is facing | `src/render_camera.loft::camera_follow_vehicle` over `vehicle_facing` — the bearing comes from the **VELOCITY** (`metres(to) − metres(here)`), because a hover unit has no stored facing (`@X067`).  ⚠ It answers a PAIR: plan 19 P2 spells *stop* as `vehicle_drive(v, v.q, v.r)`, so a parked vehicle's velocity is zero and `atan2(0, 0)` would swing the camera east on every key release.  ⚠⚠ **Never paste moros's `azimuth = 270° − facing_deg`** — correct in moros's frame, and in dryopea's it puts the eye exactly ABEAM at all four cardinal headings, where it still tracks and still eases and still looks like a working camera |
-| Draw the GROUND, or ask why the terrain mesh does not blend | [`plans/25`](plans/25-the-terrain-mesh/README.md) § What was measured first — ⚠⚠ **the corner-height MEAN is a no-op in dryopea** (`@X072`): `height_override` is non-null on two of twelve palette kinds, so the ground is a flat plane with pillars and the mean changes nothing across ground *or* across a structure's edge.  ⚠ It is honest rather than cheap — the sim asks `can_step`, a height DIFFERENCE, so a sloped mesh would draw a ramp the vehicle cannot climb.  ⚠ The corner↔direction relation is `hex_grid::hex_edge_corners`, delegated and never tabulated (`@X073`).  ⚠ The corner ring winds **counter-clockwise** in the camera's world (two negations cancel), so `GL_CULL_FACE` needs no reversal — and M3 turns culling ON so a reversed winding fails loudly.  ⚠ The trigger to add the blend is [`plans/02`](plans/02-solver-validation-viewer/README.md), and M2's halo gate is the tripwire |
+| Draw the GROUND, or ask why the terrain mesh does not blend | [`plans/25`](plans/25-the-terrain-mesh/README.md) § What was measured first — ⚠⚠ **the corner-height MEAN is a no-op in dryopea** (`@X072`): `height_override` is non-null on two of twelve palette kinds, so the ground is a flat plane with pillars and the mean changes nothing across ground *or* across a structure's edge.  ⚠ It is honest rather than cheap — the sim asks `can_step`, a height DIFFERENCE, so a sloped mesh would draw a ramp the vehicle cannot climb.  ⚠ The corner↔direction relation is `lattice.loft::lat_edge_corners` over `hex_grid`, delegated and never tabulated (`@X073`) — and it takes no `Hex`, because unlike the neighbour LABEL delta the corner relation is parity-independent.  ⚠ The corner ring winds **counter-clockwise** in the camera's world (two negations cancel), so `GL_CULL_FACE` needs no reversal — and M3 turns culling ON so a reversed winding fails loudly.  ⚠ The trigger to add the blend is [`plans/02`](plans/02-solver-validation-viewer/README.md), and M2's halo gate is the tripwire |
+| Add a face to the mesh, or ask why a wall's side is drawn once | `src/ground_mesh.loft::ground_side_faces` and [`plans/25`](plans/25-the-terrain-mesh/README.md) § M1 — one quad per edge where a column stands above its neighbour, `if hh <= nh { continue; }` (`@X046`).  ⚠⚠ **Both halves of that guard fail INVISIBLY**: no guard draws every faced edge twice and the second copy is back-facing (pixel-identical, twice the mesh); `<` instead of `<=` grows a zero-area sliver at every hex boundary in the world (also pixel-identical).  So it is gated as four COUNTS — **6** for a lone wall, **10** for two adjacent, **0** for flat ground, **5 and 6** across a step — and the step fixture is the only one that can see the face drawn by the WRONG side.  ⚠ **Absent is zero**: a sparse sea-default world means a wall at the painted region's edge has a 0 m neighbour and gets its quad.  ⚠⚠ A quad's NORMAL comes from the two hex CENTRES and its WINDING from the corner RING — two facts, computed differently, and the test asserts they AGREE, because normals-out-triangles-in draws nothing under `GL_CULL_FACE` with every normal reading healthy |
 | Gate anything that is DRAWN by GL | [`docs/RENDERER.md`](docs/RENDERER.md) § R0 + § R4 — `xvfb` → GL → `gl_screenshot` → `imaging::png` → `classify_world`, measured at **zero** colour drift.  ⚠ Render FLAT UNLIT for the gate: a shaded frame turns one palette colour into a range and `unknown` stops meaning "fault".  ⚠ Never loosen to nearest-colour — that discards the property R0 measured |
 | Ask what a tower's top is, in the art | `docs/PARTS.md` § D3 — it is a SOCKET, and the simulation has had one since plan 17 T2 (`tower_detach_top` / `tower_mount_top`, which refuses an occupied tower).  ⚠ Which pose a tower draws in is ASKED of `TowerState`, never a second flag beside it |
 | Write/edit a `.loft` file | Loft language conventions: see § Important conventions above + loft's own `loft-write` skill |

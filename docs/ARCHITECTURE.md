@@ -296,8 +296,9 @@ src/
                    Owns `Hex { q, r }` (q is a COLUMN, r a ROW),
                    HEX_DIAMETER = 1.5m, HEX_FLAT_TO_FLAT, and the
                    `lat_*` verbs: lat_neighbour(s), lat_direction,
-                   lat_distance, lat_line, lat_disc, lat_to_metres /
-                   lat_from_metres, lat_corner_*, lat_to/from_axial.
+                   lat_edge_corners, lat_distance, lat_line, lat_disc,
+                   lat_to_metres / lat_from_metres, lat_corner_*,
+                   lat_to/from_axial.
                    ⚠ `src/world.loft` and its axial arithmetic are
                    DELETED (C6).  The `lat_` prefix is a scar from the
                    period when both existed; it stays because every
@@ -312,6 +313,18 @@ src/
                    neighbour delta depends on row parity, so a constant
                    (dq, dr) table does not exist.  The operation is
                    deleted by the conversion, not translated.
+                   ⚠ `lat_edge_corners(d)` (plan 25 M1, @X073) takes
+                   NO Hex, and the split is the point: the neighbour
+                   LABEL delta is parity-dependent, the corner
+                   relation is not — a hexagon is the same hexagon on
+                   both parities and only its coordinates move.  Same
+                   shape as lat_direction_unit.  ⚠ Delegated, never
+                   tabulated; `tests/25_m1` re-derives the pairing
+                   GEOMETRICALLY (the two corners nearest the
+                   neighbour's centre, both parities) rather than
+                   restating hex_grid's six rows, so the check is made
+                   in dryopea's own frame instead of assumed to
+                   survive its two y-negations.
                    ⚠ `hex_grid::hex_round` answers AXIAL, not offset —
                    `lat_from_axial` is what stops that shearing a cell
                    silently.
@@ -399,12 +412,13 @@ src/
                    ask; the boom's free length is quantised to hex
                    steps and smoothed in TIME.
   ground_mesh.loft
-                   THE GROUND, as triangles (plan 25 M0).
+                   THE GROUND, as triangles (plan 25 M0 + M1).
                    `ground_top_face` emits one hex's top as a
-                   six-triangle fan around its centre, in the
-                   CAMERA's world — so this is the only geometry
-                   dryopea produces that is not in the screen
-                   frame.
+                   six-triangle fan around its centre, and
+                   `ground_side_faces` the vertical quads it owns —
+                   both in the CAMERA's world, so this is the only
+                   geometry dryopea produces that is not in the
+                   screen frame.
                    ⚠⚠ There is NO blend, and that is measured
                    rather than lazy (@X072).  moros's corner-height
                    mean is what makes terrain slope instead of
@@ -437,6 +451,34 @@ src/
                    triangles, because a reversed fan changes no
                    count, no height and no position and draws
                    NOTHING under GL_CULL_FACE.
+                   ⚠⚠ A side face is emitted ONCE, by the column
+                   that STANDS — `if hh <= nh { continue; }`
+                   (@X046).  Both halves are load-bearing and both
+                   fail INVISIBLY: without the guard the edge is
+                   drawn from either side and the second copy is
+                   back-facing (pixel-identical, twice the mesh);
+                   with `<` instead of `<=` every hex boundary in a
+                   flat world grows a zero-area sliver (also
+                   pixel-identical).  So `tests/25_m1` gates it as
+                   four COUNTS on four fixtures — 6 lone, 10 for
+                   two adjacent, 0 flat, 5-and-6 across a step —
+                   in four separate FUNCTIONS, because loft
+                   abandons a function at its first failed assert
+                   and a count that can never be the diagnosis is
+                   decoration.
+                   ⚠ Absent is ZERO: PaintedWorld is sparse and
+                   sea-default, so a wall at the edge of the
+                   painted region has a 0 m neighbour and gets its
+                   quad.  A lookup that answered "no such hex" and
+                   skipped would draw a base with one open side,
+                   and only where the author stopped painting.
+                   ⚠ The side's NORMAL comes from the two hex
+                   CENTRES (outward by construction), its WINDING
+                   from the corner RING — two facts computed from
+                   different things, and `tests/25_m1` asserts they
+                   AGREE.  A mesh whose normals point out and whose
+                   triangles wind in draws nothing under
+                   GL_CULL_FACE with every normal reading healthy.
   painted.loft     PaintedHex { q, r, kind: u8 }
                    + PaintedWorld { painted: hash<PaintedHex[q, r]> }
                    + paint(), lookup_painted(), paint_line()

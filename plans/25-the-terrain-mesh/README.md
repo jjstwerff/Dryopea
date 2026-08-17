@@ -9,16 +9,21 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**M0 done** (2026-08-17).  Suite **1202** green (1198 + 4), gate 33 scripts /
-**654 measurements unchanged** — a mesher is not a simulation, and the day it
-re-prices a scenario is the day something is reading it that should not be.
+**M0 + M1 done** (2026-08-17).  Suite **1211** green (1198 + 4 + 9), gate 33
+scripts / **654 measurements unchanged** — a mesher is not a simulation, and the
+day it re-prices a scenario is the day something is reading it that should not
+be.
 
-⚠ **All four M0 tests passed on the first run, which is when to check the gate
-can FAIL.**  Both load-bearing assertions were falsified deliberately and both
-fired, at exactly the values predicted: reversing the fan gives normal.z
-**−0.487** (§ What was measured first, 3, with the sign flipped) and taking the
-height off the SURFACE meshes the piled wall at **1.0 m** instead of 4.0.
-§ M0 has the detail.
+⚠ **Every test in both phases passed on the first run, which is when to check
+the gate can FAIL.**  Seven load-bearing assertions were falsified deliberately
+and all seven fired, each at the value predicted for it.  § M0 and § M1 have the
+tables.
+
+⚠⚠ **M1's falsification found a defect in the TEST rather than in the code**,
+and it is the reusable half: four counts bundled into one function are RANKED,
+not independent — loft abandons a test function at its first failed assertion,
+so three of the four could never be printed.  Splitting them turned one
+diagnosis into three for the same break.  § M1.
 
 **Opened 2026-08-17.**  This plan takes
 [`plan 21`](../21-the-renderer/README.md)'s `R3`-`R5`, which that plan said
@@ -172,8 +177,8 @@ costs.  `@X073`.
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
 | **M0** — the top face | S | `tests/25_m0_the_top_face.loft` (4 fns) — one hex as six triangles at `hex_height`, keyed by `hex_surface_index`, winding recomputed from the emitted triangles.  ⚠ Both assertions falsified deliberately and both fired | **Done** (2026-08-17) |
-| **M1** — the sides | M | `tests/25_m1_the_sides.loft` — a quad per faced edge, emitted from the standing side only, over `lat_edge_corners` | **Next** |
-| **M2** — the world, in chunks | M | `tests/25_m2_the_rebuild.loft` — a ported `mesh_crc`, and one-chunk == all-chunks | Blocked on M1 |
+| **M1** — the sides | M | `tests/25_m1_the_sides.loft` (9 fns) — a quad per faced edge, emitted from the standing side only, over `lat_edge_corners`.  ⚠ Five breaks tried, five fired | **Done** (2026-08-17) |
+| **M2** — the world, in chunks | M | `tests/25_m2_the_rebuild.loft` — a ported `mesh_crc`, and one-chunk == all-chunks | **Next** |
 | **M3** — it is DRAWN, and gated | MH | a GL scenario under `xvfb`: upload per (chunk × kind), flat-unlit with colour as a **uniform**, capture, classify | Blocked on M2 |
 | **M4** — cost | S | `tests/25_m4_the_mesh_budget.loft` — a ratio, the `11_f8` shape | Blocked on M3 |
 
@@ -230,11 +235,12 @@ pixel would be a fault.  So `docs/RENDERER.md` § Open 3's *"flat unlit render
 mode for the gate"* is not a mode this plan adds later; it is the only way the
 mesher is written.
 
-## M1 — the sides
+## M1 — the sides (2026-08-17)
 
-For each of the six directions, if this hex stands **above** the neighbour,
-emit one vertical quad from the neighbour's height to this one's, over the two
-corners `lat_edge_corners(dir)` names.
+`src/ground_mesh.loft::ground_side_faces` + `lattice.loft::lat_edge_corners` +
+`tests/25_m1_the_sides.loft` (9 fns).  For each of the six directions, if this
+hex stands **above** the neighbour, one vertical quad from the neighbour's
+height to this one's, over the two corners `lat_edge_corners(dir)` names.
 
 ⚠ `@X046` is the whole rule: `if hh <= nh { continue; }`, or the same quad is
 emitted twice — once from each cell — *"and the second copy is back-facing, so
@@ -243,9 +249,83 @@ invisible, which is exactly why the count has to be gated here where it is data.
 
 ⚠ **Absent is zero.**  `PaintedWorld` is sparse and sea-default, so a wall at
 the edge of the painted region has a neighbour at height 0 and gets its side
-quad.  That is correct and is worth an assertion, because the alternative — a
-neighbour lookup that answers "no such hex" and skips — draws a base with one
-open side.
+quad.  Asserted, because the alternative — a neighbour lookup that answers "no
+such hex" and skips — draws a base with one open side, and only where the author
+stopped painting.  ⚠ Its control is the same wall ringed by PAINTED grass giving
+the identical six: the two worlds have to disagree about the map and agree about
+the mesh, or the assertion is comparing a fixture with itself.
+
+### ⚠⚠ Both halves of the guard fail INVISIBLY, so the gate is four counts
+
+Neither way of getting `hh <= nh` wrong changes a single pixel:
+
+| the break | what it does to the picture | what it does to the mesh |
+|---|---|---|
+| no guard at all | nothing — the second copy is back-facing | every faced edge twice |
+| `<` instead of `<=` | nothing — a sliver has no area | a zero-area quad at **every** hex boundary in the world |
+
+So M1 gates COUNTS on four fixtures that disagree about them — a lone wall
+(**6**), two adjacent walls (**10**, never 12), two grass hexes (**0**), and a
+step (**5** for the short column, **6** for the tall one).  ⚠ No one of them is
+enough: an unconditional quad passes the first, a mesher that skipped every
+shared edge passes the third, and the fourth is the only one that can see the
+face being drawn by the **wrong** side — the two-wall fixture cannot, because
+both its columns are the same height.
+
+### ⚠⚠ Four FUNCTIONS, not four asserts — and this is the reusable finding
+
+The first version of the file bundled all four counts into one test function.
+Falsifying the guard showed why that is wrong: **loft abandons a test function
+at its first failed assertion**, so the four were ranked rather than
+independent.  Dropping the `=` breaks the two-wall count *and* the flat-ground
+count, and only the two-wall one was ever printed.
+
+Split into four functions, the same break reports **three** independent
+failures.  ⚠ The rule generalises past this file: *a count that can never be the
+diagnosis is decoration*, and the way to tell is to falsify and see whether it
+speaks.
+
+### ⚠⚠ A quad carries TWO facts about which way it faces, and they can disagree
+
+M0 could only get the fan backwards.  A side quad has a stored **normal** and a
+triangle **winding**, and they are computed from different things — the normal
+from the two hex CENTRES (`lat_to_world(neighbour) − lat_to_world(here)`,
+outward by construction, which is moros's rule for the same reason), the winding
+from the corner RING.  They agree only because two y-negations cancel.
+
+⚠ So the test asserts each of them *and asserts they agree*.  A mesh whose
+normals point out and whose triangles wind in draws nothing under
+`GL_CULL_FACE` while every normal reads healthy — M0's reversed fan, arriving
+one layer down and now with a second valve to read healthy alongside it.
+
+### ⚠ Five breaks tried, five fired, each at its predicted value
+
+| the break | what the gate said |
+|---|---|
+| guard deleted (a quad per direction) | **three** failures: two walls `got 12`, flat ground `got 24 triangles`, the short column `got 6` |
+| `<` instead of `<=` | two walls `got 12`, flat ground `got 24 triangles` |
+| quad wound `(a_bot, a_top, b_top, b_bot)` | *face 0 winds against its own normal (agreement **−2.25**)* |
+| normal taken from centre−neighbour | *face 0's normal (−1, 0) points back INTO the column (outwardness **−0.6495**)* |
+| quad run to the ground instead of the neighbour's height | *exactly two vertices sit there; got **0** — the quad ran to the ground and buried the neighbour's top face* |
+| `lat_edge_corners` hand-tabulated as `(d, (d+1) % 6)` | the geometric check **and** the outwardness check, `3.9375 vs 0.5625` |
+
+⚠ The two magnitudes are the predicted ones and that is the point of quoting
+them: **−2.25** is the cross product of a 0.75 m edge with a 3 m wall, sign
+flipped, and **−0.6495** is the hexagon's apothem — so each break produced the
+number its geometry says it should, rather than merely *a* failure.
+
+### ⚠ `lat_edge_corners` takes no `Hex`, and the split is the point
+
+The neighbour LABEL delta is parity-dependent — that is what makes
+`lat_neighbour` the only stepper.  The corner relation is **not**: a hexagon is
+the same hexagon on both row parities and only its coordinates move.  Same shape
+as `lat_direction_unit`, which is uniform for the same reason.
+
+⚠ And the test **re-derives** the pairing rather than restating `hex_grid`'s six
+rows: the two corners it names must be the two geometrically nearest the
+neighbour's centre, on both parities, and they must be consecutive in the ring.
+A test that copied the table would certify the copy — and would have been green
+through moros#10.  `@X073`.
 
 ## M2 — the world, in chunks
 

@@ -1,0 +1,478 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 25 phase M1 — the sides of a column, as triangles.
+//
+// ── ⚠⚠ The trap this file exists for ────────────────────────────
+//
+// The edge between two columns of different heights is ONE face and
+// BOTH cells can see it.  `@X046`'s `if hh <= nh { continue; }` is what
+// makes exactly one of them draw it — and getting it wrong is invisible
+// from every direction a reader would look.  Emit from both sides and
+// the extra copy is back-facing, so with `GL_CULL_FACE` on the picture
+// is pixel-identical and the mesh is twice the size it should be; drop
+// the `=` and every hex boundary in a flat world grows a zero-area
+// sliver, which is also pixel-identical.
+//
+// So the gate is a COUNT, asserted at four fixtures that disagree about
+// it: a lone wall (6), two adjacent walls (10, never 12), two grass
+// hexes (0), and a step (5 for the short column, 6 for the tall one).
+// ⚠ No one of them is enough on its own — an unconditional quad passes
+// the first, a mesher that skipped every shared edge passes the third,
+// and only the fourth can see the face drawn by the WRONG side, because
+// it is the only fixture whose two columns are different heights.
+//
+// ⚠⚠ **And they are four FUNCTIONS, not four asserts in one.**  loft
+// abandons a test function at its first failed assertion, so bundled
+// they would be ranked rather than independent: dropping the `=` from
+// the guard breaks the two-wall count AND the flat-ground count, and
+// only the first of them would ever be printed.  Measured — the bundled
+// version of this file reported exactly one of the two.  A count that
+// can never be the diagnosis is decoration.
+//
+// ── ⚠⚠ The winding, again, and now it can differ from the normal ──
+//
+// M0 could only get the fan backwards.  A side quad carries TWO facts
+// about which way it faces — the stored normal and the triangle
+// winding — and they are computed from different things: the normal
+// from the two hex CENTRES, the winding from the corner RING.  They
+// agree only because two y-negations cancel, which is exactly the
+// sentence this repo has been wrong about before.  § A face points away
+// from its column asserts both and asserts they agree, because a mesh
+// whose normals are outward and whose triangles are inward draws
+// nothing under `GL_CULL_FACE` while every normal reads healthy.
+//
+// ── ⚠ The corner pairing is re-derived, never restated ──────────
+//
+// `plans/25` § What was measured first, 4 tabulates `hex_edge_corners`.
+// That table is deliberately not in this file: `lat_edge_corners`
+// DELEGATES, and a test that repeated the six rows would certify the
+// copy rather than the delegation.  § The edge corners are the two
+// nearest the neighbour asks the geometric question instead, in
+// dryopea's own frame — which is the frame the two negations live in.
+
+#cwd
+
+use dryopea;
+
+const PALETTE_PATH: text = "examples/palette.json";
+
+// Palette indices, read off `examples/palette.json` by position — the
+// same three `tests/25_m0` names, and for its reason: `GROUND_RUBBLE`
+// is the only index dryopea's code names.
+const KIND_GRASS:     integer = 5;
+const KIND_WALL:      integer = 9;
+const KIND_WALL_HIGH: integer = 10;
+
+// ─── The fixtures ───────────────────────────────────────────────
+
+// A lone wall at the origin, ringed by grass.  Grass is 0 m, so all six
+// of the wall's edges are faces — and the ring is PAINTED so that the
+// count cannot be explained by "the neighbour does not exist".
+fn m1_lone_wall() -> PaintedWorld {
+    ml_pw = painted_empty();
+    ml_h  = Hex { q: 0, r: 0 };
+    paint(ml_pw, 0, 0, KIND_WALL as u8);
+    for ml_d in 0..6 {
+        ml_n = lat_neighbour(ml_h, ml_d);
+        paint(ml_pw, ml_n.q, ml_n.r, KIND_GRASS as u8);
+    }
+    ml_pw
+}
+
+// Two walls side by side in grass.  The shared edge is the one face
+// neither of them may draw twice.
+fn m1_two_walls() -> PaintedWorld {
+    mt_pw = painted_empty();
+    mt_a  = Hex { q: 0, r: 0 };
+    mt_b  = lat_neighbour(mt_a, 0);              // east
+    paint(mt_pw, mt_a.q, mt_a.r, KIND_WALL as u8);
+    paint(mt_pw, mt_b.q, mt_b.r, KIND_WALL as u8);
+    for mt_d in 0..6 {
+        mt_na = lat_neighbour(mt_a, mt_d);
+        mt_nb = lat_neighbour(mt_b, mt_d);
+        // ⚠ Unpainted reads as kind 0, never as a negative miss —
+        // `painted.loft` DELETES a hex painted 0 to keep the world
+        // sparse, so "is anything here" is a comparison with zero.
+        if lookup_painted(mt_pw, mt_na.q, mt_na.r) == 0 as u8 {
+            paint(mt_pw, mt_na.q, mt_na.r, KIND_GRASS as u8);
+        }
+        if lookup_painted(mt_pw, mt_nb.q, mt_nb.r) == 0 as u8 {
+            paint(mt_pw, mt_nb.q, mt_nb.r, KIND_GRASS as u8);
+        }
+    }
+    mt_pw
+}
+
+// How many quads a mesh holds.  Two triangles apiece, so an odd
+// triangle count is a mesher that lost half a face and is worth
+// naming rather than dividing away.
+fn m1_quads(mq_m: const Mesh) -> integer {
+    mq_t = len(mq_m.triangles);
+    assert(mq_t % 2 == 0, "a side face is two triangles; got {mq_t} of them");
+    (mq_t / 2) ?? 0
+}
+
+// ─── A face is emitted once, by the side that STANDS ────────────
+
+// The baseline: a column with nothing beside it owns every edge it has.
+// ⚠ On its own this is green for an unconditional quad per direction,
+// which is why it is the first of four and not the gate.
+pub fn test_a_lone_wall_owns_all_six_of_its_edges() {
+    tl_pal = load_palette(PALETTE_PATH);
+    tl_hl  = height_layer_empty();
+
+    tl_m = mesh("lone-wall");
+    ground_side_faces(tl_m, tl_pal, m1_lone_wall(), tl_hl, 0, 0);
+    tl_n = m1_quads(tl_m);
+    assert(tl_n == 6,
+           "a wall standing alone in grass owns all six of its edges; got "
+           + "{tl_n} quads");
+}
+
+// ⚠⚠ The gate: twelve edge-slots between two adjacent columns, and the
+// edge they SHARE accounts for two of them.  It is at equal height, so
+// neither side draws it — this is what separates "one face per edge"
+// from "a quad per direction".
+pub fn test_two_walls_do_not_both_draw_the_edge_they_share() {
+    tw_pal = load_palette(PALETTE_PATH);
+    tw_hl  = height_layer_empty();
+    tw_pw  = m1_two_walls();
+
+    tw_a = Hex { q: 0, r: 0 };
+    tw_b = lat_neighbour(tw_a, 0);
+    tw_m = mesh("two-walls");
+    ground_side_faces(tw_m, tw_pal, tw_pw, tw_hl, tw_a.q, tw_a.r);
+    ground_side_faces(tw_m, tw_pal, tw_pw, tw_hl, tw_b.q, tw_b.r);
+    tw_n = m1_quads(tw_m);
+    assert(tw_n == 10,
+           "two adjacent walls own ten faces, not twelve — the edge they "
+           + "share is at equal height and belongs to neither; got {tw_n}.  "
+           + "12 means the `hh <= nh` guard is gone");
+}
+
+// ⚠ The `=` half of the guard, on its own fixture.  An unconditional
+// quad fails here, and so does a strict `<` — a zero-area sliver at
+// every hex boundary in the world is still a quad, and it is invisible
+// in every picture.
+pub fn test_flat_ground_has_no_sides() {
+    tn_pal = load_palette(PALETTE_PATH);
+    tn_hl  = height_layer_empty();
+
+    tn_pw = painted_empty();
+    paint(tn_pw, 0, 0, KIND_GRASS as u8);
+    paint(tn_pw, 1, 0, KIND_GRASS as u8);
+    tn_m = mesh("flat");
+    ground_side_faces(tn_m, tn_pal, tn_pw, tn_hl, 0, 0);
+    ground_side_faces(tn_m, tn_pal, tn_pw, tn_hl, 1, 0);
+    assert(len(tn_m.triangles) == 0,
+           "flat ground has no sides; got {len(tn_m.triangles)} triangles "
+           + "— a zero-area sliver at every hex boundary in the world");
+}
+
+// ⚠ Which of the two draws it, rather than how many are drawn.  A
+// mesher that emitted the shared face from the SHORT side would give 6
+// and 5 — the same pair of numbers, the wrong way round — and the
+// two-wall count above cannot see it, because both its columns are the
+// same height.
+pub fn test_only_the_taller_column_draws_the_step() {
+    to_pal = load_palette(PALETTE_PATH);
+    to_hl  = height_layer_empty();
+
+    to_pw = painted_empty();
+    paint(to_pw, 0, 0, KIND_WALL      as u8);
+    paint(to_pw, 1, 0, KIND_WALL_HIGH as u8);
+
+    to_lo = mesh("the-short-one");
+    to_hi = mesh("the-tall-one");
+    ground_side_faces(to_lo, to_pal, to_pw, to_hl, 0, 0);
+    ground_side_faces(to_hi, to_pal, to_pw, to_hl, 1, 0);
+    to_nlo = m1_quads(to_lo);
+    to_nhi = m1_quads(to_hi);
+    assert(to_nlo == 5,
+           "the shorter column owns five of its six edges — not the one it "
+           + "shares with the taller; got {to_nlo}");
+    assert(to_nhi == 6,
+           "the taller column owns all six, including the step down to its "
+           + "neighbour; got {to_nhi}");
+}
+
+// ─── A quad runs from the neighbour's height to this one's ──────
+
+// ⚠ Both ends, and both are a real choice.  A quad that started at 0
+// instead of the neighbour's height passes every count above and buries
+// the neighbour's own top face; one that stopped at the AUTHORED height
+// instead of `hex_height` leaves a piled wall's rubble hanging in air.
+pub fn test_a_quad_spans_the_step() {
+    tq_pal = load_palette(PALETTE_PATH);
+
+    // wall_high (5 m) beside wall (3 m): the step is 3 → 5.
+    tq_pw = painted_empty();
+    paint(tq_pw, 0, 0, KIND_WALL      as u8);
+    paint(tq_pw, 1, 0, KIND_WALL_HIGH as u8);
+    tq_hl = height_layer_empty();
+
+    tq_m = mesh("the-step");
+    ground_side_faces(tq_m, tq_pal, tq_pw, tq_hl, 1, 0);
+
+    // The face towards the shorter wall is the only one that does not
+    // reach the ground, so its bottom is the number under test.
+    tq_lo = 9.0;
+    tq_hi = -9.0;
+    tq_n  = 0;
+    for tq_v in tq_m.vertices {
+        if tq_v.pos.z < tq_lo { tq_lo = tq_v.pos.z; }
+        if tq_v.pos.z > tq_hi { tq_hi = tq_v.pos.z; }
+        assert(tq_v.pos.z >= -1e-12 && tq_v.pos.z <= 5.0 + 1e-12,
+               "a side vertex sits between 0 and 5 m here, got {tq_v.pos.z}");
+        tq_n += 1;
+    }
+    assert(tq_n == 24, "six quads is 24 vertices, got {tq_n}");
+    assert(abs(tq_lo - 0.0) < 1e-12,
+           "the five faces onto sea reach the ground at 0.0, got {tq_lo}");
+    assert(abs(tq_hi - 5.0) < 1e-12,
+           "every face tops out at wall_high's 5.0 m, got {tq_hi}");
+
+    // Exactly two of the 24 vertices sit at the SHORT wall's 3 m — the
+    // bottom edge of the one face that lands on it.  ⚠ A quad that ran
+    // to 0 instead would put four more at 0 and none here, and every
+    // assertion above would still hold.
+    tq_at3 = 0;
+    for tq_w in tq_m.vertices {
+        if abs(tq_w.pos.z - 3.0) < 1e-12 { tq_at3 += 1; }
+    }
+    assert(tq_at3 == 2,
+           "the face onto the 3 m wall starts at 3 m, so exactly two "
+           + "vertices sit there; got {tq_at3} — 0 means the quad ran to "
+           + "the ground and buried the neighbour's top face");
+
+    // And the height is `hex_height`, so a metre of rubble on the short
+    // wall raises the bottom of that one face to 4 m and shrinks the
+    // step to 5 − 4.
+    tq_hl2 = height_layer_empty();
+    height_raise(tq_hl2, 0, 0, 1.0, RUBBLE_MASONRY as u8);
+    tq_m2 = mesh("the-piled-step");
+    ground_side_faces(tq_m2, tq_pal, tq_pw, tq_hl2, 1, 0);
+    tq_at4 = 0;
+    for tq_x in tq_m2.vertices {
+        if abs(tq_x.pos.z - 4.0) < 1e-12 { tq_at4 += 1; }
+    }
+    assert(tq_at4 == 2,
+           "a metre of rubble on the short wall lifts that face's foot to "
+           + "4.0 m; got {tq_at4} vertices there — the height was taken off "
+           + "the authored entry alone, so the rubble hangs in air");
+}
+
+// ─── Absent is zero ─────────────────────────────────────────────
+
+// ⚠ `PaintedWorld` is sparse and sea-default, so an unpainted neighbour
+// is height 0 and the face IS drawn.  The failure this guards is a
+// lookup that answers "no such hex" and skips: a base with one open
+// side, exactly where the author stopped painting, and nowhere else.
+pub fn test_absent_is_zero() {
+    ta_pal = load_palette(PALETTE_PATH);
+    ta_hl  = height_layer_empty();
+
+    ta_pw = painted_empty();
+    paint(ta_pw, 0, 0, KIND_WALL as u8);         // and NOTHING around it
+
+    ta_m = mesh("unpainted-surround");
+    ground_side_faces(ta_m, ta_pal, ta_pw, ta_hl, 0, 0);
+    ta_n = m1_quads(ta_m);
+    assert(ta_n == 6,
+           "a wall with no painted neighbour at all still owns six faces — "
+           + "absent is sea and sea is 0 m; got {ta_n}");
+
+    // The control that keeps that from being a tautology: the same wall
+    // ringed by PAINTED grass gives the identical count, so the two
+    // worlds really do disagree about the map and agree about the mesh.
+    ta_ringed = m1_lone_wall();
+    ta_m2 = mesh("painted-surround");
+    ground_side_faces(ta_m2, ta_pal, ta_ringed, ta_hl, 0, 0);
+    assert(m1_quads(ta_m2) == ta_n,
+           "painted grass and unpainted sea are both 0 m, so a wall between "
+           + "them owns the same six faces");
+    assert(lookup_painted(ta_pw, 1, 0) == 0 as u8,
+           "the unpainted fixture stopped being unpainted, so this whole "
+           + "test compares a world with itself");
+}
+
+// ─── A face points away from its column ─────────────────────────
+
+// ⚠⚠ Two facts about which way a quad faces, computed from two
+// different things, asserted separately and then asserted to AGREE.
+// A mesh whose normals point out and whose triangles wind in draws
+// nothing under `GL_CULL_FACE`, with every normal reading healthy.
+pub fn test_a_face_points_away_from_its_column() {
+    tp_pal = load_palette(PALETTE_PATH);
+    tp_hl  = height_layer_empty();
+    tp_pw  = m1_lone_wall();
+
+    tp_h  = Hex { q: 0, r: 0 };
+    tp_c  = lat_to_world(tp_h, 0.0);
+    tp_m  = mesh("outward");
+    ground_side_faces(tp_m, tp_pal, tp_pw, tp_hl, 0, 0);
+
+    tp_n     = 0;
+    tp_worst = 1e9;
+    for tp_t in tp_m.triangles {
+        tp_a = tp_m.vertices[tp_t.a] ?? vertex(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.0), vec2(0.0, 0.0));
+        tp_b = tp_m.vertices[tp_t.b] ?? vertex(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.0), vec2(0.0, 0.0));
+        tp_d = tp_m.vertices[tp_t.c] ?? vertex(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.0), vec2(0.0, 0.0));
+
+        // 1. The STORED normal is horizontal and points away from the
+        // column's centre.  Measured against the triangle's own
+        // centroid, so it is a statement about this face rather than
+        // about the six as a set.
+        tp_cx = ((tp_a.pos.x + tp_b.pos.x + tp_d.pos.x) / 3.0) ?? 0.0;
+        tp_cy = ((tp_a.pos.y + tp_b.pos.y + tp_d.pos.y) / 3.0) ?? 0.0;
+        tp_out = (tp_cx - tp_c.x) * tp_a.normal.x + (tp_cy - tp_c.y) * tp_a.normal.y;
+        assert(tp_out > 0.0,
+               "face {tp_n}'s normal ({tp_a.normal.x}, {tp_a.normal.y}) points "
+               + "back INTO the column it belongs to (outwardness {tp_out})");
+        assert(abs(tp_a.normal.z) < 1e-12,
+               "a side face is vertical, so its normal is horizontal; got "
+               + "z {tp_a.normal.z}");
+
+        // 2. The WINDING, computed from the triangle the mesher emitted:
+        // (b − a) × (d − a), which for a front face points the same way
+        // as the normal.
+        tp_ux = tp_b.pos.x - tp_a.pos.x;
+        tp_uy = tp_b.pos.y - tp_a.pos.y;
+        tp_uz = tp_b.pos.z - tp_a.pos.z;
+        tp_vx = tp_d.pos.x - tp_a.pos.x;
+        tp_vy = tp_d.pos.y - tp_a.pos.y;
+        tp_vz = tp_d.pos.z - tp_a.pos.z;
+        tp_wx = tp_uy * tp_vz - tp_uz * tp_vy;
+        tp_wy = tp_uz * tp_vx - tp_ux * tp_vz;
+
+        // 3. And the two AGREE.  ⚠ This is the assertion, not the two
+        // above: either alone is green for a mesh that draws nothing.
+        tp_dot = tp_wx * tp_a.normal.x + tp_wy * tp_a.normal.y;
+        assert(tp_dot > 0.0,
+               "face {tp_n} winds against its own normal (agreement {tp_dot}) "
+               + "— with GL_CULL_FACE on this face draws NOTHING while every "
+               + "normal reads healthy");
+        if tp_dot < tp_worst { tp_worst = tp_dot; }
+        tp_n += 1;
+    }
+
+    assert(tp_n == 12, "six quads is twelve triangles; the loop ran {tp_n}");
+    // ⚠ The non-degenerate control, M0's shape: a zero-area triangle
+    // agrees with any normal at all, because its cross product is the
+    // zero vector and `> 0.0` is the only thing that fails.  A 3 m wall
+    // of circumradius 0.75 gives a cross product of order 1.
+    assert(tp_worst > 0.1,
+           "the weakest face agrees with its normal by only {tp_worst} — the "
+           + "quads are degenerate, so the winding assertions proved nothing");
+}
+
+// ─── The edge corners are the two nearest the neighbour ─────────
+
+// ⚠ `lat_edge_corners` DELEGATES to `hex_grid`, and this is what makes
+// the delegation mean something in dryopea's frame: the pair it names
+// must be the two corners geometrically closest to the neighbour's
+// centre, on BOTH row parities.  ⚠ Re-derived rather than tabulated —
+// a test that restated the six rows would certify the copy and would
+// have been green through moros#10.
+pub fn test_the_edge_corners_are_the_two_nearest_the_neighbour() {
+    // Both parities: odd rows sit half a hex east, and the corner
+    // relation is the one lattice fact that does NOT move with parity.
+    te_hs = [Hex { q: 3, r: 2 }, Hex { q: 3, r: 3 }];
+    te_seen = 0;
+    for te_h in te_hs {
+        for te_d in 0..6 {
+            te_n  = lat_neighbour(te_h, te_d);
+            te_nm = lat_to_metres(te_n);
+            te_e  = lat_edge_corners(te_d);
+            te_e0 = te_e.0;
+            te_e1 = te_e.1;
+
+            // Rank all six corners by distance to the neighbour's
+            // centre; the named pair must be the two closest.
+            te_worst_named = -1.0;
+            te_best_other  = 1e9;
+            for te_i in 0..6 {
+                te_c  = lat_corner_metres(te_h, te_i);
+                te_dx = te_c.0 - te_nm.0;
+                te_dy = te_c.1 - te_nm.1;
+                te_dd = te_dx * te_dx + te_dy * te_dy;
+                if te_i == te_e0 || te_i == te_e1 {
+                    if te_dd > te_worst_named { te_worst_named = te_dd; }
+                } else {
+                    if te_dd < te_best_other { te_best_other = te_dd; }
+                }
+            }
+            assert(te_worst_named < te_best_other,
+                   "at hex ({te_h.q}, {te_h.r}) direction {te_d}, "
+                   + "lat_edge_corners names ({te_e0}, {te_e1}) — but one of "
+                   + "them is further from the neighbour than a corner it did "
+                   + "not name ({te_worst_named} vs {te_best_other})");
+            assert(te_worst_named > 0.0 && te_best_other < 1e9,
+                   "the corner ranking read nothing at direction {te_d}");
+            te_seen += 1;
+        }
+    }
+    assert(te_seen == 12, "twelve (hex, direction) pairs, not {te_seen}");
+
+    // And the pair is CONSECUTIVE in the ring, which is what makes the
+    // quad a rectangle rather than a chord across the hexagon.  ⚠ The
+    // distance test above cannot see it: the two nearest corners are
+    // adjacent for any sane table, so this asserts the ORDER as well.
+    for te_d2 in 0..6 {
+        te_e2 = lat_edge_corners(te_d2);
+        te_f0 = te_e2.0;
+        te_f1 = te_e2.1;
+        assert((te_f0 + 1) % 6 == te_f1,
+               "direction {te_d2}'s corners ({te_f0}, {te_f1}) are not "
+               + "consecutive in ring order — the quad is a chord, and its "
+               + "winding is whatever the chord happens to give");
+    }
+}
+
+// ─── The fixture is not degenerate ──────────────────────────────
+
+// ⚠ R1's generic control, one plan over: can this file's fixtures
+// produce a non-trivial reading at all?  Without it, a `paint` that
+// silently did nothing would make every count above read 0 or 6 for
+// reasons that have nothing to do with the mesher.
+pub fn test_the_fixture_is_not_degenerate() {
+    td_pal = load_palette(PALETTE_PATH);
+    td_hl  = height_layer_empty();
+    td_pw  = m1_lone_wall();
+
+    assert(len(td_pal) == 12, "the palette should hold 12 kinds, got {len(td_pal)}");
+
+    // The wall stands and its ring does not — which is the whole reason
+    // the lone-wall count is six rather than zero.
+    td_wall = hex_height(td_pal, td_pw, td_hl, 0, 0);
+    assert(abs(td_wall - 3.0) < 1e-12, "the fixture's wall should be 3.0 m, got {td_wall}");
+    td_h = Hex { q: 0, r: 0 };
+    td_n = 0;
+    for td_d in 0..6 {
+        td_nb = lat_neighbour(td_h, td_d);
+        td_nh = hex_height(td_pal, td_pw, td_hl, td_nb.q, td_nb.r);
+        assert(abs(td_nh - 0.0) < 1e-12,
+               "the ring should be flat grass; neighbour {td_d} is {td_nh} m");
+        assert(lookup_painted(td_pw, td_nb.q, td_nb.r) as integer == KIND_GRASS,
+               "the ring should be PAINTED, or 'absent is zero' is what the "
+               + "lone-wall count measures");
+        td_n += 1;
+    }
+    assert(td_n == 6, "the ring loop ran {td_n} times, not 6");
+
+    // And two adjacent walls really are adjacent — a fixture whose two
+    // walls had drifted apart would give 12 quads and read as the guard
+    // being gone.
+    td_two = m1_two_walls();
+    td_a   = Hex { q: 0, r: 0 };
+    td_b   = lat_neighbour(td_a, 0);
+    assert(lat_distance(td_a, td_b) == 1, "the two walls are not neighbours");
+    assert(lookup_painted(td_two, td_b.q, td_b.r) as integer == KIND_WALL,
+           "the second wall is not a wall, so 10 would mean nothing");
+
+    // The mesher emits something at all.
+    td_m = mesh("non-empty");
+    ground_side_faces(td_m, td_pal, td_pw, td_hl, 0, 0);
+    assert(len(td_m.triangles) > 0, "the mesher emitted nothing");
+}
