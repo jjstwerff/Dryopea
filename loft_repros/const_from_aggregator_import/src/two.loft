@@ -1,0 +1,22 @@
+// ⚠ THE TRIGGER — all three of these must hold together:
+//
+//   1. this file imports the AGGREGATOR (`use repro;`) rather than
+//      the sibling that owns the const (`use one;`),
+//   2. it declares a file-scope `const` whose INITIALISER reads that
+//      sibling's const,
+//   3. and the program being compiled is a CONSUMER ENTRY, not the
+//      aggregator itself.
+//
+// Change any one of them and it compiles and runs:
+//
+//   * `use one;` here                          -> ok, prints 857142857142
+//   * read ONE_PER_SECOND inside a FUNCTION     -> ok
+//   * initialise TWO_WHOLE from a literal       -> ok
+//   * compile src/repro.loft directly           -> ok (no diagnostic at all)
+use repro;
+
+pub const TWO_WHOLE: integer = ONE_PER_SECOND * 1000000;
+
+pub fn two_use(n: integer) -> integer {
+    (n * TWO_WHOLE) / 7
+}

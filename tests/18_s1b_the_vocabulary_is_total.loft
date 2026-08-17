@@ -90,14 +90,18 @@ fn test_every_field_of_the_state_is_reachable() {
     // The same state, built by hand.
     tef_want = wave_state_empty();
 
-    // ⚠ `progress` joined this literal in plan 23 K2b.  It was a field
-    // with no setter and it passed this test anyway, because at 1.5
-    // hex/s the carry is exactly 0.0 on both sides — the same
+    // ⚠ The banked carry joined this literal in plan 23 K2b.  It was a
+    // field with no setter and it passed this test anyway, because at
+    // 1.5 hex/s the carry is exactly 0.0 on both sides — the same
     // *default-on-both-sides* blindness the delay note below describes,
-    // caught by `18_s2`'s round trip instead.
+    // caught by `18_s2`'s round trip instead.  ⚠ Set through the door
+    // since plan 26 L2: the bank is an integer count of thirds of a
+    // microsecond's worth of ground and 0.75 of a hex is not a number
+    // anybody should be writing by hand.
     tef_want.enemies += [Enemy { q: 9, r: 1, kind: ENEMY_KIND_INSECT as u8,
                                  heading: 4 as u8, alive: false,
-                                 taken: 7.5, stand: 1.25, progress: 0.75 }];
+                                 taken: 7.5, stand: 1.25 }];
+    bank_restore_fraction((tef_want.enemies[0] ?? Enemy { }).bank, 0.75, BANK_WHOLE);
     tef_want.pick_cursor = 3;
 
     height_raise(tef_want.heights, 5, 1, 1.5, as_u8(RUBBLE_CARAPACE));
@@ -125,7 +129,7 @@ fn test_every_field_of_the_state_is_reachable() {
     helper_drive(tef_want.crew[0] ?? Helper { }, 8, 1);
     tef_wh = tef_want.crew[0] ?? Helper { };
     tef_wh.alive    = false;
-    tef_wh.progress = 0.5;
+    bank_restore_fraction(tef_wh.bank, 0.5, BANK_WHOLE);
     tef_wh.taken    = 15.0;
     tef_wh.recover  = 45.0;
 
@@ -239,7 +243,7 @@ fn test_a_crew_members_condition_is_authorable() {
     tcc_h = tcc.play.wave.crew[0] ?? Helper { };
     assert(helper_wrecked(tcc_h), "down");
     assert(helper_recovering(tcc_h), "and in recovery — the 60 s clock");
-    assert(tcc_h.progress == 0.5, "with banked movement");
+    assert(bank_fraction(tcc_h.bank, BANK_WHOLE) == 0.5, "with banked movement");
     assert(helper_hp(tcc_h) == HELPER_HP - 15.0, "and damage taken");
 }
 

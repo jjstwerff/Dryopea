@@ -45,6 +45,7 @@ use palette;
 use painted;
 use height;
 use passable;
+use tick_bank;
 
 // ─── The numbers ────────────────────────────────────────────────
 //
@@ -131,6 +132,15 @@ pub const VEHICLE_SALVAGE_REACH_HEXES: integer = 1;
 // ready.  So a `Vehicle { }` literal is an idle vehicle with a boost
 // available, which is the same zero-is-neutral rule `damage.loft` and
 // `wallet.loft` keep for their ledgers.
+// ⚠⚠ **`bank` is the field this struct spent three plans without, and
+// its absence was `@D003`** (plan 26 L2).  `Enemy` and `Helper` have
+// carried their remainder since plan 23 K2a and plan 14 H1; the player
+// truncated it, and was exact only because `3.0 * (1/1.5)` is 2.0 to
+// the bit.  Measured over one simulated minute at seven tick lengths
+// it covered **180 / 120 / 180 / 0 / 0 / 0 / 0** hexes against a true
+// 180, and stopped moving entirely under a 250 ms tick (`@M030`).
+// Zero is the neutral value for it, so a `Vehicle { }` literal is a
+// player standing squarely on its hex.
 pub struct Vehicle {
     q:          integer,
     r:          integer,
@@ -140,12 +150,14 @@ pub struct Vehicle {
     boost_left: float,     // seconds of boost still burning
     cool_left:  float,     // seconds before another boost is available
     taken:      float,     // blocker damage ABSORBED, never HP remaining
+    bank:       Bank,      // banked ground, always under a whole hex
 }
 
 // Factory: no vehicle in the world.
 pub fn vehicle_empty() -> Vehicle {
     Vehicle { q: 0, r: 0, to_q: 0, to_r: 0, parked: false,
-              boost_left: 0.0, cool_left: 0.0, taken: 0.0 }
+              boost_left: 0.0, cool_left: 0.0, taken: 0.0,
+              bank: bank_new() }
 }
 
 // ─── Blocker damage (plan 13 V5) ────────────────────────────────
@@ -189,10 +201,16 @@ pub fn vehicle_hurt(v: Vehicle, hp: float) {
 // drives out to cancel; there is no scramble in dryopea yet, so what
 // this does is the movement half only.  Recorded rather than silently
 // approximated — see `plans/13` § V5.
+// ⚠ **The carry goes with the damage** (plan 26 L2), for the reason
+// `helper_recover_tick` clears the crew's: what reappears at the core
+// is a repaired vehicle rather than the wreck that was destroyed, and
+// half a hex of banked ground toward somewhere it no longer stands is
+// not a fact about it.
 pub fn vehicle_respawn(v: Vehicle, core: const Hex) {
     v.taken      = 0.0;
     v.boost_left = 0.0;
     v.cool_left  = 0.0;
+    bank_reset(v.bank);
     vehicle_place(v, core.q, core.r);
 }
 
@@ -237,7 +255,8 @@ pub fn vehicle_climb(v: const Vehicle) -> float {
     VEHICLE_CLIMB_METRES
 }
 
-// What it covers in a tick of `tick_seconds`, in the state it is in.
+// How fast it moves right now, in hexes per second — boost or
+// cruise.
 pub fn vehicle_speed(v: const Vehicle) -> float {
     if vehicle_boosting(v) { return VEHICLE_BOOST_HEX_PER_SECOND; }
     VEHICLE_SPEED_HEX_PER_SECOND
@@ -273,62 +292,73 @@ pub fn vehicle_arrived(v: const Vehicle) -> boolean {
     v.q == v.to_q && v.r == v.to_r
 }
 
-// How many whole hexes the vehicle covers in a tick of `tick_seconds`.
+// Bank `elapsed` base time units of movement onto the player, and
+// answer the whole hexes it releases.
 //
-// ⚠ **A RATE, converted at the point it is applied** — the rule
-// `spawn.loft::per_tick` exists for and the reason `numbers.json` goes
-// on saying `hex/s`.  Two at today's tick, and the assertion that it
-// IS two lives in the test rather than here: a constant hard-coding 2
-// would stop reading the speed at all, and would go on saying 2 when
-// the timestep changes.
+// ⚠⚠ **This is the fix for `@D003`, and it is a BANK rather than a
+// better rounding** (plan 26 L2).  What stood here was
 //
-// ⚠ **The duration is a PARAMETER and that is a dependency rule, not
-// a style choice.**  `TICK_SECONDS` lives in `spawn.loft`, which
-// `use`s this file — so reading it from here is a cycle the compiler
-// refuses, and it is right to: the wave engine may know about the
-// player, and the player must not need the wave engine to move.
+//     (vehicle_speed(v) * tick_seconds) as integer
 //
-// ⚠⚠ **It TRUNCATES and carries NOTHING, and that is `@D003` — the one
-// mover in the game that is not tick-length independent.**  `Vehicle`
-// has no `progress` field, where `spawn.loft::enemy_bank` and
-// `helper.loft::helper_bank` both keep their remainder.  Every vehicle
-// speed in `numbers.json` is exact at TODAY's tick (3.0 and 6.0 hex/s
-// are 2 and 4 hexes) and that is the whole of why nothing has noticed:
-// the arithmetic is a hair from wrong rather than right.
+// which truncated and carried nothing, where `spawn.loft::enemy_bank`
+// and `helper.loft::helper_bank` had kept their remainder since plan
+// 23 K2a.  Every vehicle speed in `numbers.json` is exact at TODAY's
+// tick (3.0 and 6.0 hex/s are 2 and 4 hexes) and that is the whole of
+// why nothing noticed: the arithmetic was a hair from wrong rather
+// than right.
 //
 // ⚠⚠ **MEASURED over one simulated minute** at 667 / 500 / 333 / 200 /
 // 100 / 50 / 33 ms ticks (`@M030`, `tests/26_l0_the_timestep_sweep.
 // loft`): a miner at 1.0, a robot at 1.5, a scout at 2.5 and a helper
-// at 2.5 hex/s come back exact at all seven, and the player reads
-// **180 / 120 / 180 / 0 / 0 / 0 / 0** against a true 180.  Driving 40
-// hexes of painted corridor with a whole minute to do it in, it never
-// leaves its starting hex at 200 ms.  ⚠ And the failure is not "a bit
-// slow": at 200 ms a BOOSTING player covers 300 hexes and a cruising
-// one none, so the truncation does not scale a rate down, it reorders
+// at 2.5 hex/s came back exact at all seven, and the player read
+// **180 / 120 / 180 / 0 / 0 / 0 / 0** against a true 180 — never
+// leaving its starting hex at 200 ms with a whole minute to cross 40
+// hexes of painted corridor.  ⚠ And the failure was not "a bit slow":
+// at 200 ms a BOOSTING player covered 300 hexes and a cruising one
+// none, so the truncation did not scale a rate down, it reordered
 // which rates exist.
+//
+// ⚠ **A rounding is NOT the fix, and L0 measured that too**: a
+// `+ 0.5` here fires all four defect records while OVERSHOOTING — 240
+// hexes a minute at 500 ms — and still zeroes at the short end.  Only
+// a carry is a rate.
+//
+// ⚠ **The duration is a PARAMETER and that is a dependency rule, not
+// a style choice.**  `TICK_STEP_UNITS` lives in `spawn.loft`, which
+// `use`s this file — so reading it from here is a cycle the compiler
+// refuses, and it is right to: the wave engine may know about the
+// player, and the player must not need the wave engine to move.
+//
+// ⚠ **The speed is a LOOKUP** — `vehicle_speed` answers boost or
+// cruise — where `enemy_bank` takes an argument (`@X060`).  The player
+// has one class and its variation is a STATE this file owns; an
+// enemy's is a condition the roster owns.
 //
 // ⚠ **`plans/13` § V0 saw the shape and priced it as future work** —
 // the helper at 2.5 and the boss at 1.0 are not whole hexes a tick,
 // "and this function is where that lands".  What V0 could not see is
 // that the TIMESTEP is the axis rather than the speed: `@X058` made it
-// a free choice, and `plans/22`'s shorter tick is what turns this from
-// latent into load-bearing.
-//
-// ⚠ **The fix is `plans/26` L2** — the bank this never had, over L1's
-// integer clock, so it is exact rather than nudged.  Not patched in
-// place: a rounding that looks like a fix OVERSHOOTS (240 hexes at 500
-// ms) and still zeroes at the short end, measured.
-pub fn vehicle_hexes_per_tick(tick_seconds: float) -> integer {
-    (VEHICLE_SPEED_HEX_PER_SECOND * tick_seconds) as integer? ?? 0
+// a free choice, and `plans/22`'s shorter tick is what turned this
+// from latent into load-bearing.
+pub fn vehicle_bank(v: Vehicle, elapsed: integer) -> integer {
+    bank_gain(v.bank, bank_rate(vehicle_speed(v)), elapsed, BANK_WHOLE)
 }
 
-// The same, for whatever state the vehicle is in — two hexes idle and
-// four boosting, both exact at today's tick (plan 13 V0).
+// The MOST one timestep could move the player, in the state it is in —
+// an upper bound that spends nothing.
 //
-// ⚠⚠ **Exact at TODAY's tick and at no shorter one** — see the
-// truncation note above; this is the site `@D003` names.
-pub fn vehicle_hexes_this_tick(v: const Vehicle, tick_seconds: float) -> integer {
-    (vehicle_speed(v) * tick_seconds) as integer? ?? 0
+// ⚠ **A different question from `vehicle_bank`, and the reason it is a
+// separate door** (`tick_bank.loft::bank_most`).  A caller that wants
+// to know how far ahead to POINT the vehicle must not consume its
+// carry to find out — `play.loft::play_steer_reach` is the one, and
+// spelling it as a bank would make holding a key drain the player's
+// remainder once per frame.
+//
+// ⚠ It is the CEILING, so at today's tick it answers 2 cruising and 4
+// boosting exactly as the truncating version did, and it answers 1
+// rather than 0 at a tick too short to guarantee a hex.
+pub fn vehicle_hexes_per_tick(v: const Vehicle, elapsed: integer) -> integer {
+    bank_most(bank_rate(vehicle_speed(v)), elapsed, BANK_WHOLE)
 }
 
 // Clear rubble within reach for one tick, deepest heap first.
@@ -475,16 +505,21 @@ pub fn drive_along(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLa
 // Advance the vehicle one tick along the straight line to where it is
 // pointed, stopping early at the first step the ground refuses.
 pub fn vehicle_tick(v: Vehicle, pal: vector<GroundType>, pw: PaintedWorld,
-                    hl: const HeightLayer, tick_seconds: float) {
+                    hl: const HeightLayer, elapsed: integer) {
     if !v.parked { return; }
 
     vt_at = drive_along(pal, pw, hl,
                         Hex { q: v.q, r: v.r }, Hex { q: v.to_q, r: v.to_r },
-                        vehicle_hexes_this_tick(v, tick_seconds),
+                        vehicle_bank(v, elapsed),
                         vehicle_climb(v));
     v.q = vt_at.q;
     v.r = vt_at.r;
-    vehicle_burn(v, tick_seconds);
+
+    // ⚠ **The boost and the cooldown are TIMERS and still count float
+    // seconds** — `plans/26` § The invariant keeps them a separate
+    // family and L3 converts them.  `clock_seconds_from_units` is the
+    // one conversion, named so it can be found and deleted.
+    vehicle_burn(v, clock_seconds_from_units(elapsed));
 }
 
 // Spend one tick of the boost and the cooldown.

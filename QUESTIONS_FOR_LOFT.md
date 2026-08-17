@@ -64,6 +64,47 @@ fix / feature, move it to **Resolved**.
 Filed upstream as GitHub issues; kept here as dryopea's own record until
 the fix ships, then moved to Resolved.
 
+### A `const` initialised from a sibling module via the aggregator panics the compiler
+
+**Filed 2026-08-17 as
+[loft#962](https://github.com/loft-lang/loft/issues/962)** — `bug`,
+`sev:high`, `wa:clean`, `area:packages`, `area:parser`,
+`both-backends`, `hit-by:dryopea`.  Repro:
+[`loft_repros/const_from_aggregator_import/`](loft_repros/const_from_aggregator_import/README.md).
+
+A file-scope `const` whose **initialiser** reads a sibling module's
+const — where the sibling is reached through `use dryopea;` rather than
+imported directly — panics the variable allocator with `index out of
+bounds: the len is N but the index is 65535` in any consumer entry.
+
+⚠⚠ **Compiling `src/dryopea.loft` itself is completely clean**, so the
+library looks healthy and `loft test` panics on the first test file.
+⚠ The diagnostic points at an unrelated function's RETURN TYPE, and
+65535 is `u16::MAX` — it reads as an unresolved-variable sentinel
+escaping into a slot index, not as a name-resolution failure.
+
+**Hit by:** `src/tick_bank.loft` (plan 26 L2), whose `BANK_WHOLE` is
+`CLOCK_UNITS_PER_SECOND * BANK_RATE_SCALE`.  It was written with
+`use dryopea;` to match `src/tick_clock.loft` beside it — which reads
+nothing external and therefore never hit this.
+
+⚠⚠ **The workaround MOVES the bug rather than removing it** (commented
+on the issue 2026-08-17): `use tick_clock;` makes every real entry point
+and all 91 test files compile — and makes `loft --native-emit
+src/dryopea.loft` panic instead, naming `spawn.loft::per_tick`, a
+function two declarations below a *different* cross-module const
+(`TICK_SECONDS`, which plan 26 L1 introduced).  **There is no import
+style that compiles both.**
+
+⚠ Substituting one const at a time shows **one such const anywhere in
+the package is enough and a second adds no second failure**, so it reads
+as a global ordering problem rather than a per-site resolution one.
+
+**What the tree does:** `use tick_clock;` — the side that keeps the
+gates working.  The cost is that the aggregator can no longer be
+parse-checked directly; parse-check `src/main.loft` or any test file
+instead.
+
 ### A file-scope `const vector` holding a NEGATIVE literal reads back EMPTY
 
 **Filed 2026-08-17 as

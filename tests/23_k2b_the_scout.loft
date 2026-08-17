@@ -112,10 +112,10 @@ fn ticks_to_walk(kind: integer, from: integer, to: integer) -> integer {
 // Whole hexes released by banking `n` timesteps of `secs` at the speed
 // this CLASS walks at.  ⚠ Through the shipped `enemy_speed` and the
 // shipped `enemy_bank`, never a copy of either.
-fn banked_by(kind: integer, secs: float, n: integer) -> integer {
+fn banked_by(kind: integer, units: integer, n: integer) -> integer {
     bb_e   = westbound(9, kind);
     bb_got = 0;
-    for _ in 0..n { bb_got = bb_got + enemy_bank(bb_e, enemy_speed(as_u8(kind)), secs); }
+    for _ in 0..n { bb_got = bb_got + enemy_bank(bb_e, enemy_speed(as_u8(kind)), units); }
     bb_got
 }
 
@@ -311,20 +311,20 @@ fn test_the_epsilon_is_reachable_from_a_shipped_class() {
     // the guard the repeating fraction sums a hair short and this lands
     // on 99 — one hex in a hundred, reported as a wave that arrives a
     // tick late.
-    ter_scout = banked_by(ENEMY_KIND_SCOUT, TICK_SECONDS, 60);
+    ter_scout = banked_by(ENEMY_KIND_SCOUT, TICK_STEP_UNITS, 60);
     assert(ter_scout == 100,
            "a scout banks 100 hexes over 60 ticks, got {ter_scout}");
 
     // And 1.0 hex/s is the same trap the other way: 40 hexes, or 39
     // without it.
-    ter_miner = banked_by(ENEMY_KIND_MINER, TICK_SECONDS, 60);
+    ter_miner = banked_by(ENEMY_KIND_MINER, TICK_STEP_UNITS, 60);
     assert(ter_miner == 40,
            "and a miner 40, got {ter_miner}");
 
     // ⚠ The control that says the two above are about the GUARD and not
     // about the multiplication — the regular is exact with or without
     // it, which is the whole of why K2a could not gate its own epsilon.
-    ter_robot = banked_by(ENEMY_KIND_REGULAR, TICK_SECONDS, 60);
+    ter_robot = banked_by(ENEMY_KIND_REGULAR, TICK_STEP_UNITS, 60);
     assert(ter_robot == 60,
            "where the regular is exact either way, got {ter_robot}");
 }
@@ -336,11 +336,11 @@ fn test_the_epsilon_is_reachable_from_a_shipped_class() {
 fn test_a_class_at_zero_never_advances_and_never_divides() {
     tcz_e = westbound(9, ENEMY_KIND_REGULAR);
     for _ in 0..50 {
-        tcz_got = enemy_bank(tcz_e, 0.0, TICK_SECONDS);
+        tcz_got = enemy_bank(tcz_e, 0.0, TICK_STEP_UNITS);
         assert(tcz_got == 0, "0.0 hex/s releases nothing, got {tcz_got}");
     }
-    assert(tcz_e.progress == 0.0,
-           "and banks nothing either ({tcz_e.progress})");
+    assert(bank_progress(tcz_e.bank) == 0,
+           "and banks nothing either ({bank_progress(tcz_e.bank)})");
 }
 
 // ─────────────────────────────────────────────────────────────────

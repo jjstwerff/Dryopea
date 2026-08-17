@@ -177,7 +177,7 @@ fn test_the_roster_is_discriminated() {
     // remainder, and `emit.loft`'s round trip would certify a capture
     // that had silently lost it.
     tri_9 = peopled();
-    (tri_9.enemies[0] ?? Enemy { }).progress = 0.5;
+    bank_restore_fraction((tri_9.enemies[0] ?? Enemy { }).bank, 0.5, BANK_WHOLE);
     assert(saw(tri_9) != "", "an enemy's banked progress is seen");
 }
 
@@ -202,7 +202,7 @@ fn test_the_crew_is_discriminated() {
     helper_wreck(tcd_4.crew[0] ?? Helper { });
     assert(saw(tcd_4) != "", "a wrecked crew member is seen");
     tcd_5 = peopled();
-    (tcd_5.crew[0] ?? Helper { }).progress = 0.5;
+    bank_restore_fraction((tcd_5.crew[0] ?? Helper { }).bank, 0.5, BANK_WHOLE);
     assert(saw(tcd_5) != "", "banked movement progress is seen");
     tcd_6 = peopled();
     (tcd_6.crew[0] ?? Helper { }).taken = 15.0;

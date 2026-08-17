@@ -86,7 +86,7 @@ fn test_a_new_helper_is_alive_whole_and_standing_still() {
     assert(tan.q == 4 && tan.r == 1, "on its hex: ({tan.q}, {tan.r})");
     assert(helper_arrived(tan), "and going nowhere until it is told to");
     assert(helper_hp(tan) == HELPER_HP, "at full HP: {helper_hp(tan)}");
-    assert(tan.progress == 0.0, "with nothing banked");
+    assert(bank_progress(tan.bank) == 0, "with nothing banked");
 }
 
 // `numbers.json` § helper.roster_start / roster_cap — the numbers an
@@ -175,8 +175,9 @@ fn test_the_remainder_is_banked_and_never_exceeds_a_hex() {
     for _ in 0..12 {
         play(trb_s, trb_pw, 1);
         trb_h = trb_s.crew[0] ?? Helper { };
-        assert(trb_h.progress >= 0.0 && trb_h.progress < 1.0,
-               "carry is a fraction of a hex: {trb_h.progress}");
+        trb_c = bank_fraction(trb_h.bank, BANK_WHOLE);
+        assert(trb_c >= 0.0 && trb_c < 1.0,
+               "carry is a fraction of a hex: {trb_c}");
     }
 }
 

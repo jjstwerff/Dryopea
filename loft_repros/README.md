@@ -40,11 +40,14 @@ no longer reproducing).
 | [`json_null_into_non_null_scalar_field.loft`](json_null_into_non_null_scalar_field.loft) | A `text as vector<Struct>` cast stores JSON `null` into a field declared plain (non-null under DN1) — and `redundant-coalesce` then advises deleting the `?? 0.0` that guards the read.  Both backends. | [loft#870](https://github.com/loft-lang/loft/issues/870) |
 | [`struct_through_two_tail_calls.loft`](struct_through_two_tail_calls.loft) | A struct returned through TWO nested tail-position calls, with a struct LITERAL as an argument, loses everything its `while`+vector loop wrote.  1 cell interpreted, 0 native, 13 expected — silent on both. | [loft#880](https://github.com/loft-lang/loft/issues/880) |
 | [`mutating_a_returned_struct_is_lost.loft`](mutating_a_returned_struct_is_lost.loft) | A write through a struct RETURNED from a function is silently discarded, while the SAME element indexed inline or reached through a loop variable writes through.  No diagnostic — and `lost-write` is exactly the analysis that should have caught a write to a temporary discarded one instruction later. | [loft#894](https://github.com/loft-lang/loft/issues/894) |
+| [`const_from_aggregator_import/`](const_from_aggregator_import/README.md) | A file-scope `const` whose INITIALISER reads a sibling module's const — where the sibling is reached through the package AGGREGATOR rather than imported directly — panics the variable allocator (`index out of bounds: the len is N but the index is 65535`) in any CONSUMER entry.  ⚠ Three conditions and each alone defuses it: the aggregator import, the read being in a const initialiser rather than a function body, and the compiled program being a consumer.  ⚠⚠ **Compiling the aggregator itself is completely clean**, so the library looks healthy and every consumer fails.  ⚠ The diagnostic points at an unrelated FUNCTION's return type. | [loft#962](https://github.com/loft-lang/loft/issues/962) |
 | [`lost_write_false_positive/`](lost_write_false_positive/README.md) | An ambiguous bare struct name aborts the compile correctly — and dumps a FALSE `warning[lost-write]` beside it, against a loop-variable mutation in a *different package* whose write persists on both backends. | [loft#883](https://github.com/loft-lang/loft/issues/883) |
 
-⚠ **A reproducer may be a DIRECTORY.**  `lost_write_false_positive/` is
-one, because its trigger needs two libraries declaring the same struct
-name and that cannot be written in a single file.  Its own README carries
+⚠ **A reproducer may be a DIRECTORY.**  `lost_write_false_positive/` and
+`const_from_aggregator_import/` are, because their triggers need more
+than one file — the first two libraries declaring the same struct name,
+the second a package with an aggregator, two submodules and a consumer
+entry.  Its own README carries
 the run command and the attribution table.
 
 Five reproducers were **deleted on 2026-08-12** after re-running them

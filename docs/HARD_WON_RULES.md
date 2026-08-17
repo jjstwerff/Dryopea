@@ -523,9 +523,51 @@ thing in it*, and it is harder to see because the sweep looks thorough.
 you shipped, and sweep them over every mover, not the one you were
 thinking about.**  `@M013` varies the SPEED at one tick length through
 movers that carry, and cannot reach this from any direction.
-⚠ It is **not fixed** — [`plans/26`](../plans/26-the-fixed-step/README.md)
-L2 is the bank, over L1's integer clock, and
-`tests/26_l0_the_timestep_sweep.loft` pins today's wrong numbers as its
-tripwire.  ⚠ A vehicle that ROUNDS instead of truncating fires all four
-records while **overshooting** (240 hexes at 500 ms), so the fix has to
-be a bank and not a nudge.
+⚠ **FIXED in plan 26 L2** (2026-08-17) — the vehicle carries a `Bank`
+and the sweep reads 180 at all seven.  ⚠ A vehicle that ROUNDS instead
+of truncating fires all four records while **overshooting** (240 hexes
+at 500 ms) and still zeroes at the short end, which is what said the fix
+had to be a bank and not a nudge.
+
+⚠⚠ **AND THE FIFTH IS THE ACCUMULATOR ITSELF, NOW GONE** (plan 26 L1,
+`@X079`, `@M031`).  Simulation time is an integer count of a chosen
+step, so `advance(n × step) == step(n)` holds for all of 1..100000
+against the float path's 602-of-1000 failures.  ⚠⚠ **The step's BASE
+UNIT is the decision, and microseconds are the wrong one**: 2/3 of a
+second is not a whole number of µs, and the 666 667 the plan itself
+recommended as *"moving nothing"* moves **seventeen tests** while the
+654 gate measurements cannot see it.  The answer is 1/3 µs — the
+coarsest unit in which the tick is whole — and *a measurement's
+resolution is not its authority*.
+
+⚠⚠ **AND THEN ALL SEVEN SITES COLLAPSED INTO ONE** (plan 26 L2,
+`@X080`).  `src/tick_bank.loft` is now the only *do-not-lose-a-fraction*
+a mover has; `ENEMY_PROGRESS_EPSILON` and `HELPER_PROGRESS_EPSILON` are
+**deleted rather than zeroed**, which is the strongest form of `plans/17`
+T1's rule — a guard you can delete is one the arithmetic no longer
+needs, where a guard whose removal leaves the suite green is one that
+could never fire.  The three numbers that bought the epsilon are kept
+unchanged in `tests/23_k2a` (1.0 hex/s over 60 ticks is 40 hexes, 2.0 is
+80, 1.5 is 60): *the same answers, with no constant producing them.*
+
+⚠ **Two design constraints came out of it and both are counter-intuitive.**
+First, a `Bank` holds the CARRY and nothing else: the rate arrives per
+call (`@X061` — *a damaged robot moves slower* makes a rate a property
+of a CONDITION), and `whole` is a **parameter** rather than a field,
+because loft defaults an omitted struct field silently ([loft#914]) and
+dryopea builds `Enemy` from partial literals in a dozen places — a
+`Bank` carrying its own scale would default to zero in every one of them
+and freeze that mover, where a defaulted CARRY of zero is a fresh bank.
+⚠⚠ Second, **the reciprocal form was refused on arithmetic**: storing
+*base units per whole unit* needs no rate scale and would make `Bank`
+into `clock_advance` with a variable step, but `3 000 000 / 2.25` is
+1 333 333.33 and `@M013` already sweeps 2.25 hex/s.  *A rate scaled UP
+is exact for every authored number; a rate inverted is not* — which is
+why the two types stayed apart.
+
+⚠ **The one-shot TIMERS are untouched and that is the family boundary
+holding.**  Boost, cooldown, recovery, repair and the lull still count
+float seconds, through `clock_seconds_from_units` — one named seam, so
+it can be found and deleted at L3.  A bank's remainder is load-bearing
+for ever; a one-shot's dies at its boundary, and one primitive serving
+both is the over-unification `plans/26` was written to avoid.

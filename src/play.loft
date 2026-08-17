@@ -350,11 +350,17 @@ fn play_heading(input: const EditorInput) -> (float, float) {
 // what one tick can cover, because the target is re-pointed every
 // frame: shorter and a hold would stall on arrival, longer and a
 // RELEASE would coast further before § the stop takes effect.  A
-// boosting vehicle covers `vehicle_hexes_this_tick`, so one more than
-// that is the smallest honest answer — and it tracks a boost, which a
-// constant would not.
+// boosting vehicle covers at most `vehicle_hexes_per_tick`, so one
+// more than that is the smallest honest answer — and it tracks a
+// boost, which a constant would not.
+//
+// ⚠ **The CEILING, and it spends nothing** (plan 26 L2).  The player
+// banks its ground now, so asking "how far can one tick take me" with
+// `vehicle_bank` would consume the carry once per frame — sixty times
+// a tick at 60 fps.  `vehicle_hexes_per_tick` is the door that only
+// asks; `tick_bank.loft::bank_most` is why the two are separate.
 fn play_steer_reach(v: const Vehicle) -> integer {
-    vehicle_hexes_this_tick(v, TICK_SECONDS) + 1
+    vehicle_hexes_per_tick(v, TICK_STEP_UNITS) + 1
 }
 
 // Where a held heading points, as a hex.

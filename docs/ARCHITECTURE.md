@@ -109,6 +109,39 @@ src/
                    ⚠ **No tick COUNTER**: `PlayState.ticks` already
                    counts, and a second counter is two facts that can
                    disagree.  This owns the STEP and the BANK.
+                   ⚠ clock_seconds_from_units is the ONE seam back to
+                   float seconds and every caller is a one-shot TIMER
+                   (boost, cooldown, recovery, repair, the lull) — L3
+                   closes it.  A MOVER that reached for it would be
+                   throwing away what tick_bank was built to keep
+  tick_bank.loft   a RATE consumed in whole units, exactly (plan 26 L2)
+                   — Bank { progress } + bank_new / bank_rate /
+                   bank_gain / bank_most / bank_progress /
+                   bank_fraction / bank_restore /
+                   bank_restore_fraction / bank_reset, over
+                   BANK_RATE_SCALE and BANK_WHOLE.
+                   ⚠⚠ **The ONE implementation of *do not lose a
+                   fraction*.**  There were three copies plus a missing
+                   fourth (@D003 — the player truncated), and both
+                   mover epsilons are DELETED because integer
+                   arithmetic has nothing to nudge.
+                   ⚠⚠ **A Bank holds the CARRY and nothing else**
+                   (@X080): the RATE arrives per call, because @X061
+                   makes it a property of a CONDITION; and `whole` is a
+                   PARAMETER, because a Bank carrying its own scale
+                   would default to 0 in every partial struct literal
+                   and silently freeze that mover ([loft#914]).
+                   ⚠ **The rate is scaled and the time is not** — time
+                   is exact base units, a rate is an authored float, so
+                   bank_rate quantises to millionths.  The reciprocal
+                   form (units per hex) needs no scale and is INEXACT
+                   at 2.25 hex/s, which @M013 already sweeps.
+                   ⚠ **It is NOT a Timer** and must not become one: a
+                   bank's remainder is load-bearing for ever, a
+                   one-shot's dies at its boundary.  L3 builds Timer
+                   beside this, never on top of it.
+                   ⚠ bank_most is the CEILING and spends nothing
+                   (@X081) — `play_steer_reach` asks once per FRAME
 
   play.loft        the GAME's seam (plan 19 P1) — PlayState { wave,
                    clock, ticks, prev, playing, cam } +
@@ -814,11 +847,14 @@ src/
                    ⚠ **This is NOT "the tick becomes a timestep"** —
                    that warning is about a SHORTER tick, and F8's
                    budget trigger does not fire.
-                   ⚠ `HELPER_PROGRESS_EPSILON` is worth 6.7% of the
-                   speed, compounding: without it the carry sits on
-                   0.99999999999999956 and a hex is deferred for ever.
+                   ⚠ `HELPER_PROGRESS_EPSILON` was worth 6.7% of the
+                   speed, compounding: without it the carry sat on
+                   0.99999999999999956 and a hex was deferred for ever.
                    The gate is the 1-2-2 step PATTERN, because both
-                   wrong versions still arrive.
+                   wrong versions still arrive.  ⚠ Plan 26 L2 DELETED
+                   the epsilon — the bank is integer now, so the fifth
+                   hex in three ticks is `10 000 000 / 3 000 000` and
+                   needs nobody's permission.  The pattern gate stays.
                    H2 added `helper_salvage` — the player's clearing
                    rule, on the player's chassis, done by an NPC — and
                    a crew turn in `wave_tick` that earns into the RUN's
@@ -1099,13 +1135,14 @@ suite redirects its own shots into `tests/actual/`.
 | `GroundEntry` | `map_file.loft` | one persisted hex with kind as text name |
 | `ScriptRun` | `script.loft` | one `.keys` run — ok / failing line / message / counts, plus the pointer, the shots directory and the GAME it is playing.  ⚠ `run.play.wave` / `run.play.ticks` since plan 19 P1: the wave and the clock are ONE record, because `play_ticks` takes a `PlayState` and a run holding the pieces separately could only hand over copies |
 | `PlayState` | `play.loft` | a game in progress — the roster, the `TickClock`, the time banked toward the next tick, last frame's input, whether the session is LIVE, and the camera it is looking through.  ⚠ What a live session has that an edited one does not; the world is passed in, never owned, because a struct in a field is a copy.  ⚠ `playing` (plan 19 P3) gates the CLOCK and never the seam — `EditorInput.in_playing` is the other, per-frame half and says what the KEYS mean |
+| `Bank` | `tick_bank.loft` | the carry toward the next whole unit, as ONE integer — the shared half of every rate in the game, and the reason `Enemy`, `Helper` and `Vehicle` all release whole hexes the same way.  ⚠ It holds neither the rate (`@X061`) nor the scale (`@X080`), which is what makes `Bank { }` correct-neutral in a partial literal.  ⚠ `bank_progress` is what `compare.loft` reads and `bank_fraction` what `emit.loft` writes — an integer inside, hexes on the wire |
 | `TickClock` | `tick_clock.loft` | a fixed step and the time banked toward the next one, both INTEGERS — so `advance(n × step) == step(n)` exactly, where the float bank it replaced was wrong for 602 of the first 1000 `n`.  ⚠ `banked` is always in `[0, step)`, which is what makes it the whole of a rollback's timing state.  ⚠⚠ Its base unit is 1/3 µs and that was MEASURED rather than chosen for tidiness (`@X079`, `@M031`) |
 | `FrameCounts` | `measure.loft` | one classified frame — pixels per bucket, `unknown` (not a palette colour = a fault), `total` |
 | `WaveState` | `spawn.loft` | the enemy roster + round-robin cursor + the runtime rubble layer + the structure damage ledger + every tower's banked charge + the run's wallet + the crew + the cargo — runtime, not editor state |
-| `Vehicle` | `vehicle.loft` | the player: where it is, where it is pointed, and whether it is in the world at all — ⚠ `parked` is separate because (0, 0) is a real hex and is the core in every scenario |
+| `Vehicle` | `vehicle.loft` | the player: where it is, where it is pointed, whether it is in the world at all, and the ground it has banked — ⚠ `parked` is separate because (0, 0) is a real hex and is the core in every scenario.  ⚠⚠ `bank` arrived in plan 26 L2 and its ABSENCE was `@D003`: the player truncated its movement where every other mover carried, so it read 180 / 120 / 180 / 0 / 0 / 0 / 0 hexes a minute against a true 180 (`@M030`) |
 | `Wallet` | `wallet.loft` | points SPENT out of the run's 200 — zero is a FULL wallet, and the ledger is clamped at the budget so a later credit is not swallowed |
 | `TowerState` | `tower.loft` | per tower: the seconds banked toward its next shot, the shots it has FIRED out of its 30, and the seconds banked toward a REBUILD — runtime, never saved.  ⚠ Three clocks, and repair touches exactly one of them |
-| `Enemy` | `spawn.loft` | `{ q, r, kind, heading, alive, taken, stand, progress }` — ⚠ **three of the eight are ZERO-neutral and that is the trap**: `taken` is damage ABSORBED, `stand` is the pre-walk window still owed and `progress` is banked hexes not yet spent, so a literal that omits any of them is a HEALTHY enemy that has finished arriving and is carrying nothing.  ⚠ `progress` joined in plan 23 K2a and had no `.keys` setter until K2b, because at 1.5 hex/s the carry is exactly 0.0 after every tick and nothing in the repo could hold one |
+| `Enemy` | `spawn.loft` | `{ q, r, kind, heading, alive, taken, stand, bank }` — ⚠ **three of the eight are ZERO-neutral and that is the trap**: `taken` is damage ABSORBED, `stand` is the pre-walk window still owed and `bank` is ground banked but not yet spent, so a literal that omits any of them is a HEALTHY enemy that has finished arriving and is carrying nothing.  ⚠ The carry joined in plan 23 K2a and had no `.keys` setter until K2b, because at 1.5 hex/s it is exactly zero after every tick and nothing in the repo could hold one.  ⚠ It became a `Bank` in plan 26 L2 — and stayed zero-neutral through the nesting only because a `Bank` holds no scale (`@X080`) |
 | `CarryObject` | `carry.loft` | one carryable thing — ⚠ `owner` is the WHOLE state machine (ground / a carrier / spent), because two fields that can disagree about one fact is the defect the model exists to make unwritable |
 | `CargoLayer` | `carry.loft` | every carryable thing in the run — ⚠ a VECTOR with stable slots, never a hash by hex: two objects share a hex and a hash deletes one |
 | `HeightLayer` | `height.loft` | metres of rubble piled on the map at runtime, and what it is made of — never saved |

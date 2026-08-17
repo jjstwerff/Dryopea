@@ -44,6 +44,25 @@
 // tick, which is the property `plans/22`'s shorter simulation step
 // rests on entirely — and the tenth-tick case needs the epsilon too.
 //
+// ── ⚠⚠ AND THEN THE GUARD WAS DELETED — plan 26 L2 ──────────────
+//
+// Everything above is history now, and it is kept because the SHAPE is
+// the lesson rather than the constant.  `ENEMY_PROGRESS_EPSILON` is
+// gone: the bank is an exact integer count of a base time unit
+// (`tick_bank.loft`), so a hex is due or it is not and there is
+// nothing to nudge.  ⚠ **The three measurements it cost to find that
+// guard still stand** — 1.0 and 2.0 hex/s really did lose a hex in
+// sixty ticks, and the tenth-tick case really did land on 29 — which
+// is why `test_a_slower_class_used_to_need_the_guard` keeps their
+// numbers unchanged: the same answers, with no constant producing
+// them.
+//
+// ⚠ `test_the_guard_can_fire` is replaced by two functions rather than
+// deleted, and the replacement is STRONGER: a float bank could assert
+// that a hex a hair short was released, and it could not assert that a
+// hex exactly due leaves nothing behind, because "exactly" was not a
+// state its arithmetic could reach.
+//
 // ── What is deliberately NOT here ───────────────────────────────
 //
 // No class moves at a different speed.  That is K2b, and
@@ -92,25 +111,31 @@ fn desire_for(pw: PaintedWorld) -> FlowField {
 // One westbound regular at (q, 0), with the two fields these tests set
 // stated rather than defaulted.  Heading 3 is WEST — `(q - 1, r)` on
 // both row parities, so a heading can never change `r`.
-fn walker(q: integer, stand: float, progress: float) -> Enemy {
-    Enemy { q: q, r: 0, kind: as_u8(ENEMY_KIND_REGULAR), heading: 3 as u8,
-            alive: true, stand: stand, progress: progress }
+// ⚠ `carry` is a FRACTION of a hex, and it goes in through
+// `bank_restore_fraction` rather than into the literal — since plan 26
+// L2 the bank is an exact integer count and 0.75 of a hex is not a
+// number worth writing by hand (`tick_bank.loft` § bank_fraction).
+fn walker(q: integer, stand: float, carry: float) -> Enemy {
+    w_e = Enemy { q: q, r: 0, kind: as_u8(ENEMY_KIND_REGULAR), heading: 3 as u8,
+                  alive: true, stand: stand, taken: 0.0, bank: bank_new() };
+    bank_restore_fraction(w_e.bank, carry, BANK_WHOLE);
+    w_e
 }
 
-// A fresh enemy banked `n` times at `speed` over `dt`, answering the
-// whole hexes it released in total.  ⚠ Through the shipped
-// `enemy_bank`, never a copy of its arithmetic — a reimplementation
-// here would agree with itself and say nothing.
-fn banked(speed: float, dt: float, n: integer) -> integer {
+// A fresh enemy banked `n` times at `speed` over `dt` base time units,
+// answering the whole hexes it released in total.  ⚠ Through the
+// shipped `enemy_bank`, never a copy of its arithmetic — a
+// reimplementation here would agree with itself and say nothing.
+fn banked(speed: float, dt: integer, n: integer) -> integer {
     b_e   = walker(9, 0.0, 0.0);
     b_got = 0;
     for _ in 0..n { b_got = b_got + enemy_bank(b_e, speed, dt); }
     b_got
 }
 
-// Walk one enemy down `pw` for `n` steps of `dt`, and answer where it
-// stopped.
-fn walked(pw: PaintedWorld, from: integer, dt: float, n: integer) -> integer {
+// Walk one enemy down `pw` for `n` steps of `dt` base time units, and
+// answer where it stopped.
+fn walked(pw: PaintedWorld, from: integer, dt: integer, n: integer) -> integer {
     w_e = walker(from, 0.0, 0.0);
     w_f = field_for(pw);
     w_d = desire_for(pw);
@@ -132,12 +157,12 @@ fn test_a_tick_still_releases_exactly_one_hex() {
     // bit-for-bit claim a claim.
     tar_e = walker(9, 0.0, 0.0);
     for tar_i in 0..200 {
-        tar_got = enemy_bank(tar_e, ENEMY_SPEED_HEX_PER_SECOND, TICK_SECONDS);
+        tar_got = enemy_bank(tar_e, ENEMY_SPEED_HEX_PER_SECOND, TICK_STEP_UNITS);
         assert(tar_got == 1,
                "tick {tar_i} released {tar_got} hexes, not 1");
-        assert(tar_e.progress == 0.0,
-               "tick {tar_i} left a carry of {tar_e.progress} — at 1.5 hex/s "
-               + "over a 1/1.5 s tick the arithmetic is exact");
+        assert(bank_progress(tar_e.bank) == 0,
+               "tick {tar_i} left a carry of {bank_progress(tar_e.bank)} — at "
+               + "1.5 hex/s over a 2 000 000-unit tick the arithmetic is exact");
     }
 }
 
@@ -146,59 +171,84 @@ fn test_the_mover_still_walks_one_hex_a_tick() {
     // `tests/12_b0_probe.loft` measures for one tick and what every
     // arrival clock in the corpus is built on.
     tmw_pw = corridor(12);
-    tmw_at = walked(tmw_pw, 12, TICK_SECONDS, 10);
+    tmw_at = walked(tmw_pw, 12, TICK_STEP_UNITS, 10);
     assert(tmw_at == 2, "ten ticks from (12, 0) ends at (2, 0), got ({tmw_at}, 0)");
 }
 
 // ─────────────────────────────────────────────────────────────────
-// ⚠⚠ The guard, exercised where the tick arithmetic cannot reach it
+// ⚠⚠ The carry needs no guard — plan 26 L2
+//
+// What stood here was `test_the_guard_can_fire`, and it was a good
+// test of a thing that no longer exists.  `ENEMY_PROGRESS_EPSILON`
+// released a hex that was due to within 1e-9 and refused one that was
+// genuinely short, and both halves were needed because at 1.5 hex/s
+// the tick arithmetic could not reach either branch.
+//
+// ⚠ The bank is integer now, so *a hex a hair short* is not a state
+// the arithmetic can be in: a hex is due or it is not, and the two
+// functions below say so from opposite sides of the boundary rather
+// than from either side of a tolerance.  ⚠ The replacement is NOT
+// weaker — it is the same two claims with the ambiguity removed, and
+// the second one (a full unit banked releases and leaves nothing) is
+// the assertion the epsilon version could not make at all.
 // ─────────────────────────────────────────────────────────────────
 
-fn test_the_guard_can_fire() {
-    // A hair under a whole hex, INSIDE the epsilon's reach: the hex is
-    // due and the guard is the only thing that releases it.  Banking
-    // zero seconds is what keeps this a statement about the branch
-    // rather than about the timestep (`plans/17` T1's shape).
-    tgf_a = walker(9, 0.0, 0.999999999999);
-    tgf_1 = enemy_bank(tgf_a, ENEMY_SPEED_HEX_PER_SECOND, 0.0);
-    assert(tgf_1 == 1,
-           "a hex a hair short is released — that is the guard, and it "
-           + "answered {tgf_1}");
-
-    // ⚠ And the other half, because a guard that always says yes is not
-    // a guard: genuinely short of a hex, the epsilon must NOT invent
-    // one.  Without this the constant could be 0.5 and § The identity
-    // above would still pass.
-    tgf_b = walker(9, 0.0, 0.999999);
-    tgf_2 = enemy_bank(tgf_b, ENEMY_SPEED_HEX_PER_SECOND, 0.0);
-    assert(tgf_2 == 0,
-           "a hex that is genuinely not due is not released, got {tgf_2}");
-    assert(tgf_b.progress == 0.999999,
-           "and the carry it did not spend is untouched ({tgf_b.progress})");
+fn test_a_carry_short_of_a_hex_releases_nothing() {
+    // One unit short of a whole hex, with no time banked at all — so
+    // this is a statement about the BOUNDARY rather than about the
+    // timestep (`plans/17` T1's shape, kept).
+    tcs_e = walker(9, 0.0, 0.0);
+    bank_restore(tcs_e.bank, BANK_WHOLE - 1, BANK_WHOLE);
+    tcs_got = enemy_bank(tcs_e, ENEMY_SPEED_HEX_PER_SECOND, 0);
+    assert(tcs_got == 0,
+           "a hex one unit short of due is not released, got {tcs_got}");
+    assert(bank_progress(tcs_e.bank) == BANK_WHOLE - 1,
+           "and the carry it did not spend is untouched "
+           + "({bank_progress(tcs_e.bank)})");
 }
 
-fn test_a_slower_class_needs_the_guard() {
+fn test_a_carry_of_exactly_a_hex_releases_it_and_keeps_nothing() {
+    // ⚠ The half the float version could not state.  `bank_restore`
+    // refuses a carry AT a whole unit — that is a state `bank_gain`
+    // can never leave behind — so the boundary is reached by banking
+    // the last unit rather than by authoring it, which is also how a
+    // real mover reaches it.
+    tce_e = walker(9, 0.0, 0.0);
+    bank_restore(tce_e.bank, BANK_WHOLE - BANK_RATE_SCALE, BANK_WHOLE);
+    // ⚠ One BASE TIME UNIT at 1.0 hex/s is worth `BANK_RATE_SCALE` of
+    // progress — the two scales are not the same one, and reading the
+    // gap in the wrong currency is how this assertion was written
+    // wrong the first time.
+    tce_got = enemy_bank(tce_e, 1.0, 1);
+    assert(tce_got == 1,
+           "the unit that completes a hex releases it, got {tce_got}");
+    assert(bank_progress(tce_e.bank) == 0,
+           "and nothing is left over ({bank_progress(tce_e.bank)}) — an "
+           + "exact bank has no residue to defer");
+}
+
+fn test_a_slower_class_used_to_need_the_guard() {
     // 1.0 hex/s over the real timestep is two thirds of a hex a tick,
-    // so sixty ticks is exactly forty hexes.  ⚠ Without the epsilon the
-    // repeating fraction sums a hair short and this lands on 39 — one
-    // hex in forty, which no arrival assertion in the corpus could tell
-    // from a wave that spawned a tick late.
-    tas_slow = banked(1.0, TICK_SECONDS, 60);
+    // so sixty ticks is exactly forty hexes.  ⚠ These three numbers are
+    // unchanged from the epsilon era on purpose: the float path landed
+    // on 39 here without its guard, and the integer path lands on 40
+    // with nothing guarding it.  Same answer, no constant.
+    tas_slow = banked(1.0, TICK_STEP_UNITS, 60);
     assert(tas_slow == 40,
            "1.0 hex/s over 60 ticks is 40 hexes, got {tas_slow}");
 
     // 2.0 hex/s is the same trap in the other direction — more than a
-    // hex a tick, and still a hex short over sixty without the guard.
-    tas_fast = banked(2.0, TICK_SECONDS, 60);
+    // hex a tick, and still a hex short over sixty for the float path.
+    tas_fast = banked(2.0, TICK_STEP_UNITS, 60);
     assert(tas_fast == 80,
            "2.0 hex/s over 60 ticks is 80 hexes, got {tas_fast}");
 
-    // ⚠ The control that says the two above are about the GUARD and not
-    // about the multiplication: 1.5 needs no help at all, which is
-    // exactly why K2a cannot gate its own epsilon.
-    tas_today = banked(ENEMY_SPEED_HEX_PER_SECOND, TICK_SECONDS, 60);
+    // ⚠ The control that says the two above are about the ROUNDING and
+    // not about the multiplication: 1.5 needed no help at all, which is
+    // exactly why K2a could not gate its own epsilon.
+    tas_today = banked(ENEMY_SPEED_HEX_PER_SECOND, TICK_STEP_UNITS, 60);
     assert(tas_today == 60,
-           "and today's 1.5 hex/s is exact with or without it, got {tas_today}");
+           "and today's 1.5 hex/s was exact with or without it, got {tas_today}");
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -210,14 +260,16 @@ fn test_a_shorter_timestep_loses_nothing() {
     // merely close — which is the whole property a shorter simulation
     // step rests on (`plans/22`).  Thirty whole ticks, sixty halves and
     // three hundred tenths are the same thirty hexes.
-    tsl_whole = banked(ENEMY_SPEED_HEX_PER_SECOND, TICK_SECONDS, 30);
-    tsl_half  = banked(ENEMY_SPEED_HEX_PER_SECOND, TICK_SECONDS / 2.0, 60);
-    tsl_tenth = banked(ENEMY_SPEED_HEX_PER_SECOND, TICK_SECONDS / 10.0, 300);
+    tsl_whole = banked(ENEMY_SPEED_HEX_PER_SECOND, TICK_STEP_UNITS, 30);
+    tsl_half  = banked(ENEMY_SPEED_HEX_PER_SECOND, TICK_STEP_UNITS / 2, 60);
+    tsl_tenth = banked(ENEMY_SPEED_HEX_PER_SECOND, TICK_STEP_UNITS / 10, 300);
     assert(tsl_whole == 30, "30 whole ticks is 30 hexes, got {tsl_whole}");
     assert(tsl_half  == 30, "60 half-ticks is the same 30 hexes, got {tsl_half}");
-    // ⚠ And the tenth is the case that needs the epsilon — measured: it
-    // lands on 29 without it.  So the guard is not only K2b's problem,
-    // it is the shorter tick's.
+    // ⚠ The tenth is the case that used to need the epsilon — measured:
+    // the float path landed on 29 without it.  ⚠⚠ And since plan 26 L2
+    // the division above is EXACT rather than nearly so: 2 000 000
+    // units divides by ten, where `TICK_SECONDS / 10.0` did not divide
+    // by anything.  That is the whole of what the base unit bought.
     assert(tsl_tenth == 30, "300 tenth-ticks is the same 30 hexes, got {tsl_tenth}");
 }
 
@@ -226,8 +278,8 @@ fn test_the_mover_agrees_at_half_the_timestep() {
     // agrees rather than just the arithmetic.  Twenty half-ticks down
     // the corridor land on the hex ten whole ticks do.
     tma_pw   = corridor(12);
-    tma_full = walked(tma_pw, 12, TICK_SECONDS, 10);
-    tma_half = walked(tma_pw, 12, TICK_SECONDS / 2.0, 20);
+    tma_full = walked(tma_pw, 12, TICK_STEP_UNITS, 10);
+    tma_half = walked(tma_pw, 12, TICK_STEP_UNITS / 2, 20);
     assert(tma_full == tma_half,
            "half the timestep twice as often is the same walk: "
            + "({tma_full}, 0) vs ({tma_half}, 0)");
@@ -239,10 +291,10 @@ fn test_a_zero_timestep_moves_nothing() {
     // K2b's negative control (*a class at 0.0 hex/s must never advance
     // and must not divide by zero*) lands here for free.
     tzt_pw = corridor(12);
-    tzt_at = walked(tzt_pw, 12, 0.0, 50);
+    tzt_at = walked(tzt_pw, 12, 0, 50);
     assert(tzt_at == 12, "fifty zero-length ticks move nobody, got ({tzt_at}, 0)");
 
-    tzt_still = banked(0.0, TICK_SECONDS, 50);
+    tzt_still = banked(0.0, TICK_STEP_UNITS, 50);
     assert(tzt_still == 0, "and a class at 0.0 hex/s releases nothing, got {tzt_still}");
 }
 
@@ -261,12 +313,12 @@ fn test_a_standing_enemy_banks_nothing() {
     tsb_d  = desire_for(tsb_pw);
     for _ in 0..8 {
         enemy_tick(tsb_e, pal(), tsb_pw, height_layer_empty(), tsb_f, tsb_d,
-                   occupancy_empty(), blocker_empty(), TICK_SECONDS);
+                   occupancy_empty(), blocker_empty(), TICK_STEP_UNITS);
     }
     assert(tsb_e.q == 9, "a standing enemy has not moved, it is at ({tsb_e.q}, 0)");
-    assert(tsb_e.progress == 0.0,
-           "and it has banked NOTHING ({tsb_e.progress}) — otherwise the "
-           + "window is a wind-up rather than a pause");
+    assert(bank_progress(tsb_e.bank) == 0,
+           "and it has banked NOTHING ({bank_progress(tsb_e.bank)}) — "
+           + "otherwise the window is a wind-up rather than a pause");
 }
 
 fn test_a_blocked_enemy_does_not_store_a_dash() {
@@ -282,17 +334,18 @@ fn test_a_blocked_enemy_does_not_store_a_dash() {
     tbe_d = desire_for(tbe_pw);
     for _ in 0..10 {
         enemy_tick(tbe_e, pal(), tbe_pw, height_layer_empty(), tbe_f, tbe_d,
-                   occupancy_empty(), blocker_empty(), TICK_SECONDS);
+                   occupancy_empty(), blocker_empty(), TICK_STEP_UNITS);
     }
     assert(tbe_e.q == 6, "it is stopped on the hex before the wall, at ({tbe_e.q}, 0)");
-    assert(tbe_e.progress == 0.0,
-           "and ten refused hexes are SPENT, not stored ({tbe_e.progress})");
+    assert(bank_progress(tbe_e.bank) == 0,
+           "and ten refused hexes are SPENT, not stored "
+           + "({bank_progress(tbe_e.bank)})");
 
     // The breach: one tick past it is one hex past it, never ten.
     paint(tbe_pw, 5, 0, as_u8(GRASS));
     tbe_f2 = field_for(tbe_pw);
     enemy_tick(tbe_e, pal(), tbe_pw, height_layer_empty(), tbe_f2, desire_for(tbe_pw),
-               occupancy_empty(), blocker_empty(), TICK_SECONDS);
+               occupancy_empty(), blocker_empty(), TICK_STEP_UNITS);
     assert(tbe_e.q == 5,
            "the tick the wall comes down is worth ONE hex, not ten: ({tbe_e.q}, 0)");
 }
@@ -308,9 +361,9 @@ fn test_a_dead_enemy_banks_nothing() {
     tde_d = desire_for(tde_pw);
     for _ in 0..10 {
         enemy_tick(tde_e, pal(), tde_pw, height_layer_empty(), tde_f, tde_d,
-                   occupancy_empty(), blocker_empty(), TICK_SECONDS);
+                   occupancy_empty(), blocker_empty(), TICK_STEP_UNITS);
     }
-    assert(tde_e.q == 9 && tde_e.progress == 0.0,
+    assert(tde_e.q == 9 && bank_progress(tde_e.bank) == 0,
            "a dead enemy neither moves nor banks: ({tde_e.q}, 0) carrying "
-           + "{tde_e.progress}");
+           + "{bank_progress(tde_e.bank)}");
 }

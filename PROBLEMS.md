@@ -77,13 +77,20 @@ Severity tiers:
   zooms, and `classify_world` shares that DIFFER — a golden would
   agree with whatever it started drawing.
 
+## Fixed
+
 ### @D003 — the player is the one mover that throws its remainder away, so a shorter tick freezes it
 
-- **Status:** Open
-- **Severity:** High — it is silent, it is in the shipped mover, and it
-  is a **blocker for the shorter tick**
+- **Status:** **FIXED** 2026-08-17, plan 26 L2 — `Vehicle` carries a
+  `Bank` and `vehicle_bank` releases whole hexes exactly as
+  `enemy_bank` and `helper_bank` do.  The sweep that measured it reads
+  **180 at all seven tick lengths and 360 boosting**, and the four
+  functions that recorded the wrong numbers went RED on the phase that
+  changed them.
+- **Severity:** was High — it was silent, it was in the shipped mover,
+  and it was a **blocker for the shorter tick**
   ([`plans/22`](plans/22-the-field-cache/README.md) and `@X058`, which
-  made the timestep a free choice).  Today's tick hides it entirely.
+  made the timestep a free choice).  Today's tick hid it entirely.
 - **Found while:** plan 26 L0, building the instrument that asks whether
   any mover is tick-length independent.  The plan predicted the defect
   from a reading of the source (`plans/26` § 2, *seven sites re-assert
@@ -128,25 +135,32 @@ Severity tiers:
   swapped: the right sweep over a roster with none of the broken thing
   in it.  ⚠ And `@M013` cannot reach it from any direction — it varies
   the SPEED, at one tick length, through a mover that carries.
-- **Workaround:** none needed today.  `TICK_SECONDS` is 1/1.5 s and
-  nothing shortens it, which is exactly why this is worth writing down
-  before something does.
-- **Fix plan:** [`plans/26`](plans/26-the-fixed-step/README.md) **L2** —
-  the vehicle gains the bank it never had, over the integer clock L1
-  builds, so the fix is exact rather than nudged.  ⚠ Deliberately NOT
-  fixed in L0: the phase is the instrument, and a phase that changed
-  the thing it measured would have measured nothing (`@X064`'s rule,
-  plan 23 K3).
+- **Workaround:** none was needed.  `TICK_SECONDS` was 1/1.5 s and
+  nothing shortened it, which is exactly why it was worth writing down
+  before something did.
+- **Fix:** [`plans/26`](plans/26-the-fixed-step/README.md) **L2**
+  (2026-08-17) — `src/tick_bank.loft`, one exact integer accumulator
+  shared by all three movers, over the integer clock L1 built.  ⚠ A
+  ROUNDING is not the fix and L0 measured that too: `+ 0.5` in the old
+  expression fires all four defect records while **overshooting** (240
+  hexes a minute at 500 ms) and still zeroing at the short end.  Only a
+  carry is a rate.  ⚠ Deliberately NOT fixed in L0: the phase is the
+  instrument, and a phase that changed the thing it measured would have
+  measured nothing (`@X064`'s rule, plan 23 K3).
+- **What it took with it:** `ENEMY_PROGRESS_EPSILON` and
+  `HELPER_PROGRESS_EPSILON`, both **deleted** rather than zeroed.  The
+  float bank needed them (`@M017`: zeroing the first turned 7 of 1149
+  tests red and `scripts/validate.sh` with them); the integer bank has
+  no rounding to guard.
 - **Test:** [`tests/26_l0_the_timestep_sweep.loft`](tests/26_l0_the_timestep_sweep.loft)
-  § The vehicle does NOT — four functions that assert **today's wrong
-  numbers**, as the defect's record and L2's tripwire.  ⚠ They are a
-  "not yet" pin in `tests/23_k1`'s sense: the phase that fixes this
-  must turn every one of them RED, and the replacement is the
-  assertion the banked-mover functions in the same file already make.
-  Falsified on arrival — a vehicle that rounds instead of truncating
-  fires all four, and each names its whole profile.
-
-## Fixed
+  — the same instrument, asserting the true numbers, with the wrong
+  ones kept in its prose and its function names so the record survives
+  § The vehicle does TOO — the four functions that asserted **the wrong
+  numbers** as the defect's record and L2's tripwire.  ⚠ They were a
+  "not yet" pin in `tests/23_k1`'s sense: the phase that fixed this had
+  to turn every one of them RED, and it did.  Falsified on arrival too
+  — a vehicle that rounds instead of truncating fires all four while
+  overshooting, which is what said the fix had to be a bank.
 
 ### @D001 — clearing `prev.in_mouse_left` mid-step MANUFACTURES the edge it means to suppress
 

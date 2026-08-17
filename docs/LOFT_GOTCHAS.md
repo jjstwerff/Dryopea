@@ -93,6 +93,49 @@ comparison cannot produce a true zero.
 **Workaround:** a LOCAL with the identical literal is correct, so bind
 it inside the function that reads it.
 
+⚠⚠ **A `const` initialised from a SIBLING MODULE's const, imported
+through the aggregator, panics the compiler**
+([loft#962](https://github.com/loft-lang/loft/issues/962), filed
+2026-08-17, both backends) — `index out of bounds: the len is N but the
+index is 65535`, pointing at an unrelated function's RETURN TYPE.
+
+```loft
+// src/tick_bank.loft
+use dryopea;                                             // the aggregator
+pub const BANK_WHOLE: integer = CLOCK_UNITS_PER_SECOND   // ← tick_clock's
+                              * BANK_RATE_SCALE;         //   PANICS
+```
+
+⚠ **Three conditions, and each one alone defuses it**: the import being
+the aggregator rather than the sibling, the read being in a *const
+initialiser* rather than a function body, and the compiled program being
+a **consumer entry** rather than the aggregator.
+
+⚠⚠ **`loft --native-emit src/dryopea.loft` is completely clean**, so the
+library looks healthy and `loft test` panics on the first test file —
+naming a file and a function that have nothing to do with it.  65535 is
+`u16::MAX`, so it reads as an unresolved-variable sentinel escaping into
+a slot index rather than as a name-resolution failure.
+
+⚠⚠ **The workaround MOVES the bug rather than removing it.**  Import the
+sibling directly and the consumer compiles — and the AGGREGATOR panics
+instead, naming `spawn.loft::per_tick`, a function two declarations below
+a *different* cross-module const (`TICK_SECONDS`).  There is no import
+style that compiles both:
+
+| `tick_bank.loft` says | `loft test` + the three entries | `--native-emit src/dryopea.loft` |
+|---|---|---|
+| `use dryopea;` | **PANIC** | ok |
+| `use tick_clock;` | ok | **PANIC** |
+
+⚠ Substituting one const at a time: **one such const anywhere in the
+package is enough, and a second adds no second failure** — so it reads as
+a global ordering problem rather than a per-site resolution one.
+
+**What the tree does:** `use tick_clock;`, the side the gates are on.
+The cost is that the aggregator can no longer be parse-checked directly —
+`make check FILE=src/main.loft` instead.
+
 ⚠ **There is no vector-of-TUPLES literal.**  A table written the
 obvious way —
 

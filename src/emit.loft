@@ -52,6 +52,7 @@ use helper;
 use carry;
 use waves;
 use spawn;
+use tick_bank;
 
 // ─── The pieces ─────────────────────────────────────────────────
 
@@ -108,7 +109,14 @@ fn emit_enemies(state: const WaveState) -> text {
         // round trip went red naming `enemies[0].progress` on the very
         // first suite run.  A tripwire that fires on the phase it was
         // written for is the cheapest kind of coverage there is.
-        if ee_e.progress != 0.0 { ee_out = ee_out + "banked {ee_i} {ee_e.progress}\n"; }
+        // ⚠ **HEXES, not raw bank units** (plan 26 L2).  `.keys` is a
+        // format a person authors, and `banked 0 0.5` is half a hex
+        // where `banked 0 1500000` is a number only the runtime means
+        // anything by.  The round trip is exact all the same: a double
+        // carries 53 bits and `BANK_WHOLE` needs 42, so
+        // `bank_restore_fraction` recovers the integer this wrote.
+        ee_bk = bank_fraction(ee_e.bank, BANK_WHOLE);
+        if ee_bk != 0.0 { ee_out = ee_out + "banked {ee_i} {ee_bk}\n"; }
         if !ee_e.alive { ee_out = ee_out + "dead {ee_i}\n"; }
         ee_i += 1;
     }
@@ -152,9 +160,10 @@ fn emit_movers(state: const WaveState) -> text {
     for em2_h in state.crew {
         em2_out = em2_out + "crew {em2_h.q} {em2_h.r}\n";
         em2_out = em2_out + "send {em2_i} {em2_h.to_q} {em2_h.to_r}\n";
+        em2_bk  = bank_fraction(em2_h.bank, BANK_WHOLE);
         em2_out = em2_out + "member {em2_i} "
                           + (if em2_h.alive { "on" } else { "off" })
-                          + " {em2_h.progress} {em2_h.taken} {em2_h.recover}\n";
+                          + " {em2_bk} {em2_h.taken} {em2_h.recover}\n";
         em2_i += 1;
     }
     em2_out
@@ -349,7 +358,7 @@ fn crop_state(state: const WaveState, centre: const Hex,
             cs_out.enemies += [Enemy { q: cs_e.q, r: cs_e.r, kind: cs_e.kind,
                                        heading: cs_e.heading, alive: cs_e.alive,
                                        taken: cs_e.taken, stand: cs_e.stand,
-                                       progress: cs_e.progress }];
+                                       bank: cs_e.bank }];
         }
     }
     cs_out.pick_cursor = state.pick_cursor;

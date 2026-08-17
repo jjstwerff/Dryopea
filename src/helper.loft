@@ -18,12 +18,18 @@
 // helper is **2.5 hex/s — 1.667 hexes a tick** — and there is no way
 // to round that.
 //
-// So a helper BANKS its progress: each tick it adds `speed ×
-// tick_seconds` to a running total and steps out the whole hexes,
-// keeping the remainder.  That is the pattern `tower.loft` uses for a
-// fire interval and plan 13 V4 uses for a boost timer, arriving a
-// third time — and it is deliberately LOCAL to the mover that needs
-// it.  Nothing global changes.
+// So a helper BANKS its progress: each tick it adds `speed × elapsed`
+// to a running total and steps out the whole hexes, keeping the
+// remainder.  That was the pattern `tower.loft` uses for a fire
+// interval and plan 13 V4 uses for a boost timer, arriving a third
+// time — and it was deliberately LOCAL to the mover that needed it.
+//
+// ⚠ **Plan 26 L2 made it global on purpose, and that is the reversal
+// worth recording**: the count of hand-rolled copies reached seven,
+// one of them (`vehicle.loft`) omitted the carry entirely, and no test
+// in the corpus could see it (`@D003`, `@M030`).  The arithmetic now
+// lives once, in `tick_bank.loft`, and this function is a door onto
+// it.
 //
 // ⚠ **This is NOT "the tick becomes a timestep".**  `CLAUDE.md`
 // § Cost warns that decoupling speed from the tick shrinks the
@@ -53,6 +59,7 @@ use painted;
 use height;
 use passable;
 use vehicle;
+use tick_bank;
 
 // ─── The numbers ────────────────────────────────────────────────
 //
@@ -70,11 +77,16 @@ pub const HELPER_HP: float = 50.0;
 pub const HELPER_ROSTER_START: integer = 2;
 pub const HELPER_ROSTER_CAP:   integer = 6;
 
-// ⚠ Banked progress is in HEXES, where `tower.loft`'s charge and plan
-// 13 V4's boost are in SECONDS — same trap, different unit, so it gets
-// its own constant rather than borrowing one that means something
-// else.
-pub const HELPER_PROGRESS_EPSILON: float = 1.0e-9;
+// ⚠⚠ **`HELPER_PROGRESS_EPSILON` IS GONE (plan 26 L2).**  Banked
+// progress was a float count of HEXES and a whole hex was released by
+// `(progress + 1e-9) as integer`; it is an exact integer bank now
+// (`tick_bank.loft`), so there is nothing left to nudge.  ⚠ The guard
+// was real at 2.5 hex/s — without it the carry sat a hair under a
+// whole hex on every third tick and that hex was deferred for ever,
+// 2.333 hex/s against a documented 2.500 — and what removes it is the
+// arithmetic being able to say `10 000 000 / 3 000 000`, not the
+// problem having gone away.  `spawn.loft` § ENEMY_PROGRESS_EPSILON IS
+// GONE carries the measurement (`@M017`).
 
 // numbers.json § helper.recovery_time_after_retrieval — the time a
 // retrieved crew member spends at the core before rejoining.
@@ -96,34 +108,37 @@ pub const HELPER_RECOVERY_SECONDS: float = 60.0;
 // losing 6.7% of its speed.  Only COUNTING the ticks separates them,
 // which is why `tests/15_c2_recovery.loft` counts.
 //
-// Seconds, where `HELPER_PROGRESS_EPSILON` is hexes — a separate
-// constant for the reason that one is, rather than a shared number
-// meaning two things.
+// ⚠ **This one STAYS, and it is L3's not L2's.**  It is a ONE-SHOT
+// TIMER — 60.0 s that fires once — where the deleted movement epsilon
+// guarded a carry that is load-bearing for ever.  `plans/26`
+// § The invariant keeps the two families apart deliberately, and
+// `tick_bank.loft` § IT IS NOT A TIMER says why one primitive must not
+// serve both.
 pub const HELPER_TIMER_EPSILON: float = 1.0e-9;
 
 // ─── The helper ─────────────────────────────────────────────────
 
-// ⚠ Zero is the neutral value for all three of `progress`, `taken` and
+// ⚠ Zero is the neutral value for all three of `bank`, `taken` and
 // `alive`… except `alive`, which a `Helper { }` literal would default
 // to FALSE.  That is deliberate and it is the opposite of `Enemy`'s
 // choice: an enemy roster is built by a spawner, and a helper roster
 // is built one `helper_add` at a time, so the factory is the only door
 // and there is no partial literal to protect.
 pub struct Helper {
-    q:        integer,
-    r:        integer,
-    to_q:     integer,
-    to_r:     integer,
-    alive:    boolean,
-    progress: float,     // banked hexes, always < 1 between ticks
-    taken:    float,     // damage ABSORBED, never HP remaining
-    recover:  float,     // seconds of recovery LEFT, 0 when not in it
+    q:       integer,
+    r:       integer,
+    to_q:    integer,
+    to_r:    integer,
+    alive:   boolean,
+    bank:    Bank,      // banked ground, always under a whole hex
+    taken:   float,     // damage ABSORBED, never HP remaining
+    recover: float,     // seconds of recovery LEFT, 0 when not in it
 }
 
 // Factory: a helper standing at (q, r) with nothing banked.
 pub fn helper_new(q: integer, r: integer) -> Helper {
     Helper { q: q, r: r, to_q: q, to_r: r, alive: true,
-             progress: 0.0, taken: 0.0, recover: 0.0 }
+             bank: bank_new(), taken: 0.0, recover: 0.0 }
 }
 
 // Point a helper at a hex.  It drives there over the next ticks.
@@ -246,7 +261,7 @@ pub fn helper_recover_tick(h: Helper, tick_seconds: float, core: const Hex) -> b
     h.recover  = 0.0;
     h.alive    = true;
     h.taken    = 0.0;
-    h.progress = 0.0;
+    bank_reset(h.bank);
     h.q        = core.q;
     h.r        = core.r;
     h.to_q     = core.q;
@@ -254,22 +269,23 @@ pub fn helper_recover_tick(h: Helper, tick_seconds: float, core: const Hex) -> b
     true
 }
 
-// Bank one tick of movement and answer the whole hexes it releases.
-//
-// ⚠ **The epsilon is the whole function.**  Without it the carry sits
-// a hair under a whole hex on every third tick and that hex is
-// deferred for ever — 2.333 hex/s against a documented 2.500.  See the
-// header.
+// Bank `elapsed` base time units of movement and answer the whole
+// hexes it releases.
 //
 // ⚠ It keeps the REMAINDER rather than discarding it, which is what
 // makes the average exact rather than merely close: over any three
-// ticks a helper releases exactly five hexes.
-pub fn helper_bank(h: Helper, tick_seconds: float) -> integer {
-    h.progress = h.progress + HELPER_SPEED_HEX_PER_SECOND * tick_seconds;
-    hb_whole   = (h.progress + HELPER_PROGRESS_EPSILON) as integer? ?? 0;
-    if hb_whole > 0 { h.progress = h.progress - (hb_whole as float); }
-    if h.progress < 0.0 { h.progress = 0.0; }
-    hb_whole
+// ticks a helper releases exactly five hexes.  ⚠ Since plan 26 L2 that
+// is exact by construction rather than by an epsilon — five thirds of
+// a tick is `10 000 000 / 3 000 000` and the fifth hex needs nobody's
+// permission.
+//
+// ⚠ **The speed is a LOOKUP here where `enemy_bank` takes an
+// argument** (`@X060`), and that asymmetry survived L2: the crew has
+// one class and `DESIGN.md`'s *a damaged robot moves slower* is a
+// property of the ENEMY roster.  The day a wrecked helper limps, this
+// grows the argument and not a second door.
+pub fn helper_bank(h: Helper, elapsed: integer) -> integer {
+    bank_gain(h.bank, bank_rate(HELPER_SPEED_HEX_PER_SECOND), elapsed, BANK_WHOLE)
 }
 
 // Advance a helper one tick towards where it is pointed.
@@ -285,10 +301,10 @@ pub fn helper_bank(h: Helper, tick_seconds: float) -> integer {
 // keeps the average a RATE rather than a function of how often it was
 // blocked.
 pub fn helper_tick(h: Helper, pal: vector<GroundType>, pw: PaintedWorld,
-                   hl: const HeightLayer, tick_seconds: float) {
+                   hl: const HeightLayer, elapsed: integer) {
     if !h.alive { return; }
 
-    ht_hexes = helper_bank(h, tick_seconds);
+    ht_hexes = helper_bank(h, elapsed);
     if ht_hexes <= 0 { return; }
 
     ht_at = drive_along(pal, pw, hl,

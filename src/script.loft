@@ -230,6 +230,7 @@ use vehicle;
 use helper;
 use occupancy;
 use spawn;
+use tick_bank;
 use play;
 use graphics;
 
@@ -1417,7 +1418,7 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         }
         sa_mh = run.play.wave.crew[sa_min] ?? Helper { };
         sa_mh.alive    = sa_ma == 1;
-        sa_mh.progress = sa_mp ?? 0.0;
+        bank_restore_fraction(sa_mh.bank, sa_mp ?? 0.0, BANK_WHOLE);
         sa_mh.taken    = sa_mt ?? 0.0;
         sa_mh.recover  = sa_mr ?? 0.0;
         return "";
@@ -1956,7 +1957,8 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         if sc_bidx < 0 || sc_bidx >= len(run.play.wave.enemies) {
             return "banked: no enemy {sc_bidx} — the roster holds {len(run.play.wave.enemies)}";
         }
-        (run.play.wave.enemies[sc_bidx] ?? Enemy { }).progress = sc_bhx;
+        bank_restore_fraction((run.play.wave.enemies[sc_bidx] ?? Enemy { }).bank,
+                              sc_bhx, BANK_WHOLE);
         return "";
     }
 

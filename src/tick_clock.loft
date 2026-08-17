@@ -152,6 +152,23 @@ pub fn clock_units_from_micros(us: integer) -> integer {
     us * 3
 }
 
+// The other direction, in SECONDS — and it exists for one family of
+// caller only.
+//
+// ⚠⚠ **This is the seam plan 26 L3 closes, and it is named so that it
+// can be found.**  Movement is banked in integer units and never needs
+// this; the ONE-SHOT TIMERS still count float seconds
+// (`vehicle_burn`'s boost and cooldown, `helper_recover_tick`'s 90
+// ticks, `tower_repair_tick`'s 20 s, the wave lull), and until `Timer`
+// lands they have to be handed a duration in the unit they speak.
+//
+// ⚠ Every caller is a timer.  A MOVER that reached for this would be
+// throwing away exactly what `bank_gain` was built to keep — see
+// `tick_bank.loft` § THE RATE IS SCALED AND THE TIME IS NOT.
+pub fn clock_seconds_from_units(units: integer) -> float {
+    (units as float) / (CLOCK_UNITS_PER_SECOND as float)
+}
+
 // Spend elapsed time, and answer the whole steps it bought.
 //
 // ⚠ **Integer division, not a subtraction loop.**  The loop is what

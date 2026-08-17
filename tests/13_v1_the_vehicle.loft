@@ -149,13 +149,34 @@ fn test_the_player_covers_two_hexes_to_a_robots_one() {
 // The rate is READ, not hard-coded — so it stays right if the tick's
 // duration ever changes, which `DESIGN.md` § Speed must NOT be tied to
 // the tick says it will.
+//
+// ⚠ **`vehicle_hexes_per_tick` is the CEILING since plan 26 L2**, and
+// what it answers is *how far ahead may I point*, never *how far did I
+// go*.  The consuming door is `vehicle_bank`, which spends the
+// player's carry; this one spends nothing, because
+// `play_steer_reach` asks it once per FRAME.
 fn test_the_hexes_a_tick_come_from_the_speed_and_the_timestep() {
-    assert(vehicle_hexes_per_tick(TICK_SECONDS) == 2,
-           "3.0 hex/s over a {TICK_SECONDS} s tick is two hexes: {vehicle_hexes_per_tick(TICK_SECONDS)}");
+    thc_v = vehicle_empty();
+    vehicle_place(thc_v, 6, 0);
+    assert(vehicle_hexes_per_tick(thc_v, TICK_STEP_UNITS) == 2,
+           "3.0 hex/s over a {TICK_SECONDS} s tick is two hexes: "
+           + "{vehicle_hexes_per_tick(thc_v, TICK_STEP_UNITS)}");
 
     // Halve the timestep and the vehicle covers half as much ground.
-    assert(vehicle_hexes_per_tick(TICK_SECONDS / 2.0) == 1,
-           "a half-length tick is one hex: {vehicle_hexes_per_tick(TICK_SECONDS / 2.0)}");
+    assert(vehicle_hexes_per_tick(thc_v, TICK_STEP_UNITS / 2) == 1,
+           "a half-length tick is one hex: "
+           + "{vehicle_hexes_per_tick(thc_v, TICK_STEP_UNITS / 2)}");
+
+    // ⚠ And a THIRD of a tick is where the ceiling and the release
+    // differ: two thirds of a hex is due, so nothing is released this
+    // step and one hex is nonetheless the furthest it could reach.
+    // Spelling the reach as a release is what would make holding a key
+    // point the vehicle at its own hex.
+    assert(vehicle_hexes_per_tick(thc_v, TICK_STEP_UNITS / 3) == 1,
+           "a third of a tick still reaches one hex: "
+           + "{vehicle_hexes_per_tick(thc_v, TICK_STEP_UNITS / 3)}");
+    assert(vehicle_bank(thc_v, TICK_STEP_UNITS / 3) == 0,
+           "while it RELEASES none of it");
 }
 
 fn test_a_vehicle_nobody_pointed_anywhere_stays_put() {
