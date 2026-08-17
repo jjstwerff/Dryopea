@@ -33,6 +33,32 @@ fix / feature, move it to **Resolved**.
 
 ## Submitted
 
+### Bare `loft install` installs the PROJECT, not its dependencies — [loft#966](https://github.com/loft-lang/loft/issues/966)
+
+Filed 2026-08-17 (plan 26 L6).  Run with no arguments in a project dir it
+installs the project itself into `~/.loft/lib/`, **under the DIRECTORY's name
+rather than the manifest's `[package] name`**, and resolves no dependency —
+while `loft api` names that exact command as the fix for an unresolved one:
+
+```
+$ loft api | grep moros_map
+  moros_map  NOT INSTALLED — run `loft install`
+$ loft install
+installed bare_install_installs_the_project (3 files) → ~/.loft/lib/...
+$ loft api | grep moros_map
+  moros_map  NOT INSTALLED — run `loft install`     # unchanged
+```
+
+⚠⚠ **It is a new route into [loft#667]** — a copy in `~/.loft/lib/<name>`
+shadows the registry copy of that name.  Not hypothetical: it silently created
+`~/.loft/lib/fixstep` during plan 26 L6 and the freshly published package could
+not be verified until that copy was removed by hand.  It happened TWICE, both
+times from a command run for another purpose.
+
+⚠ **The workaround is the explicit form** — `loft install <pkg>@<version>`
+resolves the package and updates `loft.lock`.  Bare `loft install` is the one
+to avoid.  Repro: `loft_repros/bare_install_installs_the_project/`.
+
 ### A declared PATH dependency suppresses the `--lib` search — [loft#963](https://github.com/loft-lang/loft/issues/963)
 
 Filed 2026-08-17 (plan 26 L6).  ⚠⚠ **The first diagnosis was WRONG and the
