@@ -97,7 +97,7 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 1161/1161 green under `scripts/test.sh`** (~205 s re-measured
+**Suite: 1156/1156 green under `scripts/test.sh`** (~177 s re-measured
 2026-08-17 — the `frame` measurements classify full 960x720 frames, the
 cost gate ticks a radius-40 world twice, and since plan 13 a dozen tests
 run whole scenarios to their fall.  ⚠ This line carried "~35 s" from
@@ -106,9 +106,13 @@ figure grows with the SCENARIO tests, not with any one phase.  ⚠ The
 two most expensive files are both closing measurements and they are
 **35 s (plan 23 K3)** and **13 s (plan 16 W4)** — where a file that
 runs no simulation costs 3.8 s, which is the compile baseline every
-single-file run pays.  ⚠ **K3 is the most expensive file in the repo**
-and its own cost was never priced during the phase; trimming its
-duplicate whole-base runs is open work).
+single-file run pays.  ⚠ **The corpus went 1161 → 1156 test
+FUNCTIONS with no assertion lost** — five were folded into siblings
+because each was re-deriving an expensive value a neighbour had already
+computed, and the assert counts are byte-identical before and after.
+That cut the suite **10.1%** (5 983 456 → 5 377 562 samples);
+[`docs/PROFILING.md`](docs/PROFILING.md) has the per-file table and the
+one refactor that measured as FREE).
 **Gate: 33 scripts green under `scripts/validate.sh`** (~14 s, 652
 measurements).
 
@@ -457,7 +461,15 @@ the ones that mislead a reader who skips it:
   eight hottest paths is `wave_tick → … → flow_sweep`.  So a third
   reading agrees and [`plans/22`](plans/22-the-field-cache/README.md) is
   still the win.
-- ⚠⚠ **But the SIZE doubled — 2 780 440 → 5 983 456 samples on twelve
+- ⚠ **A test that RE-DERIVES an expensive value a sibling already
+  computed is the cheapest thing to find.**  `18_s4` asked `reduced()`
+  eight times for one answer (−51% once bound), `23_k3` re-ran the
+  twelve-miner control per class (−25%); together **−10.1% of the
+  suite**, with the assert counts byte-identical.  ⚠ And the refactor
+  that LOOKS identical — hoisting `state_diff` out of an assert message
+  — measured as **free**, because loft evaluates assert messages
+  lazily.  Measure before tidying, both ways.
+- ⚠⚠ **The SIZE doubled — 2 780 440 → 5 983 456 samples on twelve
   more tests — and most of it is UNATTRIBUTED.**  Plan 23's files are
   only ~1.1 M of the +3.2 M; the first hypothesis to test is K2a's
   banked mover, which put an `enemy_bank` per enemy per tick into every

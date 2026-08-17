@@ -105,20 +105,47 @@ fn test_the_predicate_holds_before_and_after() {
            "and still holds over what is left: {script_describe(tph_run)}");
 }
 
-// ⚠ It actually REMOVED something — a reducer that returned its input
-// would pass every assertion above.
-fn test_it_removes_what_the_property_does_not_need() {
+// ⚠⚠ **Four properties of ONE reduction, in one test — and the reason
+// is cost, not taste.**  `reduced()` is not an accessor: it runs the
+// whole greedy sweep, replaying the fixture once per surviving line, at
+// ~105 000 profile samples a call.  Asking it four times for four
+// one-line assertions spent four reductions to learn one answer.
+//
+// ⚠ Every assertion and every message below is unchanged from when
+// these were four separate tests; what is lost is the test NAME on a
+// failure, and each message was written to stand on its own.  Same
+// trade `17_t3` makes for the shuttling run, for the same reason.
+//
+// ⚠ Do NOT re-split these without re-measuring: it was 820 574 samples
+// and is 400 766 — a 51% cut, and 7% of the whole suite.
+fn test_what_the_reduction_produced() {
+    tir_cut    = reduced();
     tir_before = len(fixture().split('\n'));
-    tir_after  = len(reduced().split('\n'));
+    tir_after  = len(tir_cut.split('\n'));
 
+    // It actually REMOVED something — a reducer that returned its input
+    // would pass every assertion in this file.
     assert(tir_after < tir_before,
            "shorter: {tir_after} lines of {tir_before}");
     // The far tower and the second row of ground have nothing to do
     // with a robot chewing a wall on row 0.
-    assert(!reduced().contains("flag -20 2 tower"),
+    assert(!tir_cut.contains("flag -20 2 tower"),
            "the tower that never fired is gone");
-    assert(!reduced().contains("click 12 2"),
+    assert(!tir_cut.contains("click 12 2"),
            "and so is the ground nobody walked on");
+
+    // The origin survives, which is what keeps a reduced fixture
+    // explicable — the difference between a test somebody trusts and
+    // one they delete.
+    assert(tir_cut.contains("# captured: a hand-built situation"),
+           "the comment is pinned");
+
+    // And what is left is a script that RUNS.  The reducer is
+    // self-correcting, and this is the assertion that says so rather
+    // than assuming it.
+    tir_run = runs(tir_cut);
+    assert(tir_run.ok,
+           "what is left is a valid script: {script_describe(tir_run)}");
 }
 
 // ⚠⚠ **1-MINIMAL, and that is the claim.**  When the reducer returns,
@@ -160,14 +187,6 @@ fn test_the_result_is_one_minimal() {
     // ⚠ The sweep must have swept something: a reduction to nothing
     // would pass the loop above vacuously.
     assert(tom_tried > 0, "there are lines left to check: {tom_tried}");
-}
-
-// ⚠ The origin survives, which is what keeps a reduced fixture
-// explicable — the difference between a test somebody trusts and one
-// they delete.
-fn test_the_origin_survives_reduction() {
-    assert(reduced().contains("# captured: a hand-built situation"),
-           "the comment is pinned");
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -228,16 +247,6 @@ fn test_a_predicate_that_does_not_hold_is_refused() {
                            SHOTS);
     assert(tan_why != "", "refused: '{tan_why}'");
     assert(tan_why.contains("does not hold"), "and says which way round");
-}
-
-// ⚠ **The reduced fixture still RUNS.**  A removal that broke the file
-// — dropping a `place` while keeping the `hit` that indexes it — makes
-// the script error, which fails the predicate, which rejects the
-// removal.  The reducer is self-correcting, and this is the assertion
-// that says so rather than assuming it.
-fn test_nothing_reduces_to_a_broken_file() {
-    tnr = runs(reduced());
-    assert(tnr.ok, "what is left is a valid script: {script_describe(tnr)}");
 }
 
 // ─────────────────────────────────────────────────────────────────

@@ -199,7 +199,15 @@ fn screened(n: integer, front: integer) -> vector<WavePart> {
 // twelve are scouts.  That is `plans/12` § Invariant gate's rule — two
 // runs that differ in the thing under test and in nothing else.
 fn test_three_compositions_three_clocks() {
+    // ⚠⚠ **FOUR runs serve two findings, and that is deliberate.**
+    // The clocks and the cliff below used to be two tests over six
+    // runs, four of which were the same simulation twice — `screened(0)`
+    // and `screened(4)` each ran once per test.  A `Clock` stops at the
+    // fall, so a run capped at 321 and the same run capped at 200 give
+    // the identical `fell`; the higher cap is the one that can also say
+    // *never*.
     ttc_pure = play(screened(0, ENEMY_KIND_SCOUT), 2, LONGEST_BASE_TICKS);
+    ttc_one  = play(screened(1, ENEMY_KIND_SCOUT), 2, LONGEST_BASE_TICKS);
     ttc_two  = play(screened(2, ENEMY_KIND_SCOUT), 2, LONGEST_BASE_TICKS);
     ttc_four = play(screened(4, ENEMY_KIND_SCOUT), 2, LONGEST_BASE_TICKS);
 
@@ -214,23 +222,17 @@ fn test_three_compositions_three_clocks() {
            + "longest base anyone can play; measured a fall at {ttc_four.fell}");
     assert(ttc_four.breach == 0,
            "the wall is not even OPEN: measured a breach at {ttc_four.breach}");
-}
 
-// ⚠ **The cliff is not a ramp**, and its shape is what says the
-// mechanism is positional rather than arithmetic.  If the wave's bite
-// were the sum of its members, swapping a miner for a scout would cost
-// a twelfth of it each time.  Measured, the first scout is worth
-// NOTHING and the fourth is worth the base.
-fn test_the_screen_is_a_cliff_not_a_ramp() {
-    tsc_0 = play(screened(0, ENEMY_KIND_SCOUT), 2, 200);
-    tsc_1 = play(screened(1, ENEMY_KIND_SCOUT), 2, 200);
-    tsc_4 = play(screened(4, ENEMY_KIND_SCOUT), 2, 200);
-
-    assert(tsc_1.fell == tsc_0.fell,
-           "the FIRST scout costs the wave nothing whatever — {tsc_1.fell} "
-           + "against {tsc_0.fell} ticks");
-    assert(tsc_4.fell == 0,
-           "and by the fourth the base is not falling at all: {tsc_4.fell}");
+    // ⚠ **The cliff is not a ramp**, and its shape is what says the
+    // mechanism is positional rather than arithmetic.  If the wave's
+    // bite were the sum of its members, swapping a miner for a scout
+    // would cost a twelfth of it each time.  Measured, the first scout
+    // is worth NOTHING and the fourth is worth the base.
+    assert(ttc_one.fell == ttc_pure.fell,
+           "the FIRST scout costs the wave nothing whatever — {ttc_one.fell} "
+           + "against {ttc_pure.fell} ticks");
+    assert(ttc_four.fell == 0,
+           "and by the fourth the base is not falling at all: {ttc_four.fell}");
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -250,10 +252,16 @@ fn test_the_screen_is_a_cliff_not_a_ramp() {
 // ⚠ Both directions are asserted.  `mixed ≈ pure` alone would pass if
 // every wave of twelve took the same time; `mixed` being far from
 // `12 miner` is what makes the first comparison mean something.
-fn assert_front_class_decides(front: integer, name: text, lo: integer, hi: integer) {
+//
+// ⚠⚠ **Both classes and the miner baseline in ONE test, for cost.**
+// As two tests it ran the twelve-miner control twice and the two
+// harvester runs twice over — five simulations to learn nothing extra.
+// Every assertion and message is unchanged; a failure names the class
+// in its own message.
+fn assert_front_class_decides(front: integer, name: text, lo: integer, hi: integer,
+                              miner: integer) {
     afc_mixed = play(screened(4, front), 2, 200);
     afc_pure  = play(screened(12, front), 2, 200);
-    afc_miner = play(screened(0, ENEMY_KIND_SCOUT), 2, 200);
 
     assert(afc_pure.fell >= lo && afc_pure.fell <= hi,
            "twelve {name}s take the base at {lo}..{hi}: measured {afc_pure.fell}");
@@ -261,34 +269,28 @@ fn assert_front_class_decides(front: integer, name: text, lo: integer, hi: integ
            && afc_mixed.fell - afc_pure.fell <= 6,
            "four {name}s and EIGHT MINERS behave like twelve {name}s — "
            + "{afc_mixed.fell} against {afc_pure.fell} ticks");
-    assert(afc_mixed.fell > afc_miner.fell,
+    assert(afc_mixed.fell > miner,
            "and never like the miners that are two thirds of the wave: "
-           + "{afc_mixed.fell} against {afc_miner.fell}");
+           + "{afc_mixed.fell} against {miner}");
+
+    // ⚠ **And the direction of the effect is the surprising half.**
+    // Every mixed wave measured is a few ticks SLOWER than the pure
+    // wave of its front class — adding eight miners to four harvesters
+    // does not merely fail to help, it costs the wave four ticks,
+    // because the miners take fan hexes early and are then displaced
+    // out of them.
+    //
+    // ⚠ Asserted as an ORDER rather than a difference: the sign is the
+    // claim and four ticks is the reading.
+    assert(afc_mixed.fell > afc_pure.fell,
+           "eight miners behind four {name}s make the wave SLOWER, not "
+           + "faster: {afc_mixed.fell} against {afc_pure.fell} ticks");
 }
 
-fn test_four_builders_make_a_wave_of_builders() {
-    assert_front_class_decides(ENEMY_KIND_BUILDER, "builder", 95, 106);
-}
-
-fn test_four_harvesters_make_a_wave_of_harvesters() {
-    assert_front_class_decides(ENEMY_KIND_HARVESTER, "harvester", 155, 168);
-}
-
-// ⚠ **And the direction of the effect is the surprising half.**  Every
-// mixed wave measured is a few ticks SLOWER than the pure wave of its
-// front class — adding eight miners to four harvesters does not merely
-// fail to help, it costs the wave four ticks, because the miners take
-// fan hexes early and are then displaced out of them.
-//
-// ⚠ Asserted as an ORDER rather than a difference: the sign is the
-// claim and four ticks is the reading.
-fn test_the_miners_behind_are_worse_than_nothing() {
-    tmb_mixed = play(screened(4, ENEMY_KIND_HARVESTER), 2, 200);
-    tmb_pure  = play(screened(12, ENEMY_KIND_HARVESTER), 2, 200);
-
-    assert(tmb_mixed.fell > tmb_pure.fell,
-           "eight miners behind four harvesters make the wave SLOWER, not "
-           + "faster: {tmb_mixed.fell} against {tmb_pure.fell} ticks");
+fn test_the_front_class_decides_for_every_class() {
+    tfc_miner = play(screened(0, ENEMY_KIND_SCOUT), 2, 200).fell;
+    assert_front_class_decides(ENEMY_KIND_BUILDER,   "builder",   95, 106, tfc_miner);
+    assert_front_class_decides(ENEMY_KIND_HARVESTER, "harvester", 155, 168, tfc_miner);
 }
 
 // ─────────────────────────────────────────────────────────────────

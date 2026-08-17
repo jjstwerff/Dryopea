@@ -32,8 +32,9 @@ per-function + per-line + call-path report over every run in the suite.
 - `ticks()` is in **microseconds** (`default/02_files.loft`), so a probe
   that prints it as ms overstates by 1000x.
 
-**Where the time goes (re-profiled 2026-08-17: 5 983 456 samples,
-125.40 s interpreted across 1161 runs):**
+**Where the time goes (re-profiled 2026-08-17: 5 377 562 samples,
+116.58 s interpreted across 1156 runs — after the tidy below; it was
+5 983 456 over 1161 before it, and the SHAPE is identical either way):**
 
 | function (self) | 2026-08-15 | 2026-08-17 |
 |---|---|---|
@@ -64,6 +65,37 @@ Measured per file, the most expensive in the repo are now:
 | `16_w4_the_real_length` | 382 353 | 6.4% |
 | `23_k0_the_classes` | 320 344 | 5.4% |
 | `23_k1` + `23_k2b` together | 41 458 | 0.7% |
+
+⚠⚠ **Two of those were RECOMPUTATION, not coverage, and removing it cut
+the suite 10.1%** — 5 983 456 → **5 377 562 samples**, re-measured
+2026-08-17 after the tidy.  Nothing was deleted: the assert count in
+both files is byte-identical before and after (25 and 25), and what
+changed is how many test FUNCTIONS those asserts are grouped into
+(1161 → 1156 runs).
+
+| file | before | after | cut |
+|---|---|---|---|
+| `18_s4_the_reduce` | 820 574 | **400 766** | −51.2% |
+| `23_k3_what_composition_is_worth` | 739 187 | **553 101** | −25.2% |
+
+- `18_s4` called `reduced()` **eight times**.  It is not an accessor —
+  it runs the whole greedy sweep, replaying the fixture once per
+  surviving line, at ~105 000 samples a call — so four one-line
+  assertions about one reduction cost four reductions.
+- `23_k3` re-ran the twelve-miner control once per class and the two
+  harvester runs twice over — five whole-base simulations to learn
+  nothing extra.
+
+⚠ **What did NOT pay, measured rather than assumed**: binding
+`state_diff` / `world_diff` out of `assert(f(x) == "", "… {f(x)}")` in
+`18_s2`.  That looks like a doubled walk of the whole state over 33
+scenarios and it is **free** — 865 628 → 865 508 samples, 0.01%, i.e.
+noise.  **loft evaluates an assert's message lazily**, so the pattern
+costs nothing and is not worth refactoring anywhere.
+
+⚠ `18_s2`'s remaining 865 k is inherent: 33 scenarios × (play + replay)
+is the coverage, not waste.  Same for `17_t3`'s three `play_seven` runs
+and `16_w4`'s one — checked, no duplicates.
 
 ⚠ **Plan 23 accounts for at most a third of the doubling** (~1.10 M
 samples of the +3.20 M), so **most of it is unattributed** and it is an
