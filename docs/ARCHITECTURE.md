@@ -84,10 +84,11 @@ src/
                    Also owns VIEW_W / VIEW_H / VIEW_PPM (the window
                    size IS the shot size).  Never mutates the state
   tick_clock.loft  the FIXED STEP, in exact integer time (plan 26 L1)
-                   — TickClock { step, banked } + clock_new /
-                   clock_advance (a DURATION) / clock_step (a COUNT) /
-                   clock_banked / clock_restore /
-                   clock_units_from_micros.
+                   — TickClock + clock_new / clock_advance (a
+                   DURATION) / clock_step (a COUNT) / clock_banked /
+                   clock_restore / clock_units_from_micros, and since
+                   plan 26 L4 the POLICIES: clock_advance_capped /
+                   clock_pump / clock_set_rate / clock_drive.
                    ⚠⚠ **The base unit is 1/3 of a MICROSECOND**
                    (CLOCK_UNITS_PER_SECOND = 3 000 000), and µs was
                    REFUSED on a measurement (@X079, @M031): dryopea's
@@ -101,11 +102,27 @@ src/
                    takes a step and the accumulator counts whatever the
                    caller counts (128 Hz cannot use 3 000 000 either).
                    What this file promises is the IDENTITY, not a unit.
-                   ⚠ **No callback, no cap, no rate scaling, no
-                   alpha.**  It never calls your tick; it answers HOW
-                   MANY.  A cap is the DRIVER's policy — moros's page
-                   has one, its server does not, and `play_advance`'s
-                   refusal of one is what 654 measurements rest on.
+                   ⚠ **No callback and no alpha.**  It never calls your
+                   tick; it answers HOW MANY.
+                   ⚠⚠ **The L4 POLICIES are DOORS BESIDE the
+                   arithmetic, never settings inside it** (@X083), and
+                   dryopea consumes NONE of them — moros built two of
+                   the three, which is § FLEXIBLE's whole argument.
+                   `clock_advance` is still uncapped, because
+                   `play_advance`'s refusal of a cap is what 654
+                   measurements rest on.  ⚠⚠ clock_advance_capped
+                   DROPS the excess; clamping the answer and keeping
+                   the backlog is a DEFERRAL that runs the simulation
+                   behind the wall for ever, and both answer fewer
+                   ticks on the stalled frame — 4 vs 24 over one
+                   stream (@M034).  ⚠ clock_set_rate is a RATIONAL
+                   (@X084) applied at ONE private site to every
+                   DURATION door and to NO count door, so a paused
+                   game can still run its own tests; a defaulted
+                   `0 / 0` reads as UNSCALED.  ⚠ clock_drive is a
+                   NAME rather than a fix — `n * step` is already
+                   exact in integers, which is the opposite of
+                   play_ticks.
                    ⚠ **No tick COUNTER**: `PlayState.ticks` already
                    counts, and a second counter is two facts that can
                    disagree.  This owns the STEP and the BANK.
@@ -1166,7 +1183,7 @@ suite redirects its own shots into `tests/actual/`.
 | `PlayState` | `play.loft` | a game in progress — the roster, the `TickClock`, the time banked toward the next tick, last frame's input, whether the session is LIVE, and the camera it is looking through.  ⚠ What a live session has that an edited one does not; the world is passed in, never owned, because a struct in a field is a copy.  ⚠ `playing` (plan 19 P3) gates the CLOCK and never the seam — `EditorInput.in_playing` is the other, per-frame half and says what the KEYS mean |
 | `Timer` | `tick_timer.loft` | a one-shot duration as `{spent, total}` in integer base units — the shared half of every *fires once* clock in the game (`recover`, `repair`, `boost`, `cool`, `stand`, `lull`).  ⚠ `total == 0` is UNARMED **and is the zero-default**, which is what makes `Timer { }` correct-neutral at all six sites and is the opposite conclusion to `Bank`'s (`@X082`).  ⚠ `timer_left` and `timer_spent` are one number read two ways, so a site keeps the direction its field was authored in with no second accumulation to disagree |
 | `Bank` | `tick_bank.loft` | the carry toward the next whole unit, as ONE integer — the shared half of every rate in the game, and the reason `Enemy`, `Helper` and `Vehicle` all release whole hexes the same way.  ⚠ It holds neither the rate (`@X061`) nor the scale (`@X080`), which is what makes `Bank { }` correct-neutral in a partial literal.  ⚠ `bank_progress` is what `compare.loft` reads and `bank_fraction` what `emit.loft` writes — an integer inside, hexes on the wire |
-| `TickClock` | `tick_clock.loft` | a fixed step and the time banked toward the next one, both INTEGERS — so `advance(n × step) == step(n)` exactly, where the float bank it replaced was wrong for 602 of the first 1000 `n`.  ⚠ `banked` is always in `[0, step)`, which is what makes it the whole of a rollback's timing state.  ⚠⚠ Its base unit is 1/3 µs and that was MEASURED rather than chosen for tidiness (`@X079`, `@M031`) |
+| `TickClock` | `tick_clock.loft` | a fixed step and the time banked toward the next one, both INTEGERS — so `advance(n × step) == step(n)` exactly, where the float bank it replaced was wrong for 602 of the first 1000 `n`.  ⚠ `banked` is always in `[0, step)`, which is what makes it the whole of a rollback's timing state.  ⚠⚠ Its base unit is 1/3 µs and that was MEASURED rather than chosen for tidiness (`@X079`, `@M031`)  ⚠ Since plan 26 L4 it also carries the POLICY state — `rate_num` / `rate_den` / `rate_carry` and the pump's `pump_at` / `pumped` — and **every one of them defaults to *the behaviour you already had***, which is this plan's third answer to [loft#914] (`@X084`).  ⚠ `rate_carry` is a SECOND accumulator and a different QUESTION: `banked` carries sim time toward the next step, it carries wall time toward the next sim unit |
 | `FrameCounts` | `measure.loft` | one classified frame — pixels per bucket, `unknown` (not a palette colour = a fault), `total` |
 | `WaveState` | `spawn.loft` | the enemy roster + round-robin cursor + the runtime rubble layer + the structure damage ledger + every tower's banked charge + the run's wallet + the crew + the cargo — runtime, not editor state |
 | `Vehicle` | `vehicle.loft` | the player: where it is, where it is pointed, whether it is in the world at all, and the ground it has banked — ⚠ `parked` is separate because (0, 0) is a real hex and is the core in every scenario.  ⚠⚠ `bank` arrived in plan 26 L2 and its ABSENCE was `@D003`: the player truncated its movement where every other mover carried, so it read 180 / 120 / 180 / 0 / 0 / 0 / 0 hexes a minute against a true 180 (`@M030`) |

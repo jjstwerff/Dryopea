@@ -1,0 +1,594 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 26 phase L4 — the policies dryopea does NOT need.
+//
+// ── The one claim ───────────────────────────────────────────────
+//
+// > **A policy belongs to the DRIVER and the arithmetic belongs to the
+// > clock: a cap changes HOW MANY steps happen and never WHAT one is,
+// > a rate changes how fast the wall buys them and never whether they
+// > are exact, and a slow clock driven by a fast one is the same clock
+// > driven from the wall.**
+//
+// ⚠ **Nothing in dryopea consumes any of it, and that is the phase.**
+// `plans/26` § FLEXIBLE's admission test is *could a consumer be
+// tempted to hand-roll this?* — moros built two of the three already
+// (its page caps catch-up, its server scales `sim_rate`), and a
+// capability skipped because THIS consumer does not need it is exactly
+// how the next consumer comes to write it again.  § The game's own
+// doors are untouched is the gate for the other half: `play_advance`
+// is still uncapped, and the 654 scenario measurements do not move.
+//
+// ── ⚠⚠ WHAT L4 MEASURED, AND IT IS ABOUT THIS PLAN'S OWN GATE
+//    AGAIN ───────────────────────────────────────────────────────────
+//
+// The L4 row asks for *"a 1 Hz clock driven by a 30 Hz clock's ticks
+// equals one driven from the wall"*.  **That pair cannot disagree, at
+// any point in any stream, for any implementation that hands on whole
+// fast steps** — 1 Hz is exactly thirty 30 Hz steps, so every slow
+// boundary falls ON a fast boundary and the driven clock has nothing
+// to lag by.  Measured over 600 frames, the two counts are equal after
+// every single one.
+//
+// ⚠ So the property the row was reaching for — *a driven clock is as
+// far along as the ticks that actually happened, and never further* —
+// is only VISIBLE when the steps do not divide.  § And the lag can
+// only be seen when the steps do not divide is that case (a 700 000-unit
+// clock driven by a 300 000-unit one): the composed count falls one
+// behind at **three** frames of twenty-one — the 7th, the 8th and the
+// 14th — never leads, is never more than one step behind, and is level
+// again at every common multiple.
+//
+// ⚠⚠ **That is the third phase running where the plan's stated gate is
+// weaker than the phase's finding** (`@M031` in L1, `@M033` in L3) —
+// and the shape is the same each time: *the reading a gate takes is
+// not the property it names*.  Here the gate is not WRONG, it is
+// VACUOUS for the numbers it names, which is harder to notice because
+// it passes.
+//
+// ── ⚠ And the cap's real control is not "fewer ticks" ────────────
+//
+// The row's negative control says *equal tick counts would mean the cap
+// did nothing*.  True, and cheap to pass.  The version that a driver
+// actually writes by mistake produces FEWER ticks on the stalled frame
+// too, and is still wrong: it clamps the answer and leaves the backlog
+// BANKED, so the simulation pays the debt off over the following
+// frames and runs behind the wall for ever.  § A cap that defers is
+// that version, reproduced beside the shipped one, and it is what makes
+// the cap's gate able to fail at all — a dropping cap plays **4** ticks
+// over the stream and a deferring one plays **24** and still owes 6.
+//
+// ── What is deliberately NOT here ───────────────────────────────
+//
+// **No cap, rate or composition wired into `play.loft`.**  `plans/26`
+// § What this plan does NOT build: dryopea binds no fast-forward key,
+// and a cap inside `play_advance` would put a frame-rate dependence
+// into the artefact `scripts/validate.sh` photographs.
+//
+// **No `alpha`** — L5.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+// One sixtieth of a second, in base units — a frame.
+const FRAME_UNITS: integer = 50000;
+
+// Twenty seconds, in base units — the stall.
+const STALL_UNITS: integer = 60000000;
+
+// ⚠ A FILE-SCOPE `const vector` holding a negative number is EMPTY
+// ([loft#955]) and a loop over an empty vector holds VACUOUSLY, so
+// every sweep in this file is built inside a function.
+//
+// A frame stream with an alt-tab in the middle of it: five ordinary
+// frames, one twenty-second stall, five ordinary frames.
+fn frames() -> vector<integer> {
+    [FRAME_UNITS, FRAME_UNITS, FRAME_UNITS, FRAME_UNITS, FRAME_UNITS,
+     STALL_UNITS,
+     FRAME_UNITS, FRAME_UNITS, FRAME_UNITS, FRAME_UNITS, FRAME_UNITS]
+}
+
+// A one-hex corridor from a spawn at (12, 0) to the core at (0, 0) —
+// `tests/19_p1`'s fixture, because what is under test is whether the
+// simulation advanced and by how much.
+fn fixture() -> EditorState {
+    fx_s = editor_state_new(PALETTE);
+    for fx_q in 0..=14 { paint(fx_s.pw, fx_q, 0, as_u8(GRASS)); }
+    place_marker(fx_s.mw, 0,  0, MARKER_KIND_TARGET as u8, 0 as u8);
+    place_marker(fx_s.mw, 12, 0, MARKER_KIND_SPAWN  as u8, 3 as u8);
+    fx_s
+}
+
+// A game on that corridor with four robots walking down it — state
+// that MOVES, so two worlds that ran a different number of ticks
+// differ visibly rather than merely counting differently.
+fn game(s: EditorState) -> PlayState {
+    g_ps = play_state_new();
+    spawn_wave(g_ps.wave, 4, ENEMY_KIND_REGULAR as u8? ?? 0, s.mw, 0, 0, 10);
+    g_ps
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The three drivers
+//
+// ⚠⚠ **All three drive the SAME game through the SAME door** —
+// `play_ticks`, the count door — and differ only in how many ticks
+// they ask for.  That is the claim being measured: policy is the
+// driver's, and a tick is a tick.
+// ─────────────────────────────────────────────────────────────────
+
+// No cap: a frame that delivers twenty seconds buys thirty ticks.
+fn run_uncapped(ps: PlayState, s: EditorState) -> integer {
+    ru_clk = clock_new(TICK_STEP_UNITS);
+    ru_got = 0;
+    for ru_dt in frames() {
+        ru_due = clock_advance(ru_clk, ru_dt);
+        ru_got = ru_got + play_ticks(ps, s, ru_due);
+    }
+    ru_got
+}
+
+// The shipped cap: at most `cap` a frame, and the rest is GONE.
+fn run_capped(ps: PlayState, s: EditorState, cap: integer) -> integer {
+    rc_clk = clock_new(TICK_STEP_UNITS);
+    rc_got = 0;
+    for rc_dt in frames() {
+        rc_due = clock_advance_capped(rc_clk, rc_dt, cap);
+        rc_got = rc_got + play_ticks(ps, s, rc_due);
+    }
+    rc_got
+}
+
+// ⚠⚠ **The wrong one, and it is the control this file rests on.**  It
+// clamps the answer and keeps the backlog, which is a DEFERRAL wearing
+// a cap's clothes: the stall is paid off over the frames that follow
+// and the simulation runs behind the wall from then on.  Both versions
+// answer fewer ticks on the stalled frame, so *fewer ticks* cannot
+// tell them apart.
+fn run_deferring(ps: PlayState, s: EditorState, cap: integer) -> integer {
+    rd_clk     = clock_new(TICK_STEP_UNITS);
+    rd_backlog = 0;
+    rd_got     = 0;
+    for rd_dt in frames() {
+        rd_backlog = rd_backlog + clock_advance(rd_clk, rd_dt);
+        rd_take    = min(rd_backlog, max(cap, 1));
+        rd_backlog = rd_backlog - rd_take;
+        rd_got     = rd_got + play_ticks(ps, s, rd_take);
+    }
+    rd_got
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The cap
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_cap_takes_fewer_ticks_and_leaves_the_same_world_per_tick() {
+    // ⚠ **Both halves are the assertion.**  Different counts alone
+    // would be satisfied by a cap that quietly changed what a tick is;
+    // identical worlds alone would be satisfied by a cap that did
+    // nothing.
+    tac_s_a = fixture();
+    tac_a   = game(tac_s_a);
+    tac_un  = run_uncapped(tac_a, tac_s_a);
+
+    tac_s_b = fixture();
+    tac_b   = game(tac_s_b);
+    tac_cap = run_capped(tac_b, tac_s_b, 4);
+
+    assert(tac_un == 30,
+           "twenty seconds of stall buys thirty ticks uncapped, got {tac_un}");
+    assert(tac_cap == 4,
+           "and four with a cap of four, got {tac_cap}");
+
+    // The world each ran, against a control that only ever counted.
+    tac_s_c = fixture();
+    tac_c   = game(tac_s_c);
+    play_ticks(tac_c, tac_s_c, tac_un);
+    assert(state_diff(tac_a.wave, tac_c.wave) == "",
+           "the uncapped run IS thirty counted ticks: "
+           + "{state_diff(tac_a.wave, tac_c.wave)}");
+
+    tac_s_d = fixture();
+    tac_d   = game(tac_s_d);
+    play_ticks(tac_d, tac_s_d, tac_cap);
+    assert(state_diff(tac_b.wave, tac_d.wave) == "",
+           "and the capped run IS four counted ticks: "
+           + "{state_diff(tac_b.wave, tac_d.wave)}");
+
+    // ⚠ And the two worlds really are different — without this the
+    // pair of comparisons above would hold for a corridor nothing
+    // walked down, which is `@M022`'s question: *can this gate produce
+    // a non-trivial reading at all?*
+    assert(state_diff(tac_a.wave, tac_b.wave) != "",
+           "twenty-six lost ticks are visible in the world, not just in "
+           + "the count");
+}
+
+fn test_a_cap_that_defers_is_the_one_a_driver_writes_by_mistake() {
+    // ⚠⚠ **The control that makes the cap's gate able to fail.**  A
+    // deferring cap answers fewer ticks on the stalled frame too, so
+    // the row's stated control (*equal counts would mean the cap did
+    // nothing*) passes for it.  What separates them is what happens
+    // AFTER the stall.
+    tcd_s_a = fixture();
+    tcd_a   = game(tcd_s_a);
+    tcd_drop = run_capped(tcd_a, tcd_s_a, 4);
+
+    tcd_s_b = fixture();
+    tcd_b   = game(tcd_s_b);
+    tcd_defer = run_deferring(tcd_b, tcd_s_b, 4);
+
+    assert(tcd_drop == 4,
+           "a dropping cap plays four ticks over the stream, got {tcd_drop}");
+    assert(tcd_defer == 24,
+           "a deferring one plays twenty-four and still owes six, got "
+           + "{tcd_defer}");
+    assert(tcd_defer > tcd_drop,
+           "so the debt is paid off over the frames that follow — which "
+           + "is the simulation running behind the wall for ever after");
+}
+
+fn test_the_dropped_backlog_is_gone_rather_than_owed() {
+    // The same finding at the clock, with no game around it: after a
+    // capped stall the very next ordinary frames answer one tick each,
+    // never a burst.
+    tdb_clk = clock_new(TICK_STEP_UNITS);
+    tdb_big = clock_advance_capped(tdb_clk, STALL_UNITS, 4);
+    assert(tdb_big == 4, "the stall is capped at four, got {tdb_big}");
+    assert(clock_banked(tdb_clk) == 0,
+           "and the twenty-six it dropped are not banked: "
+           + "{clock_banked(tdb_clk)}");
+
+    // Forty frames of a sixtieth is 2 000 000 units — exactly one step.
+    tdb_seen = 0;
+    for _ in 0..40 { tdb_seen = tdb_seen + clock_advance_capped(tdb_clk, FRAME_UNITS, 4); }
+    assert(tdb_seen == 1,
+           "and the next two thirds of a second buys exactly one tick, "
+           + "got {tdb_seen}");
+}
+
+fn test_a_cap_above_the_backlog_is_the_uncapped_door() {
+    // ⚠ Under its cap the two doors are the same number, which is what
+    // makes the cap a policy rather than a second arithmetic.
+    tab_a = clock_new(TICK_STEP_UNITS);
+    tab_b = clock_new(TICK_STEP_UNITS);
+    for tab_dt in frames() {
+        tab_x = clock_advance(tab_a, tab_dt);
+        tab_y = clock_advance_capped(tab_b, tab_dt, 1000);
+        assert(tab_x == tab_y,
+               "a cap of a thousand changes nothing: {tab_x} vs {tab_y}");
+        assert(clock_banked(tab_a) == clock_banked(tab_b),
+               "including the remainder it leaves");
+    }
+}
+
+fn test_a_cap_of_zero_is_a_mistake_and_not_a_mode() {
+    // ⚠ Clamped to 1, for `clock_new`'s reason: a cap of zero is a
+    // simulation that can never advance.  Pause is a rate of zero.
+    tcz_clk = clock_new(TICK_STEP_UNITS);
+    assert(clock_advance_capped(tcz_clk, STALL_UNITS, 0) == 1,
+           "a cap of zero still takes one step");
+    assert(clock_advance_capped(tcz_clk, STALL_UNITS, -5) == 1,
+           "and so does a negative one");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The rate
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_rate_scales_the_wall_and_nothing_else() {
+    // Twenty seconds, at four speeds.  ⚠ Each on its OWN clock: a rate
+    // change drops the wall carry, so sweeping one clock through four
+    // rates would measure the changes rather than the rates.
+    trs_full = clock_new(TICK_STEP_UNITS);
+    assert(clock_advance(trs_full, STALL_UNITS) == 30,
+           "twenty seconds at full speed is thirty ticks");
+
+    trs_half = clock_new(TICK_STEP_UNITS);
+    clock_set_rate(trs_half, 1, 2);
+    assert(clock_advance(trs_half, STALL_UNITS) == 15,
+           "at half speed, fifteen");
+
+    trs_dbl = clock_new(TICK_STEP_UNITS);
+    clock_set_rate(trs_dbl, 2, 1);
+    assert(clock_advance(trs_dbl, STALL_UNITS) == 60,
+           "at double, sixty");
+
+    trs_odd = clock_new(TICK_STEP_UNITS);
+    clock_set_rate(trs_odd, 3, 2);
+    assert(clock_advance(trs_odd, STALL_UNITS) == 45,
+           "and at three halves, forty-five");
+}
+
+fn test_pause_is_a_rate_of_zero_and_keeps_what_is_banked() {
+    // ⚠ **Unpausing resumes mid-step.**  A pause that emptied the bank
+    // would re-phase the simulation against the wall every time a
+    // player opened a menu.
+    tpz_clk = clock_new(TICK_STEP_UNITS);
+    clock_advance(tpz_clk, TICK_STEP_UNITS / 2);
+    tpz_held = clock_banked(tpz_clk);
+
+    clock_set_rate(tpz_clk, 0, 1);
+    assert(clock_advance(tpz_clk, STALL_UNITS) == 0,
+           "a paused clock buys no ticks at any frame length");
+    assert(clock_banked(tpz_clk) == tpz_held,
+           "and keeps what was banked: {clock_banked(tpz_clk)} vs {tpz_held}");
+
+    clock_set_rate(tpz_clk, 1, 1);
+    assert(clock_advance(tpz_clk, TICK_STEP_UNITS / 2) == 1,
+           "so the other half-step still completes the tick");
+}
+
+fn test_a_rate_that_does_not_divide_loses_nothing() {
+    // ⚠⚠ **The reason the rate is a RATIONAL.**  A third of speed over
+    // an hour of frames is exact — and the hand-rolled float version
+    // beside it, which truncates each frame's share, is a tick short.
+    // That is `@D003`'s shape one family out: *the site that carries
+    // nothing*, arriving on a rate scaler instead of a mover.
+    trd_clk = clock_new(TICK_STEP_UNITS);
+    clock_set_rate(trd_clk, 1, 3);
+    trd_exact = 0;
+    for _ in 0..3600 { trd_exact = trd_exact + clock_advance(trd_clk, FRAME_UNITS); }
+
+    // One wall minute at a third of speed is twenty seconds of game,
+    // which is thirty ticks.
+    assert(trd_exact == 30,
+           "a minute of frames at a third of speed is thirty ticks, got "
+           + "{trd_exact}");
+    assert(clock_banked(trd_clk) == 0,
+           "with nothing left over: {clock_banked(trd_clk)}");
+
+    // The control: scale by a float and truncate, as a consumer with no
+    // library to reach for does.
+    trd_float  = 0;
+    trd_banked = 0;
+    for _ in 0..3600 {
+        trd_share  = ((FRAME_UNITS as float) * (1.0 / 3.0)) as integer? ?? 0;
+        trd_banked = trd_banked + trd_share;
+        trd_whole  = (trd_banked / TICK_STEP_UNITS) ?? 0;
+        trd_banked = trd_banked - trd_whole * TICK_STEP_UNITS;
+        trd_float  = trd_float + trd_whole;
+    }
+    assert(trd_float == 29,
+           "where truncating each frame's share loses one, got {trd_float}");
+    assert(trd_float != trd_exact,
+           "so the two disagree — if they ever agree here, this gate has "
+           + "stopped measuring anything");
+}
+
+fn test_the_count_door_ignores_the_rate() {
+    // ⚠ **A rate slows the WALL, never a script.**  A turn being
+    // committed, a scripted `tick 30` and a rollback re-simulation have
+    // no wall clock to slow down, and a paused game that could not run
+    // its own tests would be a mode flag wearing a rate's clothes.
+    tci_clk = clock_new(TICK_STEP_UNITS);
+    clock_set_rate(tci_clk, 0, 1);
+    assert(clock_step(tci_clk, 30) == 30,
+           "the count door answers the count under a pause");
+    clock_set_rate(tci_clk, 1, 4);
+    assert(clock_step(tci_clk, 30) == 30,
+           "and under a quarter speed");
+}
+
+fn test_a_rate_is_clamped_rather_than_reversed() {
+    // ⚠ Time going backwards is dropped everywhere else in the clock; a
+    // rate that ran the simulation in reverse would need every consumer
+    // to own an inverse tick.
+    tcr_clk = clock_new(TICK_STEP_UNITS);
+    clock_set_rate(tcr_clk, -3, 1);
+    assert(clock_rate_num(tcr_clk) == 0, "a negative rate is a pause");
+    assert(clock_advance(tcr_clk, STALL_UNITS) == 0, "and buys nothing");
+    clock_set_rate(tcr_clk, 1, 0);
+    assert(clock_rate_den(tcr_clk) == 1,
+           "and a zero denominator is full speed, not a division by zero");
+    assert(clock_advance(tcr_clk, STALL_UNITS) == 30, "which really runs");
+}
+
+fn test_a_defaulted_clock_runs_unscaled() {
+    // ⚠⚠ **The third answer this plan has given to one loft rule.**
+    // loft defaults an omitted struct field silently ([loft#914]): a
+    // `Bank` may not hold its `whole` because a defaulted 0 is a mover
+    // that never moves (`@X080`), a `Timer` MAY hold its `total`
+    // because a defaulted 0 is an unarmed timer (`@X082`) — and here a
+    // defaulted rate of `0 / 0` is *the behaviour you already had*,
+    // which is `plans/26` § The two rules under all of it stated as
+    // data rather than as prose.
+    tdc_clk = TickClock { step: TICK_STEP_UNITS };
+    assert(clock_advance(tdc_clk, STALL_UNITS) == 30,
+           "a clock built from a partial literal runs at full speed");
+    assert(clock_rate_den(tdc_clk) == 1,
+           "and reads as unscaled rather than as a zero denominator");
+
+    tdc_made = clock_new(TICK_STEP_UNITS);
+    assert(clock_rate_num(tdc_made) == 1 && clock_rate_den(tdc_made) == 1,
+           "as does one nobody configured");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Composition
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_slow_clock_driven_by_a_fast_one_matches_the_wall() {
+    // The plan's case: a 1 Hz clock driven by a 30 Hz clock's ticks,
+    // against one driven from the wall, over ten seconds of 60 fps
+    // frames.  Compared after EVERY frame rather than at the end.
+    tsc_fast   = clock_new(100000);
+    tsc_slow   = clock_new(CLOCK_UNITS_PER_SECOND);
+    tsc_direct = clock_new(CLOCK_UNITS_PER_SECOND);
+    tsc_a      = 0;
+    tsc_b      = 0;
+    tsc_apart  = 0;
+    for _ in 0..600 {
+        tsc_a = tsc_a + clock_drive(tsc_slow, tsc_fast,
+                                    clock_advance(tsc_fast, FRAME_UNITS));
+        tsc_b = tsc_b + clock_advance(tsc_direct, FRAME_UNITS);
+        if tsc_a != tsc_b { tsc_apart += 1; }
+    }
+    assert(tsc_b == 10, "ten seconds of frames is ten 1 Hz ticks, got {tsc_b}");
+    assert(tsc_a == 10, "and the driven clock takes the same ten, got {tsc_a}");
+    assert(tsc_apart == 0,
+           "agreeing after every one of the 600 frames, not {tsc_apart} apart");
+}
+
+fn test_and_the_lag_can_only_be_seen_when_the_steps_do_not_divide() {
+    // ⚠⚠ **Why the row above cannot fail.**  1 Hz is exactly thirty
+    // 30 Hz steps, so every slow boundary falls ON a fast one and there
+    // is nothing for the driven clock to lag by.  Make the steps
+    // incommensurate — 700 000 units driven by 300 000 — and the
+    // property the plan was reaching for appears: the composed count
+    // falls behind while a fast step is unfinished, never leads, and
+    // catches up at every common multiple.
+    tls_fast   = clock_new(300000);
+    tls_slow   = clock_new(700000);
+    tls_direct = clock_new(700000);
+    tls_a      = 0;
+    tls_b      = 0;
+    tls_behind = 0;
+    tls_ahead  = 0;
+    tls_worst  = 0;
+    for _ in 0..21 {
+        tls_a = tls_a + clock_drive(tls_slow, tls_fast,
+                                    clock_advance(tls_fast, 100000));
+        tls_b = tls_b + clock_advance(tls_direct, 100000);
+        if tls_a <  tls_b { tls_behind += 1; }
+        if tls_a >  tls_b { tls_ahead  += 1; }
+        tls_worst = max(tls_worst, tls_b - tls_a);
+    }
+    // ⚠⚠ **ONE assertion, four readings.**  loft abandons a function at
+    // its first failed assertion, so four `assert`s here would leave
+    // three of them unmaintained decoration (`CLAUDE.md` § Testing
+    // something that moves) — and these are one claim about one
+    // subject: the SHAPE of a driven clock's error.  `tests/26_l0`'s
+    // form, carried in the message.
+    //
+    // ⚠ `tls_behind` is the vacuity control: a reading of zero means
+    // the pair is commensurate after all and this gate says exactly as
+    // little as the one above it.
+    assert(tls_behind == 3 && tls_ahead == 0 && tls_worst == 1
+           && tls_a == 3 && tls_b == 3,
+           "a driven clock lags and never leads — behind at {tls_behind} "
+           + "of 21 frames (want 3, and 0 would mean this gate is vacuous), "
+           + "ahead at {tls_ahead} (want 0), worst lag {tls_worst} "
+           + "(want 1), and {tls_a} vs {tls_b} at the common multiple "
+           + "(want 3 and 3)");
+}
+
+fn test_composing_by_hand_is_exact_and_the_door_is_a_name() {
+    // ⚠ **The honest reading, because the temptation is to overclaim.**
+    // `play_ticks` exists because the hand-rolled version of IT is
+    // wrong for 602 of the first 1000 `n` (`tests/19_p1`) — that is a
+    // fix.  `clock_drive` is not: both sides are integers, so
+    // `n * step` at the call site is exact.  The door earns its place
+    // by NAMING the case, so that the next consumer reaches for it
+    // instead of re-deriving the composition in seconds and meeting
+    // that measurement for itself.
+    for tch_n in [1, 7, 12, 30, 97, 1000] {
+        tch_a = clock_new(TICK_STEP_UNITS);
+        tch_b = clock_new(TICK_STEP_UNITS);
+        tch_f = clock_new(100000);
+        assert(clock_drive(tch_a, tch_f, tch_n)
+               == clock_advance(tch_b, tch_n * clock_step_units(tch_f)),
+               "n = {tch_n} composes the same either way");
+    }
+    tch_z = clock_new(TICK_STEP_UNITS);
+    tch_fz = clock_new(100000);
+    assert(clock_drive(tch_z, tch_fz, 0) == 0, "no fast ticks buy no slow ones");
+    assert(clock_drive(tch_z, tch_fz, -4) == 0, "and neither does a negative count");
+    assert(clock_banked(tch_z) == 0, "with nothing banked either way");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The pump
+// ─────────────────────────────────────────────────────────────────
+
+fn test_the_first_pump_primes_and_answers_none() {
+    // ⚠ A pump whose first reading was treated as elapsed would open a
+    // server with its whole uptime as one burst of ticks.
+    tfp_clk = clock_new(TICK_STEP_UNITS);
+    assert(clock_pump(tfp_clk, 900000000) == 0,
+           "the first reading of an absolute wall clock primes it");
+    assert(clock_banked(tfp_clk) == 0, "and banks none of it");
+    assert(clock_pump(tfp_clk, 900000000 + STALL_UNITS) == 30,
+           "and the twenty seconds after it are thirty ticks");
+}
+
+fn test_a_pump_and_a_frame_loop_agree_step_for_step() {
+    // ⚠ The two doors differ in what the CALLER holds — an absolute
+    // reading or a delta — and in nothing else.  That is the whole
+    // reason the pump exists: `now - last` at the call site is where a
+    // driver gets the order backwards once, and `clock_advance` drops
+    // negative time, so the mistake looks like a stutter.
+    tpf_pump  = clock_new(TICK_STEP_UNITS);
+    tpf_frame = clock_new(TICK_STEP_UNITS);
+    tpf_now   = 12345;
+    clock_pump(tpf_pump, tpf_now);
+    for tpf_dt in frames() {
+        tpf_now = tpf_now + tpf_dt;
+        assert(clock_pump(tpf_pump, tpf_now) == clock_advance(tpf_frame, tpf_dt),
+               "the two doors answer the same at dt = {tpf_dt}");
+        assert(clock_banked(tpf_pump) == clock_banked(tpf_frame),
+               "and leave the same remainder");
+    }
+}
+
+fn test_a_wall_clock_going_backwards_re_primes() {
+    // ⚠ An absolute clock that jumped back is the new truth.  Dropping
+    // the reading instead would owe every future pump the difference,
+    // and the server would stall until the wall caught up with itself.
+    twb_clk = clock_new(TICK_STEP_UNITS);
+    clock_pump(twb_clk, 1000000000);
+    assert(clock_pump(twb_clk, 1000000000 - STALL_UNITS) == 0,
+           "a wall that jumped back buys no ticks");
+    assert(clock_pump(twb_clk, 1000000000 - STALL_UNITS + TICK_STEP_UNITS) == 1,
+           "and the next step measured from THERE is one tick");
+}
+
+fn test_the_pump_is_scaled_by_the_rate_too() {
+    // Every DURATION door is, and the count door is not — one place
+    // applies the rate (`tick_clock.loft::clock_scaled`), so this is a
+    // gate on that rather than a third behaviour.
+    tps_clk = clock_new(TICK_STEP_UNITS);
+    clock_set_rate(tps_clk, 1, 2);
+    clock_pump(tps_clk, 0);
+    assert(clock_pump(tps_clk, STALL_UNITS) == 15,
+           "twenty seconds of wall at half speed is fifteen ticks");
+    tps_cap = clock_new(TICK_STEP_UNITS);
+    clock_set_rate(tps_cap, 1, 2);
+    assert(clock_advance_capped(tps_cap, STALL_UNITS, 1000) == 15,
+           "and so is the capped door under its cap");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ The game's own doors are untouched
+//
+// L4 builds what dryopea has no use for.  This is the other half of
+// that sentence: the capability landed and the game did not change.
+// ─────────────────────────────────────────────────────────────────
+
+fn test_the_games_own_door_is_still_uncapped() {
+    // ⚠ **The property the 654 scenario measurements rest on.**  A cap
+    // inside `play_advance` would make the simulation frame-rate
+    // dependent at whatever length it chose — the one thing plan 19 P0
+    // proved this shape is not.
+    tgu_s  = fixture();
+    tgu_ps = game(tgu_s);
+    assert(play_advance_units(tgu_ps, tgu_s, STALL_UNITS) == 30,
+           "one frame of twenty seconds still plays thirty ticks");
+    assert(tgu_ps.ticks == 30, "and the game really played them");
+}
+
+fn test_the_games_own_clock_is_unscaled() {
+    tgc_ps = play_state_new();
+    assert(clock_rate_num(tgc_ps.clock) == 1
+           && clock_rate_den(tgc_ps.clock) == 1,
+           "a session opens at full speed — dryopea binds no rate key");
+}

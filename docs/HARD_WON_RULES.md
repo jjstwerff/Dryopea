@@ -290,6 +290,34 @@ gate produce a non-trivial reading at all?*  Assert the disagreement is
 `> 0`, and assert the fixture is not degenerate.  Any gate that compares
 two computations of one thing can agree by both being empty.
 
+⚠⚠ **AND THE VACUITY CAN BE IN THE NUMBERS RATHER THAN IN THE
+ASSERTION** (plan 26 L4, `@M034`) — the same rule at its hardest to
+notice, because this one PASSES and looks like a result.  `plans/26`
+§ L4 asked that *"a 1 Hz clock driven by a 30 Hz clock's ticks equals
+one driven from the wall"*.  Measured over 600 frames the two agree
+after every single one — **and they must**, for any implementation
+that hands on whole steps, because 1 Hz is exactly thirty 30 Hz steps
+so every slow boundary falls ON a fast one.  There was nothing to lag
+by.  ⚠ The property the gate names is real and needs steps that do NOT
+divide: 700 000 units driven by 300 000 is behind at **3 of 21**
+frames, **0** ahead, never more than **1** behind, level again at the
+common multiple.  ⚠ **So the generic control has a second form**: not
+only *can this gate produce a non-trivial reading at all?* but *are the
+NUMBERS I chose capable of disagreeing?*  A round ratio between two
+quantities is exactly where they are not.
+
+⚠⚠ **AND A NEGATIVE CONTROL THE WRONG IMPLEMENTATION ALSO SATISFIES IS
+NOT ONE** (plan 26 L4, `@X083`).  The same row's control read *equal
+tick counts would mean the cap did nothing* — true, and cheap.  The cap
+a driver actually writes by mistake clamps the answer and leaves the
+backlog BANKED, which answers **fewer** ticks on the stalled frame too
+and then pays the stall off over the frames that follow, running the
+simulation behind the wall for ever.  Over one stream with a 20 s
+stall, the dropping cap plays **4** ticks and the deferring one **24**
+and still owes 6.  ⚠ **The control has to be the plausible WRONG
+version reproduced beside the shipped one**, not the null version — the
+null version is the one nobody would have written.
+
 ⚠⚠ **SEVERAL COUNTS IN ONE TEST FUNCTION ARE RANKED, NOT INDEPENDENT**
 (plan 25 M1).  loft abandons a test function at its FIRST failed
 assertion, so a function asserting four counts can only ever report the

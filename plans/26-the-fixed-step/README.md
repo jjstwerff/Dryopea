@@ -9,10 +9,40 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**Opened 2026-08-17.  L0, L1, L2 and L3 shipped 2026-08-17; L4 next.**  This plan
-came out of a comparison of dryopea's tick pacing against moros's, run before
-it was written; the readings are § What was measured first and three of them
-are defects nothing in either repo can currently see.
+**Opened 2026-08-17.  L0, L1, L2, L3 and L4 shipped 2026-08-17; L5 next.**  This
+plan came out of a comparison of dryopea's tick pacing against moros's, run
+before it was written; the readings are § What was measured first and three of
+them are defects nothing in either repo can currently see.
+
+⚠⚠ **L4's finding is about THIS DOCUMENT'S OWN GATE, for the third phase
+running** (`@M034`) — and this one is the hardest of the three to notice,
+because a vacuous gate PASSES.  The L4 row asks that *"a 1 Hz clock driven by a
+30 Hz clock's ticks equals one driven from the wall"*.  It cannot fail: 1 Hz is
+exactly thirty 30 Hz steps, so every slow boundary falls ON a fast one and there
+is nothing for a driven clock to lag by, for **any** implementation that hands
+on whole fast steps.  Measured, the two counts agree after every one of 600
+frames.  ⚠ The property the row was reaching for is visible only when the steps
+do NOT divide — a 700 000-unit clock driven by a 300 000-unit one is behind at
+**3 of 21** frames, **0** ahead, never more than **1** behind, level again at
+the common multiple — and that pair is what shipped beside it.
+
+⚠⚠ **And the cap's stated negative control passes for the wrong
+implementation.**  The row says *equal tick counts would mean the cap did
+nothing*; the version a driver actually writes by mistake — clamp the answer,
+keep the backlog — answers *fewer* ticks on the stalled frame too, and then
+pays the stall off over the frames that follow, running the simulation behind
+the wall for ever.  Over one stream with a 20 s stall in it a dropping cap of 4
+plays **4** ticks and a deferring one plays **24** and still owes 6.  The
+deferring driver is reproduced in `tests/26_l4` as the control, and it is what
+makes the cap's gate able to fail at all (`@X083`).
+
+⚠ **What L4 shipped**: `clock_advance_capped`, `clock_pump`, `clock_set_rate`
+and `clock_drive` — four doors over the ONE accumulator, none of them a default
+and **none of them consumed by dryopea**, which is the phase (§ FLEXIBLE).  The
+rate is a RATIONAL applied at one private site to every DURATION door and to no
+COUNT door (`@X084`), and a defaulted `0 / 0` reads as UNSCALED — this plan's
+**third** answer to [loft#914], and the first where the silent default is
+*the behaviour you already had* rather than a hazard to design around.
 
 ⚠⚠ **L3 measured the timer family before converting it, and the reading
 INVERTS § 2** (`@M033`, `@D004`).  § 2 counted the three 1e-9 nudges as the
@@ -476,7 +506,8 @@ example of the editor's door, and `plans/08` is the plan that made them so.
 | ↳ **measured** | **654 measurements green and UNMOVED, 1269 tests green, both epsilons deleted.**  `@M030`'s sweep now reads **180 × 7** for the player and **360 × 7** boosting.  ⚠ Behaviour at the shipped tick is bit-identical by construction — 3.0 hex/s over a 2 000 000-unit step is exactly 2 hexes with nothing carried — so the change is entirely at timesteps nobody ships yet, which is why the biggest gate has nothing to see for the *second* phase running | `@M032`, `@X080`, `@X081` | ⚠ The negative control was already in the tree and it FIRED: L0's four vehicle functions asserted the wrong numbers as a tripwire, and every one went RED on this phase before going green on the true 180 / 360.  ⚠⚠ **The `Timer`-as-`Bank` refutation this row asked for was NOT run and is deferred to L3** — the one-shot timers were left on float seconds behind one named seam (`clock_seconds_from_units`), so the family boundary is *asserted* here and *tested* there.  Recorded rather than quietly dropped |
 | **L3** ✅ | a `Timer` counting UP to 20.0 s and one counting DOWN from it both fire on the **same** tick, with no epsilon in either | a one-shot duration is exact because it is an integer, not because it was nudged | ⚠⚠ `CLAUDE.md` § Timers and epsilons: *neither direction is safe*, measured — 20.0 s counting up lands exactly and counting down leaves a residue.  **Both directions or the gate is half a gate.**  ⚠ And this is where `Timer`-as-`Bank` is attempted and must break |
 | ↳ **measured** | **this row's own expected result is a gate that could not fail**, and the phase's first measurement is what said so.  Over six exact-multiple durations at the shipped tick, float UP vs float DOWN vs true: **7/7/6, 16/16/15, 30/31/30, 45/45/45, 61/61/60, 91/91/90** — the two directions disagree at ONE of six and **agree while both being a tick long at FOUR**.  ⚠ The shipped gate therefore measures against the TRUE count and keeps the up/down pair only as the record.  ⚠⚠ The real defect was elsewhere and is `@D004`: the two timers with NO epsilon (`Enemy.stand`, `WaveSchedule.lull`) run a tick long at four and three of seven tick lengths, while all three GUARDED ones are exact at all seven — § 2 had the brittleness backwards.  **1285 tests green, 654 measurements green and unmoved, three epsilons deleted** | `@M033`, `@D004`, `@X082` | ⚠ The `Timer`-as-`Bank` refutation L2 deferred here was RUN and BROKE the bank twice, both silently: it fires a second time with nobody re-arming it, and a 5.0 s cooldown costs 8 ticks the first time and **7** the second.  ⚠ The negative control for the two converted rows is the pre-L3 float arithmetic reproduced beside them and asserted WRONG at seven of fourteen readings — so a green profile is a measurement rather than a restatement of `true_ticks` |
-| **L4** | a capped driver and an uncapped one produce **different tick counts** and **identical worlds per tick**; a 1 Hz clock driven by a 30 Hz clock's ticks equals one driven from the wall | policy is the DRIVER's, arithmetic is the clock's | ⚠ Identical worlds per tick is the whole assertion — equal tick counts would mean the cap did nothing, and equal wall-clock outcomes would mean it compressed rather than dropped |
+| **L4** ✅ | a capped driver and an uncapped one produce **different tick counts** and **identical worlds per tick**; a 1 Hz clock driven by a 30 Hz clock's ticks equals one driven from the wall | policy is the DRIVER's, arithmetic is the clock's | ⚠ Identical worlds per tick is the whole assertion — equal tick counts would mean the cap did nothing, and equal wall-clock outcomes would mean it compressed rather than dropped |
+| ↳ **measured** | **both halves of this row are weaker than what the phase found.**  The composition clause **cannot fail**: 1 Hz is exactly thirty 30 Hz steps, so every slow boundary falls ON a fast one and the two counts agree after every one of 600 frames for any implementation that hands on whole steps.  The property it reaches for needs steps that do NOT divide — 700 000 driven by 300 000 is behind at **3 of 21** frames, **0** ahead, worst lag **1**, level at the common multiple.  ⚠ And the cap reads **4** ticks dropping against **24** deferring over one stream with a 20 s stall, with `state_diff` green against a counted control both ways and the two capped/uncapped worlds DIFFERING so the pair cannot hold vacuously.  ⚠ A wall minute at 1/3 speed is **30** ticks exact against **29** truncated.  **1305 tests green, 654 measurements green and unmoved** | `@M034`, `@X083`, `@X084` | ⚠⚠ **The stated control passes for the wrong implementation.**  *Equal tick counts would mean the cap did nothing* — but a DEFERRING cap answers fewer ticks on the stalled frame too and is still wrong, so the real control is the deferring driver reproduced beside the shipped one.  ⚠ *Equal wall-clock outcomes would mean it compressed* is unreachable rather than satisfied: the step is fixed and the door answers a COUNT, so nothing in the clock can compress — a driver that multiplied its dt could, which is `plans/22` § LOD's warning and not this file's |
 | **L5** | `clock_alpha()` in `[0, 1)`, and the vehicle drawn at alpha moves on **>200 of 240 frames** un-eased | a fixed sim and a free frame rate meet at one number | ⚠ Alpha and the ease must be measured SEPARATELY, or a green reading is the ease's (`@M023` is the prior).  ⚠⚠ If alpha adds nothing over the ease, **L5 is cut** and that is a result |
 | **L6** | dryopea's 1268 + 654 and moros's world digests unchanged across the extraction, and **every door in § A DOOR PER USE CASE has a test named for its case that the docs link to** | a library is a move, not a rewrite — and a door nobody can find is a door a consumer rebuilds | ⚠ Byte-identical digests on BOTH sides; a consumer that only compiles has verified nothing.  ⚠⚠ **And the example gate needs both halves**: a test with no link is invisible, a link to prose is a snippet that rots.  The refutation is a door whose "example" is not a compiled test |
 
@@ -488,8 +519,8 @@ example of the editor's door, and `plans/08` is the plan that made them so.
 | **L1** — the clock, in integer base units | M | `tests/26_l1_the_clock.loft` — `advance(n × step) == step(n)` over 1..100000, float path kept as control.  `scripts/validate.sh` 654 unchanged | **Done** 2026-08-17 — `src/tick_clock.loft`, 13 tests.  ⚠ **Not µs**: the recommended 666 667 µs step moves 17 tests (`@M031`), so the base unit is 1/3 µs and `TICK_SECONDS` is derived bit-identical (`@X079`).  ⚠ `main.loft` now hands integer µs down; the float door rounds |
 | **L2** — `Bank`: a rate in whole units; both mover epsilons deleted | M | `scripts/test.sh` + `scripts/validate.sh` with `ENEMY_PROGRESS_EPSILON` and `HELPER_PROGRESS_EPSILON` **removed**.  ⚠ And the vehicle gains the bank it never had | **Done** 2026-08-17 — `src/tick_bank.loft`; `@D003` closed, both epsilons deleted, all three movers take INTEGER base units.  ⚠ `@X080`: a `Bank` holds the carry alone — the rate is `@X061`'s and `whole` is a parameter, because a nested struct's silent zero-default would freeze a mover.  ⚠ `@X081`: `vehicle_hexes_per_tick` is a CEILING that spends nothing, because `play_steer_reach` asks once per FRAME |
 | **L3** — `Timer`: one-shot, UP and DOWN, and the family boundary | S | `tests/26_l3_the_timers.loft` — both directions on one target, plus the `Timer`-as-`Bank` refutation | **Done** 2026-08-17 — `src/tick_timer.loft`, 16 tests; all five one-shot timers converted and `HELPER_TIMER_EPSILON` / `TOWER_REPAIR_EPSILON` / `VEHICLE_TIMER_EPSILON` deleted.  ⚠ `@D004` found AND closed in the phase: the two timers that never had a guard were the broken ones.  ⚠ `@X082`: a `Timer` holds its `total` where a `Bank` may not hold its `whole` — same [loft#914] rule, opposite conclusion.  ⚠ § 2's count was seven and there are EIGHT — the tower's CHARGE is a hand-rolled bank, pinned rather than converted |
-| **L4** — the policies dryopea does NOT need: cap, rate, composition | S | `tests/26_l4_the_policies.loft` — capped vs uncapped, and a nested clock | Next |
-| **L5** — alpha, or the finding that the ease already covers it | S | `tests/26_l5_the_alpha.loft` — frames moved, alpha and ease measured apart.  ⚠ May be CUT | Blocked on L4 |
+| **L4** — the policies dryopea does NOT need: cap, rate, composition | S | `tests/26_l4_the_policies.loft` — capped vs uncapped, and a nested clock | **Done** 2026-08-17 — four doors on `src/tick_clock.loft` (`clock_advance_capped` / `clock_pump` / `clock_set_rate` / `clock_drive`), 20 tests, and dryopea consumes none of them.  ⚠ `@M034`: **this row's composition clause cannot fail** — the pair it names is commensurate — and its cap control passes for a DEFERRING cap, which is the mistake a driver actually writes.  ⚠ `@X083`: a policy is a door, and the cap DROPS.  ⚠ `@X084`: the rate is a rational, exempt from the count door, and its defaulted `0 / 0` is the third [loft#914] answer in this plan |
+| **L5** — alpha, or the finding that the ease already covers it | S | `tests/26_l5_the_alpha.loft` — frames moved, alpha and ease measured apart.  ⚠ May be CUT | Next |
 | **L6** — extract; a door per use case, each with the test that IS its example | M | both suites, both digests, and one named test per door that the docs link to | Blocked on L5 |
 
 ⚠ **L0 before L1 is not ceremony.**  `design-protocol` § step 3 asks for the
