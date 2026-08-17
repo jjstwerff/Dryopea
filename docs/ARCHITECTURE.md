@@ -398,6 +398,45 @@ src/
                    sight_first_block`, the same walker the towers
                    ask; the boom's free length is quantised to hex
                    steps and smoothed in TIME.
+  ground_mesh.loft
+                   THE GROUND, as triangles (plan 25 M0).
+                   `ground_top_face` emits one hex's top as a
+                   six-triangle fan around its centre, in the
+                   CAMERA's world — so this is the only geometry
+                   dryopea produces that is not in the screen
+                   frame.
+                   ⚠⚠ There is NO blend, and that is measured
+                   rather than lazy (@X072).  moros's corner-height
+                   mean is what makes terrain slope instead of
+                   step; here it is a no-op at every hex in BOTH
+                   directions — `height_override` is non-null on
+                   two of twelve palette kinds, so across ground
+                   every term is 0, and across a structure's edge
+                   the mean has to be skipped anyway.  ⚠ It is
+                   also the honest picture: the sim asks
+                   `can_step`, a height DIFFERENCE, so a sloped
+                   mesh would draw a ramp the vehicle cannot
+                   climb.  The blend arrives with plan 02, and
+                   plan 25 M2's halo gate is the tripwire.
+                   ⚠ TWO lookups, and they are different
+                   questions: HEIGHT from `hex_height` (the
+                   AUTHORED entry plus the layer), COLOUR from
+                   `hex_surface_index` (the SURFACE).  Swap them
+                   and piling debris on a wall LOWERS it.
+                   ⚠⚠ Colour is a UNIFORM, so this emits ONE MESH
+                   PER PALETTE KIND (@X074) — a GATE requirement,
+                   not a performance choice: a flat-unlit frame
+                   drawn that way can only contain palette
+                   colours, and `classify_world` is an EXACT
+                   lookup.  Put the colour on the vertex and GL
+                   interpolates it, so every gradient pixel is a
+                   FAULT and R0's zero-drift measurement is gone.
+                   ⚠ The fan winds COUNTER-CLOCKWISE (two
+                   negations cancel), which is GL's front face —
+                   `tests/25_m0` recomputes that from the emitted
+                   triangles, because a reversed fan changes no
+                   count, no height and no position and draws
+                   NOTHING under GL_CULL_FACE.
   painted.loft     PaintedHex { q, r, kind: u8 }
                    + PaintedWorld { painted: hash<PaintedHex[q, r]> }
                    + paint(), lookup_painted(), paint_line()

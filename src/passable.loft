@@ -360,6 +360,33 @@ pub fn hex_ground_name(pal: vector<GroundType>, pw: PaintedWorld, hl: const Heig
     hgn_e.name
 }
 
+// The surface's palette INDEX at a hex (plan 25 M0).
+//
+// The same question `hex_ground` answers, given back as the identity
+// rather than as the entry — which is what a caller that GROUPS by
+// surface needs.  `ground_mesh.loft` emits one mesh per palette kind
+// (`@X074`), so the index is its key; the struct would have to be
+// compared field by field to serve as one.
+//
+// ⚠ **This is the SURFACE, not the painted kind** — `GROUND_RUBBLE`
+// wherever the layer carries a pile, whatever the map says underneath.
+// Pair it with `hex_height`, which is the other half and reads the
+// AUTHORED entry so the two terms add: a wall under a heap meshes at
+// wall + heap and colours `rubble`.  Take the height off the surface
+// instead and rubble's null `height_override` swallows the wall, so
+// piling debris onto one would LOWER it.
+pub fn hex_surface_index(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+                         q: integer, r: integer) -> integer {
+    // Guarded exactly as `hex_ground` guards it: a palette too short to
+    // hold `rubble` gives back the map that was painted rather than a
+    // kind the renderer has no colour for.
+    if height_piled(hl, q, r) {
+        hsi_rubble = pal[GROUND_RUBBLE];
+        if hsi_rubble != null { return GROUND_RUBBLE; }
+    }
+    lookup_painted(pw, q, r) as integer
+}
+
 // How tall the thing standing on a hex is, in metres — the painted
 // structure PLUS whatever runtime has piled on it.
 //

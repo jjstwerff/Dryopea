@@ -1,0 +1,147 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// The ground, as triangles — plan 25 phase M0.
+//
+// The decisions are `plans/25-the-terrain-mesh/README.md` and are not
+// restated; what is here is what a reader of THIS file has to know.
+//
+// ── ⚠⚠ There is no blend, and that is measured rather than lazy ──
+//
+// moros's mesher averages a corner's height with every neighbour
+// sharing it (`@X044`), which is what makes terrain SLOPE instead of
+// step.  In dryopea that mean is a no-op at every hex, in both
+// directions: `examples/palette.json` gives `height_override` to
+// exactly two of twelve kinds (`wall` 3 m, `wall_high` 5 m), so across
+// ground every term of the mean is 0 — and across a structure's edge
+// the mean has to be SKIPPED anyway, because that edge is a face.
+//
+// ⚠ And skipping it is the honest picture, not the cheap one.  The
+// simulation asks `can_step`, which is a height DIFFERENCE; a mesh that
+// sloped where the rule steps would draw a ramp the vehicle cannot
+// climb.  Flat tops and vertical sides make a height difference
+// readable as the SIZE OF A QUAD, which is what the player is deciding
+// about.  `@X072`.
+//
+// ⚠ The trigger to add a blend is plan 02's slope solver — and it must
+// widen the mesh chunk's halo in the same change.  `tests/25_m2` is
+// written to go red if it does not.
+//
+// ── ⚠⚠ Colour is a UNIFORM, so this emits ONE MESH PER KIND ─────
+//
+// `mesh3d::Vertex` is position + normal + uv and carries no colour, and
+// that turns out to be the shape agreeing rather than a gap.  A caller
+// groups hexes by `hex_surface_index` and hands each group its own
+// `Mesh`; the kind's palette colour then rides on the draw call as a
+// uniform.  `@X074`.
+//
+// ⚠ **That is a GATE requirement, not a performance choice.**
+// `measure.loft::classify_world` is an EXACT colour lookup — a pixel
+// that is not a palette colour is a FAULT — and a flat-unlit frame
+// drawn with a palette colour as a uniform can only contain palette
+// colours, by construction.  Put the colour on the vertex and GL
+// interpolates it across every triangle, so each gradient pixel lands
+// in `unknown` and `docs/RENDERER.md` § R0's zero-drift measurement is
+// thrown away.
+//
+// ── ⚠ The two lookups are different questions ───────────────────
+//
+// HEIGHT comes from `hex_height`, which reads the AUTHORED entry and
+// ADDS the runtime layer.  COLOUR comes from `hex_surface_index`, which
+// answers the SURFACE.  A wall under a metre of rubble meshes its top
+// at 4 m and colours `rubble`.  ⚠ Ask the height off the surface
+// instead and rubble's null `height_override` swallows the wall, so
+// piling debris onto one would LOWER it — visibly, and `CLAUDE.md`
+// § Rubble is a LAYER is the oldest trap in the repo.
+//
+// ── ⚠ The winding is the lattice's, and it is asserted not assumed ──
+//
+// `lat_corner_metres` negates y to reach dryopea's screen frame
+// (clockwise) and `lat_to_world` negates it again to reach the camera's
+// (`hex_grid`'s own).  Two negations cancel, so a corner ring walked
+// 0→5 is COUNTER-CLOCKWISE seen from above — GL's default front face,
+// with no reversal needed.  ⚠ `tests/25_m0` recomputes that from the
+// triangles this file actually emits rather than trusting the sentence:
+// get it backwards and, with `GL_CULL_FACE` on, the ground is invisible
+// while every other valve reads healthy.
+
+use lattice;
+use palette;
+use painted;
+use height;
+use passable;
+use render_camera;
+use mesh3d;
+
+// The z of a top face, given the hex's height.  A separate name because
+// the eventual water surface will not use it (see § Open below) and
+// because a caller reading `hex_height` for its own reasons must not
+// have to know whether the mesher adds an offset.  It does not.
+pub const GROUND_TOP_OFFSET: float = 0.0;
+
+// One hex's top face, as a six-triangle fan around its centre.
+//
+// Emits into `m` unconditionally — the caller decides which mesh, by
+// asking `hex_surface_index` (§ Colour is a uniform).  Vertices are in
+// the CAMERA's world (`lat_to_world`), so this is the only geometry
+// dryopea produces that is not in the screen frame.
+//
+// ⚠ Six triangles rather than four: a hexagon fans from its centre in
+// six, and a four-triangle strip across the diagonal would put two
+// vertices of unequal height on one edge the day plan 02 lands.  The
+// centre vertex is what a later slope solver writes into.
+pub fn ground_top_face(m: Mesh, pal: vector<GroundType>, pw: PaintedWorld,
+                       hl: const HeightLayer, q: integer, r: integer) {
+    gtf_h    = Hex { q: q, r: r };
+    gtf_z    = hex_height(pal, pw, hl, q, r) + GROUND_TOP_OFFSET;
+    gtf_up   = vec3(0.0, 0.0, 1.0);
+
+    gtf_c    = lat_to_world(gtf_h, gtf_z);
+    gtf_mid  = add_vertex(m, vertex(gtf_c, gtf_up, vec2(0.5, 0.5)));
+
+    // The six rim vertices, in corner order.  Bound before the loop
+    // that indexes them: the fan needs corner `i` and corner `i + 1`,
+    // and re-emitting the shared one would double the vertex count for
+    // a mesh that is about to be flattened anyway.
+    gtf_rim: vector<integer> = [];
+    for gtf_i in 0..6 {
+        gtf_o = lat_corner_metres(gtf_h, gtf_i);
+        // ⚠ `lat_corner_metres` is already in dryopea's SCREEN frame
+        // (y south), so the camera's frame is one more negation — the
+        // same one `lat_to_world` makes, applied to a corner rather
+        // than a centre.  There is no `lat_corner_to_world`, because a
+        // second function that negates is a second place to forget.
+        gtf_p = vec3(gtf_o.0, -gtf_o.1, gtf_z);
+        gtf_rim += [add_vertex(m, vertex(gtf_p, gtf_up, vec2(0.0, 0.0)))];
+    }
+
+    for gtf_j in 0..6 {
+        gtf_a = gtf_rim[gtf_j] ?? 0;
+        gtf_b = gtf_rim[(gtf_j + 1) % 6] ?? 0;
+        // (centre, corner j, corner j+1) — counter-clockwise from above,
+        // which is why nothing here reverses anything.
+        add_triangle(m, gtf_mid, gtf_a, gtf_b);
+    }
+}
+
+// ─── Open, and owned by a later phase ───────────────────────────
+//
+// ⚠ **What draws SEA is not decided, and it is M2's to decide.**
+// `painted.loft` erases a hex painted sea, so the painted set does not
+// contain the water — which means "mesh the painted set" leaves an
+// authored lake as a HOLE in the ground at exactly the height of the
+// land around it.  ⚠ It is not a hole a side quad covers either: sea's
+// height is 0 and so is grass's, so there is no face between them and
+// nothing is drawn on the boundary at all.
+//
+// The three candidates, none of them chosen here: mesh the painted set
+// plus a ring (covers a lake up to one hex wide and holes on a bigger
+// one), mesh the painted set's bounding region (draws sea over every
+// gap, including the infinite outside), or give water a real DROP —
+// which `examples/palette.json` already carries as a field per kind
+// (sea 0, water 1, rapids 3, waterfall 8) and nothing reads.
+//
+// ⚠ The third is the one that is a DESIGN answer rather than a mesher
+// workaround, and it changes `hex_height` for every consumer — so it is
+// a decision about the simulation, not about drawing, and it belongs
+// with plan 02.

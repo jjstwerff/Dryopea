@@ -1,0 +1,242 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 25 phase M0 — one hex's top face, as triangles.
+//
+// ── ⚠⚠ The trap this file exists for ────────────────────────────
+//
+// A hex's HEIGHT and its COLOUR come from two different lookups, and
+// they disagree wherever the runtime has piled something.  `hex_height`
+// reads the AUTHORED entry and adds the layer, so a wall under a metre
+// of rubble is 4 m; `hex_surface_index` answers the SURFACE, so the same
+// hex colours `rubble`.  ⚠ Ask the height off the surface and rubble's
+// null `height_override` swallows the wall — the hex meshes at **1 m**
+// and piling debris onto a wall LOWERS it.  § The surface is not the
+// painted kind asserts both numbers, so getting either lookup backwards
+// names itself.
+//
+// ── ⚠⚠ The winding is RECOMPUTED, never quoted ──────────────────
+//
+// `plans/25` § What was measured first records a probe reading of
+// +0.487 for the fan's normal.z.  That number is deliberately not in
+// this file: it was measured on a lattice that could move, and a
+// constant copied out of a plan certifies the plan rather than the
+// code.  § The fan faces UP walks the triangles the mesher actually
+// emitted and computes the cross product itself.
+//
+// ⚠ **And it needs its own non-degenerate control.**  A zero-area
+// triangle has normal.z == 0.0, which is not negative — so `> 0.0` on
+// its own is green for a mesher that emits six slivers.  The magnitude
+// is asserted too.
+//
+// ── ⚠ R1's generic control, one plan over ───────────────────────
+//
+// `tests/21_r1`'s overview gate read a perfect 0.0 twice while
+// iterating over an empty vector.  The shape that fixes it is cheap and
+// belongs anywhere a loop carries the assertions: assert the loop RAN,
+// and assert the fixture can produce a non-trivial reading.  Both are
+// here — § The fixture is not degenerate.
+
+#cwd
+
+use dryopea;
+
+const PALETTE_PATH: text = "examples/palette.json";
+
+// Palette indices, read off `examples/palette.json` by position.  ⚠ Not
+// looked up by name on purpose: `GROUND_RUBBLE` is the only index
+// dryopea's code names (`palette.loft` says why), and a test that
+// resolved names would be green against a palette whose order had
+// sheared under the save format.
+const KIND_GRASS:     integer = 5;
+const KIND_WALL:      integer = 9;
+const KIND_WALL_HIGH: integer = 10;
+
+// ─── The fixture ────────────────────────────────────────────────
+
+// A grass hex at the origin, a wall beside it, a wall_high beside that,
+// and a metre of rubble piled on the wall.  Four surfaces at four
+// heights, which is what makes every assertion below able to fail.
+fn m0_world() -> PaintedWorld {
+    mw_pw = painted_empty();
+    paint(mw_pw, 0, 0, KIND_GRASS     as u8);
+    paint(mw_pw, 1, 0, KIND_WALL      as u8);
+    paint(mw_pw, 2, 0, KIND_WALL_HIGH as u8);
+    mw_pw
+}
+
+fn m0_layer() -> HeightLayer {
+    ml_hl = height_layer_empty();
+    height_raise(ml_hl, 1, 0, 1.0, RUBBLE_MASONRY as u8);
+    ml_hl
+}
+
+// ─── The surface is not the painted kind ────────────────────────
+
+// ⚠⚠ The oldest trap in the repo, asserted from both ends.  The wall
+// under a heap must mesh its top at wall + heap and colour `rubble`;
+// the two wrong answers are named in the messages so a failure reads as
+// a diagnosis rather than as a number that moved.
+pub fn test_the_surface_is_not_the_painted_kind() {
+    ts_pal = load_palette(PALETTE_PATH);
+    ts_pw  = m0_world();
+    ts_hl  = m0_layer();
+
+    // The plain wall: no pile, so both lookups agree.
+    ts_bare_h = hex_height(ts_pal, ts_pw, ts_hl, 2, 0);
+    ts_bare_k = hex_surface_index(ts_pal, ts_pw, ts_hl, 2, 0);
+    assert(abs(ts_bare_h - 5.0) < 1e-12,
+           "an unpiled wall_high should mesh at 5.0 m, got {ts_bare_h}");
+    assert(ts_bare_k == KIND_WALL_HIGH,
+           "an unpiled wall_high should colour wall_high, got index {ts_bare_k}");
+
+    // The piled wall: the two lookups part company, and this is the pair
+    // the whole file is for.
+    ts_h = hex_height(ts_pal, ts_pw, ts_hl, 1, 0);
+    ts_k = hex_surface_index(ts_pal, ts_pw, ts_hl, 1, 0);
+    assert(abs(ts_h - 4.0) < 1e-12,
+           "a wall under 1 m of rubble meshes at 3 + 1 = 4.0 m; got {ts_h} "
+           + "— 1.0 means the height was taken off the SURFACE, which is the "
+           + "bug where piling debris LOWERS a wall");
+    assert(ts_k == GROUND_RUBBLE,
+           "a wall under rubble colours rubble ({GROUND_RUBBLE}); got {ts_k} "
+           + "— {KIND_WALL} means the colour was taken off the AUTHORED kind");
+
+    // And the mesh agrees with the pair, which is the point: the two
+    // lookups being right is worth nothing if the emitter asks a third.
+    ts_m = mesh("piled-wall");
+    ground_top_face(ts_m, ts_pal, ts_pw, ts_hl, 1, 0);
+    for ts_v in ts_m.vertices {
+        assert(abs(ts_v.pos.z - 4.0) < 1e-12,
+               "every vertex of the piled wall's top sits at 4.0 m, got {ts_v.pos.z}");
+    }
+    assert(len(ts_m.vertices) == 7,
+           "a hex top is a centre plus six rim vertices; got {len(ts_m.vertices)}");
+}
+
+// ─── The shape ──────────────────────────────────────────────────
+
+// Six triangles around one centre, and the rim vertices are the
+// LATTICE's corners rather than a hexagon this file drew.
+pub fn test_the_top_face_is_the_lattices_hexagon() {
+    tt_pal = load_palette(PALETTE_PATH);
+    tt_pw  = m0_world();
+    tt_hl  = height_layer_empty();
+
+    tt_m = mesh("grass");
+    ground_top_face(tt_m, tt_pal, tt_pw, tt_hl, 0, 0);
+
+    assert(len(tt_m.triangles) == 6,
+           "a hex fans into six triangles, got {len(tt_m.triangles)}");
+    assert(len(tt_m.vertices) == 7,
+           "a centre and six rim vertices, got {len(tt_m.vertices)}");
+
+    // The centre is `lat_to_world` of the hex — the same conversion the
+    // camera makes, not a second one.
+    tt_h = Hex { q: 0, r: 0 };
+    tt_c = lat_to_world(tt_h, 0.0);
+    tt_v0 = tt_m.vertices[0] ?? vertex(vec3(9.0, 9.0, 9.0), vec3(0.0, 0.0, 0.0), vec2(0.0, 0.0));
+    assert(abs(tt_v0.pos.x - tt_c.x) < 1e-12 && abs(tt_v0.pos.y - tt_c.y) < 1e-12,
+           "the fan's centre is not lat_to_world's: ({tt_v0.pos.x}, {tt_v0.pos.y}) "
+           + "vs ({tt_c.x}, {tt_c.y})");
+
+    // Each rim vertex is `lat_corner_metres` with y negated — the one
+    // negation, applied to a corner.  ⚠ Asserted per corner rather than
+    // as a set, because a mesher that emitted the ring backwards would
+    // hold as a set and fail here.
+    tt_n = 0;
+    for tt_i in 0..6 {
+        tt_o = lat_corner_metres(tt_h, tt_i);
+        tt_v = tt_m.vertices[tt_i + 1] ?? vertex(vec3(9.0, 9.0, 9.0), vec3(0.0, 0.0, 0.0), vec2(0.0, 0.0));
+        assert(abs(tt_v.pos.x - tt_o.0) < 1e-12,
+               "rim vertex {tt_i} x: {tt_v.pos.x} vs lattice {tt_o.0}");
+        assert(abs(tt_v.pos.y + tt_o.1) < 1e-12,
+               "rim vertex {tt_i} y: {tt_v.pos.y} should be the negation of {tt_o.1}");
+        tt_n += 1;
+    }
+    assert(tt_n == 6, "the corner loop ran {tt_n} times, not 6");
+
+    // The normal is up, on every vertex — flat, which is `@X072`.
+    for tt_vv in tt_m.vertices {
+        assert(tt_vv.normal.z == 1.0 && tt_vv.normal.x == 0.0 && tt_vv.normal.y == 0.0,
+               "a top face is flat and its normal is +z, got "
+               + "({tt_vv.normal.x}, {tt_vv.normal.y}, {tt_vv.normal.z})");
+    }
+}
+
+// ─── The fan faces UP ───────────────────────────────────────────
+
+// ⚠⚠ Recomputed from the emitted triangles, and it is what licenses
+// `GL_CULL_FACE` in M3.  A reversed ring compiles, meshes, classifies as
+// a perfectly reasonable pile of triangles — and draws nothing at all,
+// with every other valve reading healthy.
+pub fn test_the_fan_faces_up() {
+    tf_pal = load_palette(PALETTE_PATH);
+    tf_pw  = m0_world();
+    tf_hl  = m0_layer();
+
+    tf_m = mesh("wound");
+    ground_top_face(tf_m, tf_pal, tf_pw, tf_hl, 1, 0);
+
+    tf_n    = 0;
+    tf_worst = 1e9;
+    for tf_t in tf_m.triangles {
+        tf_a = tf_m.vertices[tf_t.a] ?? vertex(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.0), vec2(0.0, 0.0));
+        tf_b = tf_m.vertices[tf_t.b] ?? vertex(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.0), vec2(0.0, 0.0));
+        tf_c = tf_m.vertices[tf_t.c] ?? vertex(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.0), vec2(0.0, 0.0));
+        // z of (b − a) × (c − a).  Positive is counter-clockwise seen
+        // from above, which is GL's default front face.
+        tf_nz = (tf_b.pos.x - tf_a.pos.x) * (tf_c.pos.y - tf_a.pos.y)
+              - (tf_b.pos.y - tf_a.pos.y) * (tf_c.pos.x - tf_a.pos.x);
+        assert(tf_nz > 0.0,
+               "triangle {tf_n} winds CLOCKWISE (normal.z {tf_nz}) — with "
+               + "GL_CULL_FACE on this hex draws NOTHING");
+        if tf_nz < tf_worst { tf_worst = tf_nz; }
+        tf_n += 1;
+    }
+
+    assert(tf_n == 6, "the winding loop ran {tf_n} times, not 6");
+    // ⚠ The non-degenerate control: a sliver has normal.z 0.0, which is
+    // not negative, so `> 0.0` alone passes for a mesher emitting six of
+    // them.  A hex of circumradius 0.75 gives ~0.487 per triangle.
+    assert(tf_worst > 0.1,
+           "the weakest triangle's normal.z is {tf_worst} — the fan is "
+           + "degenerate, so the winding assertions above proved nothing");
+}
+
+// ─── The fixture is not degenerate ──────────────────────────────
+
+// ⚠ R1's generic control, spelled out: *can this file's fixture produce
+// a non-trivial reading at all?*  Four surfaces at four distinct
+// heights, and a mesh that is not empty.  Without it every per-vertex
+// assertion above holds vacuously against an emitter that emits nothing
+// and a world that is uniformly flat.
+pub fn test_the_fixture_is_not_degenerate() {
+    tg_pal = load_palette(PALETTE_PATH);
+    tg_pw  = m0_world();
+    tg_hl  = m0_layer();
+
+    assert(len(tg_pal) == 12, "the palette should hold 12 kinds, got {len(tg_pal)}");
+
+    tg_hs = [
+        hex_height(tg_pal, tg_pw, tg_hl, 0, 0),      // grass          0.0
+        hex_height(tg_pal, tg_pw, tg_hl, 1, 0),      // wall + rubble  4.0
+        hex_height(tg_pal, tg_pw, tg_hl, 2, 0),      // wall_high      5.0
+        hex_height(tg_pal, tg_pw, tg_hl, 9, 9),      // unpainted sea  0.0
+    ];
+    assert(abs((tg_hs[0] ?? -1.0) - 0.0) < 1e-12, "grass should be flat");
+    assert(abs((tg_hs[1] ?? -1.0) - 4.0) < 1e-12, "wall + 1 m of rubble should be 4.0");
+    assert(abs((tg_hs[2] ?? -1.0) - 5.0) < 1e-12, "wall_high should be 5.0");
+    assert(abs((tg_hs[3] ?? -1.0) - 0.0) < 1e-12, "unpainted is sea, and sea is flat");
+
+    // Three distinct heights among four hexes — enough that a mesher
+    // ignoring `hex_height` entirely could not pass § The surface is not
+    // the painted kind.
+    assert((tg_hs[1] ?? 0.0) != (tg_hs[2] ?? 0.0) && (tg_hs[0] ?? 0.0) != (tg_hs[1] ?? 0.0),
+           "the fixture's heights collapsed — every height assertion in this "
+           + "file would hold for any mesher at all");
+
+    tg_m = mesh("non-empty");
+    ground_top_face(tg_m, tg_pal, tg_pw, tg_hl, 0, 0);
+    assert(len(tg_m.triangles) > 0, "the mesher emitted nothing");
+}

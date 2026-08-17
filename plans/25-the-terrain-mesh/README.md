@@ -9,7 +9,18 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**Opened 2026-08-17, nothing built.**  This plan takes
+**M0 done** (2026-08-17).  Suite **1202** green (1198 + 4), gate 33 scripts /
+**654 measurements unchanged** — a mesher is not a simulation, and the day it
+re-prices a scenario is the day something is reading it that should not be.
+
+⚠ **All four M0 tests passed on the first run, which is when to check the gate
+can FAIL.**  Both load-bearing assertions were falsified deliberately and both
+fired, at exactly the values predicted: reversing the fan gives normal.z
+**−0.487** (§ What was measured first, 3, with the sign flipped) and taking the
+height off the SURFACE meshes the piled wall at **1.0 m** instead of 4.0.
+§ M0 has the detail.
+
+**Opened 2026-08-17.**  This plan takes
 [`plan 21`](../21-the-renderer/README.md)'s `R3`-`R5`, which that plan said
 twice should be split out before they were started (*"R3 alone is plausibly its
 own plan"*).  Plan 21 closes at R2 as **the camera**; this one is **what the
@@ -160,16 +171,49 @@ costs.  `@X073`.
 
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
-| **M0** — the top face | S | `tests/25_m0_the_top_face.loft` — one hex as six triangles at `hex_height`, coloured from `hex_ground`, winding recomputed from the emitted triangles | **Next** |
-| **M1** — the sides | M | `tests/25_m1_the_sides.loft` — a quad per faced edge, emitted from the standing side only, over `lat_edge_corners` | Blocked on M0 |
+| **M0** — the top face | S | `tests/25_m0_the_top_face.loft` (4 fns) — one hex as six triangles at `hex_height`, keyed by `hex_surface_index`, winding recomputed from the emitted triangles.  ⚠ Both assertions falsified deliberately and both fired | **Done** (2026-08-17) |
+| **M1** — the sides | M | `tests/25_m1_the_sides.loft` — a quad per faced edge, emitted from the standing side only, over `lat_edge_corners` | **Next** |
 | **M2** — the world, in chunks | M | `tests/25_m2_the_rebuild.loft` — a ported `mesh_crc`, and one-chunk == all-chunks | Blocked on M1 |
 | **M3** — it is DRAWN, and gated | MH | a GL scenario under `xvfb`: upload per (chunk × kind), flat-unlit with colour as a **uniform**, capture, classify | Blocked on M2 |
 | **M4** — cost | S | `tests/25_m4_the_mesh_budget.loft` — a ratio, the `11_f8` shape | Blocked on M3 |
 
-## M0 — the top face
+## M0 — the top face (2026-08-17)
 
-`src/ground_mesh.loft`.  One function emits one hex's top as a six-triangle fan
-around the centre, at `hex_height(pal, pw, hl, q, r)`, into a `mesh3d::Mesh`.
+`src/ground_mesh.loft::ground_top_face` + `passable.loft::hex_surface_index` +
+`tests/25_m0_the_top_face.loft` (4 fns).  One function emits one hex's top as a
+six-triangle fan around the centre, at `hex_height(pal, pw, hl, q, r)`, into a
+`mesh3d::Mesh`.
+
+### ⚠⚠ Four tests green on the first run — so both were falsified on purpose
+
+A phase whose gate passes immediately has proved nothing yet: the assertions may
+be true, or they may be unable to see the thing they name.  Both load-bearing
+ones were broken deliberately and both fired, at the predicted value:
+
+| the break | what the gate said |
+|---|---|
+| `add_triangle(m, mid, b, a)` — the fan reversed | *triangle 0 winds CLOCKWISE (normal.z **−0.48713928962874675**) — with GL_CULL_FACE on this hex draws NOTHING* |
+| height taken off the SURFACE instead of the authored entry | *every vertex of the piled wall's top sits at 4.0 m, got **1*** |
+
+⚠ The winding magnitude came back as the probe's own number with the sign
+flipped, which is the second confirmation that the two negations cancel — and it
+arrived from the emitted triangles rather than from the plan.
+
+⚠⚠ **The reversed fan is the one worth dwelling on.** It changes no count, no
+height, no colour and no vertex position — six triangles at the right heights in
+the right places — and under `GL_CULL_FACE` it draws *nothing at all*.  There is
+no valve on the mesh that reads unhealthy.  That is why M0 gates the winding as
+DATA, three phases before anything is drawn: by M3 the symptom is an empty
+frame, and an empty frame has a dozen plausible causes.
+
+### ⚠ `hex_surface_index` is new, and the index rather than the entry is the point
+
+`hex_ground` is private and answers a `GroundType`.  The mesher groups hexes by
+surface (`@X074`: one mesh per palette kind), and a key has to be comparable —
+so `passable.loft` gained `hex_surface_index`, which is the same question given
+back as the identity.  ⚠ It carries `hex_ground`'s own guard: a palette too
+short to hold `rubble` gives back the map that was painted, rather than a kind
+the renderer has no colour for.
 
 ⚠ **The colour is NOT on the vertex.**  `mesh3d::Vertex` is position + normal +
 uv and carries none, and that turns out to be the right shape rather than a gap:
@@ -286,7 +330,22 @@ granularity must not follow the CAMERA.
    surface the design calls a *ramp* (*"bodies ramp a kill zone shut"*), so the
    day the SIMULATION gains a sub-hex slope, this answer changes with it — not
    before.  Not a rendering decision.
-3. **What draws the marker layer?**  Spawn markers, targets and tower sites are
+3. ⚠⚠ **What draws SEA?  Found during M0, and it is M2's to decide.**
+   `painted.loft` ERASES a hex painted sea to keep the world sparse, so the
+   painted set does not contain the water — and "mesh the painted set" leaves an
+   authored lake as a **hole in the ground at exactly the height of the land
+   around it**.  ⚠ No side quad covers it either: sea's height is 0 and so is
+   grass's, so there is no face on that boundary and nothing is drawn on it at
+   all.  Three candidates: mesh the painted set **plus a ring** (covers a lake
+   one hex wide, holes on a bigger one), mesh its **bounding region** (draws sea
+   over every gap, including the infinite outside), or give water a real
+   **DROP** — which `examples/palette.json` already carries per kind (sea 0,
+   water 1, rapids 3, waterfall 8) and **nothing reads**.  ⚠ *The third is the
+   only one that is a design answer rather than a mesher workaround, and it
+   changes `hex_height` for every consumer — so it is a decision about the
+   SIMULATION and belongs with [`plan 02`](../02-solver-validation-viewer/README.md),
+   not here.*  M2 picks an interim.
+4. **What draws the marker layer?**  Spawn markers, targets and tower sites are
    drawn by `marker_render.loft` into the software canvas today.  ⚠ They are UI
    over the world rather than part of it, so they are not the mesher's — but the
    GL path has nothing to draw them with, and a play-mode frame with no markers
