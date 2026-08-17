@@ -142,10 +142,19 @@ rig_bone (r, parent, ox, oy,     len,             lo, hi)   // = rig_bone3(…, 
 move: *"dryopea may ADD to them under their existing contract, which is the right
 move when dryopea needs something adjacent to what a library already does."*
 
-⚠ **And it is a real cross-repo commitment, not a footnote.**  `hex_body` belongs
-to hexbody/lavition (*"the first brick of the body half, `plans/m1-moving-body/`"*),
-so the enhancement is proposed there, gated by their suite, and consumed as a
-release.  Plan 20's § Cross-repo coordination is where that is tracked.
+⚠ **And it is a real cross-repo commitment, not a footnote.**  The enhancement is
+proposed upstream, gated by that suite, and consumed as a release.  Plan 20's
+§ Cross-repo coordination is where it is tracked.
+
+⚠⚠ **CORRECTED 2026-08-18 — this paragraph named the wrong repo.**  It said
+`hex_body` *"belongs to hexbody/lavition … so the enhancement is proposed there"*.
+The `hexbody` repo contains **no `hex_body` source**: its own log records
+*"consume hex_body (renamed from body); src/ is empty of geometry"*, and it is a
+prototyping harness that CONSUMES the library.  The source lives in
+**`loft-libs-world/hex_body/`**, beside the rest of the `hex_*` family, and that is
+where the ask goes.  ⚠ A decision that names the wrong destination sends the next
+reader to an empty tree, which is why the correction is here rather than only in
+the plan.
 
 ### What is still NOT taken, and why that half of the old decision stands
 
