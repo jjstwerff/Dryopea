@@ -157,6 +157,29 @@ fixing.** Two further conditions, both measured: the fan has a WIDTH,
 so a wall longer than it still hides its ends; and a wave spread thin
 enough never to block itself still chews where its routes cross.
 
+⚠⚠ **And in 2026-08-17 the gap really was closed — by
+[plan 24](../24-the-siege-front/README.md) W1 — and B3's test stayed
+GREEN A SECOND TIME.** The paragraph above promised the gate would go
+red *"and point at the paragraph to rewrite"*. It did not, for the same
+reason as in F7b: each of B3's six robots already touches the fence
+where its own route meets it, so a precedence about *attacking what you
+are touching* changes nothing for them.
+
+⚠ **The lesson is about the tripwire, not the rule.** B3 aimed its
+tripwire at the RULE it expected somebody to build — *the equal-distance
+sidestep* — and that rule was never the fix (plan 24 `@M019`: dryopea had
+one already, and it steps off a wall face as readily as along it). What
+DID fire is `11_f7b`'s bracing test, which was written about the
+BEHAVIOUR: *the wall a front spans breaks at its weak end.* ⚠ **Aim a
+tripwire at the behaviour you want, never at the mechanism you predict**
+— of the two written here, only the behavioural one ever fired, and it
+fired for both landings.
+
+⚠ And the first condition above is now the OLD mechanism: a longer wall
+no longer HIDES its ends (the front grows with the wall), it DILUTES the
+wave across more hexes. Length still pays, continuously rather than off
+a cliff.
+
 ⚠ **Only a ROW is straight on this lattice**, and a fixture on the
 wrong axis would have tested the opposite of what it said. Odd-r row
 parity flips which delta a direction index carries, so a constant-`q`

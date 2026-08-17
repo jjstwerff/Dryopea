@@ -28,7 +28,7 @@ document is about getting there.
 - [The tick resolves once](#the-tick-resolves-once)
 - [Sealing the perimeter is punished, not forbidden](#sealing-the-perimeter-is-punished-not-forbidden)
 - [A wall's HP is structural, not a constant](#a-walls-hp-is-structural-not-a-constant)
-- [The siege front is three hexes wide](#the-siege-front-is-three-hexes-wide)
+- [The siege front is the WALL's width](#the-siege-front-is-the-walls-width)
 - [Retaliation — designed, not built](#retaliation--designed-not-built)
 - [What a broken wall leaves](#what-a-broken-wall-leaves)
 
@@ -406,10 +406,14 @@ and the weakest hex under it runs out first.
 
 The two conditions are what a player can actually play against:
 
-- **The front has a WIDTH.**  Measured: eight robots against a
-  SEVEN-hex wall land nothing on either end, because the fan is not
-  that wide.  A perimeter longer than a wave can reach across still
-  hides its weak hexes — so bracing rewards length as well as shape.
+- **The front has a WIDTH, and since plan 24 W1 it is the WALL's.**  It
+  used to be the fan's — eight robots against a seven-hex wall landed
+  nothing on either end — so a perimeter longer than a wave could reach
+  across HID its weak hexes.  ⚠ That mechanism is gone: the front grows
+  with the wall, and length pays by **dilution** instead (the same wave
+  spread over more hexes takes each of them down more slowly).  Bracing
+  still rewards length as well as shape; it rewards it continuously
+  rather than off a cliff.  § The siege front is the WALL's width.
 - **The spread is by occupancy AND by approach.**  A wave thin enough
   never to block itself never sidesteps, and still chews where its
   routes cross.  B3's six robots come from six directions and behave
@@ -426,13 +430,23 @@ their routes cross — which, with the core behind the middle of a fence,
 is its strongest part.  A loose end is only the breach if an enemy's
 route happens to meet it.
 
-Closing the gap needs the equal-distance sidestep that
-[plan 11](../plans/11-flow-field/README.md) F7 explicitly did not
-build: a second steering rule, not a fix.  Until then the bracing rule
-is exact and its consequence is latent —
-`tests/12_b3_bracing.loft::test_a_besieged_fence_is_bitten_where_the_route_meets_it_not_where_it_is_weak`
-asserts today's behaviour, so the day somebody builds that steering it
-goes red and points at this paragraph.
+⚠⚠ **Closing the gap did NOT need the equal-distance sidestep, and that
+is worth reading twice** — this paragraph asked for one for three
+plans.  [Plan 24](../plans/24-the-siege-front/README.md) W0 measured
+what a sidestep offers at a wall face and it steps as readily off the
+face as along it (`@M019`); the gap was closed instead by a
+PRECEDENCE — *arriving beats queueing*, W1 — which is a smaller change
+than the second steering rule everyone had budgeted for.
+
+⚠ B3's tripwire
+(`tests/12_b3_bracing.loft::test_a_besieged_fence_is_bitten_where_the_route_meets_it_not_where_it_is_weak`)
+was written to go red the day that steering landed.  **It did not fire**,
+and the reason is exact: its six robots come from six directions and
+each already touches the fence where its own route meets it, so the
+precedence changes nothing for them.  ⚠ A tripwire aimed at the rule
+you eventually build is not the same as one aimed at the BEHAVIOUR you
+want — this one was aimed at the rule, and the rule turned out to be
+the wrong one.
 
 ⚠ Curvature is measured on the hex lattice, so "turning" means the
 two wall neighbours are not opposite each other across the hex —
@@ -454,21 +468,61 @@ with.
 neighbours, so a wall anchored against a cliff is still an end.
 Arguable as design; written down rather than assumed.
 
-## The siege front is three hexes wide
+## The siege front is the WALL's width
 
-⚠⚠ **Measured, plan 23 K3 (`@M018`).**  § A wall's HP is structural
-already says the front has a WIDTH and that a longer perimeter hides
-its ends.  K3 put a number on it and the number is small: **three**.
-Twelve robots walking from one spawn marker into a five-row sealed band
-besiege exactly three hexes of it — and the same twelve against a
-SEVEN-row wall besiege the same three.  Widening the perimeter does not
-widen the front, because the front is where the approach fan lands.
+⚠⚠ **Plan 24 W1 (`@M020`).  It was THREE, for any wall length, and that
+was a defect rather than a balance property.**  A besieger now attacks
+the wall hex it is TOUCHING instead of walking on down the desire
+gradient to queue behind its minimum — *arriving beats queueing* — so
+twelve robots into a five-row sealed band besiege **four** hexes of it
+and the same twelve against a SEVEN-row wall besiege **six**.  Widening
+the perimeter widens the front.
 
-⚠ **So a wave's usable size is three, and everything past that is
-queueing.**  The other nine robots are blocked by companions, and an
-enemy blocked by a COMPANION attacks nothing — it steps beside if it
-can and stands if it cannot (plan 11 F7b).  What it never does is chew
-over its neighbour's shoulder.
+### ⚠⚠ Why it used to be three, and why the diagnosis matters
+
+⚠ **Five documents named the missing rule *the equal-distance
+sidestep*, and dryopea has had one since plan 11 F7b.**  Plan 24 W0
+measured what it offers at a wall face and it was not the fix: standing
+at `(7,-1)` beside a wall at `q = 6`, its two candidates are `(7,-2)`
+along the face and `(8,0)` **back off it**.
+
+The real cause was the DESIRE FIELD's shape (`@M019`).  The field is a
+ring around the CORE, so a straight face has exactly one minimum — in
+K3's band the column `q = 7` reads 8 / 8 / **7** / 8 / 8 — and a
+besieger attacked only when it could not WALK.  So only the minimum and
+the two hexes where the lateral step runs out ever attacked: **three,
+for any wall length**, because `(7,±3)` steps to `(7,±2)` exactly as
+`(7,±1)` steps to `(7,0)`.
+
+⚠ **The tell was that all five face hexes TOUCH the wall.**  Two of
+every five besiegers stood beside the thing they came to break and
+walked sideways to join a queue.
+
+⚠ So the fix is a PRECEDENCE rather than a steering mode, and it lands
+in two places that must agree: `enemy_walk_desire`'s pre-pass and
+`enemy_target`'s siege branch.  ⚠ `enemy_target` takes no `Occupancy`,
+so the rule is phrased *"a wall is between me and the core"* rather than
+*"my closer steps are held"* — which needs no memory and cannot jitter,
+because an enemy that stops never moves again.
+
+### ⚠ A longer perimeter still pays — by DILUTION now
+
+The old mechanism was hiding: a wall longer than the fan kept its ends
+out of reach entirely.  The new one is spreading — the same wave across
+more hexes takes each of them down more slowly, measured directly (the
+30 HP end of a five-hex wall kept 14 HP at the tick a three-hex front
+had it down to 10).
+
+⚠ **And a wider front makes most bases last LONGER**, which is the
+counter-intuitive half: a besieger that stops at the wall is one that is
+not walking on to stand on the core, and the wallet is drained by
+nibblers rather than by wall damage.  `a-base-on-two-fronts` went
+**123 → 132**.
+
+⚠ Everything past the front is still queueing, and an enemy blocked by a
+COMPANION attacks nothing — it steps beside if it can and stands if it
+cannot (plan 11 F7b).  What it never does is chew over its neighbour's
+shoulder.
 
 ### ⚠⚠ What that does to a wave's COMPOSITION
 
@@ -519,19 +573,38 @@ since K2b the faster class simply overtakes: four scouts first, four
 scouts last and four scouts alternated through the miners all land on
 the same tick.
 
-### The fix, and why it is not built
+### The fix — BUILT, and it was not the rule this section asked for
 
-⚠ **The equal-distance sidestep** — a besieger spreading ALONG a wall
-face instead of queueing behind the hex its route landed on.  It is the
-same rule § A wall's HP is structural has wanted since plan 11 F7, and
-K3 is what prices it: it is not only *which* hex gets chewed, it is how
-much of a wave can chew at all.
+⚠⚠ **Plan 24 W1 (`@M020`).**  This section asked for *the
+equal-distance sidestep* and priced it as a second steering rule.  W0
+measured the sidestep dryopea already has and found it steps off a wall
+face as readily as along it (`@M019`); what was missing was a
+PRECEDENCE — *arriving beats queueing*.
 
-⚠ Refused inside plan 23 deliberately (`@X064`): a second steering rule
-is a plan, and a measurement phase that changed the thing it was
-measuring would have measured nothing.  ⚠ That is plan 11 F7b's own
-story — a steering rule three phases judged latent, which turned out to
-set the whole balance when it landed (161/311/180 → 61/104/95).
+The numbers it moved, same five waves of twelve:
+
+| wave of twelve | was | now |
+|---|---|---|
+| 12 miner | 94 | 94 |
+| 4 builder + 8 miner | 104 | 101 |
+| 4 robot + 8 miner | 119 | 116 |
+| 4 harvester + 8 miner | 164 | 122 |
+| 4 scout + 8 miner | **never** | **126** |
+
+⚠⚠ **So the headline above is retired: a wave is worth its front class
+PLUS whatever the front class cannot COVER.**  The front is five hexes
+on this band, four screens leak exactly one, and what the leak is worth
+depends on how hard the screen bites relative to what gets through it —
+a builder screen loses nothing to it, a harvester screen thirty-nine
+ticks.  **The screen is arithmetic — bodies against face width** — where
+it used to be positional immunity.
+
+⚠ What survived: the ROSTER order is still worth nothing, an enemy
+blocked by a companion still attacks nothing, and the cliff is still a
+cliff (the first three scouts are worth nothing and the fourth
+thirty-two ticks).  ⚠ Refusing to build it inside plan 23 (`@X064`) is
+what let plan 24 discover the name was wrong — **pricing a fix you
+decline to apply buys the next phase a free diagnosis.**
 
 ## Retaliation — designed, not built
 

@@ -152,7 +152,14 @@ fn play_seven(limit: integer) -> RunFacts {
 fn test_the_authored_seven_wave_list_is_not_survivable() {
     ttl = play_seven(400);
 
-    assert(ttl.fell == 321, "the base falls at 321: {ttl.fell}");
+    // ⚠ **320 since plan 24 W1**, where `@M005` recorded 321 from plan
+    // 16 W4 until then.  One tick, and the direction is the interesting
+    // half: a wider siege front holds robots at the wall it is touching
+    // instead of walking them on to stand on the core, so on most bases
+    // W1 LENGTHENS the clock — `a-base-on-two-fronts` went 123 → 132.
+    // Here it shortens it by one, because this base's walls come down
+    // sooner and the wave behind them arrives a tick earlier.
+    assert(ttl.fell == 320, "the base falls at 320: {ttl.fell}");
     assert(ttl.sent == 4,
            "having played four of seven waves: {ttl.sent} of "
            + "{len(wave_list_default())}");

@@ -12,7 +12,28 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 **K0 + K1 + K2a + K2b + K3 shipped** (2026-08-15) — the plan is
 **complete**.
 
-⚠⚠ **A WAVE IS AS DANGEROUS AS ITS FASTEST CLASS, AND NO MORE.**  K3
+⚠⚠ **K3's headline was RETIRED by [plan 24](../24-the-siege-front/README.md)
+W1 on 2026-08-17, and K3 is what caused that.**  K3 measured the effect,
+named the cause and refused to fix it inside a measurement phase
+(`@X064`).  Plan 24 W0 then found the cause was not the one every
+document named (`@M019`): *the equal-distance sidestep* had existed since
+plan 11 F7b, and the three-hex front was the DESIRE FIELD's shape — a
+ring around the core has one minimum on a straight face, so exactly
+three hexes lacked a legal closer step **for any wall length**.  One
+precedence (*arriving beats queueing*) widened the front to the wall's
+own width, and *4 scout + 8 miner* went from *never* to **126**
+(`@M020`).
+⚠ **So read the table below as history.**  The replacement: *a wave is
+worth its front class PLUS whatever the front class cannot COVER* — four
+screens against a five-hex face leak exactly one miner.  ⚠ What survived
+K3 intact: the roster order is worth nothing, the screen is a cliff
+rather than a ramp, and speed decides who arrives.
+⚠⚠ **Pricing a fix you decline to build is what bought the diagnosis.**
+Had K3 applied the rule it named, it would have shipped the wrong one
+and measured nothing.
+
+⚠⚠ **A WAVE IS AS DANGEROUS AS ITS FASTEST CLASS, AND NO MORE** — *the
+finding as K3 shipped it, superseded 2026-08-17.*  K3
 put three waves of TWELVE into one sealed band and the clocks are 94 /
 126 / *never* — the gate this plan wrote for itself, passed with room.
 But the phase's real finding is the shape of that spread, and the plan

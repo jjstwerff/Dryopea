@@ -1,8 +1,8 @@
 # a-wave-screened-by-four — plan 23 K3, the TWIN.
 #
 # The same twelve robots into the same sealed band, with four of them
-# swapped for the weakest class in the game — and the wall does not
-# open at all.
+# swapped for the weakest class in the game — and the base survives a
+# third longer.
 #
 # ── Read it beside its twin ─────────────────────────────────────
 #
@@ -11,35 +11,36 @@
 #     compose 0 4 scout 8 miner      ->      compose 0 12 miner
 #
 # and nothing else.  That file's base is gone in **94 ticks**.  This
-# one still has 100 HP on every hex the siege can reach after fifty,
-# and `23_k3` measures it standing at 321 — the longest base anybody
-# can play (`@M005`).
+# one falls at **126**.
 #
-# ⚠⚠ **Two thirds of this wave is miners**, at 3.0 HP/s each, the
-# hardest-biting class in the game.  Not one of them lays a finger on
-# the wall.
+# ⚠ Two thirds of this wave is miners, at 3.0 HP/s each, the
+# hardest-biting class in the game — and the scouts in front of them
+# are worth thirty-two ticks.
 #
-# ── Why: three shipped rules, and none of them is wrong ─────────
+# ⚠⚠ **This pair used to say something much stronger, and plan 24 W1
+# retired it.**  Until then the base stood at 321 — the longest anybody
+# can play (`@M005`) — with 100 HP on every hex the siege could reach,
+# and NOT ONE of the eight miners laid a finger on the wall.  That was
+# `@M018`: *a wave is as dangerous as its fastest class and no more*.
 #
-#   1. **The siege front is the approach FAN's width, not the wall's**
-#      (plan 12 B3).  Exactly three hexes of this five-row wall are
-#      ever attacked — (6,-2), (6, 0) and (6, 1) — and a seven-row
-#      wall does not add a fourth.
+# ── Why it was true, and what changed ───────────────────────────
+#
+#   1. **The siege front was the approach FAN's width, not the wall's**
+#      (plan 12 B3) — exactly three hexes, and a seven-row wall did not
+#      add a fourth.  ⚠ **`@M019` found the real cause and W1 fixed
+#      it**: a besieger attacked only when it could not WALK, and a
+#      desire ring has ONE minimum on a straight face, so three hexes
+#      lacked a step whatever the wall's length.  A besieger now bites
+#      the wall it is TOUCHING, and the front is the FACE's width —
+#      five here, seven on a seven-row band.
 #   2. **An enemy blocked by a COMPANION attacks nothing** (plan 11
-#      F7b).  It steps beside if it can and stands if it cannot; what
-#      it never does is chew over its neighbour's shoulder.
-#   3. **Speed decides who gets there first** (plan 23 K2b).  A scout
-#      walks 2.5 hex/s against a miner's 1.0, so the scouts arrive
-#      first whatever order the roster put them in.
+#      F7b) — unchanged, and still true of everybody at q = 8.
+#   3. **Speed decides who gets there first** (plan 23 K2b) — also
+#      unchanged: the scouts still arrive first.
 #
-# So the four fastest robots in the wave fill all three attack hexes,
-# and the eight behind them stand in a field for the rest of the run.
-#
-# ⚠ **The missing rule is already named** — the equal-distance
-# sidestep that would let a besieger spread ALONG a wall face instead
-# of queueing behind the hex its route landed on.  `ENEMY_MOVEMENT.md`
-# and `CLAUDE.md` have both carried it as latent since plan 11 F7.
-# This pair is what it costs.
+# So the four fastest robots no longer fill the front, because the
+# front is five hexes and they are four.  One miner gets on, and one
+# miner is enough to bring the base down.
 #
 # ── The world (identical to its twin) ───────────────────────────
 #
@@ -114,45 +115,75 @@ count targets 0 0
 
 # ── Thirty ticks: its twin's wall is two thirds gone ────────────
 #
-# At this exact tick `a-wave-of-twelve-miners.keys` reads 10 HP on
+# At this exact tick `a-wave-of-twelve-miners.keys` reads 14 HP on
 # (6,-2) and 78 on (6, 0).  Here the end has lost **one point** and the
-# middle has lost one — because the three robots on the face are
-# scouts, at 0.1 HP/s against a miner's 3.0.
+# middle has lost one — because the robots on the face are scouts, at
+# 0.1 HP/s against a miner's 3.0.
 tick 20
-count targets 3 3
+count targets 4 4
 hp 6 -2 28.5 29.5
 hp 6 0 98.5 99.5
-hp 6 -1 100.0 100.0
+# ⚠ The fourth hex plan 24 W1 added to the front — a flat 100.0 before
+# it, and bitten by a SCOUT now, which is why it has lost about one
+# point rather than the twenty-two its twin's miner takes off.
+hp 6 -1 98.5 99.5
 
 # ── Forty ticks: the formation, and it never changes again ──────
 #
-# ⚠ **The whole finding is these six lines.**  The four scouts hold
-# (7,-2), (7, 0), (7, 2) and (7,-1) — every hex from which the wall can
-# be reached — and the miners are stacked behind them at q = 8 and
-# q = 9 with nothing to attack.  Enemies 0-3 are the scouts, 4-11 the
-# miners, in the order `compose` wrote them.
+# ⚠⚠ **The whole finding is these six lines, and plan 24 W1 CHANGED
+# it.**  The four scouts hold (7, 0), (7,-1), (7,-2) and (7, 1) — but
+# the face is five hexes wide and they are four, so **enemy 6, a
+# MINER, has got onto (7, 2)** and is biting (6, 1).  Enemies 0-3 are
+# the scouts, 4-11 the miners, in the order `compose` wrote them.
+#
+# ⚠ Before W1 the four scouts held every hex the wall could be reached
+# from, and all eight miners stood in a field with nothing to attack —
+# which is what made a wave *as dangerous as its fastest class and no
+# more* (`@M018`).  The screen is now a matter of ARITHMETIC: four
+# bodies cannot cover five hexes.
 tick 10
-enemy 0 7 -2
-enemy 1 7 0
-enemy 2 7 2
-enemy 3 7 -1
-enemy 5 8 0
-enemy 11 9 -2
-count targets 3 3
+enemy 0 7 0
+enemy 1 7 -1
+enemy 2 7 -2
+enemy 3 7 1
+enemy 6 7 2
+enemy 5 8 -2
+enemy 11 9 0
+count targets 4 4
 
 snap k3-four-scouts-screen-eight-miners
 
 # ── Fifty ticks, and nothing has moved ──────────────────────────
 #
 # ⚠ The wall is still a wall, the roster is still twelve, and the
-# wallet is still full — its twin's base fell forty-four ticks ago.
-# The siege is not slow here, it is HAPPENING: three hexes are under
-# attack every tick.  They are just under attack by scouts.
+# wallet is still full — its twin's base fell forty-five ticks ago.
+# The siege is not slow here, it is HAPPENING: four hexes are under
+# attack every tick.  Three of them are just under attack by scouts.
+#
+# ⚠⚠ **And the fourth is not.**  Since plan 24 W1 a miner holds (7, 2)
+# and (6, 1) is coming down at a miner's rate — which is why this base
+# no longer stands for ever: `23_k3` measured it *never* falling and it
+# now falls at **126**.  The screen buys ticks, not immunity.
 tick 10
 kind 6 -2 wall
 kind 6 0 wall
 count alive 12 12
-count targets 3 3
-enemy 0 7 -2
-enemy 5 8 0
+count targets 4 4
+enemy 0 7 0
+enemy 5 8 -2
 wallet 200.0 200.0
+
+# ── The clock, which this file did not have before plan 24 W1 ───
+#
+# ⚠⚠ **The screen is worth thirty-two ticks, not the run.**  126
+# against its twin's 94.  Until W1 this scenario had no `fall` line to
+# write, because the base never fell: `23_k3` measured it standing at
+# 321 with the wall unopened, and that was `@M018`'s headline.
+#
+# ⚠ So a wave's composition is a RAMP now rather than a cliff — 94 for
+# twelve miners, 101 / 116 / 122 / 126 as the screen gets slower — and
+# every one of them takes the base.  The eight miners behind the screen
+# are worth something for the first time.
+fall 200
+ticks 120 132
+wallet 0.0 0.0

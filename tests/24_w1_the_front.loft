@@ -1,0 +1,339 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 24 phase W1 — arriving beats queueing.
+//
+// A besieger standing beside a wall it could break attacks it, rather
+// than walking on down a gradient whose next hex a companion already
+// holds.  One precedence, landed in `enemy_walk_desire`'s pre-pass and
+// in `enemy_target`'s siege branch, asked in the same words.
+//
+//
+// ── ⚠⚠ What this phase is FIXING, and why it is not the rule the
+//    documents named ────────────────────────────────────────────────
+//
+// Five documents called the missing rule *the equal-distance
+// sidestep*.  dryopea has had one since plan 11 F7b, and W0 measured
+// what it offers at a wall face: at `(7,-1)` its two candidates are
+// `(7,-2)` along the face and `(8,0)` **back off it**, so the named
+// rule is as likely to empty the front as to widen it (`@M019`).
+//
+// The three-hex front was the DESIRE FIELD's shape, not the fan's
+// width: a ring around the core has exactly ONE minimum on a straight
+// face, so only that hex and the two where the lateral step runs out
+// had no legal closer step — **three for any wall length**, which is
+// why plan 23 K3 measured three on a five-row wall and three on a
+// seven-row one (`@M018`).
+//
+// ⚠ **The tell was that all five face hexes TOUCH the wall.**  Two of
+// every five besiegers stood beside the thing they came to break and
+// walked sideways to queue behind the minimum, because both halves of
+// the siege asked *"can I still move?"* rather than *"is a wall
+// between me and the core?"*.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+const WALL:    integer = 9;
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+fn core() -> Hex {
+    Hex { q: 0, r: 0 }
+}
+
+// Plan 23 K3's fixture, unchanged — a band `2 * w + 1` rows deep,
+// walled across `q = 6`, spawn fourteen hexes out.
+//
+// ⚠ It is copied rather than shared because K3's numbers are a
+// MEASUREMENT of the old rule and this phase's are a measurement of
+// the new one: a fixture edited in one place would silently restate
+// both.
+fn band(w: integer) -> PaintedWorld {
+    b_pw = painted_empty();
+    for b_r in -w..=w {
+        for b_q in -3..=20 { paint(b_pw, b_q, b_r, as_u8(GRASS)); }
+    }
+    for b_r2 in -w..=w { paint(b_pw, 6, b_r2, as_u8(WALL)); }
+    b_pw
+}
+
+fn base() -> MarkerWorld {
+    bs_mw = marker_empty();
+    place_marker(bs_mw, 14, 0, MARKER_KIND_SPAWN as u8, 3 as u8);
+    bs_mw
+}
+
+fn part(count: integer, kind: integer) -> WavePart {
+    WavePart { wave: 0, count: count, kind: kind }
+}
+
+fn armed(parts: vector<WavePart>) -> WaveState {
+    a_s = wave_state_empty();
+    a_n = 0;
+    for a_p in parts { a_n += a_p.count; }
+    a_s.schedule = wave_schedule_of([a_n], INTER_WAVE_DELAY_SECONDS);
+    wave_schedule_compose(a_s.schedule, 0, parts);
+    wave_schedule_begin(a_s.schedule);
+    a_s
+}
+
+// A wave of twelve: `n` of `front`, then `12 - n` miners — K3's shape.
+fn screened(n: integer, front: integer) -> vector<WavePart> {
+    s_p: vector<WavePart> = [];
+    if n > 0  { s_p += [part(n, front)]; }
+    if n < 12 { s_p += [part(12 - n, ENEMY_KIND_MINER)]; }
+    s_p
+}
+
+// How many DISTINCT wall hexes the roster is besieging, and how many
+// of the besiegers are miners — plan 23 K3's `siege_shape`, so the
+// before and after are the same reading.
+fn siege_shape(parts: vector<WavePart>, w: integer, t: integer) -> (integer, integer) {
+    ss_pw  = band(w);
+    ss_mw  = base();
+    ss_pal = pal();
+    ss_s   = armed(parts);
+    ss_i = 0;
+    while ss_i < t {
+        wave_tick(ss_s, ss_pal, ss_pw, ss_mw, core());
+        ss_i += 1;
+    }
+
+    ss_ts    = wave_targets(ss_s, ss_pal, ss_pw, core());
+    ss_seen: vector<Hex> = [];
+    ss_miner = 0;
+    ss_k     = 0;
+    for ss_e in ss_s.enemies {
+        ss_t = ss_ts[ss_k] ?? Hex { q: ss_e.q, r: ss_e.r };
+        if ss_e.alive && !(ss_t.q == ss_e.q && ss_t.r == ss_e.r) {
+            if ss_e.kind == ENEMY_KIND_MINER as u8 { ss_miner += 1; }
+            ss_new = true;
+            for ss_h in ss_seen {
+                if ss_h.q == ss_t.q && ss_h.r == ss_t.r { ss_new = false; }
+            }
+            if ss_new { ss_seen += [Hex { q: ss_t.q, r: ss_t.r }]; }
+        }
+        ss_k += 1;
+    }
+    (len(ss_seen), ss_miner)
+}
+
+// The tick the base falls on, or 0 if it was still standing at `limit`.
+fn falls_at(parts: vector<WavePart>, w: integer, limit: integer) -> integer {
+    fa_pw  = band(w);
+    fa_mw  = base();
+    fa_pal = pal();
+    fa_s   = armed(parts);
+    fa_fell = 0;
+    for fa_t in 1..=limit {
+        if fa_fell > 0 { continue; }
+        wave_tick(fa_s, fa_pal, fa_pw, fa_mw, core());
+        if wallet_broke(fa_s.wallet) { fa_fell = fa_t; }
+    }
+    fa_fell
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 1. ⚠⚠ THE PHASE — the front is the WALL's width, not the fan's
+// ─────────────────────────────────────────────────────────────────
+
+// The gate this plan wrote for itself, and the negative control is
+// built into it: a front that widened by luck would widen on the
+// five-row band and stop there.  A front that is a property of the
+// WALL grows when the wall does.
+//
+// ⚠ Before: **3 and 3** — plan 23 K3's
+// `test_only_three_hexes_are_ever_attacked`, whose whole point was
+// that the seven-row wall did not add a fourth.
+fn test_the_front_widens_with_the_wall() {
+    ttf_five  = siege_shape(screened(0, ENEMY_KIND_SCOUT), 2, 30);
+    ttf_seven = siege_shape(screened(0, ENEMY_KIND_SCOUT), 3, 30);
+
+    assert(ttf_five.0 > 3,
+           "twelve miners besiege more than the three hexes plan 23 K3 "
+           + "measured: {ttf_five.0}");
+    assert(ttf_seven.0 > ttf_five.0,
+           "and a SEVEN-row wall gives them MORE — the front is the "
+           + "wall's now, not the approach fan's: {ttf_seven.0} against "
+           + "{ttf_five.0} on five rows");
+}
+
+// The same finding one level down: it is not only which hexes are
+// bitten, it is how much of a wave can bite at all.
+//
+// ⚠ Before: **0** miners of the eight — plan 23 K3's
+// `test_four_scouts_leave_no_miner_touching_the_wall`, the assertion
+// `@M018` rested on.
+fn test_the_screened_miners_reach_the_wall() {
+    tsm_four = siege_shape(screened(4, ENEMY_KIND_SCOUT), 2, 30);
+
+    assert(tsm_four.1 > 0,
+           "with four scouts in front, the eight miners are no longer "
+           + "stood in a field: {tsm_four.1} of them are on the wall");
+    assert(tsm_four.0 > 3,
+           "and the wall is besieged across more than three hexes: "
+           + "{tsm_four.0}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 2. ⚠⚠ The CLIFF is gone — composition is a ramp
+// ─────────────────────────────────────────────────────────────────
+
+// `@M018`'s headline was *a wave is as dangerous as its FASTEST class
+// and no more*: every mix landed within four ticks of a PURE wave of
+// its front class, and four scouts in front of eight miners never took
+// the base at all.
+//
+// ⚠ **That was the three-hex front stated as a balance property.**
+// With the miners on the wall the same five waves separate by their
+// whole composition, and the wave that could never win now wins.
+fn test_a_screened_wave_now_takes_the_base() {
+    tas_scout = falls_at(screened(4, ENEMY_KIND_SCOUT), 2, 200);
+    tas_pure  = falls_at(screened(12, ENEMY_KIND_SCOUT), 2, 200);
+
+    assert(tas_scout > 0,
+           "four scouts in front of eight miners TAKE the base, where "
+           + "`@M018` measured them never taking it: {tas_scout}");
+    assert(tas_pure == 0,
+           "and twelve scouts alone still do not — the screen's value "
+           + "is the miners behind it, not the scouts: {tas_pure}");
+}
+
+// The ramp itself.  ⚠ Asserted as an ORDER rather than as five
+// numbers: the clocks are `@M019`'s to record and a test that pinned
+// them would have to be rewritten by every later balance change,
+// where the SHAPE is the finding.
+fn test_the_screen_is_a_ramp_not_a_step() {
+    tsr_miner     = falls_at(screened(0,  ENEMY_KIND_SCOUT),     2, 200);
+    tsr_builder   = falls_at(screened(4,  ENEMY_KIND_BUILDER),   2, 200);
+    tsr_harvester = falls_at(screened(4,  ENEMY_KIND_HARVESTER), 2, 200);
+
+    assert(tsr_miner > 0 && tsr_builder > 0 && tsr_harvester > 0,
+           "all three waves take the base: {tsr_miner} / {tsr_builder} "
+           + "/ {tsr_harvester}");
+    assert(tsr_miner < tsr_builder && tsr_builder < tsr_harvester,
+           "and a slower screen costs the wave MORE, monotonically — "
+           + "the axis `@M018` measured as a cliff: {tsr_miner} < "
+           + "{tsr_builder} < {tsr_harvester}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 3. ⚠⚠ The negative controls
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **The JITTER control, and it is the one this rule could plausibly
+// have broken.**  Plan 11 F7b's `ewd_queued` exists because a besieger
+// that sidesteps on a TERRAIN block shuffles along the face for ever,
+// attacking a different hex each tick and finishing none of them.
+// This phase makes MORE enemies stand at the face, so the property has
+// to be restated where it now bites.
+//
+// One enemy, no companion anywhere: it must pick a hex and stay on it.
+fn test_a_lone_besieger_attacks_one_hex_for_ever() {
+    tal_pw  = band(2);
+    tal_pal = pal();
+    tal_s   = wave_state_empty();
+    tal_s.enemies += [Enemy { q: 8, r: 1, kind: ENEMY_KIND_REGULAR as u8,
+                              heading: 3 as u8, alive: true,
+                              taken: 0.0, stand: 0.0, progress: 0.0 }];
+
+    // Walk it in until it has arrived and settled.
+    for _ in 0..6 { wave_tick(tal_s, tal_pal, tal_pw, marker_empty(), core()); }
+
+    tal_ts = wave_targets(tal_s, tal_pal, tal_pw, core());
+    tal_t0 = tal_ts[0] ?? core();
+    tal_e0 = tal_s.enemies[0] ?? Enemy { q: 0, r: 0, kind: 0 as u8, heading: 0 as u8,
+                                         alive: false, taken: 0.0, stand: 0.0,
+                                         progress: 0.0 };
+    tal_q = tal_e0.q;
+    tal_r = tal_e0.r;
+
+    assert(!(tal_t0.q == tal_q && tal_t0.r == tal_r),
+           "it has arrived and is attacking something: it stands at "
+           + "({tal_q},{tal_r})");
+    assert(painted_kind_name(tal_pal, tal_pw, tal_t0.q, tal_t0.r) == "wall",
+           "and what it attacks is the WALL: "
+           + "{painted_kind_name(tal_pal, tal_pw, tal_t0.q, tal_t0.r)}");
+
+    // Six more ticks: the same enemy, the same hex, every tick.
+    for _ in 0..6 {
+        wave_tick(tal_s, tal_pal, tal_pw, marker_empty(), core());
+        tal_n  = wave_targets(tal_s, tal_pal, tal_pw, core());
+        tal_tn = tal_n[0] ?? core();
+        tal_en = tal_s.enemies[0] ?? tal_e0;
+        assert(tal_en.q == tal_q && tal_en.r == tal_r,
+               "it has not moved: ({tal_en.q},{tal_en.r}) was "
+               + "({tal_q},{tal_r})");
+        assert(tal_tn.q == tal_t0.q && tal_tn.r == tal_t0.r,
+               "and it is still biting the same hex — a besieger that "
+               + "re-picked would finish nothing: ({tal_tn.q},{tal_tn.r}) "
+               + "was ({tal_t0.q},{tal_t0.r})");
+    }
+}
+
+// ⚠ **The rule must not reach the ENGAGE branch.**  An enemy with a
+// route walks it; only a routeless one besieges.  A precedence that
+// leaked would stop a routed enemy at the first wall it passed, and
+// 569 measurements are pinned to the routed mover.
+//
+// The same band with a GAP in the wall: every enemy has a route, so
+// nobody attacks anything on the way to it.
+fn test_a_routed_enemy_attacks_nothing_on_its_way() {
+    tar_pw  = band(2);
+    paint(tar_pw, 6, 1, as_u8(GRASS));          // the gap
+    tar_pal = pal();
+    tar_s   = wave_state_empty();
+    tar_s.enemies += [Enemy { q: 8, r: 1, kind: ENEMY_KIND_REGULAR as u8,
+                              heading: 3 as u8, alive: true,
+                              taken: 0.0, stand: 0.0, progress: 0.0 }];
+
+    for _ in 0..4 {
+        wave_tick(tar_s, tar_pal, tar_pw, marker_empty(), core());
+        tar_ts = wave_targets(tar_s, tar_pal, tar_pw, core());
+        tar_t  = tar_ts[0] ?? core();
+        tar_e  = tar_s.enemies[0] ?? Enemy { q: 0, r: 0, kind: 0 as u8,
+                                             heading: 0 as u8, alive: false,
+                                             taken: 0.0, stand: 0.0, progress: 0.0 };
+        assert(tar_t.q == tar_e.q && tar_t.r == tar_e.r,
+               "an enemy with a route through the gap attacks nothing, "
+               + "even walking right past the wall: it is at "
+               + "({tar_e.q},{tar_e.r}) targeting ({tar_t.q},{tar_t.r})");
+    }
+}
+
+// ⚠ And the wall is what it stops at — not any old terrain.  The same
+// band with NO wall at all: the enemy walks to the core and never
+// attacks a hex of grass on the way.
+fn test_nothing_is_besieged_where_there_is_no_wall() {
+    tnb_pw  = painted_empty();
+    for tnb_r in -2..=2 {
+        for tnb_q in -3..=20 { paint(tnb_pw, tnb_q, tnb_r, as_u8(GRASS)); }
+    }
+    tnb_pal = pal();
+    tnb_s   = wave_state_empty();
+    tnb_s.enemies += [Enemy { q: 8, r: 1, kind: ENEMY_KIND_REGULAR as u8,
+                              heading: 3 as u8, alive: true,
+                              taken: 0.0, stand: 0.0, progress: 0.0 }];
+
+    for _ in 0..6 {
+        wave_tick(tnb_s, tnb_pal, tnb_pw, marker_empty(), core());
+        tnb_ts = wave_targets(tnb_s, tnb_pal, tnb_pw, core());
+        tnb_t  = tnb_ts[0] ?? core();
+        tnb_e  = tnb_s.enemies[0] ?? Enemy { q: 0, r: 0, kind: 0 as u8,
+                                             heading: 0 as u8, alive: false,
+                                             taken: 0.0, stand: 0.0, progress: 0.0 };
+        assert(tnb_t.q == tnb_e.q && tnb_t.r == tnb_e.r,
+               "open ground is besieged by nobody: at ({tnb_e.q},{tnb_e.r}) "
+               + "targeting ({tnb_t.q},{tnb_t.r})");
+    }
+}

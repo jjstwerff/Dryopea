@@ -103,13 +103,19 @@ wallet 200.0 200.0
 tick 22
 wave 8
 
-# ⚠ **Eleven, where the same base without a crew reads nine** — the
-# tower is two kills BEHIND at this point, not ahead.  Clearing the
+# ⚠ The tower is BEHIND at this point rather than ahead.  Clearing the
 # heap changes where the survivors stand, and a robot that is not where
 # the gun is looking does not get shot.  It catches up: both bases end
 # on five alive, so the crew's whole contribution is timing and terrain
 # rather than damage.
-count alive 10 10
+#
+# ⚠ It read **10** until plan 24 W1.  The wider siege front spreads the
+# besiegers along the wall's face rather than stacking them behind the
+# desire gradient's minimum, so the tower's one sight line reaches a
+# different set of them — one kill fewer here, exactly as in
+# `a-tower-buries-its-own-wall.keys`, which moved 10 → 11 on the same
+# change.
+count alive 11 11
 
 fall 800
 ticks 140 150
@@ -121,10 +127,18 @@ wallet 0.0 0.0
 # as fast as it appeared.
 pile 6 0 0.0 0.0
 
-# So they had to come through the wall instead — a third of it gone,
-# against the 3.3 HP the same wall lost with nobody clearing up.
-kind 5 0 wall
-hp 5 0 65.0 75.0
+# So they had to come through the wall instead.
+#
+# ⚠ **Since plan 24 W1 the braced middle goes too**, where it used to
+# finish the run at two thirds of its HP: the front is the wall FACE's
+# width now rather than the approach fan's, so the same wave spends its
+# seconds across more of the wall and none of it survives to the fall.
+# ⚠ The bracing ORDER is untouched — the 30 HP end still runs out
+# first — and it is gated in `tests/11_f7b_the_sidestep.loft` and
+# `tests/12_b3_bracing.loft`, which ask WHICH hex goes first rather
+# than photographing what is left at the end.
+kind 5 -2 grass
+kind 5 0 grass
 
 # The tower's own tally is unchanged: eight of thirteen, the same
 # 30-shot budget.  ⚠ That is the point — **the crew added no damage

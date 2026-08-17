@@ -80,7 +80,8 @@ exists today.
 | A WAVE HAS COMPOSITION: `schedule 4 12` arms the list and `compose 1 4 miner 8 scout` fills a wave of it, in the order written.  ⚠ A wave's SIZE is **summed** from its parts and never stored, which DELETES the plan's own negative control (`@X055`).  ⚠ 569 measurements unchanged — a `vector<integer>` still means N waves of regulars | [23](plans/23-the-small-robots/README.md), K1 shipped |
 | SPEED IS NO LONGER THE TICK: an enemy BANKS `speed × tick_seconds` and steps when a whole hex is due, so the timestep is a CHOICE (`@X058`) — and nothing moved (1128 tests, 569 measurements).  ⚠⚠ **1.5 hex/s is a speed at which the rounding guard cannot fire**: zero the epsilon and the whole corpus stays green (`@M014`), while 1.0 / 1.2 / 1.8 / 2.0 / 2.5 hex/s each lose a hex without it (`@M013`) | [23](plans/23-the-small-robots/README.md), K2a shipped |
 | THE SCOUT IS FASTER: 2.5 hex/s against a miner's 1.0 and a robot's 1.5, so nine hexes of one corridor take **6 / 9 / 14** ticks (`@M016`) — one lookup, no new mover.  ⚠⚠ **The guard that could not fire now DOES**: 2.25 and 3.0 were refused *because* they hide it as 1.5 does, so zeroing the epsilon today turns the suite RED (`@M017`, `@X063`) | [23](plans/23-the-small-robots/README.md), K2b shipped |
-| ⚠⚠ **A WAVE IS AS DANGEROUS AS ITS FASTEST CLASS, AND NO MORE**: three waves of twelve fall at **94 / 126 / never**, so composition is legible — but every MIX lands within four ticks of a PURE wave of its front class, because only **three** hexes of a wall are ever attacked and the quickest four robots own all of them (`@M018`).  ⚠ The ROSTER order is worth nothing; speed is the order | [23](plans/23-the-small-robots/README.md), K3 shipped — plan **complete** |
+| ⚠ Composition is legible: three waves of twelve fall at **94 / 126 / never**.  ⚠⚠ Its headline — *a wave is as dangerous as its FASTEST class and no more* (`@M018`) — is **RETIRED by plan 24** | [23](plans/23-the-small-robots/README.md), K3 shipped — plan **complete** |
+| ⚠⚠ **THE SIEGE FRONT IS THE WALL'S WIDTH**: a besieger attacks the hex it is TOUCHING, so 3 → **4** hexes on a five-row wall and 3 → **6** on a seven-row one — and a wave is worth its front class PLUS what the front cannot COVER (`@M020`).  ⚠ Four screens against a five-hex face leak exactly ONE miner, so *4 scout + 8 miner* went from **never** to **126**.  ⚠ The rule five documents asked for was one we already had (`@M019`) | [24](plans/24-the-siege-front/README.md), W0-W2 shipped — plan **complete** |
 | **AND IT OPENS**: `make play`, press **P**, and waves arrive because TIME PASSED — the crew lands at the core and WASD drives it.  ⚠ **Nothing of the game is DRAWN yet** (P4), so the console echo is the only way to see it.  ⚠ The mode gates the CLOCK and never the seam | [19](plans/19-the-interactive-loop/README.md), P3 shipped — P4 next |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
@@ -97,7 +98,7 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 1156/1156 green under `scripts/test.sh`** (~177 s re-measured
+**Suite: 1162/1162 green under `scripts/test.sh`** (~177 s re-measured
 2026-08-17 — the `frame` measurements classify full 960x720 frames, the
 cost gate ticks a radius-40 world twice, and since plan 13 a dozen tests
 run whole scenarios to their fall.  ⚠ This line carried "~35 s" from
@@ -113,8 +114,10 @@ computed, and the assert counts are byte-identical before and after.
 That cut the suite **10.1%** (5 983 456 → 5 377 562 samples);
 [`docs/PROFILING.md`](docs/PROFILING.md) has the per-file table and the
 one refactor that measured as FREE).
-**Gate: 33 scripts green under `scripts/validate.sh`** (~14 s, 652
-measurements).
+**Gate: 33 scripts green under `scripts/validate.sh`** (~14 s, 654
+measurements).  ⚠ Plan 24 W2 moved **8 of the 33** — a steering change
+re-prices scenarios rather than breaking them, and the numbers of record
+are `@M020`.
 
 ⚠ **[loft#939](https://github.com/loft-lang/loft/issues/939) is FIXED
 and CLOSED** (loft `ac8fb1dc`, *"A vector field assigned from a view
@@ -222,12 +225,13 @@ sweep runs outward and the enemy walks inward.
 **The siege.**  `flow_desire` is the same sweep with the climb lifted, so
 walls are passable; an enemy follows it and attacks where the height rule
 refuses the next step.  `enemy_target` names that hex.
-⚠ **The spread is by APPROACH, not by
-sidestepping**: enemies from different directions meet the wall at
-different hexes, but four down ONE corridor still queue, because the
-desire gradient points AT the wall rather than along it.  Chewing one
-face along its length would need an equal-distance sidestep, which is a
-second steering rule and nobody has built it.
+⚠ **The spread is by APPROACH and by ARRIVAL** (plan 24 W1): enemies
+from different directions meet the wall at different hexes, and one down
+a single corridor now stops at the first wall hex it touches rather than
+walking on to the desire gradient's minimum.  That is what makes a
+front as wide as the wall's face.  ⚠ It is **not** the equal-distance
+sidestep — dryopea has one and it steps off a face as readily as along
+it (`@M019`).
 
 ⚠ **You attack what you could STAND on and cannot climb** — a target is
 always a walkable surface, so an enemy at the water's edge besieges
@@ -271,33 +275,58 @@ wall is weakest** — measured in plan 12 B3, and it falsifies what
 `ENEMY_MOVEMENT.md` § A wall's HP is structural used to claim.  Six
 robots at a six-hex fence land NOTHING on either end and everything on
 the braced middle, because the approaches converge on the hexes their
-routes cross.  So B3's bracing rule is exact and its consequence is
-latent; the missing half is F7's equal-distance sidestep, which is a
-second steering rule and still nobody has built it.
+routes cross.
+⚠⚠ **And plan 24 W1 did NOT change that, which is the surprise.**  B3's
+test was authored to go red the day somebody built the missing steering,
+and it stayed green: each of its six robots already touches the fence
+where its own route meets it, so a precedence about touching changes
+nothing for them.  ⚠ **A tripwire aimed at the RULE you expect to build
+is not one aimed at the BEHAVIOUR you want** — what W1 widens is a front
+arriving down ONE approach, which is a different fixture.
 
-⚠⚠ **THE SIEGE FRONT IS THREE HEXES WIDE, and that collapses a wave's
-COMPOSITION back to one symbol** (plan 23 K3, `@M018`).  Twelve robots
-walking from one spawn marker besiege exactly three hexes of a five-row
-wall — and exactly three of a SEVEN-row one, because the front is where
-the approach fan lands rather than how long the wall is.  Everybody
-else is blocked by a companion, and a companion-blocked enemy attacks
-nothing (F7b).  ⚠ Since K2b the fastest class fills that front, so
-**a wave is as dangerous as its fastest class and no more**: four
-harvesters in front of eight miners behaves like twelve harvesters
-(164 vs 161 ticks) and never like the miners that are two thirds of it,
-where twelve miners alone take the base at 94.  ⚠ It is a CLIFF — the
-first scout swapped into twelve miners costs the wave nothing at all,
-the fourth costs it the base — which is what says the mechanism is
-positional rather than arithmetic.
-⚠ **So a `compose` line's ORDER decides nothing** (K0's 20x was
+⚠⚠ **THE SIEGE FRONT IS THE WALL'S WIDTH — a besieger attacks the hex
+it is TOUCHING** (plan 24 W1, `@M020`).  Twelve robots from one spawn
+marker besiege **four** hexes of a five-row wall and **six** of a
+seven-row one, so widening the perimeter widens the front.  Everybody
+past it is blocked by a companion, and a companion-blocked enemy
+attacks nothing (F7b).
+⚠⚠ **It was THREE for any wall length until plan 24, and the diagnosis
+is the lesson** (`@M019`).  An enemy attacked only when it could not
+WALK, and a desire field is a ring around the CORE — so a straight face
+has ONE minimum and exactly three hexes lack a legal closer step,
+whatever the wall's length.  ⚠ All five face hexes TOUCH the wall and
+two of them walked away from it.  ⚠⚠ **Five documents called the fix
+*the equal-distance sidestep*, and dryopea has had one since F7b** — at
+the face hex `(7,-1)` it offers `(7,-2)` along the face and `(8,0)`
+**back off it**, so the named rule was as likely to empty the front as
+to widen it.  The fix is a PRECEDENCE, in `enemy_walk_desire`'s pre-pass
+and `enemy_target`'s siege branch, asked in identical words.
+⚠ **`enemy_target` takes no `Occupancy`**, so the rule must be phrased
+*"a wall is between me and the core"* rather than *"my closer steps are
+held"* — which needs no memory and cannot jitter, because an enemy that
+stops never moves again.
+⚠⚠ **A WAVE IS WORTH ITS FRONT CLASS PLUS WHAT THE FRONT CANNOT
+COVER.**  Four screens against a five-hex face leak exactly ONE miner:
+worth nothing behind a hard-biting builder (101 vs a pure 100) and
+thirty-nine ticks behind a soft harvester (122 vs 161).  **The screen is
+arithmetic — bodies against face width** — where `@M018` had it as
+positional immunity, four scouts making a base unbreakable.  It is
+still a CLIFF (the first three scouts are worth nothing, the fourth
+thirty-two ticks) but it no longer buys immunity: *4 scout + 8 miner*
+went from **never** to **126**.
+⚠ **A wider front makes most bases last LONGER** — a besieger that
+stops at the wall is not walking on to drain the wallet, so
+`a-base-on-two-fronts` went 123 → **132** and `@M005` 321 → **320**.
+⚠ **So a `compose` line's ORDER still decides nothing** (K0's 20x was
 measured on POSITIONS, before classes had speeds): scouts first, scouts
 last and scouts alternated all land on the same tick, because they
-overtake.
-⚠ **And this is the third phase to bill F7's sidestep**, after 12 B3
-and 11 F7b.  It is refused inside plan 23 on purpose (`@X064`) — a
-measurement phase that changed the thing it measured would have
-measured nothing — and it is now [`ROADMAP.md`](plans/ROADMAP.md)
-§ The critical path item **1b**.
+overtake.  ⚠ That test got STRONGER — it used to compare three bases
+that never fell, and three zeroes are equal for any reason at all.
+⚠⚠ **The tripwire written for this day did NOT fire.**  Plan 12 B3's
+fence test was authored to go red when this steering landed and stayed
+green: its six robots come from six directions and each already touches
+the fence where its route meets it.  **A tripwire aimed at the RULE you
+expect to build is not one aimed at the BEHAVIOUR you want.**
 
 ### Cost
 
@@ -1093,7 +1122,7 @@ signature.
 | Ask whether a session is LIVE, or start one | `src/play.loft::play_mode` / `play_set_mode` (plan 19 P3).  ⚠ **It gates the CLOCK and never the seam**: `EditorInput.in_playing` says what the KEYS mean this frame, `PlayState.playing` says whether wall time reaches the simulation.  Gate `play_step`'s seconds on either and P1/P2 go red — a scripted frame's time is the SCRIPT's business.  ⚠ The window spends it through `play_frame_seconds`, which is a function rather than an `if` in `main.loft` because an entry point is compiled by nothing |
 | Ask whether the run is over | `src/wallet.loft::wallet_broke` — the wallet at zero, and the ONLY end state.  ⚠ Never `core.hp`: it is `null` by design |
 | Understand the DIFFICULTY CURVE's shape | [docs/DESIGN.md](docs/DESIGN.md) § It shoots TOWERS — the first real challenge.  Early = a RUSH (volume).  Then the combat boss, which is the first enemy that makes the player POORER rather than merely closer to losing — and the first that invalidates a LEARNED OPTIMUM (the tight funnel that denied a 2×2 repair platform is worthless against something that shoots from outside) |
-| Judge what a wave's COMPOSITION is worth | [plans/23](plans/23-the-small-robots/README.md) § K3 and [`docs/ENEMY_MOVEMENT.md`](docs/ENEMY_MOVEMENT.md) § The siege front is three hexes wide — three waves of twelve fall at **94 / 126 / never** (`@M018`).  ⚠⚠ **But a mix is worth its FASTEST class and no more**: only three hexes of a wall are ever attacked, whatever the wall's length, and the quickest four robots own all of them.  ⚠ So price a wave by what is in FRONT of it, never by its roster — and expect a slow, hard-hitting class behind a fast one to contribute nothing at all |
+| Judge what a wave's COMPOSITION is worth | [plans/24](plans/24-the-siege-front/README.md) § W2 and [`docs/ENEMY_MOVEMENT.md`](docs/ENEMY_MOVEMENT.md) § The siege front is the WALL's width — **94 / 101 / 116 / 122 / 126** for twelve robots screened by four of a faster class (`@M020`).  ⚠⚠ **A wave is worth its front class PLUS what the front cannot COVER**: the front is the wall FACE's width, so four screens against five hexes leak exactly ONE miner — worth nothing behind a builder, thirty-nine ticks behind a harvester.  **The screen is arithmetic: bodies against face width.**  ⚠ So price a wave by what is in front of it AND by how much of the face that front can actually cover.  ⚠ [plans/23](plans/23-the-small-robots/README.md) § K3's `@M018` (*a mix is worth its fastest class and no more*, four scouts buying outright immunity) is the SUPERSEDED reading — quote `@M020` |
 | Judge whether a DEFENCE is worth building | [plans/12](plans/12-combat-resolution/README.md) § B7 — three scenarios that differ only in their defences, and the measured clock (69 / 112 / 128 since plan 16 W2).  ⚠ A sealed wall nearly doubles it; a wall with a GATE buys nothing at all; and a tower now ADDS 16 ticks where it used to cost 9 — because the pre-walk window moved its kills off the wall's foot, so the ramp that used to bury it no longer forms there |
 | Judge whether fetching a lost crew member is worth it | [plans/17](plans/17-tower-hot-swap/README.md) § T3 — **+76 POINTS** over the errand control, on a base with upkeep where nothing falls (~45 / ~41 / ~117 points left).  ⚠ The currency is the WALLET, not the clock: a base that can recover stops falling, so the clock saturates and *points left* is what "how well did you do" means.  ⚠ Earlier readings are history rather than alternatives: [plans/16](plans/16-the-wave-system/README.md) § W4 — **247 / 248 / 248** on a base where the crew member genuinely does come back (tick 187), so it is worth ONE tick.  ⚠ The reason is no longer "the base ends first" (that was [plans/15](plans/15-the-carry-model/README.md) C3's 93/87/87): the JOB is gone by the time they return — the gate is worth 53 ticks while the wave is outside and nothing while it is on the core.  ⚠ The middle run is the control that keeps the drive and the carry apart |
 | Judge whether a TRANSPLANT is worth doing | [plans/17](plans/17-tower-hot-swap/README.md) § T3 — **+3 ticks at best, −50 if the donor was firing.**  ⚠ A tower close enough to donate cheaply is close enough to be shooting, which is `DESIGN.md` § The opportunity-cost layer measured.  Its payoff needs swap pits and STRAIN — pulling a top BEFORE it is spent — and neither is built |

@@ -9,17 +9,42 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**W0 done** (2026-08-17) — **the rule every document names is not the
-rule that is missing**, and the three-hex front now has a mechanical
-explanation rather than a measurement.  W1 is next; nothing is built.
+**W0 + W1 + W2 done** (2026-08-17) — the plan is **complete**.  Suite
+**1162** green, gate **33 scripts / 654 measurements**.
 
-⚠⚠ **`@M019` — an enemy attacks only when it cannot WALK, and on a
-straight face exactly three hexes can never walk.**  Both halves of the
-siege are occupancy-blind about arriving: `enemy_walk_desire` sidesteps
-whenever a companion is what stopped it, and `enemy_target` returns
-*attacking nothing* the moment any strictly-closer desire step is
-legal.  So a besieger standing beside the wall it came to break walks
-sideways to join a queue instead.  § W0 has the table.
+⚠⚠ **`@M019` — the rule five documents asked for was one dryopea
+already had.**  An enemy attacked only when it could not WALK, and a
+desire ring has ONE minimum on a straight face, so exactly three hexes
+could never walk — **for any wall length**.  All five face hexes touch
+the wall and two of them walked away from it.  § W0.
+
+⚠⚠ **`@M020` — one precedence, and `@M018` is retired.**  *Arriving
+beats queueing*: a besieger attacks the wall hex it is TOUCHING.  The
+front went **3 → 4** hexes on a five-row wall and **3 → 6** on a
+seven-row one, and the wave that could never take the base now takes it
+at 126:
+
+| wave of twelve | was | now |
+|---|---|---|
+| 12 miner | 94 | 94 |
+| 4 builder + 8 miner | 104 | 101 |
+| 4 robot + 8 miner | 119 | 116 |
+| 4 harvester + 8 miner | 164 | 122 |
+| 4 scout + 8 miner | **never** | **126** |
+
+⚠⚠ **The replacement headline: a wave is worth its front class PLUS
+whatever the front class cannot COVER.**  Four screens against a
+five-hex face leak exactly one miner, and the leak is worth nothing
+against a hard-biting screen (builder 101 vs pure 100) and thirty-nine
+ticks against a soft one (harvester 122 vs pure 161).  **The screen is
+arithmetic — bodies against face width** — where it used to be
+positional immunity.
+
+⚠ **A wider front makes most bases last LONGER**, which is the half
+nobody would predict: a besieger that stops at the wall is one that is
+not walking on to stand on the core, and the wallet is drained by
+nibblers rather than by wall damage.  `a-base-on-two-fronts` went
+**123 → 132**; `@M005` went 321 → **320**.
 
 [`ROADMAP.md`](../ROADMAP.md) § The critical path item **1b**, opened
 because [plan 23](../23-the-small-robots/README.md) K3 put a price on
@@ -175,21 +200,142 @@ phase's real cost:
   ⚠ A rule phrased as *"I am beside an attackable wall"* needs no
   occupancy at all, which is why W1 should reach for that one first.
 
+## W1 — the rule: arriving beats queueing (2026-08-17)
+
+Two edits, and the second is a DELETION:
+
+```
+enemy_walk_desire   + a pre-pass:  any strictly-closer desire step the
+                                   ground refuses  ->  stand and attack
+enemy_target        - the early return that answered "attacking nothing"
+                      the moment any closer step was legal
+```
+
+Both now ask the identical question — *is a wall between me and the
+core?* — which is the whole of the fix.  ⚠ The mover's old `can_step`
+check inside its walk loop became redundant and went with it: past the
+pre-pass every closer step is one the ground allows, so `ewd_queued` no
+longer has two meanings to tell apart.
+
+### ⚠⚠ Why the rule is phrased about the WALL and not about the CROWD
+
+The natural phrasing is *"my closer steps are all held by companions"*.
+It is unbuildable and the reason is a signature: **`enemy_target` takes
+no `Occupancy`**, and giving it one means changing `wave_targets` and
+every caller.
+
+⚠ **The phrasing forced on us is the better one**, which is worth
+recording because it was luck rather than judgement:
+
+- **It needs no memory.**  An enemy that stops never moves again, so
+  `flow_steps`' `lat_neighbours` order names the same hex every tick.
+  Open question 2 asked whether a spreading besieger needs a remembered
+  target; the answer is no, and a `.keys` setter for it is unneeded.
+- **It cannot jitter.**  Plan 11 F7b's whole reason for `ewd_queued`
+  was that an unconditional sidestep shuffles a besieger along a face
+  attacking a different hex each tick.  A rule that STOPS cannot do
+  that.
+- **A target that moved with the crowd would change during the move
+  loop**, and `wave_damage` reads it afterwards.
+
+### What the gate said
+
+* `tests/24_w1_the_front.loft` — 7 functions, green: the front widens
+  with the wall (4 on five rows, 6 on seven), the screened miners reach
+  it, the screen is a ramp across classes, a screened wave takes the
+  base where `@M018` measured it never taking it, and three negative
+  controls.
+* ⚠ **The controls all fired as intended and none of them is
+  cosmetic**: a lone besieger bites ONE hex for twelve ticks (the
+  jitter case, which this rule could plausibly have broken); a routed
+  enemy walking past a wall through a gap attacks nothing (the rule
+  must not leak into the engage branch, where 569 measurements live);
+  and open ground with no wall on it is besieged by nobody.
+
+### ⚠⚠ The tripwire written for this day did NOT fire
+
+`tests/12_b3_bracing.loft::test_a_besieged_fence_is_bitten_where_the_route_meets_it_not_where_it_is_weak`
+was written in plan 12 B3 to go red the day somebody built this
+steering, and `ENEMY_MOVEMENT.md` pointed at it.  **It stayed green.**
+
+⚠ The reason is exact rather than lucky: B3's six robots come from six
+directions and each already touches the fence where its own route meets
+it, so a precedence about touching changes nothing for them.  ⚠ **A
+tripwire aimed at the RULE you expect to build is not the same as one
+aimed at the BEHAVIOUR you want** — and a different tripwire fired
+instead (`11_f7b`'s bracing test, below), which is the one that was
+written about behaviour.
+
+## W2 — what it is WORTH: the corpus re-priced (2026-08-17)
+
+**16 test assertions and 8 gate scripts moved.**  Every one was a
+measurement of the old rule; nothing was a defect.
+
+| what moved | from | to |
+|---|---|---|
+| the front, five-row wall | 3 hexes | **4** |
+| the front, seven-row wall | 3 hexes | **6** |
+| miners on the wall behind four scouts | 0 | **1** |
+| `4 scout + 8 miner` | never | **126** |
+| `4 harvester + 8 miner` | 164 | **122** |
+| `a-base-on-two-fronts` | 123 | **132** |
+| `@M005`, the longest base | 321 | **320** |
+| `a-defended-base` braced middle | stands | **breaks** |
+
+### ⚠⚠ Two gates were SATURATED, and the fix made them stronger
+
+Three scenarios and one test asserted *the braced middle is still
+standing at the end of the run*.  With a front half again as wide, a
+five-hex wall does not survive that long — so the reading saturated,
+and `CLAUDE.md` § A gate whose reading is already saturated cannot see
+the thing you built applies to the gate that had been passing.
+
+⚠ **`11_f7b`'s bracing test now measures the ORDER**: it records the
+tick each hex breaks and asserts the 30 HP end goes before the 100 HP
+middle.  That is what the bracing rule actually claims, it stays true
+however long the run is and however wide the front gets, and it is
+strictly stronger than the photograph it replaced.
+
+⚠ **And the unzip had to be read the tick it happens.**  At tick 120 the
+whole wall is down and `structure_max_hp` answers 0.0 — which is the
+same 0.0 it uses for *"nothing there"*, so a late reading cannot tell an
+unzip from rubble (`damage.loft` § structure_hp).
+
+### ⚠ The scenarios that carried a FINDING got rewritten, not renumbered
+
+`a-wave-screened-by-four.keys` narrated four scouts holding every hex
+the wall could be reached from, with all eight miners in a field.  It
+now narrates **enemy 6, a miner, on `(7, 2)`** — and it gained a `fall`
+line it never had, because the base never used to fall.
+
+⚠ `23_k3`'s own header is rewritten to record what it measured, what it
+priced and what plan 24 retired — the file keeps its findings as history
+rather than being edited into agreeing with today.
+
+### ⚠ One duplicated assertion was deleted rather than inverted
+
+K3's `test_only_three_hexes_are_ever_attacked` became a claim that
+`24_w1` already gates, over the same two expensive `siege_shape` runs.
+It is deleted with a pointer, per `docs/PROFILING.md` § a test that
+RE-DERIVES an expensive value a sibling already computed.  What stayed
+in K3 is the SCREEN — *four scouts leak exactly one miner* — which is
+that plan's own subject.
+
 ## Invariant gate
 
 | Phase | Expected result | Invariant | Negative control |
 |---|---|---|---|
 | **W0** ✓ | the two tables in § W0 — the face column reads 8 / 8 / **7** / 8 / 8, and two of its five hexes walk away from a wall they are touching | ⚠ **no invariant; this phase measured and built nothing** | ⚠ **the falsifier was live and it FIRED**: the phase could have come back *"the contour runs along the face"*, which would have made the docs' name right and W1 small.  It came back the other way, and the correction — *a precedence, not a steering mode* — is the phase's whole output |
-| **W1** | `siege_shape` reports **more than three** besieged hexes on the five-row band, and **more again** on the seven-row one | a spread is along the FACE, so widening the wall widens the front — the property `@M018` measured the absence of | ⚠ **a sidestep must still close no distance in the ENGAGE branch**: F5c's `test_a_blocked_enemy_never_moves_away_from_the_core` must stay green, and a rule that let a routed enemy wander is refused.  ⚠ And the JITTER control — an enemy at a wall face with no companion anywhere must still stand and attack the same hex every tick, or `wave_damage` finishes nothing (plan 11 F7b's own reason for `ewd_queued`) |
-| **W2** | K3's table re-measured, plan 12 B7's 69 / 112 / 128, plan 14 H2's 123 / 135 / 138 and plan 17 T3's seven-wave list — each moved or held, with the number of record updated | ⚠ **a measurement is not a regression**: every clock that moves is re-recorded with its date, and every doc quoting the old one is corrected | ⚠ **B3's tripwire MUST fire.**  `test_a_besieged_fence_is_bitten_where_the_route_meets_it_not_where_it_is_weak` was written to go red the day this ships; a green one means W1 did not change steering |
+| **W1** ✓ | `siege_shape` reports **4** besieged hexes on the five-row band and **6** on the seven-row one | a spread is along the FACE, so widening the wall widens the front — the property `@M018` measured the absence of | ✓ **all three controls fired and none is cosmetic**: the JITTER case (a lone besieger bites ONE hex for twelve ticks — the thing this rule could plausibly have broken); a ROUTED enemy walking past a wall through a gap attacks nothing, so the precedence cannot leak into the branch 569 measurements are pinned to; and open ground is besieged by nobody.  ✓ F5c's `test_a_blocked_enemy_never_moves_away_from_the_core` green |
+| **W2** ✓ | 16 assertions and 8 gate scripts re-priced; `@M020` written; `@M005` 321 → 320 | ⚠ **a measurement is not a regression** — every clock that moved is re-recorded with its date, and five documents naming the wrong rule are corrected | ⚠⚠ **B3's tripwire did NOT fire, and it was the named control.**  `test_a_besieged_fence_is_bitten_where_the_route_meets_it_not_where_it_is_weak` stayed green because its six robots come from six directions and each already touches the fence where its route meets it.  ✓ **A different tripwire fired instead** — `11_f7b`'s bracing test, the one written about BEHAVIOUR rather than about the rule — which is the finding: *aim a tripwire at the behaviour you want, never at the mechanism you predict* |
 
 ## Phases
 
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
 | **W0** — the probe: what does the contour offer at a face? | XS | a throwaway test printing the desire distances and the `flow_sidesteps` offer along `q = 7` in K3's band.  ⚠ Built nothing and shipped nothing but the two tables in § W0 | ✅ **Done** |
-| **W1** — the rule: arriving beats queueing | M | `tests/24_w1_the_front.loft` — `siege_shape` > 3 on five rows and wider still on seven; the jitter control; F5c's no-wander test still green; `11_f8`'s ratio inside band | **Next** |
-| **W2** — what it is WORTH | S | the corpus re-measured: `scripts/test.sh` + `scripts/validate.sh` green with every moved reading re-recorded, `@M019` written, and `@M018`'s table restated | Blocked on W1 |
+| **W1** — the rule: arriving beats queueing | M | `tests/24_w1_the_front.loft` (7 fns) — `siege_shape` 4 on five rows and 6 on seven; the jitter control; a routed enemy attacking nothing; open ground besieged by nobody | ✅ **Done** |
+| **W2** — what it is WORTH | S | the corpus re-measured: **1162 tests + 33 scripts / 654 measurements green**, 16 assertions and 8 scripts re-priced, `@M020` written and `@M018` retired | ✅ **Done** |
 
 ### Why the order is this order
 
@@ -230,19 +376,25 @@ seam, the same argument).
    is BUILT, and at `(7,-1)` half of what it offers steps back off the
    face.  ⚠ Five documents name the missing rule after a rule dryopea
    already has, and W2 corrects all of them.
-2. **Does a spreading besieger need a memory?**  A hex chosen for its
-   face-adjacency this tick may not be the one chosen next tick, and an
-   enemy that re-picks every tick attacks a different hex each time and
-   finishes none — which is precisely the jitter F7b's `ewd_queued`
-   exists to prevent, one level up.  ⚠ If W1 needs a remembered target
-   then `Enemy` gains a field and plan 18's `.keys` vocabulary needs a
-   setter for it (§ S1a's rule: a placement leaves nothing derived).
-   Decided by W1.
-3. **Does the front widen without bound?**  A rule that spreads along
-   any reachable face turns a long perimeter into a long front, which
-   would delete the *"a perimeter longer than a wave can reach across
-   still hides its weak hexes"* property `ENEMY_MOVEMENT.md` names as
-   one of F7b's two playable conditions.  ⚠ That property is worth
-   keeping — it is what makes bracing reward length — so a spread with
-   a reach limit may be the design rather than a compromise.  Decided
-   by W1, measured by W2.
+2. ✅ **Does a spreading besieger need a memory?**  **NO** — and it is
+   the phrasing that bought that.  A rule saying *"a wall is between me
+   and the core"* makes an enemy STOP, and one that has stopped never
+   moves, so `flow_steps`' `lat_neighbours` order names the same hex for
+   ever.  ⚠ `Enemy` gains no field and plan 18's vocabulary needs no
+   setter.
+3. ⚠⚠ **Does the front widen without bound?**  **YES, and the answer is
+   a design change worth flagging for review.**  The front is now the
+   wall FACE's width with no reach limit, which deletes the *"a
+   perimeter longer than a wave can reach across still hides its weak
+   hexes"* property `ENEMY_MOVEMENT.md` named as one of F7b's two
+   playable conditions.
+   ⚠ **The replacement is DILUTION and it is measured**: the same wave
+   spread over more hexes takes each of them down more slowly (a 30 HP
+   end kept 14 HP at the tick a three-hex front had it at 10).  So
+   length still pays — continuously, rather than off a cliff — and a
+   continuous reward is the better mechanic for a thing the player is
+   choosing the shape of.
+   ⚠ **A reach limit remains available** if the owner wants the cliff
+   back: it would be a maximum lateral offset from the hex the route
+   arrived at.  Reverting is one commit, and W2's re-pricing is what it
+   would cost again.

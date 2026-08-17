@@ -293,11 +293,12 @@ pub const ENEMY_DAMAGE_TO_WALL_PER_SECOND: float = 1.0;
 //
 // ⚠ **The scout's figure is chosen to LOSE that race against a real
 // base's length, not merely to be small.**  The longest base the
-// corpus can play falls at **321 ticks** (`@M005`, plan 16 W4), so a
-// rate that needs 458 says *this class never opens a perimeter* in a
-// measurement rather than in a comment.  ⚠ It was 0.2 when this table
+// corpus can play falls at **320 ticks** (`@M005`; it was 321 from plan
+// 16 W4 until plan 24 W1 took a tick off it), so a rate that needs 458
+// says *this class never opens a perimeter* in a measurement rather
+// than in a comment.  ⚠ It was 0.2 when this table
 // was first written, and the gate caught it: four scouts breached at
-// 231 — comfortably inside a base that lasts 321, which is the
+// 231 — comfortably inside a base that lasts 320, which is the
 // opposite of what `DESIGN.md` means by *"a scout has no real weapon
 // at all"*.  The arithmetic had been done against the 100 HP braced
 // figure and the siege chews the 30 HP END (plan 12 B3).
@@ -868,40 +869,80 @@ fn enemy_step(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
 // deliberately did NOT — walls are passable in it, which is what makes
 // it able to say where the wall is.
 //
-// ── Why the sidestep needs a REASON here and not in engage ───────
+// ── Why "the wall is in the way" is asked FIRST ──────────────────
 //
-// Plan 11 F7b.  In the engage branch every closer step the field offers is
-// one the ground already allowed, so "nothing was free" can only mean
-// a companion and moving beside is unambiguous.  Here it can mean two
-// completely different things, and they want opposite answers:
+// Plan 11 F7b, sharpened by plan 24 W1.  In the engage branch every
+// closer step the field offers is one the ground already allowed, so
+// "nothing was free" can only mean a companion and moving beside is
+// unambiguous.  Here it can mean two completely different things, and
+// they want opposite answers:
 //
 //   - **a companion is on it** — the enemy is queueing behind someone,
 //     and `ENEMY_MOVEMENT.md` § Sealing the perimeter says it moves
-//     BESIDE them.  That is the sidestep, and along a wall it is
-//     exactly the spread F7 named and did not build: enemies arriving
-//     down one approach fan out across the face instead of stacking
-//     onto the hexes their routes happen to cross.
+//     BESIDE them.  That is the sidestep.
 //   - **the WALL is on it** — the enemy has arrived at what it came to
 //     break.  It must stand still, because `enemy_target` names the
 //     hex in front of it and `wave_damage` spends its second there.
 //
 // ⚠ **Sidestepping a terrain block would be a jitter, not a spread.**
-// An enemy at a wall face has no legal step in any direction, so an
-// unconditional sidestep would send it shuffling along the face for
-// ever, attacking a different hex every tick and finishing none of
-// them.  So the rule is not "blocked" — it is **blocked BY A
-// COMPANION**, which is what `ewd_queued` records.
+// An unconditional sidestep would send a besieger shuffling along the
+// face for ever, attacking a different hex every tick and finishing
+// none of them.
+//
+// ⚠⚠ **F7b told the two apart with `ewd_queued`, AFTER the walk — and
+// that was the defect `@M019` found.**  Asking the question late means
+// an enemy with any legal closer step walks, even when another of its
+// closer steps is the wall it is standing beside.  On a straight face
+// only three hexes ever lack a legal step (the desire ring has one
+// minimum on it), so the front was three wide **for any wall length**
+// — plan 23 K3's `@M018` — and two of every five besiegers walked
+// away from a wall they were touching.  The pre-pass below asks it
+// first, which is the whole of plan 24 W1.
 fn enemy_walk_desire(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
                      hl: const HeightLayer, desire: const FlowField, occ: Occupancy) {
     ewd_from = Hex { q: e.q, r: e.r };
+
+    // ── ⚠⚠ ARRIVING BEATS QUEUEING (plan 24 W1) ─────────────────
+    //
+    // A besieger standing beside a wall it could break attacks it,
+    // rather than walking on down a gradient whose next hex a
+    // companion is already holding.  ⚠ It is a PRE-PASS and it has to
+    // be: the decision is *do I walk at all*, so it cannot be a branch
+    // inside a loop that has already moved.
+    //
+    // ⚠ **This is what widens the front, and the reason is `@M019`.**
+    // A desire field is a ring around the CORE, so a straight face has
+    // exactly ONE minimum: only that hex and the two where the lateral
+    // step runs out had no legal closer step, which is **three for any
+    // wall length** and is the whole of `@M018`.  Every other face hex
+    // was touching the wall and walking sideways to queue behind the
+    // minimum.  Asking *"is a wall between me and the core?"* instead
+    // of *"can I still move?"* makes the front as wide as the face.
+    //
+    // ⚠ **It needs no memory and cannot jitter.**  An enemy that stops
+    // here never moves again, and `flow_steps` is in `lat_neighbours`
+    // order, so `enemy_target` names the same hex every tick — which
+    // is what plan 11 F7b's `ewd_queued` had to buy with a condition.
+    //
+    // ⚠ **`enemy_target` asks this identical question**, deliberately
+    // in the same words: the mover and the targeter disagreeing is an
+    // enemy that stands still attacking nothing, or one that walks
+    // away from the hex it is recorded as biting.
+    for ewd_w in flow_steps(desire, e.q, e.r) {
+        if !can_step(pal, pw, hl, e.kind, ewd_from, ewd_w) { return; }
+    }
+
+    // Past the pre-pass every strictly-closer step is one the ground
+    // allows, so "nothing was free" can only mean a companion — which
+    // is the unambiguous case plan 11 F7b's sidestep was written for,
+    // and it no longer needs `ewd_queued` to tell the two apart.
     ewd_queued = false;
     for ewd_t in flow_steps(desire, e.q, e.r) {
-        if !can_step(pal, pw, hl, e.kind, ewd_from, ewd_t) { continue; }
         if occupancy_taken(occ, ewd_t.q, ewd_t.r) { ewd_queued = true; continue; }
         enemy_move_to(e, ewd_t.q, ewd_t.r, occ);
         return;
     }
-    if !ewd_queued { return; }      // the wall stopped it: stand and attack
+    if !ewd_queued { return; }      // nowhere to go at all: stand
 
     for ewd_s in flow_sidesteps(desire, e.q, e.r) {
         if !can_step(pal, pw, hl, e.kind, ewd_from, ewd_s) { continue; }
@@ -955,19 +996,31 @@ pub fn enemy_target(e: const Enemy, pal: vector<GroundType>, pw: PaintedWorld,
     // is never attacked).
     if flow_reachable(f, e.q, e.r) { return ent_here; }
 
-    // The siege: the first blocked step down the desire gradient — and
-    // only when NOTHING down it is legal, because an enemy that can
-    // still walk is not yet besieging anything.
-    ent_first = ent_here;
-    ent_found = false;
+    // The siege: the first blocked step down the desire gradient.
+    //
+    // ⚠⚠ **Arriving beats queueing** (plan 24 W1), and this is the
+    // targeting half of it — `enemy_walk_desire`'s pre-pass is the
+    // mover's half, asked in the same words on purpose.  A wall
+    // between this enemy and the core is what it came to break,
+    // whether or not some OTHER neighbour would still let it walk.
+    //
+    // ⚠ It used to answer *"attacking nothing"* the moment any closer
+    // step was legal, and `@M019` is what that cost: on a straight
+    // face only three hexes ever lack one, for any wall length, so a
+    // wave's usable width was three however wide the perimeter
+    // (`@M018`) and two of every five besiegers stood beside a wall
+    // they were not touching.
+    //
+    // ⚠ **No occupancy is consulted, and that is a constraint rather
+    // than a choice** — this function takes none, and the rule is
+    // phrased *"a wall is in my way"* rather than *"my closer steps
+    // are held"* so that it does not need any.  A target that moved
+    // with the crowd would also change during the move loop, and
+    // `wave_damage` reads it afterwards.
     for ent_t in flow_steps(desire, e.q, e.r) {
-        if can_step(pal, pw, hl, e.kind, ent_here, ent_t) { return ent_here; }
-        if !ent_found {
-            ent_first = ent_t;
-            ent_found = true;
-        }
+        if !can_step(pal, pw, hl, e.kind, ent_here, ent_t) { return ent_t; }
     }
-    ent_first
+    ent_here
 }
 
 // Move an enemy, keeping the occupancy it moves through in step with

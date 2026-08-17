@@ -12,13 +12,21 @@
 #
 # and nothing else.  Same band, same wall, same spawn, same twelve
 # robots, same tick loop.  Two thirds of that wave is still miners —
-# and it never opens the wall at all.
+# and it takes the base thirty-two ticks later, at 126.
 #
-# ⚠⚠ **That is the phase.**  A wave is as dangerous as its FASTEST
-# class and no more: the four quickest robots in it fill the three
-# hexes the approach fan reaches, and everything behind them is stood
-# in a field.  `tests/23_k3_what_composition_is_worth.loft` measures the
-# whole ladder; this pair is what it looks like being played.
+# ⚠⚠ **That is the phase, as plan 24 W1 left it.**  Composition is a
+# RAMP: 94 for twelve miners, then 101 / 116 / 122 / 126 as the class
+# screening them gets slower.  `tests/23_k3_what_composition_is_worth.loft`
+# measures the whole ladder; this pair is what it looks like being
+# played.
+#
+# ⚠ **It used to be a CLIFF, and that was a defect rather than a
+# balance.**  Until W1 the twin never opened the wall at all — a wave
+# was *as dangerous as its FASTEST class and no more* (`@M018`),
+# because the four quickest robots filled every hex the wall could be
+# reached from and the other eight stood in a field.  `@M019` found
+# why: a besieger attacked only when it could not WALK, so a straight
+# face offered exactly three such hexes whatever its length.
 #
 # ── Why the list is AUTHORED as running ─────────────────────────
 #
@@ -35,12 +43,14 @@
 #   sealed at q = 6 with a wall across all five rows
 #   core at (0, 0), spawn at (14, 0) facing west
 #
-# ⚠ **Five rows, and the wall's ENDS are inside the fan here.**  The
-# approach fan from (14, 0) lands on (6,-2), (6, 0) and (6, 1) — and
-# (6,-2) is an END hex, worth 30 HP against a braced hex's 100 (plan 12
-# B3).  That is why this band breaks at 35 ticks where a seven-row one
-# needs 69: the fan is the same three hexes wide either way, and on a
-# five-row wall one of the three is cheap.
+# ⚠ **Five rows, so the whole face is besieged and the wall's ENDS are
+# in it.**  Since plan 24 W1 the front is the FACE's width rather than
+# the approach fan's: the besiegers stand on (7,-2) .. (7, 2) and bite
+# (6,-2), (6,-1), (6, 0) and (6, 1).  (6,-2) is an END hex, worth 30 HP
+# against a braced hex's 100 (plan 12 B3), which is why this band opens
+# where a seven-row one takes much longer — the front grows with the
+# wall now, so a longer perimeter DILUTES the same wave across more
+# hexes instead of hiding its ends outside a fan.
 
 echo twelve miners: a sealed band, and ninety-four ticks
 
@@ -115,33 +125,54 @@ hp 6 0 100.0 100.0
 hp 6 -2 30.0 30.0
 count targets 0 0
 
-# ── Thirty ticks: the siege is on, and it is on THREE hexes ─────
+# ── Thirty ticks: the siege is on, and it is on FOUR hexes ──────
 #
-# ⚠⚠ **Three, on a wall that is five wide** — the front is the approach
-# fan's width, not the wall's, and widening the band to seven rows does
-# not add a fourth (measured in `23_k3`).  So a wave's usable width is
-# three, and this is the whole reason its twin exists: four robots is
-# enough to own the lot.
+# ⚠⚠ **Four, on a wall that is five wide — and SIX on a seven-row one**
+# (plan 24 W1).  The front is the WALL's now rather than the approach
+# fan's: a besieger standing beside a hex it could break attacks it
+# instead of walking on to queue behind the gradient's minimum.
+#
+# ⚠ It read **three** here until plan 24, and three on a seven-row wall
+# too, which is what made a wave's usable width three however wide the
+# perimeter (`@M018`).  The cause was the desire field's shape, not the
+# fan's: a ring around the core has ONE minimum on a straight face, so
+# only three hexes ever lacked a legal closer step (`@M019`).
 tick 20
-count targets 3 3
+count targets 4 4
 target 0 6 0
-hp 6 -2 9.5 10.5
+# ⚠ **A wider front bites each hex LESS**, and this line is where that
+# shows: the cheap end kept 14 HP where the three-hex front had it down
+# to 10 by the same tick.  So a longer perimeter still pays — through
+# DILUTION now rather than by hiding its ends outside the fan.
+hp 6 -2 13.5 14.5
 hp 6 0 77.0 79.0
-hp 6 -1 100.0 100.0
+# ⚠⚠ **This line is the phase.**  (6,-1) read a flat 100.0 — untouched
+# — until plan 24 W1, because the besieger standing at (7,-1) had a
+# legal step to (7, 0) and took it, walking away from a wall it was
+# already touching.  It now bites what it is beside.
+hp 6 -1 77.0 79.0
 
 # ── And through ────────────────────────────────────────────────
 #
 # The cheap end goes first, at 3.0 HP/s a miner against 30 HP with
 # nothing to lean on, and the breach is the way in.
-tick 5
+#
+# ⚠ It took **five** more ticks until plan 24 W1 and takes eight now,
+# for the reason the `hp` lines above give: a four-hex front spends the
+# same wave's second across more wall, so every hex — including the
+# cheap end — comes down later.
+tick 8
 kind 6 -2 grass
 count painted 120 120
 
 # ── The clock ───────────────────────────────────────────────────
 #
-# ⚠ Ninety-four ticks from the arming of the list to a drained wallet.
-# Its twin is still standing at 321 — the longest base anybody can play
-# (`@M005`) — with the wall unopened.
+# ⚠ Ninety-four ticks from the arming of the list to a drained wallet,
+# and plan 24 W1 did not move it — twelve miners already filled the
+# front, so widening the front gave them nothing.  ⚠ **That is what
+# makes this the control**: its twin went from *never* to 126 on the
+# same change, so the difference between the two files is the screen
+# and not the rule.
 fall 200
 ticks 90 100
 wallet 0.0 0.0

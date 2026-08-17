@@ -323,13 +323,25 @@ fn test_a_queued_wave_chews_several_hexes_of_the_face() {
 // everywhere, and the weakest hex under it runs out first.  Nothing
 // coordinates it and no enemy knows what bracing is.
 //
-// ⚠ **"Spans" is the condition, and it is not automatic.**  The front
-// is as wide as the sidestep can fan it, so against a wall WIDER than
-// that the ends are still never touched — measured: the same eight
-// robots against a seven-hex wall land nothing on either end.  So B3's
-// claim is true of a wall a wave can reach across, and the bracing
-// rule still rewards a player whose perimeter is longer than the
-// front.
+// ⚠⚠ **Plan 24 W1 changed what this test may ASK, and the reason is
+// worth more than the assertion.**  It used to run 120 ticks and check
+// that the middle was *still standing* at the end.  Since the siege
+// front is the wall FACE's width rather than the approach fan's, a
+// five-hex wall now takes about half again as much damage over the same
+// run and nothing on it survives that long — so the old reading was
+// SATURATED, and a saturated gate cannot see the property it is named
+// for.
+//
+// ⚠ So it measures the ORDER instead: the tick each hex comes down on.
+// That is what the bracing rule actually claims — equal damage
+// everywhere, the weakest hex first — and it is a stronger assertion
+// than a photograph of the wreckage, because it stays true however long
+// the run is and however wide the front gets.
+//
+// ⚠ **"Spans" is still the condition.**  A wall LONGER than the wave
+// can cover is still safer, but the mechanism changed with W1: it is
+// DILUTION now rather than hiding the ends outside a fan — the same
+// wave spread over more hexes takes each of them down more slowly.
 fn test_a_spread_siege_breaks_the_wall_at_its_weakest_hex() {
     tsw_pw = narrow_sealed_band();
     tsw_s  = wave_state_empty();
@@ -340,14 +352,36 @@ fn test_a_spread_siege_breaks_the_wall_at_its_weakest_hex() {
     assert(structure_max_hp(pal(), tsw_pw, 5, 0) == 100.0,
            "and its middle is the strong one: {structure_max_hp(pal(), tsw_pw, 5, 0)} HP");
 
-    play(tsw_s, tsw_pw, 120);
+    tsw_end   = 0;
+    tsw_mid   = 0;
+    tsw_unzip = 0.0;
+    for tsw_t in 1..=120 {
+        play(tsw_s, tsw_pw, 1);
+        if tsw_end == 0 && painted_kind_name(pal(), tsw_pw, 5, -2) != "wall" {
+            tsw_end = tsw_t;
+            // ⚠ Read the UNZIP the tick it happens.  By tick 120 the
+            // whole wall is down and `structure_max_hp` answers 0.0 for
+            // "there is nothing there" — which is the same 0.0 it uses
+            // for "broken", so a late reading cannot tell the unzip from
+            // the rubble (`damage.loft` § structure_hp).
+            tsw_unzip = structure_max_hp(pal(), tsw_pw, 5, -1);
+        }
+        if tsw_mid == 0 && painted_kind_name(pal(), tsw_pw, 5, 0) != "wall" {
+            tsw_mid = tsw_t;
+        }
+    }
 
-    assert(painted_kind_name(pal(), tsw_pw, 5, -2) != "wall",
-           "the END came down: (5, -2) is '{painted_kind_name(pal(), tsw_pw, 5, -2)}'");
-    assert(painted_kind_name(pal(), tsw_pw, 5, 0) == "wall",
-           "while the braced middle still stands: (5, 0) is '{painted_kind_name(pal(), tsw_pw, 5, 0)}'");
-    assert(structure_max_hp(pal(), tsw_pw, 5, -1) == 30.0,
-           "and the perimeter UNZIPPED — its neighbour is an end now, at {structure_max_hp(pal(), tsw_pw, 5, -1)} HP");
+    assert(tsw_end > 0,
+           "the END came down: (5,-2) broke on tick {tsw_end}");
+    assert(tsw_mid > 0,
+           "and so, eventually, did the braced middle — the run is long "
+           + "enough to saturate it: (5, 0) broke on tick {tsw_mid}");
+    assert(tsw_end < tsw_mid,
+           "⚠ but the END went FIRST, which is the bracing rule: 30 HP "
+           + "at tick {tsw_end} against 100 HP at tick {tsw_mid}");
+    assert(tsw_unzip == 30.0,
+           "and the perimeter UNZIPPED the tick the end went — its "
+           + "neighbour was a braced 100 and is an end at 30: {tsw_unzip} HP");
 }
 
 // A five-hex wall: narrow enough that a fanned-out front reaches both

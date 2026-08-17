@@ -100,7 +100,14 @@ wave 8
 # ⚠ A tower fires one shot a second out of a 30-shot budget, so it is
 # spending that budget from the moment the first wave walks into range
 # — and every kill is a body nobody will collect.
-count alive 10 10
+#
+# ⚠ It read **10** until plan 24 W1 widened the siege front.  The
+# besiegers now stand spread along the wall's face instead of stacked
+# behind the desire gradient's minimum, so the hexes the tower's single
+# sight line reaches are not the same hexes — and at this tick that is
+# one kill fewer.  ⚠ A positional consequence, not a change to the
+# tower: nothing in `tower.loft` moved.
+count alive 11 11
 
 fall 800
 ticks 123 133
@@ -132,11 +139,23 @@ wallet 0.0 0.0
 # can go either way is worth more than one that only ever showed the
 # bad half.  `plans/16` § W2 carries the finding.
 
-# The wall did the work this time, and it lost its end doing it —
+# The wall did the work this time, and it lost its end FIRST doing it —
 # exactly the ending `a-defended-base.keys` reaches.
-kind 5 0 wall
-hp 5 0 64.0 75.0
+#
+# ⚠ **Since plan 24 W1 the middle goes too, and that is saturation
+# rather than a lost property.**  The front is the face's width now, so
+# a five-hex wall takes about half again as much damage over the same
+# run and nothing on it survives to the fall.  The ORDER is unchanged —
+# the 30 HP end still runs out long before the 100 HP middle — and it
+# is gated where it belongs, in `tests/11_f7b_the_sidestep.loft` and
+# `tests/12_b3_bracing.loft`, which measure WHICH hex goes first
+# instead of photographing the wreckage afterwards.
 kind 5 -2 grass
+kind 5 0 grass
+
+# And the middle left a heap of its own, so the perimeter has two ways
+# through it — the same ending `a-defended-base.keys` reaches.
+pile 5 0 0.9 1.1
 
 # ⚠⚠ **THE ASSERTION THIS FILE NOW EXISTS FOR: no ramp.**  Three dead
 # robots at the wall's foot were what got them in; there are none.
