@@ -55,9 +55,22 @@ interpreter, so that target is UNVERIFIED rather than passing.  ⚠ Repro:
 `loft_repros/path_dep_suppresses_lib_search/`.  ⚠ The parity gate stands at **interpreter 13/13 and
 `--native` 13/13, identical**; the package claims no target it has not run.
 
+⚠⚠ **AND 0.1.0's OWN CI WAS RED ON ARRIVAL, on a gate this phase ARMED.**  The
+chunk's unified CI runs `LOFT_DENY_WARNINGS=1` unless a package carries
+`.allow_warnings`; `clock_step` does not read its `clk`, so the package failed its
+first CI run.  ⚠ The warning is **correct**, which is what made the fix a decision:
+not reading the clock IS the contract (a count must not spend a live session's
+remainder), so touching `clk` to quiet it would break the contract and
+`.allow_warnings` would switch the gate off for every future warning too.  **0.1.1
+underscores the parameter at the one site that means it** and says so in the header.
+⚠ It never surfaced in dryopea because `scripts/test.sh` shows warnings without
+denying them — *the consumer's runner was the weaker gate, and the library's own CI
+is what found it.*
+
 ⚠ **PUBLISHED** 2026-08-17: `fixstep 0.1.0` is in the registry
 (`loft-lang/registry@4144a06`, index re-signed and the trust gate green), released at
-`loft-libs-game@fixstep-v0.1.0`, sha256 `70cc1fed…`, 28 294 bytes.  ⚠⚠ **The proof is
+`loft-libs-game@fixstep-v0.1.0`, sha256 `70cc1fed…`, 28 294 bytes — and **0.1.1**
+(`registry@2f9eba1`, sha256 `eb46a3bd…`, 29 353 bytes) is what dryopea pins today.  ⚠⚠ **The proof is
 that the DEV COPY WAS REMOVED FIRST**: `~/.loft/lib/fixstep` shadows the registry
 ([loft#667]), so dryopea's 1322 + 654 are green against the published *tarball* rather
 than against the working tree it was built from.  ⚠ The CDN served a stale index for
