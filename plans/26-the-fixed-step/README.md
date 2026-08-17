@@ -9,10 +9,35 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**Opened 2026-08-17.  Nothing built.**  This plan came out of a comparison
-of dryopea's tick pacing against moros's, run before it was written; the
-readings are § What was measured first and three of them are defects nothing
-in either repo can currently see.
+**Opened 2026-08-17.  L0 shipped 2026-08-17; L1 next.**  This plan came out
+of a comparison of dryopea's tick pacing against moros's, run before it was
+written; the readings are § What was measured first and three of them are
+defects nothing in either repo can currently see.
+
+⚠⚠ **L0 confirmed § 2's seventh row and made it WORSE than the plan
+predicted** (`@M030`, `@D003`).  The plan expected the vehicle to cover
+*2 / 1 / 0* hexes a tick at 667 / 333 / 100 ms; measured over one simulated
+minute at seven tick lengths, it covers **180 / 120 / 180 / 0 / 0 / 0 / 0**
+hexes against a true 180 — so the fall to zero starts at **200 ms**, not 100,
+and 500 ms costs a third of its speed while still looking like a moving
+player.  Every banked mover (miner 1.0, robot 1.5, scout 2.5, helper 2.5) is
+exact at all seven, so the instrument reads both answers on one axis.
+⚠ End to end the player **never leaves its hex** at 200 and 100 ms across a
+whole minute of a 40-hex corridor, while a robot beside it arrives every time.
+
+⚠⚠ **The transferable half is why nothing had seen it, and it is a NEW shape
+of blind gate**: three accidents in a row — both shipped vehicle speeds exact
+at the shipped tick, the half-tick `23_k2a` sweeps exact too, and the one
+shortened timestep in the repo that *would* have caught it banking an ENEMY.
+That last is `tests/11_f8`'s markerless-world trap with the axis and the
+subject swapped — **the right sweep over a roster with none of the broken
+thing in it** — and it is harder to spot, because the sweep looks thorough.
+
+⚠ **No fix landed and that is deliberate**: the four vehicle functions in
+`tests/26_l0_the_timestep_sweep.loft` assert today's WRONG numbers as the
+defect's record and L2's tripwire, in `tests/23_k1`'s "not yet" sense.  A
+phase that changed the thing it measured would have measured nothing
+(`@X064`).
 
 ⚠ **The evidence is a defect, and the deliverable is the library.**
 **dryopea has seven independent implementations of "do not lose a fraction",
@@ -343,20 +368,21 @@ example of the editor's door, and `plans/08` is the plan that made them so.
 
 | Phase | Expected result | Invariant | Negative control |
 |---|---|---|---|
-| **L0** | a scenario run at **667 / 333 / 100 ms** ticks covers the same ground per SECOND for every mover — and today the vehicle covers **2 / 1 / 0** hexes a tick, so the gate is RED on arrival | a rate is a rate; the timestep is a free choice (`@X058`) | ⚠ A sweep over enemy SPEEDS cannot see this (`@M013` is exactly that sweep and missed it) — the axis is the TICK LENGTH.  ⚠ And the fixture must contain a vehicle: `11_f8`'s markerless-world trap, one plan on |
+| **L0** ✅ | a scenario run at **667 / 333 / 100 ms** ticks covers the same ground per SECOND for every mover — and today the vehicle covers **2 / 1 / 0** hexes a tick, so the gate is RED on arrival | a rate is a rate; the timestep is a free choice (`@X058`) | ⚠ A sweep over enemy SPEEDS cannot see this (`@M013` is exactly that sweep and missed it) — the axis is the TICK LENGTH.  ⚠ And the fixture must contain a vehicle: `11_f8`'s markerless-world trap, one plan on |
+| ↳ **measured** | **worse than predicted, and the shape of the miss is the finding.**  Seven tick lengths (667 / 500 / 333 / 200 / 100 / 50 / 33 ms) over one simulated minute: miner / robot / scout / helper **exact at all seven**; vehicle **180 / 120 / 180 / 0 / 0 / 0 / 0** against a true 180; boost **360 / 360 / 360 / 300 / 0 / 0 / 0** against 360.  ⚠ The cliff starts at **200 ms**, not 100 — and 500 ms costs a third of the player's speed while it still moves, which reads as feel rather than as arithmetic.  ⚠⚠ At 200 ms a boosting player covers 300 hexes and a cruising one **none**, so a truncation does not scale a rate down, it **reorders which rates exist** | `@M030`, `@D003` | ⚠⚠ The negative control the plan asked for was **not the one that mattered**.  `@M013`'s speed axis is blind, as predicted — but so is the repo's ONE tick-length gate (`23_k2a`), because its half-tick is exact for the vehicle and its tenth-tick, which is not, banks an **ENEMY**.  ⚠ Falsified six ways on arrival: all 13 functions shown to speak, and a vehicle that ROUNDS instead of truncating fires all four defect records while **overshooting** (240 at 500 ms) rather than fixing them — so L2's bank has to be a bank, not a nudge |
 | **L1** | `clock_advance(clk, n × step_us) == clock_step(clk, n)` for **all** of 1..100000, against today's **602 of 1000** | an integer accumulator has no rounding to carry | ⚠ The float path must be KEPT as the control, or the gate proves only that integers equal integers.  ⚠ `tests/19_p1:97` asserts the 602 — its premise changes, and deciding what it becomes is part of L1, not after it |
-| **L2** | every one of the **1211 tests and 654 measurements** green with `ENEMY_PROGRESS_EPSILON` and `HELPER_PROGRESS_EPSILON` **deleted** (not zeroed — removed) | exact arithmetic needs no guard | ⚠⚠ `@M017` says zeroing the float epsilon today turns the suite RED, so a green integer run is the proof.  ⚠ **And the one-shot timers must be tried as banks and must break** — if they do not, this document's family boundary is wrong and that is the finding |
+| **L2** | every one of the **1255 tests and 654 measurements** green with `ENEMY_PROGRESS_EPSILON` and `HELPER_PROGRESS_EPSILON` **deleted** (not zeroed — removed) | exact arithmetic needs no guard | ⚠⚠ `@M017` says zeroing the float epsilon today turns the suite RED, so a green integer run is the proof.  ⚠ **And the one-shot timers must be tried as banks and must break** — if they do not, this document's family boundary is wrong and that is the finding |
 | **L3** | a `Timer` counting UP to 20.0 s and one counting DOWN from it both fire on the **same** tick, with no epsilon in either | a one-shot duration is exact because it is an integer, not because it was nudged | ⚠⚠ `CLAUDE.md` § Timers and epsilons: *neither direction is safe*, measured — 20.0 s counting up lands exactly and counting down leaves a residue.  **Both directions or the gate is half a gate.**  ⚠ And this is where `Timer`-as-`Bank` is attempted and must break |
 | **L4** | a capped driver and an uncapped one produce **different tick counts** and **identical worlds per tick**; a 1 Hz clock driven by a 30 Hz clock's ticks equals one driven from the wall | policy is the DRIVER's, arithmetic is the clock's | ⚠ Identical worlds per tick is the whole assertion — equal tick counts would mean the cap did nothing, and equal wall-clock outcomes would mean it compressed rather than dropped |
 | **L5** | `clock_alpha()` in `[0, 1)`, and the vehicle drawn at alpha moves on **>200 of 240 frames** un-eased | a fixed sim and a free frame rate meet at one number | ⚠ Alpha and the ease must be measured SEPARATELY, or a green reading is the ease's (`@M023` is the prior).  ⚠⚠ If alpha adds nothing over the ease, **L5 is cut** and that is a result |
-| **L6** | dryopea's 1211 + 654 and moros's world digests unchanged across the extraction, and **every door in § A DOOR PER USE CASE has a test named for its case that the docs link to** | a library is a move, not a rewrite — and a door nobody can find is a door a consumer rebuilds | ⚠ Byte-identical digests on BOTH sides; a consumer that only compiles has verified nothing.  ⚠⚠ **And the example gate needs both halves**: a test with no link is invisible, a link to prose is a snippet that rots.  The refutation is a door whose "example" is not a compiled test |
+| **L6** | dryopea's 1255 + 654 and moros's world digests unchanged across the extraction, and **every door in § A DOOR PER USE CASE has a test named for its case that the docs link to** | a library is a move, not a rewrite — and a door nobody can find is a door a consumer rebuilds | ⚠ Byte-identical digests on BOTH sides; a consumer that only compiles has verified nothing.  ⚠⚠ **And the example gate needs both halves**: a test with no link is invisible, a link to prose is a snippet that rots.  The refutation is a door whose "example" is not a compiled test |
 
 ## Phases
 
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
-| **L0** — the instrument: is any mover tick-length independent? | S | `tests/26_l0_the_timestep_sweep.loft` — one scenario at three tick lengths.  ⚠ **Expected RED on arrival**; that is the point.  File `@D003` | **Next** |
-| **L1** — the clock, in integer µs | M | `tests/26_l1_the_clock.loft` — `advance(n × step) == step(n)` over 1..100000, float path kept as control.  `scripts/validate.sh` 654 unchanged | Blocked on L0 |
+| **L0** — the instrument: is any mover tick-length independent? | S | `tests/26_l0_the_timestep_sweep.loft` — one scenario at three tick lengths.  ⚠ **Expected RED on arrival**; that is the point.  File `@D003` | **Done** 2026-08-17 — 13 tests, **seven** tick lengths not three, `@M030` + `@D003` filed.  ⚠ The four vehicle functions assert today's WRONG numbers as L2's tripwire; the suite stays green and L2 must break them |
+| **L1** — the clock, in integer µs | M | `tests/26_l1_the_clock.loft` — `advance(n × step) == step(n)` over 1..100000, float path kept as control.  `scripts/validate.sh` 654 unchanged | **Next** |
 | **L2** — `Bank`: a rate in whole units; both mover epsilons deleted | M | `scripts/test.sh` + `scripts/validate.sh` with `ENEMY_PROGRESS_EPSILON` and `HELPER_PROGRESS_EPSILON` **removed**.  ⚠ And the vehicle gains the bank it never had | Blocked on L1 |
 | **L3** — `Timer`: one-shot, UP and DOWN, and the family boundary | S | `tests/26_l3_the_timers.loft` — both directions on one target, plus the `Timer`-as-`Bank` refutation | Blocked on L2 |
 | **L4** — the policies dryopea does NOT need: cap, rate, composition | S | `tests/26_l4_the_policies.loft` — capped vs uncapped, and a nested clock | Blocked on L3 |
@@ -407,7 +433,7 @@ ownership a decision rather than a lookup: `CLAUDE.md` § Loft consumer
 relationship says libraries are owned by their first-class projects and
 dryopea may ADD to existing ones, and neither clause covers creating one.
 
-Done means: dryopea's **1211 tests + 654 measurements** green, and moros's
+Done means: dryopea's **1255 tests + 654 measurements** green, and moros's
 world digests **byte-identical** for `house.keys`, `deck.keys` and
 `cellar.keys`.  A library change is not done when one consumer compiles.
 

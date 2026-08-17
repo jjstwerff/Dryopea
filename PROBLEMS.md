@@ -77,6 +77,75 @@ Severity tiers:
   zooms, and `classify_world` shares that DIFFER — a golden would
   agree with whatever it started drawing.
 
+### @D003 — the player is the one mover that throws its remainder away, so a shorter tick freezes it
+
+- **Status:** Open
+- **Severity:** High — it is silent, it is in the shipped mover, and it
+  is a **blocker for the shorter tick**
+  ([`plans/22`](plans/22-the-field-cache/README.md) and `@X058`, which
+  made the timestep a free choice).  Today's tick hides it entirely.
+- **Found while:** plan 26 L0, building the instrument that asks whether
+  any mover is tick-length independent.  The plan predicted the defect
+  from a reading of the source (`plans/26` § 2, *seven sites re-assert
+  "do not lose a fraction" and one of them omits it*); L0 measured it.
+- **Repro:** `tests/26_l0_the_timestep_sweep.loft`, or by inspection —
+
+  ```
+  (vehicle_speed(v) * tick_seconds) as integer?    — src/vehicle.loft:304
+  ```
+
+  and `Vehicle` has no `progress` field to carry a remainder in.
+  `enemy_bank` and `helper_bank` both keep theirs.
+- **Expected:** a rate is a rate — the player covers
+  `VEHICLE_SPEED_HEX_PER_SECOND` hexes a second whatever the timestep
+  is, exactly as every enemy and every helper does.
+- **Observed:** over one simulated minute, at 667 / 500 / 333 / 200 /
+  100 / 50 / 33 ms ticks (`@M030`):
+
+  | mover | hexes a minute | true |
+  |---|---|---|
+  | miner 1.0 / robot 1.5 / scout 2.5 / helper 2.5 | exact at all seven | — |
+  | **vehicle 3.0 hex/s** | **180 / 120 / 180 / 0 / 0 / 0 / 0** | 180 |
+  | **boosting 6.0 hex/s** | **360 / 360 / 360 / 300 / 0 / 0 / 0** | 360 |
+
+  End to end, driving 40 hexes down a painted corridor with a whole
+  minute to do it in: the player arrives at 667 and 500 ms and **never
+  leaves its starting hex** at 200 and 100 ms, while a robot beside it
+  arrives at all four.  ⚠ Two consequences worth naming separately:
+  at 500 ms the player still moves, at **two thirds** of its documented
+  speed, which would report as a feel complaint rather than as
+  arithmetic; and at 200 ms a **boosting** player covers 300 hexes
+  where a cruising one covers none, so boost is worth an unbounded
+  multiple of its 2x rather than 2x.
+- **Why no gate saw it — three accidents in a row:** both shipped
+  vehicle speeds are exact at the shipped tick (`3.0 * (1/1.5)` is 2.0
+  to the bit, `6.0 * (1/1.5)` is 4.0); the half-tick
+  `tests/23_k2a::test_the_mover_agrees_at_half_the_timestep` sweeps is
+  exact too; and the one shortened timestep in the repo that WOULD see
+  it — `23_k2a`'s tenth-tick case, where `3.0 * 0.0667` truncates to
+  zero — banks an **enemy**.  ⚠ That last is
+  `tests/11_f8`'s markerless-world trap with the axis and the subject
+  swapped: the right sweep over a roster with none of the broken thing
+  in it.  ⚠ And `@M013` cannot reach it from any direction — it varies
+  the SPEED, at one tick length, through a mover that carries.
+- **Workaround:** none needed today.  `TICK_SECONDS` is 1/1.5 s and
+  nothing shortens it, which is exactly why this is worth writing down
+  before something does.
+- **Fix plan:** [`plans/26`](plans/26-the-fixed-step/README.md) **L2** —
+  the vehicle gains the bank it never had, over the integer clock L1
+  builds, so the fix is exact rather than nudged.  ⚠ Deliberately NOT
+  fixed in L0: the phase is the instrument, and a phase that changed
+  the thing it measured would have measured nothing (`@X064`'s rule,
+  plan 23 K3).
+- **Test:** [`tests/26_l0_the_timestep_sweep.loft`](tests/26_l0_the_timestep_sweep.loft)
+  § The vehicle does NOT — four functions that assert **today's wrong
+  numbers**, as the defect's record and L2's tripwire.  ⚠ They are a
+  "not yet" pin in `tests/23_k1`'s sense: the phase that fixes this
+  must turn every one of them RED, and the replacement is the
+  assertion the banked-mover functions in the same file already make.
+  Falsified on arrival — a vehicle that rounds instead of truncating
+  fires all four, and each names its whole profile.
+
 ## Fixed
 
 ### @D001 — clearing `prev.in_mouse_left` mid-step MANUFACTURES the edge it means to suppress

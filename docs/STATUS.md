@@ -1,0 +1,80 @@
+<!--
+Copyright (c) 2026 Jurjen Stellingwerff
+SPDX-License-Identifier: LGPL-3.0-or-later
+-->
+
+# What exists today
+
+⚠ **Each plan's own `## Status` is the SOURCE OF TRUTH** and
+[`plans/README.md`](../plans/README.md) indexes them.  This table is a
+one-line-per-shipped-phase reading of those, in the order they landed — it is
+for orientation, not for citation.  [`CLAUDE.md`](../CLAUDE.md) § Status
+carries the gate numbers and the operational rules; this file carries the
+history.
+
+| What works | Plan |
+|---|---|
+| A hex editor: camera, palette, click/drag paint, markers, undo, save/load | [01](../plans/01-ground-editor/README.md) + [03](../plans/03-marker-layer-and-spawns/README.md) |
+| Every editor action driven headlessly through ONE seam; `.keys` scripts that replay a run, photograph it and MEASURE the frame | [08](../plans/08-game-validation/README.md) |
+| Pointy-top odd-r offset throughout, delegated to `hex_grid`; the axial layer is deleted | [09](../plans/09-lattice-conversion/README.md) |
+| Enemies that spawn, route round walls per class, spread rather than stack, and besiege a sealed perimeter | [11](../plans/11-flow-field/README.md) |
+| Rubble: a runtime layer with a source, climbable at 2.0 m, clearable back to the authored ground | [12](../plans/12-combat-resolution/README.md), B0 + B1 shipped |
+| A besieged wall loses HP, breaks into a heap of masonry, and the breach is a way IN | [12](../plans/12-combat-resolution/README.md), B2 shipped |
+| Enemies have HP, die, and leave a body that raises its hex — so a kill zone ramps itself shut | [12](../plans/12-combat-resolution/README.md), B4 shipped |
+| A wall's HP is STRUCTURAL — an end is worth 30% of a braced hex, a lone stub 15% — and a perimeter unzips from a breach | [12](../plans/12-combat-resolution/README.md), B3 shipped |
+| Towers: a third MARKER kind, range 15 by `lat_distance`, two shots every three ticks | [12](../plans/12-combat-resolution/README.md), B5a shipped |
+| A tower SEES: one straight line from its eye over what `hex_height` says is in the way, and thirty shots before it goes black | [12](../plans/12-combat-resolution/README.md), B5b shipped |
+| A wallet: an enemy standing on the core drains 1 pt/s off 200, and zero ends the run — the core stays invulnerable | [12](../plans/12-combat-resolution/README.md), B6 shipped |
+| An unattended base falls on a measured clock — and a sealed wall nearly doubles it while a tower CUTS it | [12](../plans/12-combat-resolution/README.md), B7 shipped — plan **complete** |
+| A PLAYER: a hover unit that parks, drives at two hexes a tick, and is stopped by the same height rule everything else is | [13](../plans/13-the-vehicle/README.md), V0-V1 shipped |
+| A CREW: it clears rubble it stands on or beside at one body a second — and that turns a tower from a liability into an asset (95 → 121 ticks; ⚠ **128 → 140** since plan 16 W2) | [13](../plans/13-the-vehicle/README.md), V2 shipped |
+| BOOST: four hexes a tick and a 3.0 m climb for three ticks, so a crew leaves a sealed base and comes home | [13](../plans/13-the-vehicle/README.md), V4 shipped |
+| LOOT: clearing wreckage pays 20 points a metre, so the wallet can rise for the first time — and a crew that clears AND collects takes the towered base from 95 ticks to 145 | [13](../plans/13-the-vehicle/README.md), V3 shipped — plan **complete** |
+| The player can be DESTROYED — but only by blocking a wave with nowhere to go round, which is a property of the map rather than of parking | [13](../plans/13-the-vehicle/README.md), V5 shipped |
+| HELPERS: an NPC crew on the player's chassis, moving at 2.5 hex/s — the first mover whose speed does NOT fit the tick | [14](../plans/14-helpers/README.md), H0-H1 shipped |
+| A helper WORKS: it clears and it earns, on one shared chassis — and a base with two fronts goes 77 → 214 → 242 ticks as the crew grows to cover them | [14](../plans/14-helpers/README.md), H2 shipped |
+| A helper can be LOST: the blocker rule covers the whole crew, and a helper that dies WRECKS where it stood while the player respawns | [14](../plans/14-helpers/README.md), H3 shipped |
+| CARRY: one slot per vehicle, one record per carryable thing — an object is on the ground, in exactly one carrier's slot, or spent, and a lost helper leaves something to fetch | [15](../plans/15-the-carry-model/README.md), C0-C1 shipped |
+| RETRIEVAL: a lost crew member is carried to the core and rejoins the roster after EXACTLY 90 ticks — and nothing else brings one back | [15](../plans/15-the-carry-model/README.md), C2 shipped — closes [14](../plans/14-helpers/README.md) H4, so plan 14 is **complete** |
+| ⚠ What a retrieval is WORTH: nothing yet — 85/79/79 ticks (⚠ **93/87/87** since plan 16 W2), because a 60 s recovery is priced against a SEVEN-wave base and dryopea plays ONE wave | [15](../plans/15-the-carry-model/README.md), C3 shipped — plan **complete** |
+| WAVES ARRIVE ON THEIR OWN: an authored list, a lull that is COUNTED, and a schedule that advances on a CLEAR — so a base can be more than one wave long | [16](../plans/16-the-wave-system/README.md), W0-W1 shipped |
+| PRE-WALK VISIBILITY: a wave stands 8 ticks at its marker and steps on the 9th — and because it stands INSIDE tower range, the kills pile up out there and plan 12 B7's tower inverts from -9 ticks to **+16** | [16](../plans/16-the-wave-system/README.md), W2 shipped |
+| A run STARTS ITSELF: driving onto a spawn marker 12+ hexes out wakes the list — and a marker at 11, which really does send the wave, is safe to stand on | [16](../plans/16-the-wave-system/README.md), W3 shipped |
+| ⚠ What a base is worth AT ITS REAL LENGTH: the authored seven-wave list plays **FOUR** and falls at 321 with every tower black, and a retrieval is worth **one tick** on a base where the crew member does come back | [16](../plans/16-the-wave-system/README.md), W4 shipped — plan **complete** |
+| **No wall trigger, no ordering, no beacons and no scramble** | [plans/ROADMAP.md](../plans/ROADMAP.md) |
+| UPKEEP: 20 s of standing at a black tower rebuilds it — so the lull is a REPAIR WINDOW and a base can outlive its own wave list | [17](../plans/17-tower-hot-swap/README.md), T0-T1 shipped — T2 next |
+| HOT-SWAP: a tower's top is a CARRY object — take it off (the tower stops firing), transplant it onto a spent tower (red instantly), or evacuate it at the core.  ⚠ The magazine travels WITH the top, so detach-and-remount is not a free repair | [17](../plans/17-tower-hot-swap/README.md), T2 shipped |
+| ⚠ **The authored SEVEN-WAVE list is playable**: seven towers and two SHUTTLING helpers clear all 205 robots.  ⚠ Parked on their towers the same two reach 5/7 and the base falls — upkeep is a POSITIONING problem, not a resource | [17](../plans/17-tower-hot-swap/README.md), T3 shipped — plan **complete** |
+| THE GAME HAS A DOOR: `play.loft` owns the only call to `wave_tick`, asked by COUNT (`play_ticks`) or by DURATION (`play_advance`).  ⚠ **They are not interchangeable** — `n × TICK_SECONDS` through the accumulator is one tick SHORT for 602 of the first 1000 `n` | [19](../plans/19-the-interactive-loop/README.md), P0-P1 shipped |
+| AND A KEYBOARD: WASD / Shift / E are rows in the ONE key table, and a `.keys` script presses them.  ⚠ WASD is SHARED with the camera pan — `editor_input_from(…, playing)` fills one set or the other, never both.  ⚠ W is TRUE north via a metre heading, measured at zero drift | [19](../plans/19-the-interactive-loop/README.md), P2 shipped |
+| FOUR ROLES, ONE AI: scout / harvester / builder / miner — the same wave size at the same wall breaches at **23 / 35 / 50 / 96 / 454** ticks, and a harvester's body pays TRIPLE.  ⚠ `robot` keeps its rate, so **no existing measurement moved** | [23](../plans/23-the-small-robots/README.md), K0 shipped |
+| A WAVE HAS COMPOSITION: `schedule 4 12` arms the list and `compose 1 4 miner 8 scout` fills a wave of it, in the order written.  ⚠ A wave's SIZE is **summed** from its parts and never stored, which DELETES the plan's own negative control (`@X055`).  ⚠ 569 measurements unchanged — a `vector<integer>` still means N waves of regulars | [23](../plans/23-the-small-robots/README.md), K1 shipped |
+| SPEED IS NO LONGER THE TICK: an enemy BANKS `speed × tick_seconds` and steps when a whole hex is due, so the timestep is a CHOICE (`@X058`) — and nothing moved (1128 tests, 569 measurements).  ⚠⚠ **1.5 hex/s is a speed at which the rounding guard cannot fire**: zero the epsilon and the whole corpus stays green (`@M014`), while 1.0 / 1.2 / 1.8 / 2.0 / 2.5 hex/s each lose a hex without it (`@M013`) | [23](../plans/23-the-small-robots/README.md), K2a shipped |
+| THE SCOUT IS FASTER: 2.5 hex/s against a miner's 1.0 and a robot's 1.5, so nine hexes of one corridor take **6 / 9 / 14** ticks (`@M016`) — one lookup, no new mover.  ⚠⚠ **The guard that could not fire now DOES**: 2.25 and 3.0 were refused *because* they hide it as 1.5 does, so zeroing the epsilon today turns the suite RED (`@M017`, `@X063`) | [23](../plans/23-the-small-robots/README.md), K2b shipped |
+| ⚠ Composition is legible: three waves of twelve fall at **94 / 126 / never**.  ⚠⚠ Its headline — *a wave is as dangerous as its FASTEST class and no more* (`@M018`) — is **RETIRED by plan 24** | [23](../plans/23-the-small-robots/README.md), K3 shipped — plan **complete** |
+| ⚠⚠ **THE SIEGE FRONT IS THE WALL'S WIDTH**: a besieger attacks the hex it is TOUCHING, so 3 → **4** hexes on a five-row wall and 3 → **6** on a seven-row one — and a wave is worth its front class PLUS what the front cannot COVER (`@M020`).  ⚠ Four screens against a five-hex face leak exactly ONE miner, so *4 scout + 8 miner* went from **never** to **126**.  ⚠ The rule five documents asked for was one we already had (`@M019`) | [24](../plans/24-the-siege-front/README.md), W0-W2 shipped — plan **complete** |
+| **AND IT OPENS**: `make play`, press **P**, and waves arrive because TIME PASSED — the crew lands at the core and WASD drives it.  ⚠ **Nothing of the game is DRAWN yet** (P4), so the console echo is the only way to see it.  ⚠ The mode gates the CLOCK and never the seam | [19](../plans/19-the-interactive-loop/README.md), P3 shipped — P4 next |
+| A CAMERA that comes to the vehicle: an orbit camera whose azimuth is the VELOCITY's and whose elevation and boom are the player's.  ⚠⚠ **`camera_overview` at 89° IS the editor's view** — measured against the software rasteriser at **0.0014 rad of bearing and 0.56% of scale** (`@M022`), so it is one camera with two presets.  ⚠⚠ The 3-D world frame is **+y NORTH** and `lat_to_world` is the ONE negation | [21](../plans/21-the-renderer/README.md), R1 shipped |
+| AND IT EASES: the camera lives on `PlayState`, steps on every frame, and shortens its boom behind a wall.  ⚠⚠ The approach is **`1 − e^(−k·dt)`** and moros's linear `k·dt` was REFUSED — `play.loft` is frame-rate independent and the linear form is not (`@M023`).  ⚠⚠ **The ease is what makes a LATTICE look like a moving world**: un-eased the camera moves on 12 frames of 240 and jumps a whole hex, eased on 221 with a worst frame nine times smaller | [21](../plans/21-the-renderer/README.md), R2 shipped — plan **complete** |
+| ⚠⚠ **THE GROUND IS NOT MESHED YET** — and the job is HALF what plan 21 sized it at.  dryopea's ground is a flat plane with pillars on it (`height_override` non-null on **2 of 12** palette kinds), so moros's corner-height MEAN is a no-op at every hex and the mesher does not blend (`@X072`); `mesh3d::mesh_to_floats` + `graphics::GroupVboSet` already publish the whole GPU-side chunk cache.  ⚠ Colour is a **UNIFORM**, one mesh per palette kind (`@X074`) — a flat-unlit frame built that way can only contain palette colours, which is what keeps the exact classification alive.  ⚠⚠ **A reversed fan changes no count, no height and no vertex position — and draws NOTHING under `GL_CULL_FACE`**, so M0 gates the winding as DATA three phases before anything is drawn | [25](../plans/25-the-terrain-mesh/README.md), M0 shipped |
+| A COLUMN HAS SIDES: one vertical quad per edge where a hex stands above its neighbour, emitted **once**, by the side that STANDS.  ⚠⚠ **Both halves of `hh <= nh` fail invisibly** — no guard draws every faced edge twice and the copy is back-facing; `<` grows a zero-area sliver at every hex boundary in the world — so it is gated as four COUNTS on four fixtures (**6 / 10 / 0 / 5+6**).  ⚠⚠ A quad's NORMAL (from the two centres) and its WINDING (from the corner ring) are two facts that can disagree, and the test asserts they AGREE | [25](../plans/25-the-terrain-mesh/README.md), M1 shipped |
+| THE WORLD, IN TILES: 32×32 hexes meshed one palette kind at a time, compared by folding the geometry to an integer, and the mesher's reach **measured** against `MESH_HALO_K` rather than restated — so plan 02's blend goes red here.  ⚠⚠ **The drawn region is the painted set plus a ONE-HEX RING** (`@X075`) — sea is stored as ABSENCE, so meshing what is stored leaves an erased region as a hole in the ground at the height of the land round it.  ⚠⚠ **M2's headline gate could not fail and its own control said so**: loft's keyed collections iterate in KEY order, not insertion order (`@M025`) | [25](../plans/25-the-terrain-mesh/README.md), M2 shipped |
+| **AND IT IS DRAWN, AND GATED**: `make validate-gl` meshes a `.keys` world, draws it flat-unlit through real GL under `xvfb`, captures it and counts every pixel with **`classify_canvas` itself** — `other == 0` over 691 200 px.  ⚠⚠ **A per-kind COUNT cannot see a MIRRORED world** — every band stays green while the world is reflected, and only a LANDMARK against `camera_screen` sees it, at **490.8 px** (`@M027`, `@X078`).  ⚠ A landmark must be FLAT: a column draws its sides in the same colour, 29 px off | [25](../plans/25-the-terrain-mesh/README.md), M3 shipped |
+| AND IT IS PRICED: a one-hex edit re-bakes **~4 000 hexes' worth** of geometry, because a tile is re-meshed whole (`@M028`).  ⚠⚠ The gate counts **FLOATS**, not seconds — the clock could not carry it (two identical calls differed **5.4x**) — and it prices M1's *invisible* breaks at last: a zero-area sliver **triples the world's geometry** and draws no pixel (`@M029`) | [25](../plans/25-the-terrain-mesh/README.md), M4 shipped — plan **complete** |
+| ⚠⚠ **A RATE IS A RATE — EXCEPT THE PLAYER'S**: every banked mover holds its speed at seven tick lengths and the vehicle reads **180 / 120 / 180 / 0 / 0 / 0 / 0** hexes a minute against a true 180, because `vehicle_hexes_this_tick` TRUNCATES and `Vehicle` has no `progress` field (`@M030`, `@D003`).  ⚠⚠ Three accidents hid it, and the third is a **new shape of blind gate**: the one shortened timestep in the repo that would have caught it banks an ENEMY | [26](../plans/26-the-fixed-step/README.md), L0 shipped — L1 next |
+
+## Two rules the table above rests on
+
+⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
+is derived rather than picked: **a single-hex body ramp onto a structure
+`H` high needs a climb of `H / 2`**, so half a 3 m `wall` is 1.5 and 2.0
+is the interior of four constraints — see `src/passable.loft` § Why a
+robot climbs 2.0 m.  It was 0.0 until B1, which meant no rubble height a
+robot could walk onto existed at all.
+
+⚠ **Rubble is a LAYER, never a repaint** (`src/height.loft`).  A pile
+makes its hex's SURFACE `rubble` (palette 11) while the authored ground
+underneath is untouched, so clearing restores exactly what was authored.
+That is what dissolves the sea trap: the painted layer is sea-default, so
+a breach that ERASED its hex would be *less* passable than the wall it
+replaced, while "the wall broke" asserted true.

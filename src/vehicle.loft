@@ -288,18 +288,45 @@ pub fn vehicle_arrived(v: const Vehicle) -> boolean {
 // refuses, and it is right to: the wave engine may know about the
 // player, and the player must not need the wave engine to move.
 //
-// ⚠ It TRUNCATES, so a speed that is not a whole number of hexes per
-// tick silently loses the remainder.  Every vehicle speed in
-// `numbers.json` is exact today (3.0 and 6.0 hex/s are 2 and 4 hexes),
-// and `plans/13` § V0 records that the helper at 2.5 and the boss at
-// 1.0 are NOT — they are what forces progress banking, and this
-// function is where that lands.
+// ⚠⚠ **It TRUNCATES and carries NOTHING, and that is `@D003` — the one
+// mover in the game that is not tick-length independent.**  `Vehicle`
+// has no `progress` field, where `spawn.loft::enemy_bank` and
+// `helper.loft::helper_bank` both keep their remainder.  Every vehicle
+// speed in `numbers.json` is exact at TODAY's tick (3.0 and 6.0 hex/s
+// are 2 and 4 hexes) and that is the whole of why nothing has noticed:
+// the arithmetic is a hair from wrong rather than right.
+//
+// ⚠⚠ **MEASURED over one simulated minute** at 667 / 500 / 333 / 200 /
+// 100 / 50 / 33 ms ticks (`@M030`, `tests/26_l0_the_timestep_sweep.
+// loft`): a miner at 1.0, a robot at 1.5, a scout at 2.5 and a helper
+// at 2.5 hex/s come back exact at all seven, and the player reads
+// **180 / 120 / 180 / 0 / 0 / 0 / 0** against a true 180.  Driving 40
+// hexes of painted corridor with a whole minute to do it in, it never
+// leaves its starting hex at 200 ms.  ⚠ And the failure is not "a bit
+// slow": at 200 ms a BOOSTING player covers 300 hexes and a cruising
+// one none, so the truncation does not scale a rate down, it reorders
+// which rates exist.
+//
+// ⚠ **`plans/13` § V0 saw the shape and priced it as future work** —
+// the helper at 2.5 and the boss at 1.0 are not whole hexes a tick,
+// "and this function is where that lands".  What V0 could not see is
+// that the TIMESTEP is the axis rather than the speed: `@X058` made it
+// a free choice, and `plans/22`'s shorter tick is what turns this from
+// latent into load-bearing.
+//
+// ⚠ **The fix is `plans/26` L2** — the bank this never had, over L1's
+// integer clock, so it is exact rather than nudged.  Not patched in
+// place: a rounding that looks like a fix OVERSHOOTS (240 hexes at 500
+// ms) and still zeroes at the short end, measured.
 pub fn vehicle_hexes_per_tick(tick_seconds: float) -> integer {
     (VEHICLE_SPEED_HEX_PER_SECOND * tick_seconds) as integer? ?? 0
 }
 
 // The same, for whatever state the vehicle is in — two hexes idle and
 // four boosting, both exact at today's tick (plan 13 V0).
+//
+// ⚠⚠ **Exact at TODAY's tick and at no shorter one** — see the
+// truncation note above; this is the site `@D003` names.
 pub fn vehicle_hexes_this_tick(v: const Vehicle, tick_seconds: float) -> integer {
     (vehicle_speed(v) * tick_seconds) as integer? ?? 0
 }

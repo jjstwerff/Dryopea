@@ -37,689 +37,210 @@ roadmap in [`plans/ROADMAP.md`](plans/ROADMAP.md).
 
 ## Status
 
-**Active implementation.**  Each plan's own `## Status` is the source of
-truth and [`plans/README.md`](plans/README.md) indexes them; this is what
-exists today.
+**Active implementation.**  ⚠ **Each plan's own `## Status` is the source of
+truth** and [`plans/README.md`](plans/README.md) indexes them.
 
-| What works | Plan |
-|---|---|
-| A hex editor: camera, palette, click/drag paint, markers, undo, save/load | [01](plans/01-ground-editor/README.md) + [03](plans/03-marker-layer-and-spawns/README.md) |
-| Every editor action driven headlessly through ONE seam; `.keys` scripts that replay a run, photograph it and MEASURE the frame | [08](plans/08-game-validation/README.md) |
-| Pointy-top odd-r offset throughout, delegated to `hex_grid`; the axial layer is deleted | [09](plans/09-lattice-conversion/README.md) |
-| Enemies that spawn, route round walls per class, spread rather than stack, and besiege a sealed perimeter | [11](plans/11-flow-field/README.md) |
-| Rubble: a runtime layer with a source, climbable at 2.0 m, clearable back to the authored ground | [12](plans/12-combat-resolution/README.md), B0 + B1 shipped |
-| A besieged wall loses HP, breaks into a heap of masonry, and the breach is a way IN | [12](plans/12-combat-resolution/README.md), B2 shipped |
-| Enemies have HP, die, and leave a body that raises its hex — so a kill zone ramps itself shut | [12](plans/12-combat-resolution/README.md), B4 shipped |
-| A wall's HP is STRUCTURAL — an end is worth 30% of a braced hex, a lone stub 15% — and a perimeter unzips from a breach | [12](plans/12-combat-resolution/README.md), B3 shipped |
-| Towers: a third MARKER kind, range 15 by `lat_distance`, two shots every three ticks | [12](plans/12-combat-resolution/README.md), B5a shipped |
-| A tower SEES: one straight line from its eye over what `hex_height` says is in the way, and thirty shots before it goes black | [12](plans/12-combat-resolution/README.md), B5b shipped |
-| A wallet: an enemy standing on the core drains 1 pt/s off 200, and zero ends the run — the core stays invulnerable | [12](plans/12-combat-resolution/README.md), B6 shipped |
-| An unattended base falls on a measured clock — and a sealed wall nearly doubles it while a tower CUTS it | [12](plans/12-combat-resolution/README.md), B7 shipped — plan **complete** |
-| A PLAYER: a hover unit that parks, drives at two hexes a tick, and is stopped by the same height rule everything else is | [13](plans/13-the-vehicle/README.md), V0-V1 shipped |
-| A CREW: it clears rubble it stands on or beside at one body a second — and that turns a tower from a liability into an asset (95 → 121 ticks; ⚠ **128 → 140** since plan 16 W2) | [13](plans/13-the-vehicle/README.md), V2 shipped |
-| BOOST: four hexes a tick and a 3.0 m climb for three ticks, so a crew leaves a sealed base and comes home | [13](plans/13-the-vehicle/README.md), V4 shipped |
-| LOOT: clearing wreckage pays 20 points a metre, so the wallet can rise for the first time — and a crew that clears AND collects takes the towered base from 95 ticks to 145 | [13](plans/13-the-vehicle/README.md), V3 shipped — plan **complete** |
-| The player can be DESTROYED — but only by blocking a wave with nowhere to go round, which is a property of the map rather than of parking | [13](plans/13-the-vehicle/README.md), V5 shipped |
-| HELPERS: an NPC crew on the player's chassis, moving at 2.5 hex/s — the first mover whose speed does NOT fit the tick | [14](plans/14-helpers/README.md), H0-H1 shipped |
-| A helper WORKS: it clears and it earns, on one shared chassis — and a base with two fronts goes 77 → 214 → 242 ticks as the crew grows to cover them | [14](plans/14-helpers/README.md), H2 shipped |
-| A helper can be LOST: the blocker rule covers the whole crew, and a helper that dies WRECKS where it stood while the player respawns | [14](plans/14-helpers/README.md), H3 shipped |
-| CARRY: one slot per vehicle, one record per carryable thing — an object is on the ground, in exactly one carrier's slot, or spent, and a lost helper leaves something to fetch | [15](plans/15-the-carry-model/README.md), C0-C1 shipped |
-| RETRIEVAL: a lost crew member is carried to the core and rejoins the roster after EXACTLY 90 ticks — and nothing else brings one back | [15](plans/15-the-carry-model/README.md), C2 shipped — closes [14](plans/14-helpers/README.md) H4, so plan 14 is **complete** |
-| ⚠ What a retrieval is WORTH: nothing yet — 85/79/79 ticks (⚠ **93/87/87** since plan 16 W2), because a 60 s recovery is priced against a SEVEN-wave base and dryopea plays ONE wave | [15](plans/15-the-carry-model/README.md), C3 shipped — plan **complete** |
-| WAVES ARRIVE ON THEIR OWN: an authored list, a lull that is COUNTED, and a schedule that advances on a CLEAR — so a base can be more than one wave long | [16](plans/16-the-wave-system/README.md), W0-W1 shipped |
-| PRE-WALK VISIBILITY: a wave stands 8 ticks at its marker and steps on the 9th — and because it stands INSIDE tower range, the kills pile up out there and plan 12 B7's tower inverts from -9 ticks to **+16** | [16](plans/16-the-wave-system/README.md), W2 shipped |
-| A run STARTS ITSELF: driving onto a spawn marker 12+ hexes out wakes the list — and a marker at 11, which really does send the wave, is safe to stand on | [16](plans/16-the-wave-system/README.md), W3 shipped |
-| ⚠ What a base is worth AT ITS REAL LENGTH: the authored seven-wave list plays **FOUR** and falls at 321 with every tower black, and a retrieval is worth **one tick** on a base where the crew member does come back | [16](plans/16-the-wave-system/README.md), W4 shipped — plan **complete** |
-| **No wall trigger, no ordering, no beacons and no scramble** | [plans/ROADMAP.md](plans/ROADMAP.md) |
-| UPKEEP: 20 s of standing at a black tower rebuilds it — so the lull is a REPAIR WINDOW and a base can outlive its own wave list | [17](plans/17-tower-hot-swap/README.md), T0-T1 shipped — T2 next |
-| HOT-SWAP: a tower's top is a CARRY object — take it off (the tower stops firing), transplant it onto a spent tower (red instantly), or evacuate it at the core.  ⚠ The magazine travels WITH the top, so detach-and-remount is not a free repair | [17](plans/17-tower-hot-swap/README.md), T2 shipped |
-| ⚠ **The authored SEVEN-WAVE list is playable**: seven towers and two SHUTTLING helpers clear all 205 robots.  ⚠ Parked on their towers the same two reach 5/7 and the base falls — upkeep is a POSITIONING problem, not a resource | [17](plans/17-tower-hot-swap/README.md), T3 shipped — plan **complete** |
-| THE GAME HAS A DOOR: `play.loft` owns the only call to `wave_tick`, asked by COUNT (`play_ticks`) or by DURATION (`play_advance`).  ⚠ **They are not interchangeable** — `n × TICK_SECONDS` through the accumulator is one tick SHORT for 602 of the first 1000 `n` | [19](plans/19-the-interactive-loop/README.md), P0-P1 shipped |
-| AND A KEYBOARD: WASD / Shift / E are rows in the ONE key table, and a `.keys` script presses them.  ⚠ WASD is SHARED with the camera pan — `editor_input_from(…, playing)` fills one set or the other, never both.  ⚠ W is TRUE north via a metre heading, measured at zero drift | [19](plans/19-the-interactive-loop/README.md), P2 shipped |
-| FOUR ROLES, ONE AI: scout / harvester / builder / miner — the same wave size at the same wall breaches at **23 / 35 / 50 / 96 / 454** ticks, and a harvester's body pays TRIPLE.  ⚠ `robot` keeps its rate, so **no existing measurement moved** | [23](plans/23-the-small-robots/README.md), K0 shipped |
-| A WAVE HAS COMPOSITION: `schedule 4 12` arms the list and `compose 1 4 miner 8 scout` fills a wave of it, in the order written.  ⚠ A wave's SIZE is **summed** from its parts and never stored, which DELETES the plan's own negative control (`@X055`).  ⚠ 569 measurements unchanged — a `vector<integer>` still means N waves of regulars | [23](plans/23-the-small-robots/README.md), K1 shipped |
-| SPEED IS NO LONGER THE TICK: an enemy BANKS `speed × tick_seconds` and steps when a whole hex is due, so the timestep is a CHOICE (`@X058`) — and nothing moved (1128 tests, 569 measurements).  ⚠⚠ **1.5 hex/s is a speed at which the rounding guard cannot fire**: zero the epsilon and the whole corpus stays green (`@M014`), while 1.0 / 1.2 / 1.8 / 2.0 / 2.5 hex/s each lose a hex without it (`@M013`) | [23](plans/23-the-small-robots/README.md), K2a shipped |
-| THE SCOUT IS FASTER: 2.5 hex/s against a miner's 1.0 and a robot's 1.5, so nine hexes of one corridor take **6 / 9 / 14** ticks (`@M016`) — one lookup, no new mover.  ⚠⚠ **The guard that could not fire now DOES**: 2.25 and 3.0 were refused *because* they hide it as 1.5 does, so zeroing the epsilon today turns the suite RED (`@M017`, `@X063`) | [23](plans/23-the-small-robots/README.md), K2b shipped |
-| ⚠ Composition is legible: three waves of twelve fall at **94 / 126 / never**.  ⚠⚠ Its headline — *a wave is as dangerous as its FASTEST class and no more* (`@M018`) — is **RETIRED by plan 24** | [23](plans/23-the-small-robots/README.md), K3 shipped — plan **complete** |
-| ⚠⚠ **THE SIEGE FRONT IS THE WALL'S WIDTH**: a besieger attacks the hex it is TOUCHING, so 3 → **4** hexes on a five-row wall and 3 → **6** on a seven-row one — and a wave is worth its front class PLUS what the front cannot COVER (`@M020`).  ⚠ Four screens against a five-hex face leak exactly ONE miner, so *4 scout + 8 miner* went from **never** to **126**.  ⚠ The rule five documents asked for was one we already had (`@M019`) | [24](plans/24-the-siege-front/README.md), W0-W2 shipped — plan **complete** |
-| **AND IT OPENS**: `make play`, press **P**, and waves arrive because TIME PASSED — the crew lands at the core and WASD drives it.  ⚠ **Nothing of the game is DRAWN yet** (P4), so the console echo is the only way to see it.  ⚠ The mode gates the CLOCK and never the seam | [19](plans/19-the-interactive-loop/README.md), P3 shipped — P4 next |
-| A CAMERA that comes to the vehicle: an orbit camera whose azimuth is the VELOCITY's and whose elevation and boom are the player's.  ⚠⚠ **`camera_overview` at 89° IS the editor's view** — measured against the software rasteriser at **0.0014 rad of bearing and 0.56% of scale** (`@M022`), so it is one camera with two presets.  ⚠⚠ The 3-D world frame is **+y NORTH** and `lat_to_world` is the ONE negation | [21](plans/21-the-renderer/README.md), R1 shipped |
-| AND IT EASES: the camera lives on `PlayState`, steps on every frame, and shortens its boom behind a wall.  ⚠⚠ The approach is **`1 − e^(−k·dt)`** and moros's linear `k·dt` was REFUSED — `play.loft` is frame-rate independent and the linear form is not (`@M023`).  ⚠⚠ **The ease is what makes a LATTICE look like a moving world**: un-eased the camera moves on 12 frames of 240 and jumps a whole hex, eased on 221 with a worst frame nine times smaller | [21](plans/21-the-renderer/README.md), R2 shipped — plan **complete** |
-| ⚠⚠ **THE GROUND IS NOT MESHED YET** — and the job is HALF what plan 21 sized it at.  dryopea's ground is a flat plane with pillars on it (`height_override` non-null on **2 of 12** palette kinds), so moros's corner-height MEAN is a no-op at every hex and the mesher does not blend (`@X072`); `mesh3d::mesh_to_floats` + `graphics::GroupVboSet` already publish the whole GPU-side chunk cache.  ⚠ Colour is a **UNIFORM**, one mesh per palette kind (`@X074`) — a flat-unlit frame built that way can only contain palette colours, which is what keeps the exact classification alive.  ⚠⚠ **A reversed fan changes no count, no height and no vertex position — and draws NOTHING under `GL_CULL_FACE`**, so M0 gates the winding as DATA three phases before anything is drawn | [25](plans/25-the-terrain-mesh/README.md), M0 shipped |
-| A COLUMN HAS SIDES: one vertical quad per edge where a hex stands above its neighbour, emitted **once**, by the side that STANDS.  ⚠⚠ **Both halves of `hh <= nh` fail invisibly** — no guard draws every faced edge twice and the copy is back-facing; `<` grows a zero-area sliver at every hex boundary in the world — so it is gated as four COUNTS on four fixtures (**6 / 10 / 0 / 5+6**).  ⚠⚠ A quad's NORMAL (from the two centres) and its WINDING (from the corner ring) are two facts that can disagree, and the test asserts they AGREE | [25](plans/25-the-terrain-mesh/README.md), M1 shipped |
-| THE WORLD, IN TILES: 32×32 hexes meshed one palette kind at a time, compared by folding the geometry to an integer, and the mesher's reach **measured** against `MESH_HALO_K` rather than restated — so plan 02's blend goes red here.  ⚠⚠ **The drawn region is the painted set plus a ONE-HEX RING** (`@X075`) — sea is stored as ABSENCE, so meshing what is stored leaves an erased region as a hole in the ground at the height of the land round it.  ⚠⚠ **M2's headline gate could not fail and its own control said so**: loft's keyed collections iterate in KEY order, not insertion order (`@M025`) | [25](plans/25-the-terrain-mesh/README.md), M2 shipped |
-| **AND IT IS DRAWN, AND GATED**: `make validate-gl` meshes a `.keys` world, draws it flat-unlit through real GL under `xvfb`, captures it and counts every pixel with **`classify_canvas` itself** — `other == 0` over 691 200 px.  ⚠⚠ **A per-kind COUNT cannot see a MIRRORED world** — every band stays green while the world is reflected, and only a LANDMARK against `camera_screen` sees it, at **490.8 px** (`@M027`, `@X078`).  ⚠ A landmark must be FLAT: a column draws its sides in the same colour, 29 px off | [25](plans/25-the-terrain-mesh/README.md), M3 shipped |
-| AND IT IS PRICED: a one-hex edit re-bakes **~4 000 hexes' worth** of geometry, because a tile is re-meshed whole (`@M028`).  ⚠⚠ The gate counts **FLOATS**, not seconds — the clock could not carry it (two identical calls differed **5.4x**) — and it prices M1's *invisible* breaks at last: a zero-area sliver **triples the world's geometry** and draws no pixel (`@M029`) | [25](plans/25-the-terrain-mesh/README.md), M4 shipped — plan **complete** |
+- **What exists today, one line per shipped phase** —
+  [`docs/STATUS.md`](docs/STATUS.md).  Read it to find out whether a thing is
+  built before designing around it; ~45 rows from the hex editor through the
+  terrain mesh.
+- **How the toolchain fails, and how to tell that from a real defect** —
+  [`docs/TOOLCHAIN.md`](docs/TOOLCHAIN.md).
 
-⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
-is derived rather than picked: **a single-hex body ramp onto a structure
-`H` high needs a climb of `H / 2`**, so half a 3 m `wall` is 1.5 and 2.0
-is the interior of four constraints — see `src/passable.loft` § Why a
-robot climbs 2.0 m.  It was 0.0 until B1, which meant no rubble height a
-robot could walk onto existed at all.
+**Where the game is right now:** the simulation is complete enough to play a
+seven-wave base to its end, the game runs in a window (`make play`, press
+**P**), the camera follows the vehicle, and the ground is meshed and drawn
+through real GL under a gate — but ⚠ **nothing of the game's ENTITIES is
+drawn yet**, and ⚠⚠ **the player cannot BUILD** ([`plans/ROADMAP.md`](plans/ROADMAP.md)
+§ The critical path, item 3 — the biggest missing mechanic, and it gates
+three finished designs).
 
-⚠ **Rubble is a LAYER, never a repaint** (`src/height.loft`).  A pile
-makes its hex's SURFACE `rubble` (palette 11) while the authored ground
-underneath is untouched, so clearing restores exactly what was authored.
-That is what dissolves the sea trap: the painted layer is sea-default, so
-a breach that ERASED its hex would be *less* passable than the wall it
-replaced, while "the wall broke" asserted true.
+### The three gates, and their numbers
 
-⚠⚠ **`loft test` HARD-KILLS AT 300 s BY DEFAULT, and the suite is close
-enough to it that a busy box kills the run** — `[timeout] hard-kill after
-300s+2s grace: phase=parse fn=? file=tests/__loft_test_base.loft`, which
-reads exactly like the cdylib fault below and is not it.  Measured
-2026-08-17: the suite is **224 s** with another project's `dotnet` at
-100%, and it died at 302 s when that project started a `cargo` build.
-⚠ **`LOFT_TIMEOUT=1500 scripts/test.sh` is the way through it**;
-`LOFT_TIMEOUT_GRACE` sets the grace.  ⚠ It is also a real budget
-constraint on new tests — plan 25 M4's first version cost 63 s on its
-own and pushed the whole run over the cliff, and profiling it found ONE
-test re-deriving an expensive value twice to print it (63 s → **5 s**,
-every reading preserved).
+| gate | command | today |
+|---|---|---|
+| tests | `scripts/test.sh` | **1255 green**, ~180 s, 90 files |
+| scenarios | `scripts/validate.sh` | **33 scripts, 654 measurements**, ~14 s |
+| drawn pixels | `scripts/validate_gl.sh` | **2 fixtures, 26 measurements** (needs xvfb) |
 
-**Suite: 1242/1242 green under `scripts/test.sh`** (~177 s re-measured
-2026-08-17 — the `frame` measurements classify full 960x720 frames, the
-cost gate ticks a radius-40 world twice, and since plan 13 a dozen tests
-run whole scenarios to their fall.  ⚠ This line carried "~35 s" from
-plan 12 until H2 re-measured it and "~150 s" until plan 23 K3; the
-figure grows with the SCENARIO tests, not with any one phase.  ⚠ The
-two most expensive files are both closing measurements and they are
-**35 s (plan 23 K3)** and **13 s (plan 16 W4)** — where a file that
-runs no simulation costs 3.8 s, which is the compile baseline every
-single-file run pays.  ⚠ **The corpus went 1161 → 1156 test
-FUNCTIONS with no assertion lost** — five were folded into siblings
-because each was re-deriving an expensive value a neighbour had already
-computed, and the assert counts are byte-identical before and after.
-That cut the suite **10.1%** (5 983 456 → 5 377 562 samples);
-[`docs/PROFILING.md`](docs/PROFILING.md) has the per-file table and the
-one refactor that measured as FREE).
-**Gate: 33 scripts green under `scripts/validate.sh`** (~14 s, 654
-measurements).  ⚠ Plan 24 W2 moved **8 of the 33** — a steering change
-re-prices scenarios rather than breaking them, and the numbers of record
-are `@M020`.  ⚠ Plan 21 R1 **and** R2 moved **none of them**, which is
-the point: a camera is not a simulation, and the day it re-prices a
-scenario is the day something is reading it that should not be.  ⚠ Nor
-did any of plan 25's four phases: a MESHER is not a simulation either.
+⚠ `scripts/test.sh` is the canonical runner — **never `loft test` directly**
+(§ Key commands says what it does that you would otherwise skip).
 
-**Third gate: 2 fixtures green under `scripts/validate_gl.sh`** (26
-measurements) — the ground actually DRAWN, through real GL under `xvfb`,
-captured and classified.  ⚠⚠ **It is deliberately NOT part of
-`validate.sh`** (`@X076`): folding it in would put all 33 headless
-scripts behind an X server, and `docs/RENDERER.md` § R0 went out of its
-way to prove the readback needs no display.  A machine with no xvfb
-still runs the 654.  ⚠ `make validate-gl`, or
-`make validate-gl FIXTURE=the-ground`.
+⚠⚠ **`loft test` HARD-KILLS AT 300 s BY DEFAULT and the suite is close
+enough that a busy box kills the run** — the message names a PARSE phase in
+an unrelated file and reads exactly like the cdylib fault.
+**`LOFT_TIMEOUT=1500 scripts/test.sh` is the way through it.**  ⚠ It is also
+a real budget constraint on new tests: one phase's first version cost 63 s
+alone and pushed the run over the cliff.
 
-⚠ **[loft#939](https://github.com/loft-lang/loft/issues/939) is FIXED
-and CLOSED** (loft `ac8fb1dc`, *"A vector field assigned from a view
-frees what it only names"* — which is exactly `crop_state`'s
-`cs_out.crew = state.crew`).  For about a day it made
-`tests/18_s3_the_crop.loft` fail and the suite SIGSEGV: returning a
-large struct by value poisoned the store, and the next unrelated call
-read a plain `integer` field back as a pointer.  ⚠ **`18_s3` is the
-detector for it** — it is not something to "fix" if it ever goes red.
-⚠ It closed labelled `both-backends`, so *"`--native` looked clean"* was
-wrong at the time and the tell was in the reading: native emitted 255
-characters where the interpreter emitted 1017, i.e. it never ran the
-same workload.  **A backend answering differently on a different
-workload is not a backend answering correctly.**
-
-⚠ Do not run two `scripts/test.sh` at once — both pre-clean
+⚠ **Do not run two `scripts/test.sh` at once** — both pre-clean
 `tests/actual/`, so they clobber each other and fail for no reason.
 
-⚠⚠ **And the suite's WALL CLOCK is not yours alone.**  Plan 25 M1 timed
-it at **293 s** twice against a documented ~177 s and nearly rewrote the
-figure; `ps` showed a `rustc` at 336% CPU, a `dotnet` at 101% and
-another project's `loft` probe, all from unrelated sessions on the same
-box.  The figure above was NOT changed on the strength of those
-readings.  ⚠ **Nor on plan 25 M2's**: 197 s, with another project's
-`loft` harness pinning a core at 99.8% throughout.  Two sessions have now
-declined to rewrite this number and both were right to.  ⚠ Before
-believing any timing here, look at what else is running — this is the same rule § Profiling the suite gives for the
-profiler (read the SAMPLE COUNT, never the seconds), arriving one level
-up.
+⚠ **Both gates run INTERPRETED, and that is not a preference** — on the
+native backend `load_palette` answers 0 entries
+([`QUESTIONS_FOR_LOFT.md`](QUESTIONS_FOR_LOFT.md)), which no test could see
+because `loft test` runs the interpreter only.
 
-⚠⚠ **Both gates can be taken out by the `graphics` cdylib, and it is a
-TOOLCHAIN fault every time — but the cause is NOT pinned, so do not
-trust a tidy story about it.**  ⚠ **Not reproducing as of 2026-08-17**:
-both gates run clean with no flags.  It has come and gone twice, each
-time around a fresh `loft` install, so treat this as a thing to
-RECOGNISE rather than a thing that is currently broken.  Symptoms, all
-seen 2026-08-15/16:
-every PNG/GL test failing with *"native function not loaded"*; a
-`[timeout] hard-kill after 300s` in an unrelated file's PARSE phase (a
-cdylib build in flight); a `SIGABRT` at the end of an otherwise green
-run; and `validate.sh` refusing to start with
+⚠⚠ **Before believing any timing figure here, look at what else is running.**
+Three sessions have now measured the suite against a busy box and two
+declined to rewrite the number; both were right to.
+[`docs/TOOLCHAIN.md`](docs/TOOLCHAIN.md) § The wall clock is not yours alone.
 
-```
-rust-lld: error: unable to find library -lloft_graphics_native
-```
+⚠⚠ **The `graphics` cdylib can take out BOTH gates, and it is a toolchain
+fault every time** — *"native function not loaded"*, a 300 s hard-kill in an
+unrelated PARSE phase, a `SIGABRT` at the end of a green run, or
+`rust-lld: unable to find library -lloft_graphics_native`.  Not reproducing
+as of 2026-08-17.  ⚠ Two tidy explanations have been FALSIFIED, so do not
+re-derive them: [`docs/TOOLCHAIN.md`](docs/TOOLCHAIN.md) § The `graphics`
+cdylib fault has the symptoms and the hand rebuild that works.
 
-which is a DIFFERENT library's auto-cdylib (`hex_grid`) linking against
-`graphics` while `libloft_graphics_native.so` is absent.  loft rebuilds
-graphics 2-3 times in a single run and the artefact ends up missing.
 
-⚠ **Seen again 2026-08-17** (plan 25 M3), as `gridmesh`'s auto-cdylib
-failing to link with `libloft_graphics_native.so` simply gone from
-`~/.loft/build-cache/graphics-0.5.2/release/`.  ⚠ Two things worth
-knowing: **`ps` showed another project (`moros`) mid-`cargo build`** on
-the same box, which is the correlate every occurrence has had; and
-**plan 25 M3 added `imaging` to `loft.toml`, which widens the link line**
-(`-lloft_graphics_native -lloft_imaging`) without being the cause — the
-missing artefact was `graphics`, which was already the documented one.
-⚠ The hand rebuild below fixed it, and it emitted a `.fingerprint` write
-error while still producing a good `.so` — another sign of a concurrent
-writer rather than of a broken build.
+## Hard-won rules — [`docs/HARD_WON_RULES.md`](docs/HARD_WON_RULES.md)
 
-⚠ **Two explanations were tried and FALSIFIED, so skip them**: it is not
-simply *two loft binaries sharing `~/.loft/build-cache`* (it reproduces
-with one binary, installed and in-tree byte-identical), and it is not
-the stamped loft-ffi fingerprint alone — pinning `.loft-build-fp` to the
-expected value and setting `LOFT_NO_AUTO_REBUILD=1` do not stop the
-rebuild.  ⚠ A fresh `loft` install is what has triggered it each time.
+**Every rule there cost a real defect to learn, and most of them describe a
+test that CANNOT see the thing it appears to test.**  ⚠ The headlines are
+below so the warning fires without a lookup; **the evidence, the numbers and
+the dates are in the file** — go and read the section before changing the
+thing it names.
 
-⚠ **What has worked, when it works**: build the cdylib by hand and
-re-run, checking the `.so` actually survives.
+### Movement + passability — [detail](docs/HARD_WON_RULES.md#movement--passability)
 
-```bash
-(cd ~/.loft/registry/graphics-<ver>/native && \
-   CARGO_TARGET_DIR=~/.loft/build-cache/graphics-<ver> cargo build --release)
-ls -l ~/.loft/build-cache/graphics-<ver>/release/libloft_graphics_native.so
-```
+- **How an enemy moves today**: `wave_tick` rebuilds the distance field ONCE
+  per tick, one field per climb limit; `enemy_tick` steps down it.  Two
+  steering modes hand off at the **scrambler bubble** (a straight-line 25
+  hexes, never a route length); an enemy with no route follows the DESIRE
+  field and besieges what it cannot climb.
+- ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`), and the number is DERIVED:
+  a single-hex body ramp onto a structure `H` high needs `H / 2`, so 2.0 is
+  the interior of four constraints — `src/passable.loft` § Why a robot climbs
+  2.0 m.  It was 0.0 until plan 12 B1.
+- ⚠ **Rubble is a LAYER, never a repaint** (`src/height.loft`) — a pile makes
+  the SURFACE `rubble` while the authored ground underneath is untouched, so
+  clearing restores exactly what was authored.  That is what dissolves the sea
+  trap: a breach that ERASED its hex would be *less* passable than the wall it
+  replaced, while "the wall broke" asserted true.
+- ⚠ **The SURFACE is not the painted kind** — a hex under a pile stands on
+  `rubble`.  `painted_ground` answers the HEIGHT, `hex_ground` the SURFACE;
+  swap them and piling debris onto a wall LOWERS it.
+- ⚠ **Passability is TWO questions**: the field filters NODES by `can_stand`
+  and EDGES by `can_step`.  Filtering nodes by `can_occupy` is **vacuous** —
+  it compiles, reads well, and deletes the height rule with no test moving.
+- ⚠ **A drop is free and a climb is not**, which is why `flow_build` asks
+  `can_step(n, a)`: the sweep runs outward and the enemy walks inward.
+- ⚠ **You attack what you could STAND on and cannot climb** — an enemy at the
+  water's edge besieges nothing.
+- ⚠ **ONE AI, per-class DATA** — a design rule, not an accident.  A class that
+  needs its own mover has broken it; the four small robots cost one row each.
+- ⚠ **Blocked by a COMPANION → step beside; blocked by the GROUND → stand and
+  attack** (F7b).  The condition is the whole rule, and it was missing for
+  three phases and was the whole BALANCE (161/311/180 → 61/104/95).
+- ⚠⚠ **THE SIEGE FRONT IS THE WALL'S WIDTH** (`@M020`) — 4 hexes on a
+  five-row wall, 6 on a seven-row one.  A wave is worth its front class PLUS
+  what the front cannot COVER; **the screen is arithmetic, bodies against
+  face width**.  ⚠ It was THREE for any length until plan 24, and five
+  documents named the wrong fix.
+- ⚠ **The siege chews where the ROUTE meets the wall**, never where it is
+  weakest — and plan 24 did NOT change that, which is the surprise.
 
-⚠ It is a loft-side problem and belongs upstream, not in a dryopea
-workaround.
+### Cost — [detail](docs/HARD_WON_RULES.md#cost)
 
-⚠ **Both gates run INTERPRETED**, and that is not a preference.  On the
-NATIVE backend `load_palette` answers 0 entries — a silent `text as
-vector<Struct>` miscompile, filed in
-[`QUESTIONS_FOR_LOFT.md`](QUESTIONS_FOR_LOFT.md) — which no test could
-see, because `loft test` runs the interpreter only.
+- **The tick's budget is ~667 ms**, derived from the design's own numbers.
+- ⚠ **Do not reach for a standalone stopwatch** — an unchanged probe answers
+  173 / 737 / 754 ms on three runs, because discarded structs are not freed.
+  `tests/11_f8_the_tick_budget.loft` is the number of record.
+- ⚠ **NEVER bind a `FlowField` to a local in a per-enemy path** — a
+  whole-value bind COPIES the heap value: 2250x, unseen since F5.
+- ⚠ **A copy changes no behaviour, only cost**, so 490 green tests sat over a
+  tick 25% past budget for four phases.  The gate is a RATIO, not a stopwatch.
+- ⚠ **The incremental field rebuild is deliberately NOT built** — and its
+  third trigger (**the TICK getting shorter**) is now ARMED, which is why
+  [`plans/22`](plans/22-the-field-cache/README.md) is the prerequisite for a
+  shorter tick rather than a follow-up to it.
 
-## Hard-won rules
+### Testing something that moves — [detail](docs/HARD_WON_RULES.md#testing-something-that-moves)
 
-Every rule here cost a real defect to learn, and most of them describe a
-test that CANNOT see the thing it appears to test.  They are grouped by
-what they protect.
+- ⚠ **A 1-hex corridor cannot tell a flow field from a fixed heading** — every
+  enemy test dryopea had was blind to the field when it landed.
+- ⚠ **A corridor cannot see F5c either**: on a hex AXIS the field offers ONE
+  closer neighbour, off it TWO — so a blocked enemy has no *beside*.
+- ⚠ **A wave spawns STACKED** — `range` over a walking wave is a SPAN.
+- ⚠ **Route every step through `lat_neighbour`** — a `+ 1` on a `q` anywhere
+  else is the bug, and it is how moros#10 sheared every reach computation.
+- ⚠ **A walking test must paint the ground it walks on** — an unpainted hex
+  IS sea.
+- ⚠ **A world where every source hex is at 0 m cannot tell a RISE from a
+  destination height** — the whole height rule can change, suite green.
+- ⚠ **"N enemies attack N hexes" does NOT gate the desire field** — measured;
+  their spawn headings already spread them.
+- ⚠ **A MIRRORED base is not a symmetric one** — 112 vs 211 ticks on a map
+  that looks mirror-symmetric, and none of it was the crew's.  `q -> -q` is
+  not a symmetry of this lattice; control for BRACING first.
+- ⚠⚠ **A gate that reads PERFECT is as suspect as one that reads wrong** —
+  0.0 rad of disagreement, twice, for two unrelated reasons.  **The missing
+  control is generic and costs two lines: can this gate produce a non-trivial
+  reading at all?**
+- ⚠⚠ **SEVERAL COUNTS IN ONE TEST FUNCTION ARE RANKED, NOT INDEPENDENT** —
+  loft abandons at the first failed assertion, so three of four counts are
+  unmaintained decoration.  ⚠ Where the rows are ONE claim about one subject,
+  the fix is not four functions but one assertion whose MESSAGE carries every
+  reading (`tests/26_l0`).
+- ⚠⚠ **A GATE AIMED AT THE MECHANISM YOU EXPECT TO BE THE HAZARD IS NOT ONE
+  AIMED AT THE HAZARD** (`@M025`) — and its own control is what said so.
+  *The right code with the wrong justification* is what to look for when a
+  gate refuses to fail.
+- ⚠⚠ **A COST GATE CAN BE A COUNT INSTEAD OF A CLOCK, AND USUALLY SHOULD BE**
+  (`@M029`) — two identical calls differed **5.4x**.  Ask what the change
+  would actually DO before reaching for a stopwatch.
+- ⚠⚠ **A COUNT IS PERMUTATION-INVARIANT, SO IT CANNOT SEE A MIRRORED WORLD**
+  (`@M027`) — every band green at 490.8 px of error.  **Any gate that counts
+  pixels needs one assertion about WHERE.**
+- ⚠⚠ **AN EMPTY ARTEFACT SATISFIES EVERY EQUALITY** — `mesh_crc` of an empty
+  mesh is 0, so every equality carries a non-zero floor.
+- ⚠ **A gate whose reading is already saturated cannot see what you built** —
+  price the SUPPLY against the CAPACITY before believing a flat reading.
+- ⚠ **A cost gate over a world with none of the thing you changed is not a
+  gate** — and even a healthy one cannot see a 20x regression in a 3% share;
+  price the ALTERNATIVE and compare.
 
-### Movement + passability
+### Profiling the suite — and why the wall clock cannot do it — [detail](docs/HARD_WON_RULES.md#profiling-the-suite--and-why-the-wall-clock-cannot-do-it)
 
-**How an enemy moves today.**  `wave_tick` rebuilds the distance field
-ONCE per tick before anybody moves — one field per climb limit in the
-roster — and `enemy_tick` steps down it.  Two steering modes hand off at
-the **scrambler bubble**: inside 25 hexes the field steers, outside it the
-spawn heading does.  An enemy with no route at all follows the DESIRE
-field instead and besieges what it cannot climb.
+`LC_ALL=C LOFT_PROFILE=1 loft test > out.txt 2>&1`.  Method, numbers of
+record and dates: [`docs/PROFILING.md`](docs/PROFILING.md).
 
-⚠ **The bubble is a STRAIGHT-LINE distance, never a route length** — it is
-a jamming sphere, so an enemy with no route whatsoever is still inside it.
+- ⚠ **The report goes to STDERR** — a plain `> out.txt` silently drops it.
+- ⚠ **Read the SAMPLE COUNT, never the seconds** — the wall clock has pointed
+  the wrong way twice on real improvements.
+- ⚠⚠ **A profile AGES, and the stale one gets quoted** — *"58% is `canvas()`"*
+  was cited three plans after it stopped being true.  Re-profile, quote the
+  date.  Three readings now agree: the field family is **~69%**.
+- ⚠ **A test that RE-DERIVES an expensive value a sibling already computed is
+  the cheapest thing to find** — −10.1% of the suite, assert counts identical.
+  ⚠ And the refactor that LOOKS identical measured as **free**.
 
-⚠ **The SURFACE is not always the painted kind.**  A hex carrying a
-pile stands on `rubble`; `passable.loft` therefore has two lookups —
-`painted_ground` for the HEIGHT (which ADDS the layer to the authored
-structure) and `hex_ground` for the SURFACE.  Answer the height off the
-surface and rubble's null `height_override` swallows the wall under it,
-so piling debris onto a wall would LOWER it.
+### Timers and epsilons — [detail](docs/HARD_WON_RULES.md#timers-and-epsilons)
 
-⚠ **Passability is TWO questions, and they filter different things.**
-The field filters its NODES by the surface (`can_stand`) and its EDGES
-by the step (`can_step`).  Filtering nodes by `can_occupy` instead is
-**vacuous** — `can_occupy(x)` means `height(x)` is within a climb of its
-LOWEST standable neighbour, so between two adjacent occupiable hexes the
-step is legal in both directions by construction, and the height rule
-could be deleted with no test moving.  It compiles, reads well and makes
-F6 a no-op.
-
-⚠ **A drop is free and a climb is not**, so `wall` hexes beside reachable
-ground are IN a robot's field: it cannot get up there, but one standing
-there could step down and walk home.  Nothing routes onto them —
-`flow_steps` checks the step as well as the distance.  This is also why
-`flow_build`'s BFS asks `can_step(n, a)` and not `can_step(a, n)`: the
-sweep runs outward and the enemy walks inward.
-
-**The siege.**  `flow_desire` is the same sweep with the climb lifted, so
-walls are passable; an enemy follows it and attacks where the height rule
-refuses the next step.  `enemy_target` names that hex.
-⚠ **The spread is by APPROACH and by ARRIVAL** (plan 24 W1): enemies
-from different directions meet the wall at different hexes, and one down
-a single corridor now stops at the first wall hex it touches rather than
-walking on to the desire gradient's minimum.  That is what makes a
-front as wide as the wall's face.  ⚠ It is **not** the equal-distance
-sidestep — dryopea has one and it steps off a face as readily as along
-it (`@M019`).
-
-⚠ **You attack what you could STAND on and cannot climb** — a target is
-always a walkable surface, so an enemy at the water's edge besieges
-nothing.
-
-⚠ **ONE AI, per-class DATA — and it is a design rule, not an accident.**
-*Bosses are not special in their AI; their size and their options are
-different, and that is what makes them special events* (project owner,
-2026-08-13).  `climb_limit` already says the same thing about movement —
-a class's climb is "its WHOLE contribution to passability", which is what
-lets one distance field serve several classes — and every later class
-property (armour, size, a boss's 2x2 footprint, its option to share what
-is hurting it) belongs in the same shape.  A class that needs its own
-mover has broken it.
-
-Its first concrete payoff, and the reason it is a rule rather than a
-preference: the small robots are **scout, harvester, builder and
-miner**, they differ a lot in how fast they chew a wall, and they
-differ in **nothing else**.  Four enemy types for one row each in
-`numbers.json` plus one branch in `spawn.loft`'s damage-to-wall lookup
-— no new mover, no new targeting, no new code path.
-
-⚠ **An enemy blocked by a COMPANION steps BESIDE it; one blocked by
-the GROUND stands and attacks** (plan 11 F7b).  `flow_sidesteps` offers
-the equal-distance neighbours and the mover reaches for it only after
-every strictly-closer step came back OCCUPIED.  The condition is the
-whole rule: sidestep on a terrain block and a besieger jitters along a
-wall face for ever, attacking a different hex each tick and finishing
-none.
-⚠ **It was missing for three phases and it was the whole BALANCE.**
-F5c, F7 and plan 12 B3 each recorded the gap as latent; B7 measured it
-— thirteen robots reached an undefended core and exactly TWO ever
-nibbled it, so the drain did not scale with the wave and a base's width
-and roster were both scenery.  Building it moved every clock in the
-game (161/311/180 → 61/104/95) and made B3's falsified claim true: a
-wall the front SPANS now breaks at its 30 HP end.  ⚠ The fan has a
-width, so a LONGER wall still hides its ends and bracing still pays.
-
-⚠ **The siege chews where the ROUTE meets the wall, never where the
-wall is weakest** — measured in plan 12 B3, and it falsifies what
-`ENEMY_MOVEMENT.md` § A wall's HP is structural used to claim.  Six
-robots at a six-hex fence land NOTHING on either end and everything on
-the braced middle, because the approaches converge on the hexes their
-routes cross.
-⚠⚠ **And plan 24 W1 did NOT change that, which is the surprise.**  B3's
-test was authored to go red the day somebody built the missing steering,
-and it stayed green: each of its six robots already touches the fence
-where its own route meets it, so a precedence about touching changes
-nothing for them.  ⚠ **A tripwire aimed at the RULE you expect to build
-is not one aimed at the BEHAVIOUR you want** — what W1 widens is a front
-arriving down ONE approach, which is a different fixture.
-
-⚠⚠ **THE SIEGE FRONT IS THE WALL'S WIDTH — a besieger attacks the hex
-it is TOUCHING** (plan 24 W1, `@M020`).  Twelve robots from one spawn
-marker besiege **four** hexes of a five-row wall and **six** of a
-seven-row one, so widening the perimeter widens the front.  Everybody
-past it is blocked by a companion, and a companion-blocked enemy
-attacks nothing (F7b).
-⚠⚠ **It was THREE for any wall length until plan 24, and the diagnosis
-is the lesson** (`@M019`).  An enemy attacked only when it could not
-WALK, and a desire field is a ring around the CORE — so a straight face
-has ONE minimum and exactly three hexes lack a legal closer step,
-whatever the wall's length.  ⚠ All five face hexes TOUCH the wall and
-two of them walked away from it.  ⚠⚠ **Five documents called the fix
-*the equal-distance sidestep*, and dryopea has had one since F7b** — at
-the face hex `(7,-1)` it offers `(7,-2)` along the face and `(8,0)`
-**back off it**, so the named rule was as likely to empty the front as
-to widen it.  The fix is a PRECEDENCE, in `enemy_walk_desire`'s pre-pass
-and `enemy_target`'s siege branch, asked in identical words.
-⚠ **`enemy_target` takes no `Occupancy`**, so the rule must be phrased
-*"a wall is between me and the core"* rather than *"my closer steps are
-held"* — which needs no memory and cannot jitter, because an enemy that
-stops never moves again.
-⚠⚠ **A WAVE IS WORTH ITS FRONT CLASS PLUS WHAT THE FRONT CANNOT
-COVER.**  Four screens against a five-hex face leak exactly ONE miner:
-worth nothing behind a hard-biting builder (101 vs a pure 100) and
-thirty-nine ticks behind a soft harvester (122 vs 161).  **The screen is
-arithmetic — bodies against face width** — where `@M018` had it as
-positional immunity, four scouts making a base unbreakable.  It is
-still a CLIFF (the first three scouts are worth nothing, the fourth
-thirty-two ticks) but it no longer buys immunity: *4 scout + 8 miner*
-went from **never** to **126**.
-⚠ **A wider front makes most bases last LONGER** — a besieger that
-stops at the wall is not walking on to drain the wallet, so
-`a-base-on-two-fronts` went 123 → **132** and `@M005` 321 → **320**.
-⚠ **So a `compose` line's ORDER still decides nothing** (K0's 20x was
-measured on POSITIONS, before classes had speeds): scouts first, scouts
-last and scouts alternated all land on the same tick, because they
-overtake.  ⚠ That test got STRONGER — it used to compare three bases
-that never fell, and three zeroes are equal for any reason at all.
-⚠⚠ **The tripwire written for this day did NOT fire.**  Plan 12 B3's
-fence test was authored to go red when this steering landed and stayed
-green: its six robots come from six directions and each already touches
-the fence where its route meets it.  **A tripwire aimed at the RULE you
-expect to build is not one aimed at the BEHAVIOUR you want.**
-
-### Cost
-
-**The tick's budget comes from the design's own numbers** — 80 enemies
-(the largest authored wave), a radius-40 world (the haze bound) and
-1.5 hex/s, so a tick has **~667 ms**.  Plan 11 F8 measured it at ~125 ms
-and it has not been re-measured since; plan 12 B1 added a hash lookup to
-every surface question and B2 an `enemy_target` per enemy per tick, so
-treat 125 ms as a floor rather than a reading.
-
-⚠ **Do not reach for a standalone stopwatch to check that.**  A probe
-that ticks a radius-40 world under `loft --interpret --lib src` answers
-173 ms, 737 ms and 754 ms on three runs of an UNCHANGED file, and a
-`flow_build` called three times in one process climbs 323 ms → 1006 ms →
-1407 ms.  Discarded structs are not freed, so the process degrades as it
-measures, and a long enough probe exhausts the store table outright
-("store table exhausted: 65535 stores live").  `tests/11_f8_the_tick_
-budget.loft` runs inside `loft test`, is a RATIO as well as an absolute,
-and is the number of record.
-
-⚠ **NEVER bind a `FlowField` (or any struct with a big hash) to a
-local in a per-enemy path.**  A whole-value bind COPIES the heap value,
-and an accessor that returned the field did it once per enemy per
-lookup — 2250x the cost of reading it in place, and it had been there
-since F5.  Loop the fields and pass `cf.field` straight into a `const`
-parameter; there is deliberately no accessor to reach for.
-
-⚠ **A copy changes no behaviour, only cost**, so 490 green tests sat
-over a tick 25% past its budget for four phases.  `tests/11_f8_the_tick_
-budget.loft` is the gate that can see cost, and it is a RATIO (16x the
-enemies over one world, <200%) rather than a stopwatch — 115-125%
-healthy vs 316% copying, stable to +-2% under a full suite run.
-
-⚠ **The incremental rebuild is deliberately NOT built.**  The budget
-gate is green with room to spare, and an incrementally wrong field
-routes enemies through a wall the player just built.  Its equality gate
-is already written and green against the from-scratch reference; the
-trigger for revisiting is the budget test going red, `numbers.json`
-raising the wave list or the world radius — or **the TICK getting
-shorter**, which is the one nobody would look for.
-
-⚠ **That third trigger is now ARMED, and it is a design decision rather
-than a regression.**  A tick was 667 ms because it was *defined* as the
-time an enemy takes to cross one hex; plan 23 K2a broke that definition
-— every enemy banks `speed × tick_seconds` and steps when a whole hex is
-due, so the timestep is a free choice and `TICK_SECONDS` is now what
-HOLDS it at 667 ms rather than what forces it (`@X058`).  Nothing has
-shortened it yet.  ⚠ The moment something does, the per-tick budget
-shrinks in direct proportion — the rebuild that fits at 667 ms does not
-fit at 100 ms — so [`plans/22`](plans/22-the-field-cache/README.md) is
-the prerequisite for the shorter tick, not a follow-up to it.
-⚠ And the epsilon travels with it: a **tenth-length tick loses a whole
-hex** without `ENEMY_PROGRESS_EPSILON` (`@M013`).  See `spawn.loft`
-§ What a tick is worth.
-
-### Testing something that moves
-
-⚠ **A 1-hex-wide corridor cannot tell a flow field from a fixed
-heading** — both give the identical path, so every enemy test dryopea
-had was blind to the field when it landed.  A scenario that means to
-exercise routing needs
-a route that leaves the heading's line: a heading of 4 is `(-1, 0)`,
-so `enemy 0 3 -1` is a hex no heading can reach.  That is the shape
-to reach for when gating a movement change.
-
-⚠ **A corridor cannot see F5c either, and the reason is a number: on
-a hex AXIS the field offers ONE closer neighbour, off the axis TWO.**
-So "an enemy whose step is taken moves BESIDE" has no beside in a
-corridor, and a blocked enemy can only wait.  Gate a spreading change
-on an OPEN world — `tests/11_f5c_spread.loft` paints rows `r = 0..4`
-over `q = 0..8`, where the distance to the core is exactly `q + r`.
-
-⚠ **A wave spawns STACKED** — `spawn_wave` emits the whole wave onto
-one marker hex — and leaves it one enemy per tick.  So `range` over a
-walking wave is a SPAN, not a point (`range 4 7`, not `range 4 4`),
-`enemies distinct` is red until they have walked, and "the wave
-arrived" means one enemy per hex packed against the core, never N on
-`(0, 0)`.
-
-⚠ **Route every step through `lat_neighbour`** (§ Hex convention has the
-rule).  It is what let the whole lattice convert with **233 measurements
-unchanged** — the one table converted, so no distance could move.  A `+ 1`
-on a `q` or `r` anywhere else is the bug, and it is how moros#10 sheared
-every reach computation.
-
-⚠ **A walking test must paint the ground it walks on.**  An unpainted
-hex IS sea, so a wave over a blank map does not move at
-all, and `enemies passable` over one is red.  Every scenario that
-walks enemies drags a corridor first; that is the game's rule, not a
-harness quirk.
-
-⚠ **A world where every source hex is at 0 m cannot tell "the step is a
-RISE" from "the step is the destination's height".**  A world like that
-lets the whole height rule change with the suite green.  The case that
-discriminates is an enemy walking ALONG raised ground it could never have
-climbed onto — level steps all the way, and a drop at the end.
-
-⚠ **"N enemies attack N hexes" does NOT gate the desire field.**  Six
-enemies released on six sides spread across six wall hexes with the
-steering disabled too — their spawn headings already take them to
-different places.  Measured.  It gates the TARGETING; what gates the
-steering is a corridor that BENDS, because a straight one gives a field
-and a heading the identical path.
-
-⚠ **A MIRRORED base is not a symmetric one, and the artefact reads
-exactly like a finding.**  Plan 14 H2's two-front base measured 112
-ticks with a helper on the east front and 211 with one on the west — a
-99-tick spread on a map that looks mirror-symmetric, and none of it was
-the crew's.  A wall's END is worth 30% of a braced hex, the siege chews
-where the ROUTE meets the wall (both plan 12 B3), and odd-r rows are
-offset — so one approach fan included an end hex and the other did not.
-Extending both walls two hexes PAST the walkable band braces every
-reachable hex and brings the fronts to within three ticks (214 vs 211).
-⚠ So a scenario that compares two sides of a base must control for
-BRACING first; `q -> -q` is not a symmetry of this lattice.
-
-⚠⚠ **A gate that reads PERFECT is as suspect as one that reads wrong,
-and it is much easier to miss** (plan 21 R1).  The camera gate compares
-a ring of twelve hexes projected two ways and reported a worst bearing
-disagreement of **exactly 0.0 rad** — twice, for two unrelated reasons:
-the ring was an empty `const vector` ([loft#955](https://github.com/loft-lang/loft/issues/955)),
-so twelve null hexes all landed on the screen centre; and once fixed,
-the bearings were compared in **NDC**, where the aspect ratio is baked
-into the projection and the space is anisotropic by construction.
-⚠ **The tell was the exactness** — an integer-pixel-versus-float
-comparison over arbitrary hexes cannot produce a true zero.
-⚠ **The missing control is generic and costs two lines**: *can this
-gate produce a non-trivial reading at all?*  Assert the disagreement is
-`> 0`, and assert the fixture is not degenerate.  Any gate that compares
-two computations of one thing can agree by both being empty.
-
-⚠⚠ **SEVERAL COUNTS IN ONE TEST FUNCTION ARE RANKED, NOT INDEPENDENT**
-(plan 25 M1).  loft abandons a test function at its FIRST failed
-assertion, so a function asserting four counts can only ever report the
-earliest one that breaks — and a break that moves two of them reports
-one.  Measured: the bundled version of `tests/25_m1_the_sides.loft`
-named a single failure where the split version names **three** for the
-identical break.
-⚠ The three quiet ones are not merely unhelpful; they are unmaintained.
-Nothing ever prints them, so nothing ever checks that they can fire.
-⚠ **The test is cheap and it is the same one M0 used**: falsify, and see
-whether the assertion SPEAKS.  A count that can never be the diagnosis
-is decoration, and splitting it into its own function is the whole fix.
-
-⚠⚠ **A GATE AIMED AT THE MECHANISM YOU EXPECT TO BE THE HAZARD IS NOT ONE
-AIMED AT THE HAZARD** (plan 25 M2, `@M025`) — the second time the repo has
-paid for this, from the opposite direction.  M2's headline test was *one map
-painted in two orders gives one mesh*, on the theory that a walk over
-`pw.painted` would follow the paint order.  It could not fail: **loft's
-keyed collections are an ORDERED INDEX, not a bucket hash.**  Measured over
-six fixtures — reversed insertion, a scrambled spread, a key landing
-mid-range, negative coordinates, grow-then-erase — `hash<PaintedHex[q, r]>`
-comes back sorted lexicographically every time, and stays sorted when an
-unrelated distant key is added.
-⚠ **The control is what said so, not the code**: the test asserted the two
-fixtures iterate differently, and they do not.  Without that assertion the
-phase would have shipped a green test guarding nothing.
-⚠ The mechanism was still worth keeping, for a reason the plan had not
-connected to it — a coordinate walk buys COVERAGE (the drawn region is wider
-than the painted set), never determinism.  So **the right code with the
-wrong justification** is what to look for when a gate refuses to fail.
-⚠ The other direction is plan 12 B3's fence tripwire: written to go red the
-day a steering rule landed, still green when it did (`@M020`).
-
-⚠⚠ **A COST GATE CAN BE A COUNT INSTEAD OF A CLOCK, AND USUALLY SHOULD
-BE** (plan 25 M4, `@M029`).  M4 was specified as a timing RATIO — the
-`11_f8` shape — and the clock could not carry it: two IDENTICAL
-back-to-back calls differed **5.4x** (1.84 s against 0.34 s) when a
-registry fetch stalled inside one of them.
-⚠ **A ratio survives a uniformly slow machine; it does not survive a
-1.5-second stall landing inside one of its two halves.**  `11_f8` never
-meets that because both its halves are `wave_tick` and neither touches
-the disk — so *"cost is a ratio"* is a rule about `wave_tick`, not about
-cost.
-⚠⚠ **What a mesher's cost regression IS, is geometry that should not be
-there** — so count the FLOATS uploaded.  Deterministic, immune to a busy
-box, and it priced M1's two invisible breaks for the first time: a
-zero-area sliver at every hex boundary bakes **331 776 floats against
-110 592**, exactly 3x, and draws not one pixel.
-⚠ Ask what the change would actually DO before reaching for a stopwatch;
-the artefact is often countable.
-
-⚠⚠ **A COUNT IS PERMUTATION-INVARIANT, SO IT CANNOT SEE A MIRRORED
-WORLD** (plan 25 M3, `@M027`).  Reflect the drawn world in y — tops and
-sides together, winding reversed to match — and the GL gate reports
-`other == 0`, `sea == 0`, and grass / wall / wall_high / rubble every one
-**in band**.  Only a LANDMARK, compared against `camera_screen`'s own
-prediction, sees it, and it sees it at **490.8 px**.
-⚠ `render_camera.loft` calls a mirrored world the failure that *"reads as
-a base that is its own reflection rather than as an error"*, so a gate
-built out of counts is blind to the one defect that file is most afraid
-of.  **Any gate that counts pixels needs one assertion about WHERE.**
-⚠ **A landmark has to be FLAT**: a column that stands draws its sides in
-its own colour, and those sides sit between the top face and the screen
-centre (a camera above the middle of the frame sees the inward face of an
-off-centre column) — measured at **29 px** for a 5 m `wall_high` against
-**0.6 px** for a flat hex.  Loosening the tolerance would have hidden
-that rather than measured it.
-⚠⚠ **And a FALSIFICATION has to be clean or it proves the wrong claim.**
-The first mirror attempt moved only the tops, so tops and sides disagreed
-and opened background — the gate fired on `other` and the landmark check
-was never reached.  A gate that reports its FIRST failure ranks its
-assertions exactly as M1's bundled test function did.
-
-⚠⚠ **AN EMPTY ARTEFACT SATISFIES EVERY EQUALITY** (plan 25 M2).
-`mesh_crc` of an empty mesh is **0** — the fold starts at all-ones and ends
-by inverting — so a mesher stubbed to emit nothing makes every *"one build
-equals the other"* assertion pass.  ⚠ It is `tests/21_r1`'s finding in a
-third place (a gate that reads PERFECT is as suspect as one that reads
-wrong) and the fix is the same two lines: every equality carries a
-**non-zero floor**, and one test states out loud that zero is what empty
-means, so `!= 0` reads as a requirement rather than as superstition.
-
-⚠ **A gate whose reading is already saturated cannot see the thing you
-built.**  H2's plan said the crewed base's clock would rise again with
-helpers on it; measured, it does not move by a tick, because one tower
-makes 0.03 m of body a tick and one vehicle clears 0.33 — **ten times
-the capacity the front demands**.  Nothing was wrong with the crew; the
-base could not express a second one.  Before believing a flat reading,
-price the SUPPLY against the CAPACITY — the same move `12_b5b`'s
-LOS-versus-alternative pricing makes.
-
-⚠ **A cost gate over a world with none of the thing you changed is not
-a gate.**  `tests/11_f8_the_tick_budget.loft` ticked a MARKERLESS world,
-so `wave_fire` returned immediately and the budget would have stayed
-green through any line-of-sight cost whatever — B5b could have put a
-15-hex trace per enemy per shot into the tick unseen.  It now ticks a
-defended world too.
-⚠ And even that is not enough on its own: LOS is **3% of a tick with
-3.8x headroom above it**, so the budget cannot see a 20x regression in
-it.  What can is pricing the ALTERNATIVE and comparing — twelve shots
-the shipped way against ONE roster-wide `tower_sees` pass, 51% measured
-against 1200% for the naive shape.  Reach for that whenever the thing
-you changed is a small share of a gate that has room to spare.
-
-### Profiling the suite — and why the wall clock cannot do it
-
-`LC_ALL=C LOFT_PROFILE=1 loft test > out.txt 2>&1` gives one merged
-per-function + per-line + call-path report over the whole suite.  The
-method, the numbers of record and the compilation half of the wall
-clock live in [`docs/PROFILING.md`](docs/PROFILING.md); these three are
-the ones that mislead a reader who skips it:
-
-- ⚠ **The report goes to STDERR.**  A plain `> out.txt` keeps the test
-  results and silently drops the profile, which reads as "the profiler
-  says there is nothing to see".
-- ⚠ **Read the SAMPLE COUNT, never the seconds.**  The op counter is
-  deterministic (two runs of an unchanged suite agree exactly); the wall
-  clock has **~3.5 s of variance on a ~33 s suite** and has pointed the
-  wrong way twice on real improvements.
-- ⚠⚠ **A profile AGES, and the stale one gets quoted.**  *"58% is
-  `canvas()`"* was true on 2026-08-12 and was still being cited three
-  plans later; re-profiled 2026-08-15, **the distance field is ~75%**
-  and `classify_canvas` 7.5%.  Re-profile before optimising, and quote
-  the date.
-- ⚠ **Re-profiled again 2026-08-17 and the SHAPE held**: the field
-  family is **~69%** (`flow_sweep` 17.6% self) and every one of the
-  eight hottest paths is `wave_tick → … → flow_sweep`.  So a third
-  reading agrees and [`plans/22`](plans/22-the-field-cache/README.md) is
-  still the win.
-- ⚠ **A test that RE-DERIVES an expensive value a sibling already
-  computed is the cheapest thing to find.**  `18_s4` asked `reduced()`
-  eight times for one answer (−51% once bound), `23_k3` re-ran the
-  twelve-miner control per class (−25%); together **−10.1% of the
-  suite**, with the assert counts byte-identical.  ⚠ And the refactor
-  that LOOKS identical — hoisting `state_diff` out of an assert message
-  — measured as **free**, because loft evaluates assert messages
-  lazily.  Measure before tidying, both ways.
-- ⚠⚠ **The SIZE doubled — 2 780 440 → 5 983 456 samples on twelve
-  more tests — and most of it is UNATTRIBUTED.**  Plan 23's files are
-  only ~1.1 M of the +3.2 M; the first hypothesis to test is K2a's
-  banked mover, which put an `enemy_bank` per enemy per tick into every
-  scenario under a gate that only asked whether behaviour moved
-  (`@M015`).  ⚠ `11_f8_the_tick_budget` cannot see it either — a RATIO
-  divides a uniform increase out.  [`docs/PROFILING.md`](docs/PROFILING.md)
-  has the per-file table.
-
-### Timers and epsilons
-
-⚠⚠ **A COUNT asked for in SECONDS comes back SHORT** (plan 19 P1), and
-it is the epsilon family's worst member because the arithmetic looks
-harmless: `n * TICK_SECONDS` fed to an accumulator that spends whole
-ticks answers `n - 1` for **602 of the first 1000 `n`**.
-⚠ **The product being exact does not save it** — `n = 12` gives exactly
-`8.0` and still answers 11, because it is the SUBTRACTION chain that
-loses the tick, not the multiplication.
-⚠ **And an epsilon does not save it either** — it moves WHICH 602 are
-wrong, not how many.  A count is exact because it is counted, which is
-why `play_ticks` and `play_advance` are two verbs (`src/play.loft`).
-⚠ The failure is invisible where you would look for it and loud where
-you would not: one tick short, at the END, so a scenario reports *a
-wave that never arrived* rather than a clock a hair off.
-
-⚠ **A banked timer's DIRECTION is half the epsilon rule** (plan 17 T1).
-Plan 15 C0 said a timer loses a tick exactly when its duration divides
-the tick length exactly — true, and incomplete.  Counting DOWN from `T`
-and counting UP to `T` do not accumulate the same way: over a 1/1.5 s
-tick, 20.0 s counting up lands on **exactly** 20.0 (no epsilon needed)
-while counting down leaves a residue; 10.0, 40.0 and 60.0 counting up
-all fall SHORT.  ⚠ **Neither direction is safe** — measure the pair.
-⚠ And the direction is not free to choose: `repair` counts UP because
-zero has to mean *nobody is working on this*, which is the same
-zero-neutral rule as *damage taken* and *shots fired*.
-⚠ **An epsilon whose removal leaves the suite green is a guard that
-cannot fire** — `tests/17_t1_the_rebuild.loft::test_the_guard_can_fire`
-is the shape that fixes it: exercise the branch directly (bank a hair
-under the target) instead of relying on the tick arithmetic.
-
-⚠⚠ **And the branch test is NECESSARY, not SUFFICIENT — the third
-member of this family is a guard invisible at the value you shipped**
-(plan 23 K2a).  An enemy banks `speed × tick_seconds`, and at today's
-1.5 hex/s over a 1/1.5 s tick the product is **exactly 1.0 to the bit**,
-so the carry is 0.0 for ever and no scenario can reach the epsilon at
-all: set `ENEMY_PROGRESS_EPSILON` to 0.0 and **1128 tests and 569
-measurements stay green** (`@M014`).
-⚠ **1.5 is one of the FEW speeds with that property**, which is what
-makes it a trap rather than a curiosity — swept over sixty ticks, the
-epsilon is worth a whole hex at **1.0, 1.2, 1.8, 2.0 and 2.5** hex/s and
-nothing at 0.5, 0.75, 1.5, 2.25 and 3.0 (`@M013`).  ⚠ It is worth a hex
-to a **tenth-length tick** too, so this is the shorter tick's problem as
-much as the faster class's.
-⚠ **So sweep the NEIGHBOURS of the value you shipped.**  A guard that
-cannot fire at one speed is not dead code; it is a defect waiting for
-whoever changes that number, and it will report as *a wave that arrives
-a tick late* rather than as rounding.  ⚠ That is also why `enemy_bank`
-takes its speed as an ARGUMENT where `helper_bank` reads a constant
-(`@X060`) — a bank that read the constant could only ever be tested at
-the value that hides its own guard.
-
-⚠⚠ **And then SHIP a value that can see it, if the design leaves you a
-choice** (plan 23 K2b, `@X063`).  The scout had to be *"quite a bit
-faster"* and five speeds said that; 2.25 and 3.0 hide the guard exactly
-as 1.5 does, 2.5 does not, so the tie was broken on testability.  Zero
-`ENEMY_PROGRESS_EPSILON` today and the suite goes **red** (`@M017`)
-where at K2a it stayed entirely green — the same experiment, the same
-constant, and the difference is one number in `numbers.json`.  ⚠ A
-guard nobody can reach is a guard nobody maintains.
+- ⚠⚠ **A COUNT asked for in SECONDS comes back SHORT** — `n * TICK_SECONDS`
+  through an accumulator answers `n - 1` for **602 of the first 1000 `n`**,
+  and neither exactness nor an epsilon saves it.  That is why `play_ticks`
+  and `play_advance` are two verbs.
+- ⚠ **A banked timer's DIRECTION is half the epsilon rule** — counting UP and
+  counting DOWN do not accumulate the same way, and **neither is safe**.
+- ⚠ **An epsilon whose removal leaves the suite green is a guard that cannot
+  fire** — exercise the branch directly.
+- ⚠⚠ **And the branch test is NECESSARY, not SUFFICIENT: the third member is
+  a guard invisible at the value you shipped** — at 1.5 hex/s the carry is
+  0.0 for ever (`@M014`), so **sweep the NEIGHBOURS of the value you
+  shipped** (`@M013`).
+- ⚠⚠ **And then SHIP a value that can see it** — 2.5 hex/s was chosen partly
+  on testability (`@X063`, `@M017`).
+- ⚠⚠ **THE FOURTH MEMBER IS THE SITE THAT NEVER GOT A GUARD AT ALL**
+  (`@M030`, `@D003`) — `vehicle_hexes_this_tick` TRUNCATES with no carry, so
+  the player reads **180 / 120 / 180 / 0 / 0 / 0 / 0** hexes a minute against
+  a true 180 and **stops moving entirely under a 250 ms tick**, while every
+  banked mover is exact at all seven.  ⚠ Three accidents hid it, and the
+  third is a new shape: the ONE tick-length gate in the repo banks an ENEMY.
+  **So the instrument is a CROSS-PRODUCT — sweep the tick length AND every
+  mover.**
 
 ## Relationship to loft
 
@@ -1092,33 +613,14 @@ plans/          one directory per multi-phase plan, flat: `<NN>-<slug>/`.
                 Never keep a second copy of per-phase state here or in
                 the index — it drifts, and the copy is what gets read.
 
-docs/
-  DESIGN.md             — master design (mechanics, towers, walls,
-                          combat dynamics, scramble loop, run shape)
-  SETTING.md            — fiction (AI-driven robots, faction lore,
-                          surface-vs-underground, future contact gates)
-  DESIGN_HISTORY.md     — 2023 prototype design seeds
-  PARTS.md              — entity art: the part-tree model and what an entity
-                          IS, in metres and turns (plan 20)
-  RENDERER.md           — the camera, the pipeline and the gate chain
-                          (plan 21).  ⚠ Retires DESIGN.md § 12
-  EXPLORATION.md        — scouting, assembled: the recon window the game
-                          already gives you, why a find must arrive EARLY,
-                          and the PERMIT that clocks it all
-  PROGRESSION.md        — skill, not stats; the landscape is the school and
-                          the base is the exam
-  DECISIONS.md          — ⚠ the greppable index: @X decisions, @M measurements
-  EXPLORATION.md        — scouting, assembled: skill as the progression, the
-                          recon window the game already gives you, and why a
-                          find has to arrive EARLY
-  EXPLORATION.md        — scouting, assembled: the four rings, the sortie the
-                          run already opens with, and what is out there
-  GROUND_TYPES.md       — 11-type palette (water + land + structure)
-  NUMBERS.md            — tunable values
-  PROXY_ART.md          — placeholder shapes for entities
+docs/           ⚠ **listed once, in § Documentation index below** — a
+                second copy of this listing is the one that drifts, and this
+                one had grown three EXPLORATION.md rows saying three things.
 
-PROBLEMS.md             — dryopea-internal bugs (@D-prefixed; @D002 open — `cam.zoom`
-                          changes no pixel; @D001 fixed)
+PROBLEMS.md             — dryopea-internal bugs (@D-prefixed; ⚠ @D003 open and HIGH —
+                          the player truncates its movement and freezes at any tick
+                          under 250 ms; @D002 open — `cam.zoom` changes no pixel;
+                          @D001 fixed)
 QUESTIONS_FOR_LOFT.md   — outbound queue to loft (Open / Submitted / Resolved)
 README.md               — public project intro
 loft.toml               — package manifest (depends on graphics)
@@ -1191,6 +693,9 @@ signature.
 |---|---|
 | [README.md](README.md) | Public-facing project intro |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | ⚠ **The full `src/` layout** — what each file owns, the trap in it, and the key data structures.  `CLAUDE.md` § Architecture is a one-line index of this |
+| [docs/HARD_WON_RULES.md](docs/HARD_WON_RULES.md) | ⚠⚠ **Every rule that cost a real defect to learn, with the measurement that produced it** — movement + passability, cost, testing something that moves, profiling, timers and epsilons.  `CLAUDE.md` § Hard-won rules carries the HEADLINES so the warning fires in context; this is the evidence.  ⚠ Most of them describe a test that CANNOT see the thing it appears to test |
+| [docs/STATUS.md](docs/STATUS.md) | What exists today, one line per shipped phase, ~45 rows.  ⚠ Orientation only — **each plan's own `## Status` is the source of truth**, and `plans/README.md` indexes them |
+| [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md) | ⚠⚠ **How the gates go red for reasons that are not defects** — the 300 s hard-kill, two suites clobbering each other, a wall clock that is not yours alone, and the `graphics` cdylib fault (with two tidy explanations already FALSIFIED, so nobody re-derives them).  ⚠ Two of these read exactly like each other |
 | [docs/EXAMPLES.md](docs/EXAMPLES.md) | ⚠ **The worked-example convention** — a public function is documented by the TESTS that show how to use it, pointed at by an index tag `@XXX-###` (an `@`, a THREE-LETTER acronym, a hyphen, three digits) in loft's own family (`@P367` / `@X072`), so ONE indexer carries them all; the hyphen is what keeps the families apart.  ⚠⚠ **The abbreviation namespace is the ECOSYSTEM's** — the indexer covers the registered libraries too, so `@XXX-001` must mean one test everywhere.  ⚠⚠ **A tag is not only an API example**: a first-class program tags a test because the ALGORITHM is worth reading, so a citation is any reference — a `// Example:` line OR prose in a doc.  ⚠ **NEW work only** (project owner, 2026-08-17): no retroactive sweep of the 387 existing public functions, and a file opts in with `// #examples`.  ⚠⚠ The gate carries an eight-control `--self-test`, and it earned its keep at once — `grep -r --exclude-dir='.*'` applies to the command-line directory too, so **any checkout under a hidden path scanned zero files and reported `ok`**, and every registered library lives under `~/.loft/` |
 | [docs/PROFILING.md](docs/PROFILING.md) | How to profile the suite, the numbers of record and their date, and why the wall clock cannot see a real improvement |
 | [docs/LOFT_GOTCHAS.md](docs/LOFT_GOTCHAS.md) | Every loft behaviour dryopea works around — ⚠ almost all of them compile clean and fail silently |
@@ -1205,8 +710,7 @@ signature.
 | [docs/DECISIONS.md](docs/DECISIONS.md) | ⚠ **The greppable INDEX** — `@X###` design decisions, `@M###` measurements of record, each one line pointing at the doc that owns it.  ⚠⚠ **A bare plan phase is NOT unique** (`S0` is plans 18 AND 22, `C2` is 09 AND 15, `R0` is 20 AND 21) — write a code as `<plan>-<phase>`: `19-P3`, `22-S0`, `12-B7`.  ⚠ Every `@M` carries a DATE, because a measurement ages and the stale one gets quoted |
 | [docs/PROGRESSION.md](docs/PROGRESSION.md) | ⚠ **The player gets better, the vehicle does not** (`@X016`-`@X019`).  Skill, not stats — which passes the genre test in its purest form.  The landscape is the school, the base is the exam, and there is a racing line because the measured-best defence is one only a good pilot can live in |
 | [docs/PARTS.md](docs/PARTS.md) | ⚠ **Entity art — every entity is a PART-TREE and its GEOMETRY is derived** (plan 20).  The moros model (limbs on joints, three limb kinds, scale derived, hitbox a subset of the skin) and where dryopea deviates.  ⚠ Decisions D1-D8; moros's own `doc/claude/PARTS.md` § P9.0 is the authority on the model.  ⚠ § D4 replaced a SPRITE design — read it before quoting anything about pixels |
-| [docs/EXPLORATION.md](docs/EXPLORATION.md) | ⚠⚠ **§ X0 is the load-bearing one: the progression is SKILL, not stats** — the landscape is the low-stakes school where flying is learned, and the BASE is where it cashes out.  ⚠ The measurements already agree: a sealed wall nearly doubles the clock, a gate buys nothing, and boost is the only way out of a sealed base — so **the best layout is one only a good pilot can live in**.  ⚠ Exploration IS scouting, which `DESIGN.md` § 13 already calls *the* progression activity — this doc ASSEMBLES the pieces rather than adding a pillar.  ⚠⚠ The run ALREADY opens with a sortie (`wave_provoke_step` needs a vehicle 12+ hexes out), so "explore earlier" is content on a trip the player already takes, not a new phase.  ⚠ A find is ONE marker row + ONE cargo row; the first scouting scenario needs **no code at all** |
-| [docs/EXPLORATION.md](docs/EXPLORATION.md) | ⚠⚠ **Exploration IS scouting** — `DESIGN.md` § 13 already ranks it *the* progression activity, so this doc ASSEMBLES rather than adding a pillar.  ⚠⚠ **§ X0: the progression is SKILL, not stats** — the landscape is the school, the base is the exam, and the measurements agree (a sealed wall doubles the clock, a gate buys nothing, boost is the only way out of a sealed base, so **the best layout is one only a good pilot can live in**).  ⚠⚠ **§ X2b: the game already WAITS** — `wave_provoke_step` means an unlimited free recon phase the player ends deliberately.  ⚠⚠ **§ X2c: a find accelerates BUILDING, so its value collapses once you are busy** — measured twice already (plan 16 W4: one tick; plan 17 T3: +76 points) |
+| [docs/EXPLORATION.md](docs/EXPLORATION.md) | ⚠⚠ **Exploration IS scouting** — `DESIGN.md` § 13 already ranks it *the* progression activity, so this doc ASSEMBLES rather than adding a pillar.  ⚠⚠ **§ X0: the progression is SKILL, not stats** — the landscape is the school, the base is the exam, and the measurements agree (a sealed wall doubles the clock, a gate buys nothing, boost is the only way out of a sealed base, so **the best layout is one only a good pilot can live in**).  ⚠⚠ **§ X2b: the game already WAITS** — `wave_provoke_step` means an unlimited free recon phase the player ends deliberately.  ⚠⚠ **§ X2c: a find accelerates BUILDING, so its value collapses once you are busy** — measured twice already (plan 16 W4: one tick; plan 17 T3: +76 points).  ⚠⚠ The run ALREADY opens with a sortie (`wave_provoke_step` needs a vehicle 12+ hexes out), so *explore earlier* is content on a trip the player already takes, not a new phase.  ⚠ A find is ONE marker row + ONE cargo row; **the first scouting scenario needs no code at all** |
 | [docs/RENDERER.md](docs/RENDERER.md) | ⚠ **The camera and the pipeline** (plan 21) — moros's `RenderCamera`, FOLLOW behind the facing, and ⚠⚠ **`camera_overview` at 89° IS the editor's view**, so it is one camera with two presets.  ⚠ § R0 MEASURED that a GL frame survives `xvfb` → `gl_screenshot` → `imaging::png` → exact classification with **zero** colour drift — which is what makes going 3-D affordable at all.  ⚠ Retires `DESIGN.md` § 12 |
 | [docs/PROXY_ART.md](docs/PROXY_ART.md) | Placeholder shapes.  ⚠ Its SIZES stay and become a gate (`PARTS.md` § D6); its SHAPES retire entry by entry as plan 20's catalogue covers them |
 | [plans/README.md](plans/README.md) | Plan conventions (moros-style) + index |
@@ -1225,15 +729,10 @@ signature.
 | Judge whether DEEP-LORE content belongs | [docs/DESIGN.md](docs/DESIGN.md) § And the DEEP layers are what keep it a tower defence — the second test: *does it resolve into a statement about position, terrain or timing?*  If it resolves into the player's STATS or ABILITIES it is off-genre, however good the story is.  ⚠ The deep layers are load-bearing for the GENRE, not decoration on it |
 | Judge whether a new MECHANIC belongs | [docs/DESIGN.md](docs/DESIGN.md) § What kind of game this is — the test is *does this put something in the player's hands at a moment when using it costs them something?*  ⚠ Second test since 2026-08-14: [docs/SETTING.md](docs/SETTING.md) § Nobody is attacking anybody — yet.  Both non-human tiers OPEN as maintenance (robots think they are repairing, insects guard a wound), so a mechanic that opens with hostility is off-fiction; aggression has to be EARNED by the player's accumulated pressure |
 | Judge a PROGRESSION idea (upgrades, unlocks, XP) | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X0 — ⚠ **the progression is the player's own skill with the controls**, which passes `DESIGN.md`'s genre test in its purest form (there are no stats to resolve into).  ⚠⚠ **The player's vehicle must not get faster** — the moment speed is a purchase, skill stops separating a good run from a bad one.  (`DESIGN.md` § 9's *"Scouting — faster movement"* is a HELPER skill and is unaffected) |
-| Design EXPLORATION, or judge a scouting idea | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) — ⚠ it is not a new pillar: `DESIGN.md` § 13 § Scouting already ranks it *the* progression activity, and § X2 shows the run already opens with a sortie.  ⚠ **The cost of leaving is already MEASURED** — plan 17 T3 priced parked-vs-shuttling helpers at two waves of the authored list — so exploration needs no new cost mechanic.  ⚠ The first scenario is a `.keys` file, not a feature |
-| Judge a PROGRESSION idea (upgrades, unlocks, XP) | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X0 — ⚠ **the progression is the player's own skill with the controls**, which passes `DESIGN.md`'s genre test in its purest form: there are no stats to resolve into.  ⚠⚠ **The player's vehicle must not get faster** — the moment speed is a purchase, skill stops separating a good run from a bad one.  (§ 9's *"Scouting — faster movement"* is a HELPER skill and is unaffected) |
-| Design EXPLORATION, or judge a scouting idea | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) — ⚠ not a new pillar; § X2 shows the run already opens with a sortie and § X2b that the game waits until you poke a marker.  ⚠ **The cost of leaving is already MEASURED** (plan 17 T3: parked vs shuttling helpers = two waves of the authored list), so exploration needs no new cost mechanic.  ⚠ The first scenario is a `.keys` file, not a feature |
+| Design EXPLORATION, or judge a scouting idea | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) — ⚠ it is not a new pillar: `DESIGN.md` § 13 § Scouting already ranks it *the* progression activity, § X2 shows the run already opens with a sortie, and § X2b that the game WAITS until you poke a marker.  ⚠ **The cost of leaving is already MEASURED** — plan 17 T3 priced parked-vs-shuttling helpers at two waves of the authored list — so exploration needs no new cost mechanic.  ⚠ The first scenario is a `.keys` file, not a feature |
 | Ask why a find has to be found EARLY | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X2c — a find is a BUILD ACCELERANT, and what decays is **the opportunity to use it**, not the thing itself.  ⚠ Already measured twice by accident: the same retrieval is worth **one tick** when the job is gone (plan 16 W4) and **+76 points** when it is not (plan 17 T3) |
 | Author what a WAVE IS MADE OF | `schedule 4 12` arms the list, `compose 1 4 miner 8 scout` says what one wave of it is made of ([plan 23](plans/23-the-small-robots/README.md) K1, `@X056`).  ⚠ **`compose` REPLACES a wave and a later `schedule` line WIPES it**, so the order `emit.loft` writes is a requirement, not a style.  ⚠ A wave's SIZE is SUMMED from its parts and never stored (`@X055`), so `schedule 12` + `compose 0 3 miner 2 scout` is a wave of **five** — there is no total to disagree with.  ⚠⚠ **The ORDER you write is worth NOTHING** (plan 23 K3, `@M018`) — it sets the departure order, and since K2b the faster class overtakes, so four scouts first, four scouts LAST and four scouts alternated all land on the same tick.  K0's *"order is worth 20x"* was measured on enemies PLACED at different distances, before classes had speeds.  ⚠⚠ **What a mix IS worth is its FASTEST member and nothing else** — four harvesters in front of eight miners behaves like twelve harvesters, not like anything in between — so write compositions expecting the quickest class to decide the outcome.  ⚠ `examples/waves.json` is NOT the place — `WaveFile` deliberately has no composition (`@X057`) |
-| Judge a PROGRESSION idea (upgrades, unlocks, XP) | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X0 — ⚠ **the progression is the player's own skill with the controls**, which passes `DESIGN.md`'s genre test in its purest form: there are no stats to resolve into.  ⚠⚠ **The player's vehicle must not get faster** — the moment speed is a purchase, skill stops separating a good run from a bad one.  (§ 9's *"Scouting — faster movement"* is a HELPER skill and is unaffected) |
-| Design EXPLORATION, or judge a scouting idea | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) — ⚠ not a new pillar; § X2 shows the run already opens with a sortie and § X2b that the game WAITS until you poke a marker.  ⚠ The cost of leaving is already MEASURED (plan 17 T3: parked vs shuttling helpers = two waves of the authored list).  ⚠ The first scenario is a `.keys` file, not a feature |
 | Ask what CLOCKS a run, or why the player must be efficient | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X2d — the **permit**.  `DESIGN.md` § 2 hires the player on a *"permit-bound sortie"*, `SETTING.md` § History calls them *"limited-time sorties"*, and § The quarantine puts the teeth at the exit: *"orbital exit is the chokepoint … permit on file = pass; permit missing = destroyed"*.  ⚠ Expiry must cost the CARGO, never the run — § 14 has no fail screen, and a bad run is one with *"meagre carryover"*.  ⚠ It also turns `NUMBERS.md`'s ungateable *"15-25 minutes"* into a tunable — but today's longest base falls at **321 ticks (~3.5 min)**, so the window is derived from content, not chosen |
-| Ask why a find has to be found EARLY | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X2c — a find is a BUILD ACCELERANT, and what decays is **the opportunity to use it**, not the thing itself.  ⚠ Already measured twice by accident: the same retrieval is worth **one tick** when the job is gone (plan 16 W4) and **+76 points** when it is not (plan 17 T3) |
 | Design where WAVES eventually come from | [docs/ROBOT_ECONOMY.md](docs/ROBOT_ECONOMY.md) — six installation types and the routes between them.  ⚠ Its governing rule is the enemy rule again: ONE system, per-type DATA, so a new installation costs a row and no new behaviour |
 | Cite a design decision, or find where one was made | [`docs/DECISIONS.md`](docs/DECISIONS.md) — `grep -rn '@X025' .` finds every mention of a decision, `@M001` every quote of a number.  ⚠ **Never cite a bare plan phase in a code** — `S0` is two plans and `C2` is two more; write `22-S0`.  ⚠ A code is permanent even after its decision is reversed (it gains a `SUPERSEDED by` line, like `@D001`) |
 | Find a mechanic that is designed but NOT built | [docs/DESIGN.md](docs/DESIGN.md) (the mechanics) and [plans/ROADMAP.md](plans/ROADMAP.md) (the index).  ⚠ `plans/12` § Design recorded during this plan POINTS at them rather than restating — a second copy is the one that drifts |
@@ -1306,6 +805,7 @@ signature.
 | Give a mover a climb that changes while it lives | `src/passable.loft::can_climb` — the rule with the climb passed rather than looked up.  ⚠ Never widen `climb_limit(kind)`: it is a CLASS lookup and a convenience for callers that have a kind.  `vehicle_climb` is the worked example |
 | Ask what STARTS the wave list | `src/spawn.loft::wave_provoke_step` — a live vehicle standing on a spawn marker `WAVE_1_PROVOCATION_HEXES` (12) or more from the core, read at the TOP of the tick and fired ONCE (plan 16 W3).  ⚠ Two thresholds: under 10 a marker is silenced entirely, 10–11 it sends enemies and cannot be poked, 12+ it does both — the middle band is what makes the distance test a rule rather than a restatement of "is this marker active".  ⚠ Never an occupancy test: a wave spawns ON its marker, so "is anybody here" lets wave 1 provoke wave 1 |
 | Ask how far an enemy moves in a tick, or make a class FASTER | `src/spawn.loft::enemy_speed` for the CLASS's rate (plan 23 K2b — scout 2.5, miner 1.0, everybody else 1.5), then `enemy_bank` for what a timestep owes it: `speed × tick_seconds` banked per enemy, whole hexes released to `enemy_step`.  ⚠ **A tick is no longer a hex**: `TICK_SECONDS` HOLDS the timestep at one regular's hex, it does not force it (`@X058`).  ⚠ **Pick a new speed against `@M013`** — 1.5, 2.25 and 3.0 are values at which the rounding guard cannot fire, and 1.0 / 1.2 / 1.8 / 2.0 / 2.5 each lose a hex every forty ticks without the epsilon; 2.5 was picked partly for that (`@X063`).  ⚠ The lookup is at the CALL SITE and not in the bank, because *"a damaged robot moves slower"* makes speed a property of a CONDITION (`@X061`).  ⚠ A hex the ground refuses is SPENT, not re-banked — the opposite of `helper_bank`, and deliberate (`@X059`) |
+| Ask whether a mover survives a SHORTER tick, or change `TICK_SECONDS` | ⚠⚠ `tests/26_l0_the_timestep_sweep.loft` and `@M030` — **every banked mover holds its rate at seven tick lengths and the PLAYER does not** (`@D003`): `vehicle_hexes_this_tick` truncates and `Vehicle` has no `progress` field, so the player reads **180 / 120 / 180 / 0 / 0 / 0 / 0** hexes a minute against a true 180 and stops moving entirely at any tick under 250 ms.  ⚠ **So the tick cannot be shortened until [`plans/26`](plans/26-the-fixed-step/README.md) L2 lands**, which is a second prerequisite beside `plans/22`'s field cache.  ⚠⚠ The instrument is a CROSS-PRODUCT and it has to be: sweep the tick length AND every mover — `@M013` sweeps speeds through movers that carry, `23_k2a` sweeps the tick through an ENEMY, and neither can see this.  ⚠ Timers (`tower_repair_tick`, `helper_recover_tick`, the lull) are a different family and are not covered — `plans/26` § The invariant, gated at L3 |
 | Ask why a fresh wave is not moving | `src/spawn.loft::enemy_standing` — the pre-walk window (plan 16 W2), 8 ticks at the marker.  ⚠ Spent ONCE per tick by `wave_stand`, at the END beside `helper_recover_tick`; the predicate only asks.  ⚠ A standing enemy does not move, attacks nothing and blocks nobody — but is NOT immune, which is what "stand visible" means |
 | Advance the GAME | `src/play.loft` — `play_ticks(ps, s, n)` for a COUNT, `play_advance(ps, s, seconds)` for elapsed time, `play_step(ps, s, input, seconds)` for a whole frame.  ⚠ Never call `wave_tick` directly: `play_one_tick` is its one caller, and a second one is a second game with the same numbers on it.  ⚠ And never spell a count as `n * TICK_SECONDS` — it is one tick short for 602 of the first 1000 `n` |
 | Ask whether a session is LIVE, or start one | `src/play.loft::play_mode` / `play_set_mode` (plan 19 P3).  ⚠ **It gates the CLOCK and never the seam**: `EditorInput.in_playing` says what the KEYS mean this frame, `PlayState.playing` says whether wall time reaches the simulation.  Gate `play_step`'s seconds on either and P1/P2 go red — a scripted frame's time is the SCRIPT's business.  ⚠ The window spends it through `play_frame_seconds`, which is a function rather than an `if` in `main.loft` because an entry point is compiled by nothing |

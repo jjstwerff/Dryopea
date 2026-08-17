@@ -1,0 +1,478 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 26 phase L0 — is ANY mover tick-length independent?
+//
+// ── The one claim ───────────────────────────────────────────────
+//
+// > **A rate is a rate: a mover covers the same ground per SECOND
+// > whatever the timestep is.**
+//
+// `@X058` released the constraint that made a tick a hex, so the
+// timestep is a free choice and `TICK_SECONDS` is what HOLDS it at
+// 667 ms rather than what forces it.  That freedom is worth exactly
+// what the movers can survive — and `plans/22` cashes it in.
+//
+// This file is the instrument that asks.  It is plan 26's L0, and it
+// is the only phase of that plan that pays off if the rest is never
+// built.
+//
+// ── What it found, and it is a DEFECT ───────────────────────────
+//
+// ⚠⚠ **The enemies and the crew hold their rate at every timestep,
+// and the PLAYER does not.**  Over one simulated minute, at seven tick
+// lengths from 667 ms down to 33 ms:
+//
+// | mover | 667 | 500 | 333 | 200 | 100 | 50 | 33 ms | true |
+// |---|---|---|---|---|---|---|---|---|
+// | miner 1.0 hex/s   |  60 |  60 |  60 |  60 |  60 |  60 |  60 |  60 |
+// | robot 1.5 hex/s   |  90 |  90 |  90 |  90 |  90 |  90 |  90 |  90 |
+// | scout 2.5 hex/s   | 150 | 150 | 150 | 150 | 150 | 150 | 150 | 150 |
+// | helper 2.5 hex/s  | 150 | 150 | 150 | 150 | 150 | 150 | 150 | 150 |
+// | **vehicle 3.0**   | 180 | **120** | 180 | **0** | **0** | **0** | **0** | 180 |
+// | **boost 6.0**     | 360 | 360 | 360 | **300** | **0** | **0** | **0** | 360 |
+//
+// `vehicle_hexes_this_tick` TRUNCATES and carries nothing, where
+// `enemy_bank` and `helper_bank` keep the remainder:
+//
+//     (vehicle_speed(v) * tick_seconds) as integer?    — vehicle.loft
+//
+// and `Vehicle` has no `progress` field to put one in.  At a fifth of
+// a second `3.0 * 0.2` is `0.6000000000000001`, which truncates to
+// **nothing** — so the player would sit still for a whole minute while
+// every robot on the map walked at its documented speed.  Recorded as
+// `@D003`, measured as `@M030`.
+//
+// ── Why nothing in the corpus had seen it, which is the reusable
+//    half ─────────────────────────────────────────────────────────
+//
+// ⚠⚠ **Three accidents in a row, and each one is a gate looking
+// straight past it.**
+//
+// 1. **Both shipped vehicle speeds are exact at the shipped tick.**
+//    `3.0 * (1/1.5)` is 2.0 to the bit and `6.0 * (1/1.5)` is 4.0, so
+//    at 667 ms the truncation takes nothing.  That is `@M014`'s
+//    accident — *1.5 hex/s is a speed at which the guard cannot fire*
+//    — arriving on a different mover.
+// 2. **The half-tick the corpus already sweeps is exact too.**
+//    `tests/23_k2a::test_the_mover_agrees_at_half_the_timestep` runs
+//    the shortened timestep dryopea owns, and `3.0 * (1/3)` is 1.0 to
+//    the bit, so the axis is right and the reading is blind.
+// 3. **The one gate with a tick length that WOULD see it drives the
+//    wrong mover.**  `23_k2a`'s tenth-tick case is 0.0667 s, where
+//    `3.0 * 0.0667` is 0.2 and truncates to zero — and it banks an
+//    ENEMY, never a vehicle.
+//
+// ⚠ That third one is `tests/11_f8`'s markerless-world trap, one plan
+// on: *a cost gate over a world with none of the thing you changed is
+// not a gate*.  Here the corpus has the right AXIS and the wrong
+// SUBJECT, which is harder to see, because the sweep looks thorough.
+//
+// ⚠ And `@M013` — the sweep this defect most resembles — cannot reach
+// it from any direction: it varies the SPEED, at one tick length,
+// through `enemy_bank`, which carries.  **The axis is the tick length
+// and the subject is the whole roster; you need both.**
+//
+// ── What is deliberately NOT here ───────────────────────────────
+//
+// **No fix.**  L0 is the instrument; the bank the vehicle never had is
+// L2, and L1's integer clock comes first.  The four functions in
+// § The vehicle does not are therefore a *defect record*: they assert
+// today's wrong numbers so that the day they are right, this file goes
+// RED and names what changed.  ⚠ They are a "not yet" pin in
+// `tests/23_k1`'s sense — something a later phase must BREAK — not a
+// requirement.
+//
+// **No scenario through `wave_tick`.**  It reads `TICK_SECONDS` as a
+// constant, so a whole-game run at another timestep is a production
+// change, and `plans/26` § What this plan does NOT build refuses to
+// shorten the tick here precisely because it would confound every
+// reading above.  The movers all take their timestep as a PARAMETER
+// already, which is what makes this measurable today.
+//
+// **No timers.**  `tower_repair_tick`, `helper_recover_tick` and the
+// lull are a different family (`plans/26` § The invariant) and they
+// are L3's.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+
+// One simulated minute, which every tick length below divides
+// exactly — so "the same ground per second" is an exact integer for
+// every speed in the game and the sweep needs no tolerance.
+const SECONDS: float = 60.0;
+
+// ⚠ A FILE-SCOPE `const vector` holding a negative number is EMPTY
+// ([loft#955]) and a loop over an empty vector holds vacuously, so the
+// sweep is built inside a function.  These are all positive and would
+// be safe — the rule is followed anyway, because the failure is silent
+// and the next reader adding a row should not have to know.
+fn tick_lengths() -> vector<float> {
+    // 667 / 500 / 333 / 200 / 100 / 50 / 33 ms.  The first is today's
+    // tick, the last is moros's 30 Hz — the two real timesteps in the
+    // ecosystem, with the interesting ground between them.
+    [TICK_SECONDS, 0.5, TICK_SECONDS / 2.0, 0.2, 0.1, 0.05, 1.0 / 30.0]
+}
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+// How many ticks of `dt` make one simulated minute.
+fn ticks_in_a_minute(dt: float) -> integer {
+    ((SECONDS / dt) + 0.5) as integer? ?? 0
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The instrument: hexes released over one minute, one door per mover
+//
+// ⚠ Every one of these goes through the SHIPPED release function.  A
+// reimplementation of the arithmetic here would agree with itself and
+// say nothing — `tests/23_k2a`'s rule, and this file needs it more,
+// because the whole finding is that three of these do not agree.
+// ─────────────────────────────────────────────────────────────────
+
+fn enemy_minute(speed: float, dt: float) -> integer {
+    em_e = Enemy { q: 40, r: 0, kind: as_u8(ENEMY_KIND_REGULAR),
+                   heading: 3 as u8? ?? 0 as u8, alive: true,
+                   taken: 0.0, stand: 0.0, progress: 0.0 };
+    em_got = 0;
+    for _ in 0..ticks_in_a_minute(dt) { em_got = em_got + enemy_bank(em_e, speed, dt); }
+    em_got
+}
+
+fn helper_minute(dt: float) -> integer {
+    hm_h   = helper_new(40, 0);
+    hm_got = 0;
+    for _ in 0..ticks_in_a_minute(dt) { hm_got = hm_got + helper_bank(hm_h, dt); }
+    hm_got
+}
+
+fn vehicle_minute(boosting: boolean, dt: float) -> integer {
+    // ⚠ `boost_left` is set directly rather than through
+    // `vehicle_boost`, because the real boost burns out after
+    // `VEHICLE_BOOST_SECONDS` and this measures the ARITHMETIC of a
+    // boosting vehicle over a whole minute.  What burns it is
+    // `vehicle_burn`, which `vehicle_hexes_this_tick` does not call.
+    vm_v = vehicle_empty();
+    vehicle_place(vm_v, 40, 0);
+    if boosting { vm_v.boost_left = 1.0e9; }
+    vm_got = 0;
+    for _ in 0..ticks_in_a_minute(dt) {
+        vm_got = vm_got + vehicle_hexes_this_tick(vm_v, dt);
+    }
+    vm_got
+}
+
+// ─────────────────────────────────────────────────────────────────
+// One reading per tick length, as one string
+//
+// ⚠⚠ **The whole sweep is ONE assertion, and that is plan 25 M1's
+// finding applied rather than restated.**  loft abandons a test
+// function at its first failed assertion, so seven asserts in a row
+// can only ever report the earliest one that breaks — and the break
+// this file exists to catch (L2 giving the vehicle its bank) moves
+// FIVE of the seven at once.  Measured: asserted row by row it named
+// *"500 ms loses a third of it"* and said nothing about the four zeros.
+//
+// ⚠ Splitting into seven functions is M1's own fix and is the wrong
+// one here: seven rows of one sweep are one claim about one mover, not
+// seven independent counts on seven fixtures.  So they stay one
+// assertion and the MESSAGE carries the whole profile — which reads,
+// on the day L2 lands, as `180 / 180 / 180 / 180 / 180 / 180 / 180`.
+// ─────────────────────────────────────────────────────────────────
+
+fn enemy_profile(speed: float) -> text {
+    ep_out   = "";
+    ep_first = true;
+    for ep_dt in tick_lengths() {
+        if !ep_first { ep_out = ep_out + " / "; }
+        ep_out   = ep_out + "{enemy_minute(speed, ep_dt)}";
+        ep_first = false;
+    }
+    ep_out
+}
+
+fn helper_profile() -> text {
+    hp_out   = "";
+    hp_first = true;
+    for hp_dt in tick_lengths() {
+        if !hp_first { hp_out = hp_out + " / "; }
+        hp_out   = hp_out + "{helper_minute(hp_dt)}";
+        hp_first = false;
+    }
+    hp_out
+}
+
+fn vehicle_profile(boosting: boolean) -> text {
+    vp_out   = "";
+    vp_first = true;
+    for vp_dt in tick_lengths() {
+        if !vp_first { vp_out = vp_out + " / "; }
+        vp_out   = vp_out + "{vehicle_minute(boosting, vp_dt)}";
+        vp_first = false;
+    }
+    vp_out
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The end-to-end fixture: a corridor long enough that a healthy mover
+// arrives inside the minute with room to spare
+// ─────────────────────────────────────────────────────────────────
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+// 40 hexes of grass along r = 0, from (40, 0) down to the core.
+fn corridor() -> PaintedWorld {
+    c_pw = painted_empty();
+    for c_q in 0..=40 { paint(c_pw, c_q, 0, as_u8(GRASS)); }
+    c_pw
+}
+
+// Drive the player west down the corridor for a minute of `dt`, and
+// answer the column it stopped in.  0 = it arrived.
+fn player_drove(dt: float) -> integer {
+    pd_pal = pal();
+    pd_pw  = corridor();
+    pd_v   = vehicle_empty();
+    vehicle_place(pd_v, 40, 0);
+    vehicle_drive(pd_v, 0, 0);
+    for _ in 0..ticks_in_a_minute(dt) {
+        vehicle_tick(pd_v, pd_pal, pd_pw, height_layer_empty(), dt);
+    }
+    pd_v.q
+}
+
+// The four tick lengths the corridor is walked at.  Fewer than the
+// arithmetic sweep because a walk is a whole flow field and 1800 ticks
+// of a real mover; these four are the two exact-by-accident cases and
+// the two that lose everything.
+fn walk_lengths() -> vector<float> {
+    [TICK_SECONDS, 0.5, 0.2, 0.1]
+}
+
+// The same corridor, walked by a regular robot at 1.5 hex/s.  It needs
+// 26.7 s of the minute, so it arrives at every timestep or the FIXTURE
+// is broken rather than the mover.
+fn robot_walked(dt: float) -> integer {
+    rw_pal = pal();
+    rw_pw  = corridor();
+    rw_e   = Enemy { q: 40, r: 0, kind: as_u8(ENEMY_KIND_REGULAR),
+                     heading: 3 as u8? ?? 0 as u8, alive: true,
+                     taken: 0.0, stand: 0.0, progress: 0.0 };
+    rw_f   = flow_build(rw_pal, rw_pw, height_layer_empty(),
+                        as_u8(ENEMY_KIND_REGULAR), Hex { q: 0, r: 0 });
+    rw_d   = flow_desire(rw_pal, rw_pw, height_layer_empty(), Hex { q: 0, r: 0 });
+    for _ in 0..ticks_in_a_minute(dt) {
+        enemy_tick(rw_e, rw_pal, rw_pw, height_layer_empty(), rw_f, rw_d,
+                   occupancy_empty(), blocker_empty(), dt);
+    }
+    rw_e.q
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The banked movers hold their rate — the POSITIVE control
+//
+// ⚠ These are what make the four failures below the VEHICLE's rather
+// than the instrument's.  `@M022`'s generic control asks whether a
+// gate can produce a non-trivial reading at all; here the stronger
+// form is available, because the same instrument reads both answers on
+// the same axis in the same file.
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_slow_enemy_holds_its_rate_at_every_timestep() {
+    // A miner is SLOWER than one hex a tick at every timestep in the
+    // sweep, so every hex it covers is one the carry paid for.
+    aeh_got = enemy_profile(enemy_speed(as_u8(ENEMY_KIND_MINER)));
+    assert(aeh_got == "60 / 60 / 60 / 60 / 60 / 60 / 60",
+           "a miner at 1.0 hex/s covers 60 hexes a minute at "
+           + "667 / 500 / 333 / 200 / 100 / 50 / 33 ms — got {aeh_got}");
+}
+
+fn test_a_regular_enemy_holds_its_rate_at_every_timestep() {
+    // ⚠ 1.5 hex/s is the speed the tick was DERIVED from, so this row
+    // is the one that would be exact even with no carry at all — it is
+    // here as the sweep's own null case rather than as evidence.
+    are_got = enemy_profile(enemy_speed(as_u8(ENEMY_KIND_REGULAR)));
+    assert(are_got == "90 / 90 / 90 / 90 / 90 / 90 / 90",
+           "a robot at 1.5 hex/s covers 90 hexes a minute at "
+           + "667 / 500 / 333 / 200 / 100 / 50 / 33 ms — got {are_got}");
+}
+
+fn test_a_fast_enemy_holds_its_rate_at_every_timestep() {
+    // A scout is faster than one hex a tick at 667 ms and slower at
+    // every shorter one, so it crosses the boundary the truncation
+    // lives on and keeps its rate across it.
+    afe_got = enemy_profile(enemy_speed(as_u8(ENEMY_KIND_SCOUT)));
+    assert(afe_got == "150 / 150 / 150 / 150 / 150 / 150 / 150",
+           "a scout at 2.5 hex/s covers 150 hexes a minute at "
+           + "667 / 500 / 333 / 200 / 100 / 50 / 33 ms — got {afe_got}");
+}
+
+fn test_the_helper_holds_its_rate_at_every_timestep() {
+    // ⚠ The crew is the case that PROVES the invariant is reachable
+    // rather than merely true of enemies: `helper_bank` reads its speed
+    // from a constant where `enemy_bank` takes an argument (`@X060`),
+    // and 2.5 hex/s is a speed at which the epsilon really does fire.
+    thh_got = helper_profile();
+    assert(thh_got == "150 / 150 / 150 / 150 / 150 / 150 / 150",
+           "a helper at 2.5 hex/s covers 150 hexes a minute at "
+           + "667 / 500 / 333 / 200 / 100 / 50 / 33 ms — got {thh_got}");
+}
+
+fn test_the_sweep_is_not_degenerate() {
+    // ⚠ The generic control, and it earned its place while this file
+    // was being written: the first run of the probe reported EVERY
+    // mover frozen at every timestep, which read exactly like a finding
+    // and was an empty palette.  A sweep whose loop never runs asserts
+    // nothing at all ([loft#955]), and a fixture nothing can move in
+    // reports the world's defect as the mover's.
+    tsd_lengths = tick_lengths();
+    assert(len(tsd_lengths) == 7,
+           "the sweep has seven tick lengths, got {len(tsd_lengths)}");
+    tsd_ticks = ticks_in_a_minute(tsd_lengths[6] ?? 0.0);
+    assert(tsd_ticks == 1800,
+           "and the shortest of them is 1800 ticks of work, got {tsd_ticks}");
+
+    // And the corridor is a place a mover can actually travel.
+    tsd_pal = pal();
+    assert(len(tsd_pal) > 0, "the palette loaded, got {len(tsd_pal)} kinds");
+    assert(can_stand(tsd_pal, corridor(), height_layer_empty(),
+                     as_u8(ENEMY_KIND_REGULAR), 40, 0),
+           "and the far end of the corridor is ground a robot can stand on");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ The vehicle does NOT — `@D003`
+//
+// Everything below asserts a WRONG number on purpose.  It is the
+// defect's record and plan 26 L2's tripwire: the phase that gives the
+// vehicle the bank it never had must turn every one of these RED, and
+// the replacement is the assertion the two functions above already
+// make.
+// ─────────────────────────────────────────────────────────────────
+
+fn test_the_vehicle_loses_ground_as_the_tick_shortens() {
+    // True answer: 180, at every one of the seven.
+    // ⚠ 500 ms is the insidious one — the player still moves, at two
+    // thirds of its documented speed, which would read as a feel
+    // complaint rather than as arithmetic.  The four zeros do not read
+    // as anything: the player is simply gone.
+    tvl_got = vehicle_profile(false);
+    assert(tvl_got == "180 / 120 / 180 / 0 / 0 / 0 / 0",
+           "@D003 — the player covers 180 hexes a minute at 667 / 500 / 333 / "
+           + "200 / 100 / 50 / 33 ms.  TRUE at all seven: 180.  Got {tvl_got}");
+}
+
+fn test_a_boosting_vehicle_loses_it_too() {
+    // True answer: 360.  Twice the speed buys one more tick length and
+    // no more — a faster mover is not a safer one, it is one whose
+    // cliff is further down.
+    abv_got = vehicle_profile(true);
+    assert(abv_got == "360 / 360 / 360 / 300 / 0 / 0 / 0",
+           "@D003 — a boosting player covers 360 hexes a minute at 667 / 500 / "
+           + "333 / 200 / 100 / 50 / 33 ms.  TRUE at all seven: 360.  Got {abv_got}");
+}
+
+fn test_boost_outruns_cruise_by_an_infinite_factor() {
+    // ⚠ The consequence a rate table cannot express: at a fifth of a
+    // second a boosting player crosses 300 hexes a minute and a
+    // cruising one crosses NONE, so the boost is worth an unbounded
+    // multiple of its 2x.  A truncation does not scale a rate down, it
+    // reorders which rates exist.
+    boi_cruise = vehicle_minute(false, 0.2);
+    boi_boost  = vehicle_minute(true,  0.2);
+    assert(boi_cruise == 0 && boi_boost == 300,
+           "at 200 ms cruise is {boi_cruise} and boost is {boi_boost}, "
+           + "so the ratio is not 2x but unbounded");
+}
+
+fn test_the_player_does_not_move_at_all_below_a_quarter_second() {
+    // The same defect through the real mover rather than the
+    // arithmetic — `vehicle_tick` over painted ground, pointed at the
+    // core, for a whole simulated minute.
+    //
+    // ⚠ 500 ms ARRIVES, which is why the sweep above is not redundant
+    // with this: 40 hexes at one a tick is 120 hexes of travel in 120
+    // ticks, so a mover losing a third of its rate still gets there and
+    // the corridor cannot see it.  A journey with slack hides a rate
+    // error; only the count does not.
+    tpd_out   = "";
+    tpd_first = true;
+    for tpd_dt in walk_lengths() {
+        if !tpd_first { tpd_out = tpd_out + " / "; }
+        tpd_out   = tpd_out + "{player_drove(tpd_dt)}";
+        tpd_first = false;
+    }
+    assert(tpd_out == "0 / 0 / 40 / 40",
+           "@D003 — the column the player stopped in after a minute at "
+           + "667 / 500 / 200 / 100 ms, driving from (40, 0) to the core.  "
+           + "TRUE at all four: 0 (arrived).  Got {tpd_out}");
+}
+
+fn test_and_the_robot_beside_it_arrives_every_time() {
+    // ⚠ The control that makes the reading above the VEHICLE's.  Same
+    // corridor, same ticks, same minute, a mover that banks — it
+    // arrives at all four, so a stuck player is not a stuck world.
+    arb_out   = "";
+    arb_first = true;
+    for arb_dt in walk_lengths() {
+        if !arb_first { arb_out = arb_out + " / "; }
+        arb_out   = arb_out + "{robot_walked(arb_dt)}";
+        arb_first = false;
+    }
+    assert(arb_out == "0 / 0 / 0 / 0",
+           "a robot walks the same corridor in a minute at "
+           + "667 / 500 / 200 / 100 ms — got {arb_out}, where 0 is arrived");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Why nothing in the corpus has seen it — the three accidents
+//
+// ⚠ These stay GREEN after L2.  They are not about the defect; they
+// are about the INSTRUMENTS, and they are what stops the next reader
+// concluding the existing sweeps were careless.
+// ─────────────────────────────────────────────────────────────────
+
+fn test_both_shipped_vehicle_speeds_are_exact_at_the_shipped_tick() {
+    // ⚠ `@M014` in a second place.  1.5 hex/s hides `enemy_bank`'s
+    // epsilon; 3.0 and 6.0 hex/s hide the vehicle's missing carry — and
+    // both accidents are the same one, because a vehicle speed is a
+    // whole multiple of the enemy speed the tick was derived from.
+    bss_cruise = VEHICLE_SPEED_HEX_PER_SECOND * TICK_SECONDS;
+    bss_boost  = VEHICLE_BOOST_HEX_PER_SECOND * TICK_SECONDS;
+    assert(bss_cruise == 2.0, "3.0 hex/s over today's tick is exactly 2 hexes, got {bss_cruise}");
+    assert(bss_boost  == 4.0, "6.0 hex/s over today's tick is exactly 4 hexes, got {bss_boost}");
+}
+
+fn test_the_half_tick_the_corpus_already_sweeps_is_exact_too() {
+    // ⚠ `tests/23_k2a::test_the_mover_agrees_at_half_the_timestep` is
+    // the one gate in the repo whose axis is the tick length, and half
+    // of today's tick is the one shortened timestep at which the
+    // vehicle happens to be exact.  So the axis was right and the
+    // reading was blind — which is not a criticism of that test but the
+    // reason a sweep needs more than two points.
+    thk_half = VEHICLE_SPEED_HEX_PER_SECOND * (TICK_SECONDS / 2.0);
+    assert(thk_half == 1.0,
+           "3.0 hex/s over half today's tick is exactly 1 hex, got {thk_half}");
+}
+
+fn test_the_tenth_tick_would_have_seen_it_and_drives_the_wrong_mover() {
+    // ⚠ `23_k2a`'s other shortened timestep DOES break the vehicle —
+    // `3.0 * 0.0667` is 0.2 and truncates to nothing — and that test
+    // banks an enemy, which carries.  This is `tests/11_f8`'s
+    // markerless-world trap with the axis and the subject swapped: the
+    // right sweep over a roster with none of the broken thing in it.
+    ttt_tenth = VEHICLE_SPEED_HEX_PER_SECOND * (TICK_SECONDS / 10.0);
+    assert(ttt_tenth < 1.0,
+           "3.0 hex/s over a tenth of today's tick is {ttt_tenth} hexes — under one, so it truncates to zero");
+    ttt_got = vehicle_minute(false, TICK_SECONDS / 10.0);
+    assert(ttt_got == 0,
+           "so a tenth-tick minute moves the player {ttt_got} hexes instead of 180");
+}
