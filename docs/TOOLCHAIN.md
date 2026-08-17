@@ -31,7 +31,7 @@ every reading preserved).
 
 ### The three gates
 
-**Suite: 1255/1255 green under `scripts/test.sh`** (~180 s re-measured
+**Suite: 1268/1268 green under `scripts/test.sh`** (~180 s re-measured
 2026-08-17 — the `frame` measurements classify full 960x720 frames, the
 cost gate ticks a radius-40 world twice, and since plan 13 a dozen tests
 run whole scenarios to their fall.  ⚠ This line carried "~35 s" from

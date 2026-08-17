@@ -9,10 +9,36 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**Opened 2026-08-17.  L0 shipped 2026-08-17; L1 next.**  This plan came out
-of a comparison of dryopea's tick pacing against moros's, run before it was
-written; the readings are § What was measured first and three of them are
-defects nothing in either repo can currently see.
+**Opened 2026-08-17.  L0 and L1 shipped 2026-08-17; L2 next.**  This plan
+came out of a comparison of dryopea's tick pacing against moros's, run before
+it was written; the readings are § What was measured first and three of them
+are defects nothing in either repo can currently see.
+
+⚠⚠ **L1 shipped the clock, and this document's own recommendation was the
+thing it had to refute** (`@M031`, `@X079`).  § Open questions 2 recommended a
+**666 667 µs** step — *"today's tick to within 1e-6 s"*, which *"moves
+nothing"*.  Measured: the **654 scenario measurements do not budge** and
+**seventeen tests fail**.  `23_k2a`'s carry stops being 0.0 to the bit,
+`3.0 * TICK_SECONDS` stops being exactly 2, and two frame accumulators land a
+tick out — because `0.666667` and `0.6666666666666666` differ in the seventh
+digit and a dozen assertions are pinned to the exactness of the second.
+⚠ **A step chosen to LOOK like the tick is not the tick.**
+
+⚠⚠ **The answer is a finer base unit: 1/3 of a microsecond**, 3 000 000 a
+second, because it is the COARSEST unit in which 2/3 of a second is a whole
+number — today's step is exactly **2 000 000** of them, and `TICK_SECONDS`
+derived from it is **bit-identical** to the `1.0 / 1.5` it replaced.  So there
+is one definition of the tick and no residue to document.  ⚠ The unit is the
+CONSUMER's choice and not the library's: a game at 128 Hz cannot use
+3 000 000 either, so `clock_new` takes a step and counts whatever the caller
+counts.  What the library promises is the IDENTITY, never a unit.
+
+⚠ **The reusable half is which gate was blind.**  The 654 measurements are
+integer tick COUNTS, and a 5e-7 relative shift in the tick's LENGTH moves none
+of them; the unit tests pinned to bit-exactness caught it at once.  *A
+measurement's resolution is not its authority* — and this is the second time
+in two phases that the corpus's biggest gate was the one that could not see
+the thing (`@M030`'s three accidents).
 
 ⚠⚠ **L0 confirmed § 2's seventh row and made it WORSE than the plan
 predicted** (`@M030`, `@D003`).  The plan expected the vehicle to cover
@@ -370,20 +396,21 @@ example of the editor's door, and `plans/08` is the plan that made them so.
 |---|---|---|---|
 | **L0** ✅ | a scenario run at **667 / 333 / 100 ms** ticks covers the same ground per SECOND for every mover — and today the vehicle covers **2 / 1 / 0** hexes a tick, so the gate is RED on arrival | a rate is a rate; the timestep is a free choice (`@X058`) | ⚠ A sweep over enemy SPEEDS cannot see this (`@M013` is exactly that sweep and missed it) — the axis is the TICK LENGTH.  ⚠ And the fixture must contain a vehicle: `11_f8`'s markerless-world trap, one plan on |
 | ↳ **measured** | **worse than predicted, and the shape of the miss is the finding.**  Seven tick lengths (667 / 500 / 333 / 200 / 100 / 50 / 33 ms) over one simulated minute: miner / robot / scout / helper **exact at all seven**; vehicle **180 / 120 / 180 / 0 / 0 / 0 / 0** against a true 180; boost **360 / 360 / 360 / 300 / 0 / 0 / 0** against 360.  ⚠ The cliff starts at **200 ms**, not 100 — and 500 ms costs a third of the player's speed while it still moves, which reads as feel rather than as arithmetic.  ⚠⚠ At 200 ms a boosting player covers 300 hexes and a cruising one **none**, so a truncation does not scale a rate down, it **reorders which rates exist** | `@M030`, `@D003` | ⚠⚠ The negative control the plan asked for was **not the one that mattered**.  `@M013`'s speed axis is blind, as predicted — but so is the repo's ONE tick-length gate (`23_k2a`), because its half-tick is exact for the vehicle and its tenth-tick, which is not, banks an **ENEMY**.  ⚠ Falsified six ways on arrival: all 13 functions shown to speak, and a vehicle that ROUNDS instead of truncating fires all four defect records while **overshooting** (240 at 500 ms) rather than fixing them — so L2's bank has to be a bank, not a nudge |
-| **L1** | `clock_advance(clk, n × step_us) == clock_step(clk, n)` for **all** of 1..100000, against today's **602 of 1000** | an integer accumulator has no rounding to carry | ⚠ The float path must be KEPT as the control, or the gate proves only that integers equal integers.  ⚠ `tests/19_p1:97` asserts the 602 — its premise changes, and deciding what it becomes is part of L1, not after it |
-| **L2** | every one of the **1255 tests and 654 measurements** green with `ENEMY_PROGRESS_EPSILON` and `HELPER_PROGRESS_EPSILON` **deleted** (not zeroed — removed) | exact arithmetic needs no guard | ⚠⚠ `@M017` says zeroing the float epsilon today turns the suite RED, so a green integer run is the proof.  ⚠ **And the one-shot timers must be tried as banks and must break** — if they do not, this document's family boundary is wrong and that is the finding |
+| **L1** ✅ | `clock_advance(clk, n × step_us) == clock_step(clk, n)` for **all** of 1..100000, against today's **602 of 1000** | an integer accumulator has no rounding to carry | ⚠ The float path must be KEPT as the control, or the gate proves only that integers equal integers.  ⚠ `tests/19_p1:97` asserts the 602 — its premise changes, and deciding what it becomes is part of L1, not after it |
+| ↳ **measured** | **0 of 100 000 disagree**, and the float control disagrees at every one of the seven counts `19_p1` names by hand.  ⚠ The two sweeps are different LENGTHS on purpose: the float path spends a step per iteration, so sweeping it to 100 000 is 5 × 10⁹ subtractions — **the old arithmetic was quadratic as well as inexact**, which nothing had noticed because no frame ever delivered an hour.  (Confirmed by accident: a falsification that put the float body back inside `clock_advance` hung the file.) | `@M031`, `@X079` | ⚠⚠ The control is in the SAME function as the claim, asking both paths the same `n` — so the file cannot pass by both halves being empty, and it fires when `float_ticks_for` is stubbed to be correct.  ⚠ `tests/19_p1:97`'s 602 is **unchanged and now load-bearing**: `TICK_SECONDS` is bit-identical, so it stands exactly where § Open questions 3 recommended, as the control that proves the integer path is doing something |
+| **L2** | every one of the **1268 tests and 654 measurements** green with `ENEMY_PROGRESS_EPSILON` and `HELPER_PROGRESS_EPSILON` **deleted** (not zeroed — removed) | exact arithmetic needs no guard | ⚠⚠ `@M017` says zeroing the float epsilon today turns the suite RED, so a green integer run is the proof.  ⚠ **And the one-shot timers must be tried as banks and must break** — if they do not, this document's family boundary is wrong and that is the finding |
 | **L3** | a `Timer` counting UP to 20.0 s and one counting DOWN from it both fire on the **same** tick, with no epsilon in either | a one-shot duration is exact because it is an integer, not because it was nudged | ⚠⚠ `CLAUDE.md` § Timers and epsilons: *neither direction is safe*, measured — 20.0 s counting up lands exactly and counting down leaves a residue.  **Both directions or the gate is half a gate.**  ⚠ And this is where `Timer`-as-`Bank` is attempted and must break |
 | **L4** | a capped driver and an uncapped one produce **different tick counts** and **identical worlds per tick**; a 1 Hz clock driven by a 30 Hz clock's ticks equals one driven from the wall | policy is the DRIVER's, arithmetic is the clock's | ⚠ Identical worlds per tick is the whole assertion — equal tick counts would mean the cap did nothing, and equal wall-clock outcomes would mean it compressed rather than dropped |
 | **L5** | `clock_alpha()` in `[0, 1)`, and the vehicle drawn at alpha moves on **>200 of 240 frames** un-eased | a fixed sim and a free frame rate meet at one number | ⚠ Alpha and the ease must be measured SEPARATELY, or a green reading is the ease's (`@M023` is the prior).  ⚠⚠ If alpha adds nothing over the ease, **L5 is cut** and that is a result |
-| **L6** | dryopea's 1255 + 654 and moros's world digests unchanged across the extraction, and **every door in § A DOOR PER USE CASE has a test named for its case that the docs link to** | a library is a move, not a rewrite — and a door nobody can find is a door a consumer rebuilds | ⚠ Byte-identical digests on BOTH sides; a consumer that only compiles has verified nothing.  ⚠⚠ **And the example gate needs both halves**: a test with no link is invisible, a link to prose is a snippet that rots.  The refutation is a door whose "example" is not a compiled test |
+| **L6** | dryopea's 1268 + 654 and moros's world digests unchanged across the extraction, and **every door in § A DOOR PER USE CASE has a test named for its case that the docs link to** | a library is a move, not a rewrite — and a door nobody can find is a door a consumer rebuilds | ⚠ Byte-identical digests on BOTH sides; a consumer that only compiles has verified nothing.  ⚠⚠ **And the example gate needs both halves**: a test with no link is invisible, a link to prose is a snippet that rots.  The refutation is a door whose "example" is not a compiled test |
 
 ## Phases
 
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
 | **L0** — the instrument: is any mover tick-length independent? | S | `tests/26_l0_the_timestep_sweep.loft` — one scenario at three tick lengths.  ⚠ **Expected RED on arrival**; that is the point.  File `@D003` | **Done** 2026-08-17 — 13 tests, **seven** tick lengths not three, `@M030` + `@D003` filed.  ⚠ The four vehicle functions assert today's WRONG numbers as L2's tripwire; the suite stays green and L2 must break them |
-| **L1** — the clock, in integer µs | M | `tests/26_l1_the_clock.loft` — `advance(n × step) == step(n)` over 1..100000, float path kept as control.  `scripts/validate.sh` 654 unchanged | **Next** |
-| **L2** — `Bank`: a rate in whole units; both mover epsilons deleted | M | `scripts/test.sh` + `scripts/validate.sh` with `ENEMY_PROGRESS_EPSILON` and `HELPER_PROGRESS_EPSILON` **removed**.  ⚠ And the vehicle gains the bank it never had | Blocked on L1 |
+| **L1** — the clock, in integer base units | M | `tests/26_l1_the_clock.loft` — `advance(n × step) == step(n)` over 1..100000, float path kept as control.  `scripts/validate.sh` 654 unchanged | **Done** 2026-08-17 — `src/tick_clock.loft`, 13 tests.  ⚠ **Not µs**: the recommended 666 667 µs step moves 17 tests (`@M031`), so the base unit is 1/3 µs and `TICK_SECONDS` is derived bit-identical (`@X079`).  ⚠ `main.loft` now hands integer µs down; the float door rounds |
+| **L2** — `Bank`: a rate in whole units; both mover epsilons deleted | M | `scripts/test.sh` + `scripts/validate.sh` with `ENEMY_PROGRESS_EPSILON` and `HELPER_PROGRESS_EPSILON` **removed**.  ⚠ And the vehicle gains the bank it never had | **Next** |
 | **L3** — `Timer`: one-shot, UP and DOWN, and the family boundary | S | `tests/26_l3_the_timers.loft` — both directions on one target, plus the `Timer`-as-`Bank` refutation | Blocked on L2 |
 | **L4** — the policies dryopea does NOT need: cap, rate, composition | S | `tests/26_l4_the_policies.loft` — capped vs uncapped, and a nested clock | Blocked on L3 |
 | **L5** — alpha, or the finding that the ease already covers it | S | `tests/26_l5_the_alpha.loft` — frames moved, alpha and ease measured apart.  ⚠ May be CUT | Blocked on L4 |
@@ -433,7 +460,7 @@ ownership a decision rather than a lookup: `CLAUDE.md` § Loft consumer
 relationship says libraries are owned by their first-class projects and
 dryopea may ADD to existing ones, and neither clause covers creating one.
 
-Done means: dryopea's **1255 tests + 654 measurements** green, and moros's
+Done means: dryopea's **1268 tests + 654 measurements** green, and moros's
 world digests **byte-identical** for `house.keys`, `deck.keys` and
 `cellar.keys`.  A library change is not done when one consumer compiles.
 
@@ -449,16 +476,23 @@ is last.
    shadowed it and reported a tick 4× cheaper than it was.  `fixstep` says
    what it is and cannot collide; `sim_clock` is the alternative.*  L6
    decides, and the ownership half is the project owner's.
-2. **What is the chosen step?**  `1e6 / 1.5` is not an integer, so L1 must
-   pick one.  *Recommendation: **666667 µs**, which is today's tick to within
-   1e-6 s and moves nothing.*  ⚠ The tempting round number (500000, a 2 Hz
-   tick) re-prices every one of the 654 measurements and belongs to
-   `plans/22`, not here.
-3. **What happens to `tests/19_p1`?**  Its 602/1000 assertion is the record
-   of a defect L1 removes.  *Recommendation: keep it, over the float path, as
-   the negative control that proves the integer path is doing something* —
-   a gate whose control is deleted is a gate that can agree by being empty
-   (`@M022`'s lesson, plan 21 R1).  L1 decides.
+2. ✅ **What is the chosen step?**  ⚠⚠ **ANSWERED, and the recommendation
+   above was WRONG** — 666 667 µs moves **seventeen tests** (`@M031`), because
+   `0.666667` is not `0.6666666666666666` and a dozen assertions are pinned to
+   the exactness of the second.  **The base unit is 1/3 of a microsecond**
+   (3 000 000 a second) and the step is **2 000 000** of them, which is the
+   coarsest unit in which 2/3 of a second is whole — so `TICK_SECONDS` derived
+   from it is bit-identical and there is ONE definition (`@X079`).  ⚠ The
+   original note stands on its other half: the tempting round number (500 000,
+   a 2 Hz tick) re-prices every one of the 654 measurements and belongs to
+   `plans/22`.
+3. ✅ **What happens to `tests/19_p1`?**  **Kept, unchanged, and now
+   load-bearing** — exactly as recommended.  `TICK_SECONDS` is bit-identical
+   after L1, so its 602/1000 still measures what it measured, and it is the
+   control that proves the integer path is doing something rather than
+   agreeing with itself.  ⚠ `tests/26_l1` does not lean on it from a distance:
+   it asks BOTH paths the same `n` **in one function**, so the file cannot go
+   green by both halves being empty.
 4. **Does a saved game persist `banked`?**  § The four games predicts the RPG
    case does not fit without an answer.  Not L-anything's today — dryopea
    saves a map, never a run — but the first phase that saves a run inherits

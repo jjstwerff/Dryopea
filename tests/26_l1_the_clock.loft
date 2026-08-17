@@ -1,0 +1,339 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 26 phase L1 — the clock, in exact integer time.
+//
+// ── The one claim ───────────────────────────────────────────────
+//
+// > **`clock_advance(clk, n × step) == clock_step(clk, n)`, for every
+// > `n`.**
+//
+// A duration spelled as a count and a count spelled as a count are the
+// same number.  That is false today for **602 of the first 1000 `n`**
+// (`tests/19_p1` § A count asked for in seconds comes back short) and
+// it is what plan 19 P1 had to design around; an integer accumulator
+// has no rounding to carry, so it is true by construction.
+//
+// ── ⚠⚠ And the gate needs the FLOAT path beside it ──────────────
+//
+// *Integers agree with integers* is not a measurement.  `@M022` is the
+// repo's standing lesson here — **can this gate produce a non-trivial
+// reading at all?** — so § The float path is not asks BOTH paths the
+// SAME `n`, in one function, and asserts they DISAGREE.  Without that,
+// every assertion in this file would survive `clock_advance` being
+// replaced by `elapsed / step`.
+//
+// ⚠ The sweeps are different LENGTHS and that is not sloppiness: the
+// float path spends a step per iteration, so sweeping it to 100 000
+// is 5 × 10⁹ subtractions.  The integer path is one division whatever
+// `n` is.  **The old arithmetic was quadratic as well as inexact**,
+// which nothing had noticed because no frame ever delivered an hour.
+//
+// ── ⚠⚠ What L1 had to DECIDE, and the plan's recommendation was
+//    wrong ──────────────────────────────────────────────────────────
+//
+// A fixed step must be an exact integer of some base unit.  dryopea's
+// tick is 2/3 of a second and `1e6 / 1.5` is **666 666.67**, so there
+// is no integer number of MICROSECONDS that is today's tick, and the
+// unit is a choice somebody has to make.
+//
+// `plans/26` § Open questions recommended **666 667 µs** — *"today's
+// tick to within 1e-6 s"*, which *"moves nothing"*.  Measured, it moves
+// **seventeen tests** (`@M031`): the 654 scenario measurements do not
+// budge, but a dozen assertions are pinned to `1.0 / 1.5` being exact
+// in ways `0.666667` is not — `23_k2a`'s carry stops being 0.0 to the
+// bit, `3.0 * TICK_SECONDS` stops being exactly 2, and two frame
+// accumulators land a tick out.
+//
+// ⚠⚠ **So the base unit is 1/3 of a microsecond**, 3 000 000 a second,
+// because it is the coarsest unit in which 2/3 of a second is a whole
+// number — today's tick is exactly **2 000 000** of them.
+// § The derived second is the one it replaced is the gate for that,
+// and § A microsecond step would have moved it is the refutation kept
+// beside it so the choice reads as measured rather than as taste.
+//
+// ── What is deliberately NOT here ───────────────────────────────
+//
+// **No cap, no rate scaling, no clock composition** — L4, and
+// `tick_clock.loft` § WHAT IS DELIBERATELY NOT HERE says why a cap
+// must never become a default.
+//
+// **No `alpha`** — L5.
+//
+// **No bank for the MOVERS.**  `@D003` is still open: the player still
+// truncates its movement with no carry, and `tests/26_l0` still pins
+// the wrong numbers.  L1 fixed the clock, not the rates.
+
+#cwd
+
+use dryopea;
+
+// ─────────────────────────────────────────────────────────────────
+// The float path, as it was before L1 — kept as the control
+//
+// ⚠ This is `play_advance`'s pre-L1 arithmetic, copied deliberately.
+// It is the one place in this repo where a reimplementation is the
+// right thing: the point is to compare the OLD construction against
+// the new one, and the old one no longer exists to call.
+// ─────────────────────────────────────────────────────────────────
+
+fn float_ticks_for(n: integer) -> integer {
+    ftf_banked = (n as float) * TICK_SECONDS;
+    ftf_count  = 0;
+    while ftf_banked >= TICK_SECONDS {
+        ftf_banked -= TICK_SECONDS;
+        ftf_count  += 1;
+    }
+    ftf_count
+}
+
+// The integer path, through the shipped clock.
+fn integer_ticks_for(clk: TickClock, n: integer) -> integer {
+    clock_advance(clk, n * TICK_STEP_UNITS)
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The identity
+// ─────────────────────────────────────────────────────────────────
+
+fn test_the_integer_clock_is_exact_over_a_hundred_thousand_counts() {
+    // ⚠ ONE clock for the whole sweep, not a fresh one per `n` — a
+    // hundred thousand discarded structs is how a loft process
+    // exhausts its store table, and sharing one is the stronger claim
+    // anyway: the bank must come back to zero every time or the next
+    // `n` inherits a remainder.
+    tic_clk   = clock_new(TICK_STEP_UNITS);
+    tic_wrong = 0;
+    tic_n     = 0;
+    for tic_i in 1..100001 {
+        if integer_ticks_for(tic_clk, tic_i) != tic_i { tic_wrong += 1; }
+        tic_n += 1;
+    }
+    assert(tic_n == 100000, "the sweep swept: {tic_n}");
+    assert(tic_wrong == 0,
+           "advance(n * step) == step(n) for every n in 1..100000 — "
+           + "{tic_wrong} disagreed");
+    assert(clock_banked(tic_clk) == 0,
+           "and a hundred thousand exact advances leave nothing banked, "
+           + "got {clock_banked(tic_clk)}");
+}
+
+fn test_and_the_float_path_is_not_at_the_same_counts() {
+    // ⚠⚠ **The control, and the whole gate rests on it.**  Same `n`,
+    // both paths, one function — so the file cannot be green by both
+    // halves being empty, and cannot be green if `clock_advance` is
+    // quietly doing what the float bank did.
+    //
+    // These seven are the counts `tests/19_p1` names by hand; each one
+    // loses its LAST tick through the subtraction chain.  n = 12 is the
+    // sharpest — the product is exactly 8.0 and it still comes back 11,
+    // which is why "make the product exact" was never the fix.
+    tfp_clk = clock_new(TICK_STEP_UNITS);
+    for tfp_n in [10, 12, 40, 50, 120, 200, 500] {
+        tfp_float = float_ticks_for(tfp_n);
+        tfp_int   = integer_ticks_for(tfp_clk, tfp_n);
+        assert(tfp_float == tfp_n - 1,
+               "the float path loses a tick at n = {tfp_n}: got {tfp_float}");
+        assert(tfp_int == tfp_n,
+               "and the integer path does not: got {tfp_int}");
+        assert(tfp_int != tfp_float,
+               "so the two paths DISAGREE at n = {tfp_n} — if they ever "
+               + "agree here, this file has stopped measuring anything");
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ The step is a CHOICE, and this is the one that was made
+// ─────────────────────────────────────────────────────────────────
+
+fn test_the_derived_second_is_the_one_it_replaced() {
+    // `TICK_SECONDS` used to be `1.0 / ENEMY_SPEED_HEX_PER_SECOND` and
+    // is now derived from the chosen step.  ⚠ **Bit-identical, not
+    // close** — an epsilon here would hide exactly the drift that makes
+    // a step choice safe or unsafe, and 250-odd assertions read this
+    // number.
+    tds_old = 1.0 / 1.5;
+    assert(TICK_SECONDS == tds_old,
+           "the derived second IS 1.0/1.5: {TICK_SECONDS:20.18} vs {tds_old:20.18}");
+    assert(TICK_STEP_UNITS == 2000000,
+           "today's tick is 2 000 000 base units, got {TICK_STEP_UNITS}");
+    assert(CLOCK_UNITS_PER_SECOND == 3000000,
+           "at 3 000 000 units a second, got {CLOCK_UNITS_PER_SECOND}");
+    // And the two really do describe one tick: 2/3 of a second.
+    assert(TICK_STEP_UNITS * 3 == CLOCK_UNITS_PER_SECOND * 2,
+           "the step is exactly two thirds of a second");
+}
+
+fn test_a_microsecond_step_would_have_moved_it() {
+    // ⚠⚠ `@M031`, kept as an assertion rather than a note, because the
+    // plan RECOMMENDED this step and the recommendation is the thing a
+    // later reader would repeat.  666 667 µs is not today's tick; it is
+    // a number that rounds to it.
+    tam_us = 666667.0 / 1000000.0;
+    assert(tam_us != TICK_SECONDS,
+           "666 667 µs is NOT today's tick: {tam_us:20.18} vs {TICK_SECONDS:20.18}");
+
+    // The consequence that broke seventeen tests, in one line: the
+    // carry an enemy banks at 1.5 hex/s stops being zero.
+    tam_carry_us  = 1.5 * tam_us - 1.0;
+    tam_carry_now = 1.5 * TICK_SECONDS - 1.0;
+    assert(tam_carry_now == 0.0,
+           "at the shipped step a robot's carry is exactly 0.0, got {tam_carry_now}");
+    assert(tam_carry_us != 0.0,
+           "and at 666 667 µs it is not: {tam_carry_us}");
+
+    // ⚠ The other half of the same accident, which `tests/26_l0`
+    // § Why nothing in the corpus has seen it is pinned to.
+    assert(VEHICLE_SPEED_HEX_PER_SECOND * TICK_SECONDS == 2.0,
+           "the player still covers exactly 2 hexes a tick");
+}
+
+fn test_the_wall_clocks_microseconds_convert_exactly() {
+    // ⚠ A multiplication, so there is nothing to round.  This is the
+    // boundary `plans/26` § 1 found dryopea dividing the exactness
+    // away at.
+    assert(clock_units_from_micros(1000000) == CLOCK_UNITS_PER_SECOND,
+           "a second of wall clock is a second of base units");
+    // ⚠ And the tick the wall clock CANNOT spell: 666 666 µs is
+    // 1 999 998 units, so today's step is that plus two thirds of a
+    // microsecond — which is 2 units exactly, and is the whole reason
+    // the base unit is a third of one.
+    assert(clock_units_from_micros(666666) == 1999998,
+           "666 666 µs is 1 999 998 units, got {clock_units_from_micros(666666)}");
+    assert(clock_units_from_micros(666666) + 2 == TICK_STEP_UNITS,
+           "and the missing two thirds of a microsecond are exactly 2 units");
+    assert(clock_units_from_micros(666667) == 2000001,
+           "where 666 667 µs — the step the plan recommended — overshoots by 1, "
+           + "got {clock_units_from_micros(666667)}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The bank, and the two doors
+// ─────────────────────────────────────────────────────────────────
+
+fn test_a_short_frame_takes_nothing_and_banks_all_of_it() {
+    tsf_clk = clock_new(TICK_STEP_UNITS);
+    tsf_got = clock_advance(tsf_clk, TICK_STEP_UNITS / 2);
+    assert(tsf_got == 0, "half a step buys no tick, got {tsf_got}");
+    assert(clock_banked(tsf_clk) == TICK_STEP_UNITS / 2,
+           "and all of it is banked: {clock_banked(tsf_clk)}");
+
+    tsf_next = clock_advance(tsf_clk, TICK_STEP_UNITS / 2);
+    assert(tsf_next == 1, "the other half buys the tick, got {tsf_next}");
+    assert(clock_banked(tsf_clk) == 0, "and banks nothing after it");
+}
+
+fn test_the_frame_rate_makes_no_difference_at_all() {
+    // ⚠ P0's finding, now EXACT rather than exact-to-1.5e-13.  1200
+    // frames of a sixtieth and one frame of twenty seconds are the same
+    // thirty ticks — and the bank left behind is the same too, which
+    // the float path could not promise.
+    tfr_fast = clock_new(TICK_STEP_UNITS);
+    tfr_took = 0;
+    for _ in 0..1200 { tfr_took += clock_advance(tfr_fast, CLOCK_UNITS_PER_SECOND / 60); }
+
+    tfr_slow = clock_new(TICK_STEP_UNITS);
+    tfr_once = clock_advance(tfr_slow, CLOCK_UNITS_PER_SECOND * 20);
+
+    assert(tfr_took == 30, "1200 frames of 1/60 s play 30 ticks, got {tfr_took}");
+    assert(tfr_once == 30, "and one frame of 20 s plays the same 30, got {tfr_once}");
+    assert(clock_banked(tfr_fast) == clock_banked(tfr_slow),
+           "with the same remainder: {clock_banked(tfr_fast)} vs {clock_banked(tfr_slow)}");
+}
+
+fn test_the_count_door_does_not_touch_the_bank() {
+    // ⚠ The two-door split, one level below `play.loft`'s.  A script
+    // asking for thirty ticks must not spend a live session's
+    // remainder, nor leave one behind for it.
+    tcd_clk = clock_new(TICK_STEP_UNITS);
+    clock_advance(tcd_clk, TICK_STEP_UNITS / 2);
+    tcd_before = clock_banked(tcd_clk);
+    tcd_got = clock_step(tcd_clk, 30);
+    assert(tcd_got == 30, "the count door answers the count, got {tcd_got}");
+    assert(clock_banked(tcd_clk) == tcd_before,
+           "and leaves the bank alone: {clock_banked(tcd_clk)} vs {tcd_before}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The refusals
+// ─────────────────────────────────────────────────────────────────
+
+fn test_time_going_backwards_is_dropped() {
+    // ⚠ Not banked.  A negative elapsed is a caller subtracting in the
+    // wrong order or a clock that was reset; owing the simulation
+    // negative ticks would swallow the next real frame silently.
+    ttb_clk = clock_new(TICK_STEP_UNITS);
+    clock_advance(ttb_clk, TICK_STEP_UNITS / 2);
+    ttb_got = clock_advance(ttb_clk, -TICK_STEP_UNITS * 10);
+    assert(ttb_got == 0, "backwards time buys nothing, got {ttb_got}");
+    assert(clock_banked(ttb_clk) == TICK_STEP_UNITS / 2,
+           "and takes nothing away: {clock_banked(ttb_clk)}");
+    assert(clock_advance(ttb_clk, TICK_STEP_UNITS / 2) == 1,
+           "so the next real half-step still completes the tick");
+}
+
+fn test_a_zero_step_cannot_divide_by_zero() {
+    // ⚠ Clamped rather than refused: a nullable clock at every call
+    // site would be a mode for a case no caller has.  "Pause" is a rate
+    // of zero (L4), never a step of zero.
+    tzs_clk = clock_new(0);
+    assert(clock_step_units(tzs_clk) == 1, "a zero step is clamped to 1");
+    assert(clock_advance(tzs_clk, 5) == 5, "and it ticks once per unit");
+    tzs_neg = clock_new(-100);
+    assert(clock_step_units(tzs_neg) == 1, "a negative step is clamped too");
+}
+
+fn test_a_clock_can_be_put_back_where_it_was() {
+    // ⚠ The whole of what a rollback consumer needs from the timing
+    // half (`plans/26` § What this plan does NOT build): restore the
+    // bank and re-running N steps is bit-identical, because the count
+    // door is exact.
+    tcp_clk = clock_new(TICK_STEP_UNITS);
+    clock_advance(tcp_clk, TICK_STEP_UNITS + 12345);
+    tcp_saved = clock_banked(tcp_clk);
+    assert(tcp_saved == 12345, "the bank is the remainder: {tcp_saved}");
+
+    clock_advance(tcp_clk, TICK_STEP_UNITS * 7);
+    clock_restore(tcp_clk, tcp_saved);
+    assert(clock_banked(tcp_clk) == tcp_saved,
+           "restored: {clock_banked(tcp_clk)}");
+
+    // ⚠ A bank at or past the step is a state `clock_advance` can never
+    // leave behind, so restoring one is a caller's mistake and is
+    // folded rather than trusted.
+    clock_restore(tcp_clk, TICK_STEP_UNITS + 7);
+    assert(clock_banked(tcp_clk) == 7,
+           "an over-full bank is folded, got {clock_banked(tcp_clk)}");
+    clock_restore(tcp_clk, -5);
+    assert(clock_banked(tcp_clk) == 0, "and a negative one is emptied");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// And the game's own door still means what it meant
+// ─────────────────────────────────────────────────────────────────
+
+fn test_the_seconds_door_rounds_rather_than_truncates() {
+    // ⚠⚠ **Truncating here would put `19_p1`'s 602 back one layer
+    // out.**  A float second's worth of units is a hair over or under
+    // its exact count; truncating a hair-under value costs a whole tick
+    // at the division.  Rounding cannot — the error is ~1e-10 units
+    // against a step of 2 000 000.
+    for tsd_n in [10, 12, 40, 50, 120, 200, 500] {
+        tsd_want = tsd_n * TICK_STEP_UNITS;
+        tsd_got  = play_units_from_seconds((tsd_n as float) * TICK_SECONDS);
+        assert(tsd_got == tsd_want,
+               "n = {tsd_n} through the seconds door is {tsd_want} units, got {tsd_got}");
+    }
+    assert(play_units_from_seconds(-1.0) == 0, "and backwards seconds are zero");
+    assert(play_units_from_seconds(0.0) == 0, "as is none at all");
+}
+
+fn test_units_and_seconds_round_trip() {
+    for tus_ms in [1, 16, 33, 100, 500, 1000] {
+        tus_units = clock_units_from_micros(tus_ms * 1000);
+        tus_back  = play_seconds_from_units(tus_units);
+        assert(play_units_from_seconds(tus_back) == tus_units,
+               "{tus_ms} ms round-trips: {tus_units} units -> {tus_back:10.8} s -> "
+               + "{play_units_from_seconds(tus_back)}");
+    }
+}

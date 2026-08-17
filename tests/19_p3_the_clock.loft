@@ -157,8 +157,8 @@ fn test_time_spent_editing_is_not_banked() {
     idle_frames(tte_ps, tte_s, tte_src, 3600, 1.0 / 60.0);   // a minute
     press_play(tte_ps, tte_s, tte_src);
     assert(tte_ps.ticks == 0, "and P alone plays none: {tte_ps.ticks}");
-    assert(tte_ps.banked == 0.0,
-           "nothing was banked against it: {tte_ps.banked:8.6}");
+    assert(clock_banked(tte_ps.clock) == 0,
+           "nothing was banked against it: {clock_banked(tte_ps.clock)}");
 
     idle_frames(tte_ps, tte_s, tte_src, 1, TICK_SECONDS);
     assert(tte_ps.ticks == 1,

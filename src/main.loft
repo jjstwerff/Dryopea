@@ -127,10 +127,10 @@
 //
 //     playing = play_mode(ps);                       // the session says
 //     ei      = editor_input_from(…, playing);       // table → intent
-//     play_step(ps, s, ei, play_frame_seconds(ps, elapsed));
+//     play_step_units(ps, s, ei, play_frame_units(ps, elapsed_us));
 //
 // ⚠⚠ **The loop owns the CLOCK and nothing else.**  Whether a frame's
-// seconds reach the simulation is `play_frame_seconds`; how many ticks
+// time reaches the simulation is `play_frame_units`; how many ticks
 // they buy is `play_advance`; what a key means is `bindings.loft`; what
 // a tick does is `wave_tick`.  This file measures `ticks()` and reports
 // what changed.  It decides nothing, because `#cwd` makes it a file no
@@ -250,12 +250,19 @@ fn main() {
         tnow = ticks();
 
         // ── The wall clock ──────────────────────────────────────
-        // How long this frame took, in seconds.  ⚠ Measured EVERY
-        // frame, including edit frames whose seconds are then dropped:
+        // How long this frame took, in MICROSECONDS.  ⚠ Measured EVERY
+        // frame, including edit frames whose time is then dropped:
         // skipping the update while editing would make the first frame
         // after P report the whole editing session, and `play_advance`
         // has no clamp — it would play the lot in one frame.
-        elapsed = ((tnow - last_frame_us) as float) / 1000000.0;
+        //
+        // ⚠⚠ **Handed on as an integer, and that is plan 26 L1.**  This
+        // line used to divide by 1e6 into float seconds, which threw
+        // away the exactness `ticks()` had already given it before the
+        // simulation could use it — `plans/26` § 1.  The conversion to
+        // the clock's base units is a multiplication and lives in
+        // `play_frame_units`.
+        elapsed_us = tnow - last_frame_us;
         last_frame_us = tnow;
 
         // ── Input ───────────────────────────────────────────────
@@ -297,7 +304,7 @@ fn main() {
         // its END — split the frame between two modes.
         pre_playing = play_mode(ps);
         ei = editor_input_from(isrc, hovered, pan_due, paint_tick_due, pre_playing);
-        play_step(ps, s, ei, play_frame_seconds(ps, elapsed));
+        play_step_units(ps, s, ei, play_frame_units(ps, elapsed_us));
 
         // Charge the rate limits only when they actually fired, so a
         // key held against a limit still steps at the limit's rate.

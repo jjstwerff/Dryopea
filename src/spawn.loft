@@ -41,6 +41,7 @@ use vehicle;
 use helper;
 use carry;
 use waves;
+use tick_clock;
 
 // The radius of the core's comms-jamming bubble, in hexes — the
 // boundary where an enemy stops following its spawn heading and starts
@@ -101,7 +102,27 @@ pub const SCRAMBLER_BUBBLE_RADIUS: integer = 25;
 // would look for"*.  K2a makes the change
 // POSSIBLE and deliberately does not make it.
 pub const ENEMY_SPEED_HEX_PER_SECOND: float = 1.5;
-pub const TICK_SECONDS: float = 1.0 / ENEMY_SPEED_HEX_PER_SECOND;
+// One simulation step, in `tick_clock.loft`'s base units — plan 26 L1.
+//
+// ⚠⚠ **This is now the ONE definition of the tick, and `TICK_SECONDS`
+// is derived from it.**  It used to be the other way round, and
+// `@X058` is what released the constraint: since plan 23 K2a
+// `TICK_SECONDS` HOLDS the timestep at one regular's hex rather than
+// being forced to it, so the timestep is free to be CHOSEN — and a
+// chosen step has to be an exact integer of some unit or the whole of
+// L1 collapses back into rounding.
+//
+// ⚠ 2/3 of a second, exactly, at 3 000 000 units a second.  See
+// `tick_clock.loft` § THE BASE UNIT IS A CHOICE for why microseconds
+// cannot express it and what the µs answer measured (`@M031`).
+pub const TICK_STEP_UNITS: integer = 2000000;
+
+// ⚠⚠ **DERIVED, and bit-identical to the `1.0 / ENEMY_SPEED_HEX_PER_
+// SECOND` it replaces** — gated in `tests/26_l1_the_clock.loft`
+// § The derived second is the old one, not asserted here, because a
+// constant compared against itself is not a comparison.  Two hundred
+// and fifty measurements read this number; it did not move.
+pub const TICK_SECONDS: float = (TICK_STEP_UNITS as float) / (CLOCK_UNITS_PER_SECOND as float);
 
 // ⚠ **Banked progress is in HEXES**, where `tower.loft`'s charge and
 // plan 13 V4's boost are in SECONDS — the same trap in a different

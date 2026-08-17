@@ -59,7 +59,7 @@ three finished designs).
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1255 green**, ~180 s, 90 files |
+| tests | `scripts/test.sh` | **1268 green**, ~180 s, 91 files |
 | scenarios | `scripts/validate.sh` | **33 scripts, 654 measurements**, ~14 s |
 | drawn pixels | `scripts/validate_gl.sh` | **2 fixtures, 26 measurements** (needs xvfb) |
 
@@ -241,6 +241,13 @@ record and dates: [`docs/PROFILING.md`](docs/PROFILING.md).
   third is a new shape: the ONE tick-length gate in the repo banks an ENEMY.
   **So the instrument is a CROSS-PRODUCT — sweep the tick length AND every
   mover.**
+- ⚠⚠ **AND THE FIFTH IS THE ACCUMULATOR ITSELF, NOW GONE** (plan 26 L1) —
+  simulation time is an integer count of a chosen step, so `advance(n × step)
+  == step(n)` for all of 1..100000.  ⚠ **The step's BASE UNIT is the decision
+  and µs is the wrong one**: 2/3 of a second is not a whole number of
+  microseconds, and the 666 667 the plan recommended moves **17 tests** while
+  the 654 gate measurements cannot see it (`@M031`, `@X079`).  *A measurement's
+  resolution is not its authority.*
 
 ## Relationship to loft
 
@@ -373,7 +380,8 @@ navigational summary of it.
 | `dryopea.loft` | the library aggregator — `use dryopea;` brings every submodule into scope |
 | `main.loft` | the interactive entry — the GL shell (NOT in the aggregator; parse-check it by hand).  ⚠ Since plan 19 P3 it runs the GAME and owns the CLOCK: it measures the frame and hands the seconds over, and decides nothing else |
 | `editor_step.loft` | **the editor's input seam** — `EditorState` + `EditorInput` + `editor_step`.  Every editor action runs through it |
-| `play.loft` | **the game's seam** (plan 19 P1) — `PlayState` + `play_ticks` / `play_advance` / `play_step`, and the ONE call to `wave_tick`.  ⚠ Also the MODE (P3): `play_mode` / `play_set_mode` / `play_begin` / `play_frame_seconds`, and since plan 21 R2 the game's CAMERA, stepped LAST and on every frame |
+| `play.loft` | **the game's seam** (plan 19 P1) — `PlayState` + `play_ticks` / `play_advance` / `play_step`, and the ONE call to `wave_tick`.  ⚠ Also the MODE (P3): `play_mode` / `play_set_mode` / `play_begin` / `play_frame_seconds`, and since plan 21 R2 the game's CAMERA, stepped LAST and on every frame  ⚠ Since plan 26 L1 the bank is a `TickClock` and the doors come in pairs — `play_advance_units` / `play_step_units` are the exact ones, the float ones round at the boundary |
+| `tick_clock.loft` | **the fixed step, in exact integer time** (plan 26 L1) — `TickClock`, `clock_advance` (a duration) and `clock_step` (a count), over an integer accumulator that carries.  ⚠⚠ The base unit is **1/3 µs** and microseconds were REFUSED on a measurement (`@X079`, `@M031`): 2/3 of a second is not a whole number of µs, and the recommended 666 667 moves 17 tests.  ⚠ No cap, no rate, no callback — a cap is the DRIVER's policy and must never become a default |
 | `bindings.loft` | **the ONE key table** — keys → actions → `EditorInput`.  Never add a `gl_key_pressed`.  ⚠ Since plan 19 P2 it carries the PLAY actions too, and `editor_input_from`'s `playing` argument decides whether WASD pans or drives.  ⚠ And since P3 one SHELL action (`toggle_play`, P), filled in BOTH branches — fill it in one and there is no way out of play mode |
 | `script.loft` | the `.keys` script runner and its whole vocabulary — commands name ACTIONS, never keys |
 | `validate.loft` / `validate_main.loft` | the second gate: sweep `tests/scripts/`, sum the measurements, report the FIRST failure |
@@ -806,6 +814,7 @@ signature.
 | Ask what STARTS the wave list | `src/spawn.loft::wave_provoke_step` — a live vehicle standing on a spawn marker `WAVE_1_PROVOCATION_HEXES` (12) or more from the core, read at the TOP of the tick and fired ONCE (plan 16 W3).  ⚠ Two thresholds: under 10 a marker is silenced entirely, 10–11 it sends enemies and cannot be poked, 12+ it does both — the middle band is what makes the distance test a rule rather than a restatement of "is this marker active".  ⚠ Never an occupancy test: a wave spawns ON its marker, so "is anybody here" lets wave 1 provoke wave 1 |
 | Ask how far an enemy moves in a tick, or make a class FASTER | `src/spawn.loft::enemy_speed` for the CLASS's rate (plan 23 K2b — scout 2.5, miner 1.0, everybody else 1.5), then `enemy_bank` for what a timestep owes it: `speed × tick_seconds` banked per enemy, whole hexes released to `enemy_step`.  ⚠ **A tick is no longer a hex**: `TICK_SECONDS` HOLDS the timestep at one regular's hex, it does not force it (`@X058`).  ⚠ **Pick a new speed against `@M013`** — 1.5, 2.25 and 3.0 are values at which the rounding guard cannot fire, and 1.0 / 1.2 / 1.8 / 2.0 / 2.5 each lose a hex every forty ticks without the epsilon; 2.5 was picked partly for that (`@X063`).  ⚠ The lookup is at the CALL SITE and not in the bank, because *"a damaged robot moves slower"* makes speed a property of a CONDITION (`@X061`).  ⚠ A hex the ground refuses is SPENT, not re-banked — the opposite of `helper_bank`, and deliberate (`@X059`) |
 | Ask whether a mover survives a SHORTER tick, or change `TICK_SECONDS` | ⚠⚠ `tests/26_l0_the_timestep_sweep.loft` and `@M030` — **every banked mover holds its rate at seven tick lengths and the PLAYER does not** (`@D003`): `vehicle_hexes_this_tick` truncates and `Vehicle` has no `progress` field, so the player reads **180 / 120 / 180 / 0 / 0 / 0 / 0** hexes a minute against a true 180 and stops moving entirely at any tick under 250 ms.  ⚠ **So the tick cannot be shortened until [`plans/26`](plans/26-the-fixed-step/README.md) L2 lands**, which is a second prerequisite beside `plans/22`'s field cache.  ⚠⚠ The instrument is a CROSS-PRODUCT and it has to be: sweep the tick length AND every mover — `@M013` sweeps speeds through movers that carry, `23_k2a` sweeps the tick through an ENEMY, and neither can see this.  ⚠ Timers (`tower_repair_tick`, `helper_recover_tick`, the lull) are a different family and are not covered — `plans/26` § The invariant, gated at L3 |
+| Advance the game by TIME, or change the tick's length | `src/tick_clock.loft` (plan 26 L1) — `clock_advance(clk, units)` for a duration, `clock_step(clk, n)` for a count, over an integer accumulator.  ⚠⚠ **`TICK_STEP_UNITS` is now the ONE definition of the tick and `TICK_SECONDS` is DERIVED from it** (`spawn.loft`), so change the step and every rate follows — but ⚠ **a step is only safe if `TICK_SECONDS` comes back bit-identical**, which is why the base unit is 1/3 µs and not µs (`@X079`): the recommended 666 667 µs step leaves the 654 measurements untouched and breaks **17 tests** (`@M031`).  ⚠ `main.loft` hands down integer µs; `play_advance` / `play_step` are float wrappers that ROUND, and truncating there would put `19_p1`'s 602 back one layer out |
 | Ask why a fresh wave is not moving | `src/spawn.loft::enemy_standing` — the pre-walk window (plan 16 W2), 8 ticks at the marker.  ⚠ Spent ONCE per tick by `wave_stand`, at the END beside `helper_recover_tick`; the predicate only asks.  ⚠ A standing enemy does not move, attacks nothing and blocks nobody — but is NOT immune, which is what "stand visible" means |
 | Advance the GAME | `src/play.loft` — `play_ticks(ps, s, n)` for a COUNT, `play_advance(ps, s, seconds)` for elapsed time, `play_step(ps, s, input, seconds)` for a whole frame.  ⚠ Never call `wave_tick` directly: `play_one_tick` is its one caller, and a second one is a second game with the same numbers on it.  ⚠ And never spell a count as `n * TICK_SECONDS` — it is one tick short for 602 of the first 1000 `n` |
 | Ask whether a session is LIVE, or start one | `src/play.loft::play_mode` / `play_set_mode` (plan 19 P3).  ⚠ **It gates the CLOCK and never the seam**: `EditorInput.in_playing` says what the KEYS mean this frame, `PlayState.playing` says whether wall time reaches the simulation.  Gate `play_step`'s seconds on either and P1/P2 go red — a scripted frame's time is the SCRIPT's business.  ⚠ The window spends it through `play_frame_seconds`, which is a function rather than an `if` in `main.loft` because an entry point is compiled by nothing |

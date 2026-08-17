@@ -104,6 +104,7 @@ use editor_step;
 use occupancy;
 use carry;
 use vehicle;
+use tick_clock;
 use spawn;
 use render_camera;
 
@@ -122,7 +123,7 @@ pub struct PlayState {
     // cargo — everything the simulation owns.
     wave: WaveState,
 
-    // Elapsed seconds not yet spent as whole ticks.
+    // Elapsed time not yet spent as whole ticks — plan 26 L1.
     //
     // ⚠ **The remainder is kept, and that is the whole design.**  A
     // frame that delivers 0.4 s takes no tick and banks 0.4; the next
@@ -130,7 +131,13 @@ pub struct PlayState {
     // rounding to the nearest tick — makes the simulation frame-rate
     // dependent, which is the property P0 measured and the one no
     // measurement in this repo would survive losing.
-    banked: float,
+    //
+    // ⚠⚠ **It is a `TickClock` and no longer a `float`.**  The carry
+    // was always right; the ARITHMETIC was not — a subtraction chain
+    // over a repeating fraction loses the last tick for 602 of the
+    // first 1000 counts, which is why `play_ticks` had to refuse to be
+    // spelled as a duration.  See `tick_clock.loft`.
+    clock: TickClock,
 
     // Whole ticks played, ever.  The run's CLOCK — plan 12 B7 compares
     // it between a base with defences and the same base without, and
@@ -172,7 +179,7 @@ pub struct PlayState {
 pub fn play_state_new() -> PlayState {
     PlayState {
         wave:    wave_state_empty(),
-        banked:  0.0,
+        clock:   clock_new(TICK_STEP_UNITS),
         ticks:   0,
         prev:    editor_input_empty(),
         // ⚠ A session opens in the EDITOR, which is what keeps every
@@ -250,6 +257,17 @@ pub fn play_mode(ps: const PlayState) -> boolean {
 // editing session as one burst of ticks.
 pub fn play_frame_seconds(ps: const PlayState, elapsed: float) -> float {
     if ps.playing { elapsed } else { 0.0 }
+}
+
+// The same gate, on the wall clock's own units — plan 26 L1.
+//
+// ⚠⚠ **This is the door the GL loop uses, and the reason is the whole
+// of `plans/26` § 1.**  `ticks()` answers integer MICROSECONDS and
+// `main.loft` used to divide them into float seconds before the
+// simulation ever saw them, *"dividing the exactness away at the
+// boundary"*.  Microseconds in, base units out, no float on the path.
+pub fn play_frame_units(ps: const PlayState, elapsed_us: integer) -> integer {
+    if ps.playing { clock_units_from_micros(elapsed_us) } else { 0 }
 }
 
 // The run starts: put the crew on the ground at the core.
@@ -459,24 +477,51 @@ pub fn play_ticks(ps: PlayState, s: EditorState, n: integer) -> integer {
 // simulation frame-rate dependent at whatever length it chose — the one
 // property P0 proved this shape has and the one no measurement in the
 // repo would survive losing.
-pub fn play_advance(ps: PlayState, s: EditorState, seconds: float) -> integer {
-    // ⚠ **No core, no game — and the seconds are DROPPED, not banked.**
+pub fn play_advance_units(ps: PlayState, s: EditorState, units: integer) -> integer {
+    // ⚠ **No core, no game — and the time is DROPPED, not banked.**
     // A half-built map has no target marker, and banking through it
     // would make placing the core fire every second that had passed
     // since the session opened as one burst of ticks.
-    pa_core = play_core(s.mw);
-    if pa_core.0 != 1 { return 0; }
-    pa_at = Hex { q: pa_core.1, r: pa_core.2 };
+    pau_core = play_core(s.mw);
+    if pau_core.0 != 1 { return 0; }
+    pau_at = Hex { q: pau_core.1, r: pau_core.2 };
 
-    ps.banked += seconds;
-    pa_taken = 0;
-    // ⚠ No epsilon on this comparison — see § And there is no epsilon.
-    while ps.banked >= TICK_SECONDS {
-        ps.banked -= TICK_SECONDS;
-        play_one_tick(ps, s, pa_at);
-        pa_taken += 1;
-    }
-    pa_taken
+    // ⚠ **The clock decides HOW MANY and this loop decides what one
+    // IS.**  No callback goes the other way (`tick_clock.loft` § WHAT
+    // IS DELIBERATELY NOT HERE), which is what lets a script runner, a
+    // GL loop and a test all drive the identical machine.
+    pau_due = clock_advance(ps.clock, units);
+    for _ in 0..pau_due { play_one_tick(ps, s, pau_at); }
+    pau_due
+}
+
+// The same door, for a caller holding float SECONDS.
+//
+// ⚠⚠ **The conversion ROUNDS, and truncation here would put the
+// defect back one layer out.**  A second's worth of float is a hair
+// under or over its exact unit count, and truncating a hair-under
+// value costs a whole tick at the division — which is `tests/19_p1`'s
+// 602 arriving at a new boundary.  Rounding cannot: the error is
+// ~1e-10 units against a step of 2 000 000.
+//
+// ⚠ **It is not the door to reach for.**  Anything with access to the
+// wall clock has integer microseconds already (`ticks()`), and
+// `play_advance_units` over `clock_units_from_micros` is exact from
+// end to end.  This exists for callers whose time is genuinely a float
+// — a script passing 0.0, and the tests written before L1.
+pub fn play_advance(ps: PlayState, s: EditorState, seconds: float) -> integer {
+    play_advance_units(ps, s, play_units_from_seconds(seconds))
+}
+
+// Float seconds to base units, rounded.
+//
+// ⚠ Negative time answers 0 rather than a negative count — the same
+// refusal `clock_advance` makes, stated here too because the rounding
+// would otherwise turn a small negative into `-0.5` and then into 0 by
+// accident rather than by rule.
+pub fn play_units_from_seconds(seconds: float) -> integer {
+    if seconds <= 0.0 { return 0; }
+    ((seconds * (CLOCK_UNITS_PER_SECOND as float)) + 0.5) as integer? ?? 0
 }
 
 // One frame: what the player did, then how long it took.
@@ -500,8 +545,8 @@ pub fn play_advance(ps: PlayState, s: EditorState, seconds: float) -> integer {
 // elapsed)` so that an edited session is frozen; a script passes 0.0
 // because its clock is `tick`.  This function does not consult the mode
 // for the time — see § The mode is remembered by the SESSION.
-pub fn play_step(ps: PlayState, s: EditorState, input: EditorInput,
-                 seconds: float) -> integer {
+pub fn play_step_units(ps: PlayState, s: EditorState, input: EditorInput,
+                       units: integer) -> integer {
     editor_step(s, input);
     play_actions(ps, s, input);
     // ⚠ **The mode flips at the END of the frame, never at its start.**
@@ -523,7 +568,7 @@ pub fn play_step(ps: PlayState, s: EditorState, input: EditorInput,
     // the gap, firing an edge the player never made.  The same rule
     // `editor_step`'s own `s.prev` keeps, and for the same reason.
     ps.prev = editor_input_copy(input);
-    ps_ticks = play_advance(ps, s, seconds);
+    ps_ticks = play_advance_units(ps, s, units);
 
     // ⚠⚠ **The camera is stepped on EVERY frame, and it is stepped
     // LAST.**
@@ -540,10 +585,35 @@ pub fn play_step(ps: PlayState, s: EditorState, input: EditorInput,
     // as a camera one.  It is also moros's shipped fault in dryopea's
     // shape (`render_camera.loft` § camera_rig_step).
     //
-    // ⚠ `seconds` is the SAME seconds the simulation got, so an edit
-    // session's camera is frozen exactly as its clock is — the mode
-    // gates one number and everything downstream of it.
+    // ⚠ It is the SAME time the simulation got, so an edit session's
+    // camera is frozen exactly as its clock is — the mode gates one
+    // number and everything downstream of it.
+    //
+    // ⚠⚠ **And it is a FLOAT here on purpose** (plan 26 L1).  The ease
+    // is `1 − e^(−k·dt)` over real frame time — a PRESENTATION rate,
+    // outside the fixed step by construction (`plans/26` § The
+    // invariant: *the ease is genuinely float*).  Forcing it onto the
+    // integer step would make the camera move on one frame in forty at
+    // 60 fps, which is precisely the stutter `@M023` measured and R2
+    // built the ease to remove.
     camera_rig_step(ps.cam, ps.wave.player, s.picker.palette, s.pw,
-                    ps.wave.heights, seconds);
+                    ps.wave.heights, play_seconds_from_units(units));
     ps_ticks
+}
+
+// One frame, for a caller holding float SECONDS — the door every test
+// written before plan 26 L1 uses.
+pub fn play_step(ps: PlayState, s: EditorState, input: EditorInput,
+                 seconds: float) -> integer {
+    play_step_units(ps, s, input, play_units_from_seconds(seconds))
+}
+
+// Base units back to float seconds, for the things that are genuinely
+// float — the camera's ease, and a caller reporting a duration.
+//
+// ⚠ Exact for every duration a frame produces: the unit is 1/3 µs, so
+// the division is by 3 000 000 and a whole number of milliseconds comes
+// back bit-identical to the literal a test would write.
+pub fn play_seconds_from_units(units: integer) -> float {
+    (units as float) / (CLOCK_UNITS_PER_SECOND as float)
 }

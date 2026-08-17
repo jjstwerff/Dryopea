@@ -137,8 +137,11 @@ fn test_a_count_does_not_touch_the_bank() {
 
     play_ticks(tab_ps, tab_s, 3);
     assert(tab_ps.ticks == 3, "three counted ticks: {tab_ps.ticks}");
-    assert(tab_ps.banked == TICK_SECONDS * 0.5,
-           "the half tick is still banked: {tab_ps.banked:8.6}");
+    // ⚠ In the clock's BASE UNITS since plan 26 L1 — half a tick is
+    // 1 000 000 of them, exactly, where the float bank could only be
+    // half a repeating fraction.
+    assert(clock_banked(tab_ps.clock) == TICK_STEP_UNITS / 2,
+           "the half tick is still banked: {clock_banked(tab_ps.clock)}");
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -218,8 +221,8 @@ fn test_a_coreless_world_neither_ticks_nor_banks() {
     tcw_got = play_advance(tcw_ps, tcw_s, 60.0);
     assert(tcw_got == 0, "a coreless minute plays nothing: {tcw_got}");
     assert(tcw_ps.ticks == 0, "no ticks: {tcw_ps.ticks}");
-    assert(tcw_ps.banked == 0.0,
-           "and nothing is banked against the core arriving: {tcw_ps.banked:8.6}");
+    assert(clock_banked(tcw_ps.clock) == 0,
+           "and nothing is banked against the core arriving: {clock_banked(tcw_ps.clock)}");
 
     // Now the core is placed.  One frame, one tick — not ninety.
     place_marker(tcw_s.mw, 0, 0, MARKER_KIND_TARGET as u8, 0 as u8);
@@ -245,7 +248,7 @@ fn test_play_core_counts_rather_than_answering_null() {
     tpc_ps = play_state_new();
     assert(play_ticks(tpc_ps, tpc_s, 5) == 0, "two cores plays nothing");
     assert(play_advance(tpc_ps, tpc_s, 20.0) == 0, "and banks nothing either");
-    assert(tpc_ps.banked == 0.0, "banked {tpc_ps.banked:8.6}");
+    assert(clock_banked(tpc_ps.clock) == 0, "banked {clock_banked(tpc_ps.clock)}");
 }
 
 // ─────────────────────────────────────────────────────────────────

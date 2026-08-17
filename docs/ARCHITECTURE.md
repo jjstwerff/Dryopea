@@ -83,12 +83,46 @@ src/
                    editor's frame and not a harness renderer's.
                    Also owns VIEW_W / VIEW_H / VIEW_PPM (the window
                    size IS the shot size).  Never mutates the state
+  tick_clock.loft  the FIXED STEP, in exact integer time (plan 26 L1)
+                   — TickClock { step, banked } + clock_new /
+                   clock_advance (a DURATION) / clock_step (a COUNT) /
+                   clock_banked / clock_restore /
+                   clock_units_from_micros.
+                   ⚠⚠ **The base unit is 1/3 of a MICROSECOND**
+                   (CLOCK_UNITS_PER_SECOND = 3 000 000), and µs was
+                   REFUSED on a measurement (@X079, @M031): dryopea's
+                   tick is 2/3 of a second, `1e6 / 1.5` is 666 666.67,
+                   and the 666 667 the plan recommended moves 17 tests
+                   while the 654 gate measurements cannot see it.  1/3
+                   µs is the coarsest unit in which 2/3 s is whole, so
+                   TICK_SECONDS derived from it is BIT-IDENTICAL to the
+                   `1.0 / 1.5` it replaced.
+                   ⚠ **The unit is the CONSUMER's choice** — clock_new
+                   takes a step and the accumulator counts whatever the
+                   caller counts (128 Hz cannot use 3 000 000 either).
+                   What this file promises is the IDENTITY, not a unit.
+                   ⚠ **No callback, no cap, no rate scaling, no
+                   alpha.**  It never calls your tick; it answers HOW
+                   MANY.  A cap is the DRIVER's policy — moros's page
+                   has one, its server does not, and `play_advance`'s
+                   refusal of one is what 654 measurements rest on.
+                   ⚠ **No tick COUNTER**: `PlayState.ticks` already
+                   counts, and a second counter is two facts that can
+                   disagree.  This owns the STEP and the BANK.
+
   play.loft        the GAME's seam (plan 19 P1) — PlayState { wave,
-                   banked, ticks, prev, playing, cam } +
+                   clock, ticks, prev, playing, cam } +
                    play_state_new / play_core / play_ticks /
-                   play_advance / play_step, plus the play ACTIONS
-                   (P2) and the MODE (P3: play_mode / play_set_mode /
-                   play_begin / play_frame_seconds).
+                   play_advance_units / play_advance / play_step_units
+                   / play_step, plus the play ACTIONS (P2) and the MODE
+                   (P3: play_mode / play_set_mode / play_begin /
+                   play_frame_seconds / play_frame_units).
+                   ⚠ **The bank is a TickClock since plan 26 L1**, and
+                   the doors come in PAIRS: `*_units` are exact,
+                   `play_advance` / `play_step` take float seconds and
+                   ROUND at the boundary.  Truncating there would put
+                   19_p1's 602 back one layer out.  `main.loft` hands
+                   down integer µs and no longer divides.
                    ⚠ `cam` is the game's CameraRig (plan 21 R2,
                    @X014).  `play_step` ends by stepping it — on
                    EVERY frame, including frames that spend no tick,
@@ -1064,7 +1098,8 @@ suite redirects its own shots into `tests/actual/`.
 | `MapFile` | `map_file.loft` | save record (6 fields; see Known constraints) |
 | `GroundEntry` | `map_file.loft` | one persisted hex with kind as text name |
 | `ScriptRun` | `script.loft` | one `.keys` run — ok / failing line / message / counts, plus the pointer, the shots directory and the GAME it is playing.  ⚠ `run.play.wave` / `run.play.ticks` since plan 19 P1: the wave and the clock are ONE record, because `play_ticks` takes a `PlayState` and a run holding the pieces separately could only hand over copies |
-| `PlayState` | `play.loft` | a game in progress — the roster, the clock, the seconds banked toward the next tick, last frame's input, whether the session is LIVE, and the camera it is looking through.  ⚠ What a live session has that an edited one does not; the world is passed in, never owned, because a struct in a field is a copy.  ⚠ `playing` (plan 19 P3) gates the CLOCK and never the seam — `EditorInput.in_playing` is the other, per-frame half and says what the KEYS mean |
+| `PlayState` | `play.loft` | a game in progress — the roster, the `TickClock`, the time banked toward the next tick, last frame's input, whether the session is LIVE, and the camera it is looking through.  ⚠ What a live session has that an edited one does not; the world is passed in, never owned, because a struct in a field is a copy.  ⚠ `playing` (plan 19 P3) gates the CLOCK and never the seam — `EditorInput.in_playing` is the other, per-frame half and says what the KEYS mean |
+| `TickClock` | `tick_clock.loft` | a fixed step and the time banked toward the next one, both INTEGERS — so `advance(n × step) == step(n)` exactly, where the float bank it replaced was wrong for 602 of the first 1000 `n`.  ⚠ `banked` is always in `[0, step)`, which is what makes it the whole of a rollback's timing state.  ⚠⚠ Its base unit is 1/3 µs and that was MEASURED rather than chosen for tidiness (`@X079`, `@M031`) |
 | `FrameCounts` | `measure.loft` | one classified frame — pixels per bucket, `unknown` (not a palette colour = a fault), `total` |
 | `WaveState` | `spawn.loft` | the enemy roster + round-robin cursor + the runtime rubble layer + the structure damage ledger + every tower's banked charge + the run's wallet + the crew + the cargo — runtime, not editor state |
 | `Vehicle` | `vehicle.loft` | the player: where it is, where it is pointed, and whether it is in the world at all — ⚠ `parked` is separate because (0, 0) is a real hex and is the core in every scenario |
