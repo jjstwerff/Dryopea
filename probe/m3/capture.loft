@@ -1,0 +1,166 @@
+// Probe M3 — does a SHADER-drawn palette colour survive the round trip
+// EXACTLY, the way a canvas blit does?
+//
+// ⚠ This is not R0 again.  R0 measured `gl_upload_canvas` +
+// `draw_texture_at`: pixels that were already 8-bit integers, handed to
+// GL as a texture and blitted back.  Plan 25 M3 draws something else
+// entirely — a fragment shader writing a FLOAT colour into the default
+// framebuffer, which is a different path with its own ways to lose a
+// bit: `GL_DITHER` is on by default in the GL spec, an sRGB-capable
+// visual re-encodes on write, and the float→unorm8 rounding rule is the
+// driver's business rather than ours.
+//
+// If a palette colour comes back off by one, `measure.loft`'s EXACT
+// lookup lands the whole ground in `unknown`, and M3's `other == 0` is
+// not a gate that can be written at all.  So it is asked BEFORE the
+// phase, on the REAL mesher, the REAL camera and the REAL winding with
+// `GL_CULL_FACE` on — a hand-written triangle would answer for a
+// triangle nobody ships.
+//
+// Pass = a PNG whose ground pixels are exact `palette_color` values.
+// Fail = anything else, and M3's gate chain needs redesigning.
+
+#cwd
+
+use dryopea;
+use graphics;
+use mesh3d;
+
+// graphics declares these file-scope and NOT `pub`, so they do not cross
+// the package boundary.  Mirrored here with the values from
+// `graphics.loft` § GL state / § Draw modes.
+const PROBE_GL_DEPTH_TEST: integer = 1;
+const PROBE_GL_CULL_FACE:  integer = 3;
+
+const PROBE_W: integer = 960;
+const PROBE_H: integer = 720;
+
+// ⚠ Magenta is `palette_color`'s "unknown kind" answer and is therefore
+// NOT one of the twelve buckets — so every background pixel lands in
+// `unknown` and is COUNTED rather than absorbed.  A clear colour that was
+// a palette colour would hide exactly the failure this probe is for.
+const PROBE_CLEAR: integer = 0xff00ff;
+
+// A patch big enough to fill the frame at the overview's near distance,
+// with a wall ring inside it so the sides are exercised too.
+fn probe_world() -> PaintedWorld {
+    pw_w = painted_empty();
+    for pw_r in -14..15 {
+        for pw_q in -22..23 {
+            paint(pw_w, pw_q, pw_r, 5 as u8);        // grass
+        }
+    }
+    // A closed wall ring — every one of its hexes stands 3 m above grass,
+    // so `ground_side_faces` has something to emit on all six sides.
+    for pw_q2 in -6..7 {
+        paint(pw_w, pw_q2, -4, 9 as u8);             // wall
+        paint(pw_w, pw_q2,  4, 9 as u8);
+    }
+    for pw_r2 in -4..5 {
+        paint(pw_w, -6, pw_r2, 9 as u8);
+        paint(pw_w,  6, pw_r2, 9 as u8);
+    }
+    // One hex of the taller kind, so two structure heights are on screen.
+    paint(pw_w, 0, 0, 10 as u8);                     // wall_high
+    pw_w
+}
+
+fn main() {
+    pal = load_palette("../../examples/palette.json");
+    if len(pal) == 0 {
+        println("PROBE: FAIL — palette loaded 0 entries");
+        return;
+    }
+    println("PROBE: palette {len(pal)} kinds");
+
+    pw = probe_world();
+    hl = height_layer_empty();
+    height_raise(hl, 2, 2, 1.0, 0 as u8);            // a heap, on grass
+
+    if !gl_create_window(PROBE_W, PROBE_H, "m3 probe") {
+        println("PROBE: FAIL — no GL context");
+        return;
+    }
+
+    // Flat unlit: the vertex stage is the camera and nothing else, and
+    // the fragment stage writes ONE uniform colour.  The normal is bound
+    // (stride 6) and deliberately unused — a lit frame turns one palette
+    // colour into a range, which is what `docs/RENDERER.md` § R4 refuses.
+    // ⚠ A BACKTICK string, and the braces are doubled: loft interpolates
+    // `{…}` in every string form, so GLSL's blocks have to be escaped as
+    // `{{ }}` — which is what `graphics::render.loft` does with its own
+    // shaders.  A plain `"…"` fails to parse at the first `{`.
+    vs = `
+#version 330 core
+layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec3 aNormal;
+uniform mat4 uVP;
+void main() {{ gl_Position = uVP * vec4(aPos, 1.0); }}
+`;
+    fs = `
+#version 330 core
+uniform vec3 uColor;
+out vec4 FragColor;
+void main() {{ FragColor = vec4(uColor, 1.0); }}
+`;
+    prog = gl_create_shader(vs, fs);
+    if prog == 0 {
+        println("PROBE: FAIL — shader did not link");
+        gl_destroy_window();
+        return;
+    }
+    println("PROBE: shader {prog}");
+
+    cam = render_camera_default();
+    camera_overview(vec3(0.0, 0.0, 0.0), cam);
+    cam.distance = CAMERA_OVERVIEW_MIN_DISTANCE;
+    vp = camera_view_projection(cam, (PROBE_W as float) / (PROBE_H as float) ?? 1.333);
+
+    // Build and upload, one VAO per (tile x kind) — M3's shape.
+    vaos:   vector<integer> = [];
+    counts: vector<integer> = [];
+    kinds:  vector<integer> = [];
+    tris = 0;
+    cks  = mesh_chunks_all(pw, hl);
+    for ck in cks {
+        for kd in ground_chunk_kinds(pal, pw, hl, ck.cx, ck.cy) {
+            gm = mesh("probe");
+            ground_chunk_mesh(gm, pal, pw, hl, ck.cx, ck.cy, kd);
+            if len(gm.triangles) == 0 { continue; }
+            tris += len(gm.triangles);
+            fl = mesh_to_floats(gm);
+            vaos   += [gl_upload_vertices(fl, 6)];
+            counts += [len(gm.triangles) * 3];
+            kinds  += [kd];
+        }
+    }
+    println("PROBE: {len(cks)} tiles, {len(vaos)} groups, {tris} triangles");
+    if tris == 0 {
+        println("PROBE: FAIL — nothing meshed, so a black frame would prove nothing");
+        gl_destroy_window();
+        return;
+    }
+
+    gl_enable(PROBE_GL_DEPTH_TEST);
+    gl_enable(PROBE_GL_CULL_FACE);
+    gl_cull_face(0);                                  // cull BACK faces
+    gl_clear(PROBE_CLEAR);
+    gl_use_shader(prog);
+    gl_set_uniform_mat4(prog, "uVP", vp.m);
+
+    for gi in 0..len(vaos) {
+        gk = kinds[gi] ?? 0;
+        gc = palette_color(gk as u8? ?? 0);
+        gl_set_uniform_vec3(prog, "uColor",
+            (((gc >> 16) & 255) as float) / 255.0 ?? 0.0,
+            (((gc >> 8)  & 255) as float) / 255.0 ?? 0.0,
+            ((gc         & 255) as float) / 255.0 ?? 0.0);
+        gl_draw(vaos[gi] ?? 0, counts[gi] ?? 0);
+    }
+
+    // ⚠ BEFORE the swap — `gl_screenshot` reads GL_BACK.
+    ok = gl_screenshot(PROBE_W, PROBE_H, "capture_out.png");
+    gl_swap_buffers();
+    println("PROBE: capture = {ok}");
+    gl_destroy_window();
+}

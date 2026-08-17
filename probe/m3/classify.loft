@@ -1,0 +1,51 @@
+// Probe M3, second half — read the captured frame back through
+// dryopea's OWN instrument.
+//
+// ⚠ It decodes into a `Canvas` and calls `measure.loft::classify_canvas`
+// rather than re-implementing the count, which is the whole point: R0's
+// probe hand-rolled the comparison and so measured a classifier nobody
+// ships.  If `classify_canvas` reports `unknown` = the background and
+// nothing else, M3's gate is writable exactly as the invariant table
+// states it.
+//
+// ⚠ No xvfb here, on purpose: the readback must not need a display, or
+// the gate it stands for could not run in CI either.
+
+#cwd
+
+use dryopea;
+use graphics;
+use imaging;
+
+const PROBE_BUCKETS: integer = 12;
+const PROBE_CLEAR:   integer = 0xff00ff;
+
+fn main() {
+    img = file("capture_out.png").png();
+    if img == null {
+        println("PROBE2: FAIL — could not decode");
+        return;
+    }
+    println("PROBE2: decoded {img.width}x{img.height}, {len(img.data)} pixels");
+
+    cv = canvas(img.width, img.height, 0);
+    cd = &cv.data;
+    ci = 0;
+    clear_px = 0;
+    for p in img.data {
+        pv = p.value();
+        cd[ci] = pv;
+        if pv == PROBE_CLEAR { clear_px += 1; }
+        ci += 1;
+    }
+
+    fc = classify_canvas(cv, PROBE_BUCKETS);
+    for k in 0..PROBE_BUCKETS {
+        n = fc.counts[k] ?? 0;
+        if n > 0 {
+            println("PROBE2: kind {k} {n} px  ({(n * 1000 / fc.total) ?? 0}‰)");
+        }
+    }
+    println("PROBE2: unknown {fc.unknown}  of which EXACTLY the clear colour {clear_px}");
+    println("PROBE2: drift {fc.unknown - clear_px}  <- the number that decides M3");
+}

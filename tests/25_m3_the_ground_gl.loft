@@ -1,0 +1,295 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 25 phase M3 — the half of the GL path that can be tested with no
+// GL at all.
+//
+// ── ⚠⚠ What this file can and cannot see ───────────────────────
+//
+// A GL context cannot be created inside `loft test`, so the DRAWING is
+// gated by `scripts/validate_gl.sh` under `xvfb` and not here.  What is
+// here is everything the drawing DEPENDS on that is pure arithmetic —
+// and the most important of those is the colour conversion, because the
+// exactness of the entire gate chain passes through it.
+//
+// ⚠ `classify_canvas` classifies by an EXACT palette lookup: a pixel
+// that is not a palette colour is a FAULT, never noise.  A frame drawn
+// flat-unlit with `palette_color` as a uniform can only contain palette
+// colours **provided the float the uniform carries converts back to the
+// byte it came from**.  GL's rule for that is `round(f * 255)`, so
+// `byte / 255.0` is a fixed point of the round trip — for every byte,
+// not just for the ones the palette happens to use today.
+//
+// ⚠⚠ **And that is a claim about the language's arithmetic, not only
+// about GL.**  `probe/m3` measured the GL half and found zero drift over
+// 691 200 pixels; what it could not measure is the palette entries that
+// were not on screen.  This file sweeps all twelve, and then sweeps all
+// 256 byte values, so a palette entry added tomorrow is covered before
+// anybody draws it.
+
+#cwd
+
+use dryopea;
+
+const PALETTE_PATH: text = "examples/palette.json";
+
+// ─── The colour, which is what makes the frame classifiable ─────
+
+// ⚠ The one that would take the whole gate chain down silently: a
+// palette colour that comes back one bit off puts EVERY pixel of that
+// kind into `unknown`, and `unknown > 0` is the reading every band in
+// this repo was sized against staying at zero.
+//
+// @DRY-001 — a palette kind's colour, as the GL uniform carries it
+pub fn test_a_palette_colour_survives_the_uniform_round_trip() {
+    tp_pal = load_palette(PALETTE_PATH);
+    assert(len(tp_pal) == 12, "the palette holds {len(tp_pal)} kinds, expected 12");
+
+    for tp_k in 0..len(tp_pal) {
+        tp_want = palette_color(tp_k as u8? ?? 0) & 0xffffff;
+        tp_c    = ground_gl_colour(tp_k);
+
+        // What GL does on the way back out of the framebuffer.
+        tp_r = ((tp_c.0 * 255.0 + 0.5) as integer) ?? -1;
+        tp_g = ((tp_c.1 * 255.0 + 0.5) as integer) ?? -1;
+        tp_b = ((tp_c.2 * 255.0 + 0.5) as integer) ?? -1;
+        tp_got = (tp_r << 16) | (tp_g << 8) | tp_b;
+
+        assert(tp_got == tp_want,
+               "kind {tp_k}: palette_color says {tp_want}, the uniform round-trips to {tp_got} — every pixel of this kind would land in `unknown`");
+    }
+}
+
+// ⚠ The sweep the palette cannot do: every byte, so the property is
+// about the CONVERSION rather than about today's twelve colours.  A
+// palette entry added next year is covered by this before it is drawn.
+//
+// @DRY-002 — every 8-bit channel is a fixed point of the round trip
+pub fn test_every_byte_is_a_fixed_point_of_the_conversion() {
+    for te_b in 0..256 {
+        te_f = ((te_b as float) / 255.0) ?? -1.0;
+        te_back = ((te_f * 255.0 + 0.5) as integer) ?? -1;
+        assert(te_back == te_b,
+               "channel {te_b} converts to {te_f} and back to {te_back}");
+    }
+}
+
+// ⚠ The control for the two above: they compare `ground_gl_colour`
+// against `palette_color`, and both would agree if `ground_gl_colour`
+// were reading the same wrong table.  So one assertion says out loud
+// what the numbers ARE — grass really is #4caf50, which is what
+// `examples/palette.json` carries and what `render.loft` inlines.
+//
+// @DRY-003 — the colour table the GL path draws with is the palette's
+pub fn test_the_gl_colour_is_the_palettes_colour() {
+    tg_grass = ground_gl_colour(5);
+    // ⚠ The extra parentheses are load-bearing: `?? 0 == 0x4c` binds as
+    // `?? (0 == 0x4c)`, which is a type error here and would be a quiet
+    // always-true anywhere the types happened to line up.
+    assert((((tg_grass.0 * 255.0 + 0.5) as integer) ?? 0) == 0x4c,
+           "grass red is {tg_grass.0}, expected 0x4c/255");
+    assert((((tg_grass.1 * 255.0 + 0.5) as integer) ?? 0) == 0xaf,
+           "grass green is {tg_grass.1}, expected 0xaf/255");
+    assert((((tg_grass.2 * 255.0 + 0.5) as integer) ?? 0) == 0x50,
+           "grass blue is {tg_grass.2}, expected 0x50/255");
+
+    // …and that the twelve are DISTINCT, which is what makes a per-kind
+    // count mean one kind.  `measure.loft` asks the same question of its
+    // buckets; asking it here too costs a line and closes the case where
+    // the two tables agree with each other and disagree with the design.
+    assert(palette_colors_distinct(12),
+           "two palette entries share a colour — a per-kind pixel count would merge them");
+}
+
+// ─── The clear colour is NOT a palette colour ───────────────────
+
+// ⚠⚠ The load-bearing property of `GL_GATE_CLEAR`, and it is the one a
+// future palette entry could break from a distance.  `plans/25` § Open 3
+// says an erased gap draws a HOLE, and the only thing that makes a hole
+// visible to the gate is those pixels landing in `unknown`.  Add a
+// twelfth-and-a-bit palette kind that happens to be magenta and that
+// stops being true — silently, and only for maps with a hole in them.
+//
+// @DRY-004 — the GL gate's background is outside the palette
+pub fn test_the_clear_colour_is_not_a_palette_colour() {
+    tc_pal = load_palette(PALETTE_PATH);
+    for tc_k in 0..len(tc_pal) {
+        assert((palette_color(tc_k as u8? ?? 0) & 0xffffff) != GL_GATE_CLEAR,
+               "palette kind {tc_k} is the GL gate's clear colour — background would classify as ground, and an erased-gap hole would become invisible");
+    }
+
+    // The other half: it must be a colour `classify_canvas` REFUSES, and
+    // the way to know is to hand it one and look.  A classifier that
+    // bucketed everything would make `other == 0` true for a frame of
+    // pure background.
+    tc_cv = canvas(4, 4, GL_GATE_CLEAR);
+    tc_fc = classify_canvas(tc_cv, len(tc_pal));
+    assert(tc_fc.unknown == 16,
+           "a canvas of nothing but the clear colour classified {tc_fc.unknown} of 16 pixels as unknown");
+}
+
+// ─── The gate refuses to be green over nothing ──────────────────
+
+// ⚠ `validate.loft`'s rule, and it is the one that would let a broken
+// checkout report success: a sweep that finds no fixtures, or a palette
+// that loads no entries, must FAIL rather than pass vacuously.
+//
+// @DRY-005 — the GL gate's own preconditions
+pub fn test_the_gate_refuses_an_empty_sweep() {
+    // No such directory.
+    tr_a = gl_gate_all("tests/gl_no_such_dir", "tests/actual", PALETTE_PATH);
+    assert(tr_a.message != "", "a missing fixtures directory reported green");
+    assert(tr_a.cases == 0, "a missing directory somehow drew {tr_a.cases} fixtures");
+
+    // A directory with no `.keys` in it — `tests/actual` exists and is
+    // full of PNGs and JSON, so it is the empty-of-fixtures case without
+    // needing a directory made for the purpose.
+    tr_b = gl_gate_all("tests/actual", "tests/actual", PALETTE_PATH);
+    assert(tr_b.message != "", "a directory holding no fixtures reported green");
+
+    // A palette that loads nothing.
+    tr_c = gl_gate_all("tests/gl", "tests/actual", "examples/no_such_palette.json");
+    assert(tr_c.message != "", "an empty palette reported green");
+
+    // ⚠ And the control: the three above must fail for THREE reasons.
+    // One message covering all of them would mean the gate has a single
+    // "something went wrong" path and none of these cases is really
+    // gated.
+    assert(tr_a.message != tr_b.message && tr_b.message != tr_c.message
+        && tr_a.message != tr_c.message,
+           "the three preconditions report the same message, so at most one of them is really checked");
+}
+
+// ⚠ The named-fixture path: asking for a fixture that is not there must
+// say so rather than sweeping nothing and calling it green.
+//
+// @DRY-006 — naming a fixture that does not exist
+pub fn test_naming_a_missing_fixture_is_a_failure() {
+    tn = gl_gate_all("tests/gl", "tests/actual", PALETTE_PATH, "no-such-fixture");
+    assert(tn.message != "", "a fixture name that matches nothing reported green");
+    assert(tn.cases == 0, "'no-such-fixture' drew {tn.cases} fixtures");
+}
+
+// ─── The frame the gate photographs ─────────────────────────────
+
+// ⚠ The camera is a PRESET and not a bespoke pose, which is what makes
+// a GL measurement comparable with every software measurement in the
+// repo (`@M022`: the overview at 89° IS the editor's view).  A gate that
+// quietly drifted to its own camera would still be internally
+// consistent — its bands would just stop meaning what the rest of the
+// repo means.
+//
+// @DRY-007 — the gate photographs from the overview preset
+pub fn test_the_gate_camera_is_the_overview_preset() {
+    tgc = gl_gate_camera();
+    assert(tgc.elevation == CAMERA_OVERVIEW_ELEVATION,
+           "the gate's elevation is {tgc.elevation}, not the overview's {CAMERA_OVERVIEW_ELEVATION}");
+    assert(tgc.azimuth == CAMERA_OVERVIEW_AZIMUTH,
+           "the gate's azimuth is {tgc.azimuth}, not the overview's {CAMERA_OVERVIEW_AZIMUTH}");
+
+    // ⚠ The boom is the one thing M3 chooses, and it is chosen so a
+    // world a `.keys` file can reasonably paint reaches past the
+    // frustum.  Pinned, because `the-ground`'s extent was sized against
+    // it: a longer boom sees further and the fixture stops filling the
+    // frame, which turns `other == 0` red for a reason that is not a
+    // rendering fault.
+    assert(tgc.distance == CAMERA_OVERVIEW_MIN_DISTANCE,
+           "the gate's boom is {tgc.distance}, and `tests/gl/the-ground.keys` was painted for {CAMERA_OVERVIEW_MIN_DISTANCE}");
+}
+
+// ⚠⚠ The fixture really does reach past what the camera can see — the
+// assertion `other == 0` leans on it entirely, and it is a property of
+// the PAINT and the BOOM together, so neither file can state it alone.
+//
+// It is asked geometrically rather than by drawing: project the four
+// corners of the frame back onto the ground plane by asking where the
+// fixture's own extreme hexes land, and require them OUTSIDE the
+// viewport.  ⚠ A hex that lands just inside would draw the coastline and
+// `other` would still be 0 (sea is a palette colour) — what it would
+// break is the `sea == 0` assertion, so this is that assertion's reason
+// stated where it can be read.
+//
+// @DRY-008 — the painted region outruns the frustum
+pub fn test_the_fixture_paints_past_the_frustum() {
+    tf_pal = load_palette(PALETTE_PATH);
+    tf_pw  = painted_empty();
+    tf_hl  = height_layer_empty();
+
+    // `tests/gl/the-ground.keys` paints q -22..22, r -14..14.
+    tf_edges_q = [-22, 22, -22, 22];
+    tf_edges_r = [-14, -14, 14, 14];
+    for tf_i in 0..4 {
+        tf_p = gl_predict(tf_pal, tf_pw, tf_hl, tf_edges_q[tf_i] ?? 0, tf_edges_r[tf_i] ?? 0);
+        tf_out = tf_p.0 < 0.0 || tf_p.0 > (GL_GATE_W as float)
+              || tf_p.1 < 0.0 || tf_p.1 > (GL_GATE_H as float);
+        assert(tf_out,
+               "the fixture's corner ({tf_edges_q[tf_i] ?? 0}, {tf_edges_r[tf_i] ?? 0}) lands at ({tf_p.0}, {tf_p.1}), INSIDE the {GL_GATE_W}x{GL_GATE_H} frame — so the paint does not outrun the camera and `other == 0` is measuring the coastline");
+    }
+
+    // ⚠ The control: a hex the fixture does NOT paint must land inside,
+    // or "outside the frame" is true of every hex and the assertion
+    // above holds for a camera pointed at nothing.
+    tf_in = gl_predict(tf_pal, tf_pw, tf_hl, 0, 0);
+    assert(tf_in.0 > 0.0 && tf_in.0 < (GL_GATE_W as float)
+        && tf_in.1 > 0.0 && tf_in.1 < (GL_GATE_H as float),
+           "the origin lands at ({tf_in.0}, {tf_in.1}), outside the frame — the camera is not looking at the world");
+}
+
+// ─── The landmarks are landmarks ────────────────────────────────
+
+// ⚠⚠ The GL gate's answer to *a count cannot see a mirrored world* is
+// two uniquely-coloured hexes, and it only works while they really are
+// unique and really are FLAT.  Both are properties of
+// `tests/gl/the-ground.keys`, and both are checked here rather than
+// there because `.keys` has no verb for either.
+//
+// @DRY-009 — the landmark hexes are flat, so their centroid is centred
+pub fn test_the_landmark_hexes_stand_on_nothing() {
+    tl_pal = load_palette(PALETTE_PATH);
+
+    // Sand and rock carry no `height_override`, so a landmark hex is at
+    // 0 m and emits no side face at all (`@X046`: a quad exists only
+    // where a column stands ABOVE its neighbour).  ⚠ Give either kind a
+    // height and its drawn area stops being centred on its top face —
+    // measured at 29 px for the 5 m `wall_high`, which is what put the
+    // landmarks on flat kinds in the first place.
+    assert(tl_pal[4].height_override == null,
+           "sand has a height override, so the sand landmark would draw sides and its centroid would not be its centre");
+    assert(tl_pal[7].height_override == null,
+           "rock has a height override, so the rock landmark would draw sides");
+
+    // ⚠ And the contrast that makes the point rather than restating it:
+    // the two kinds the fixture uses as CONTENT do stand.
+    assert(tl_pal[9].height_override != null,  "wall does not stand — the fixture's contrast is gone");
+    assert(tl_pal[10].height_override != null, "wall_high does not stand");
+}
+
+// ─── The tolerance can fail ─────────────────────────────────────
+
+// ⚠ `GL_GATE_MARK_TOLERANCE` is 6 px against a measured 0.6, which is
+// ten times the headroom — comfortable, and therefore worth checking it
+// is not so comfortable that it has stopped being a gate.  A mirrored
+// world is the failure it exists for, so: how far does a mirror move a
+// landmark?
+//
+// @DRY-010 — a mirrored world moves a landmark far past the tolerance
+pub fn test_a_mirrored_landmark_is_far_outside_the_tolerance() {
+    tm_pal = load_palette(PALETTE_PATH);
+    tm_pw  = painted_empty();
+    tm_hl  = height_layer_empty();
+
+    // The two landmarks, and the same hexes reflected across the origin
+    // — which is what a lost y-negation in the mesher would draw
+    // (`render_camera.loft` § the one negation).
+    tm_q = [-7, 7];
+    tm_r = [7, -5];
+    for tm_i in 0..2 {
+        tm_here = gl_predict(tm_pal, tm_pw, tm_hl, tm_q[tm_i] ?? 0, tm_r[tm_i] ?? 0);
+        tm_flip = gl_predict(tm_pal, tm_pw, tm_hl, tm_q[tm_i] ?? 0, -(tm_r[tm_i] ?? 0));
+        tm_dx = tm_here.0 - tm_flip.0;
+        tm_dy = tm_here.1 - tm_flip.1;
+        tm_d  = sqrt(tm_dx * tm_dx + tm_dy * tm_dy);
+        assert(tm_d > GL_GATE_MARK_TOLERANCE * 10.0,
+               "reflecting landmark {tm_i} moves it {tm_d} px, and the tolerance is {GL_GATE_MARK_TOLERANCE} — the gate has less than 10x headroom against the failure it exists for");
+    }
+}

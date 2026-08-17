@@ -517,6 +517,43 @@ a frame rendered with **flat unlit** materials for the gate (a render mode, not 
 different renderer), or to give each surface an ID and read an **ID buffer**
 rather than the colour buffer.  § Open 3.
 
+### ⚠⚠ R4 as BUILT (2026-08-17, plan 25 M3) — and the chain is shorter than this
+
+`scripts/validate_gl.sh` → `src/gl_gate_main.loft` → `src/gl_gate.loft`.  Every
+link above exists, with two corrections to what this section assumed:
+
+- ⚠ **The last link is `classify_canvas`, not a copy of it.**  The captured PNG
+  is decoded into a `Canvas` and handed to the *same function* the software
+  gate calls, so a GL frame is measured on exactly the terms a software frame
+  is.  ⚠ `probe/r0` hand-rolled its comparison and could therefore only say the
+  PIXELS survived, never that the instrument agrees about them.
+- ⚠⚠ **The flat-unlit option was not a "render mode added for the gate" — it is
+  the only way the mesher was written** (`@X074`).  Colour is a uniform because
+  `mesh3d::Vertex` carries none, so the choice made itself and the exact
+  classification is preserved by construction rather than by a flag somebody
+  could turn off.
+
+⚠⚠ **And this section's own worry was answered from an angle it did not
+consider.**  R0 measured a canvas BLIT; a fragment shader writes a **float**,
+which can lose a bit to `GL_DITHER`, an sRGB framebuffer, or the driver's
+rounding — a different link in the chain, and one bit would have broken exact
+classification just as surely as lighting.  Measured before M3 was written:
+**drift 0 over 691 200 px** (`probe/m3/`, `@M026`).
+
+⚠⚠ **The gate this section describes is NOT ENOUGH, and that is M3's finding.**
+A per-kind `FrameCounts` is permutation-invariant, so a **mirrored world passes
+every band** — measured at every count green while the world was reflected
+(`@M027`).  The gate therefore also compares WHERE a uniquely-coloured hex
+landed against `camera_screen`'s prediction (`@X078`).  ⚠ moros's
+`CAMERA_INDOORS.md` lesson quoted above is the same shape one level up: *an
+instrument that cannot tell two surfaces apart cannot judge a threshold about
+one of them* — and a count that cannot tell a world from its reflection cannot
+judge a claim about where anything is.
+
+⚠ **Where it RUNS is a separate entry** (`@X076`): this section's *"validate.sh
+gains GL scenarios under xvfb"* would put all 33 headless scripts behind an X
+server, which § R0 went out of its way to make unnecessary.
+
 ---
 
 ## R5 — the cost, and what actually threatens it  `@M001`

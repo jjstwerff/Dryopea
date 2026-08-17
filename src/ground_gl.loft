@@ -1,0 +1,308 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// The ground, DRAWN — plan 25 phase M3.
+//
+// M0-M2 made the world into triangles and proved two builds of it
+// agree.  This is the half that puts them on a screen: one shader, one
+// `GroupVboSet` per palette kind, and the kind's colour as a uniform.
+//
+// The decisions are `plans/25-the-terrain-mesh/README.md` § M3.
+//
+// ── ⚠⚠ FLAT UNLIT IS A GATE REQUIREMENT, NOT A PLACEHOLDER ──────
+//
+// The fragment stage writes ONE uniform colour and reads nothing —
+// no light, no normal, no texture.  That is what keeps
+// `measure.loft::classify_world`'s founding rule alive: classification
+// is an EXACT palette lookup and a pixel that is not a palette colour
+// is a FAULT.  A frame drawn this way **can only contain palette
+// colours**, by construction.
+//
+// ⚠ Light it and one palette colour becomes a RANGE, `unknown` stops
+// meaning "fault", and `docs/RENDERER.md` § R0's zero-drift measurement
+// is thrown away.  The trigger for solving that is a gate that has to
+// tell two same-coloured surfaces apart, and the answer is an ID
+// buffer — never a loosened lookup.
+//
+// ⚠ **Measured, not assumed** (`probe/m3/`): a palette colour written
+// by this shader comes back through `gl_screenshot` → PNG →
+// `imaging::png` → `classify_canvas` **bit-exact**, over 691 200
+// pixels, with `unknown` = 0.  R0 had measured that for a canvas BLIT,
+// which is a different path — a float colour through a fragment stage
+// can lose a bit to dithering or to an sRGB-encoding framebuffer, and
+// one bit would have made M3's gate unwritable.  `@M026`.
+//
+// ── ⚠ Colour is the VERTEX's job nowhere ────────────────────────
+//
+// `mesh3d::Vertex` carries position + normal + uv and no colour, so
+// the mesher emits one `Mesh` per palette kind (`@X074`) and the kind
+// rides on the draw call.  A per-vertex colour would be interpolated
+// across every triangle and each gradient pixel would be a fault.
+//
+// ── ⚠⚠ CULLING IS ON, AND THIS FILE TURNS IT ON ─────────────────
+//
+// `GL_CULL_FACE` is enabled here rather than left to the caller,
+// because the ground's correctness argument depends on it and a
+// correctness argument nobody can forget is worth a line.  M0 gates the
+// top face's winding and M1 the side quad's, both as DATA — and the
+// reason they are gated three phases early is that a reversed winding
+// changes no count, no height and no vertex position, and draws
+// NOTHING once culling is on.  Leaving culling off would make the
+// wrong winding LOOK fine here and fail the day somebody enabled it.
+//
+// ⚠ Depth testing likewise: a wall drawn before the grass beside it
+// must still stand in front of it, and the kind-at-a-time upload order
+// means the draw order is a palette order rather than a depth one.
+//
+// ── ⚠ One `GroupVboSet` per KIND, keyed by chunk ────────────────
+//
+// The set is `graphics`' published dirty-upload cache — *"call this
+// only for the DIRTY groups each edit; untouched groups keep their
+// cached VBOs"* — and the group key is the tile.  The per-kind split is
+// forced by the uniform: one draw call may carry one colour, so a kind
+// is a draw call and a tile is a buffer inside it.
+//
+// ⚠ **An element read out of a `vector<Struct>` ALIASES in loft**, so
+// the sets can live in a field and still be mutated through a local.
+// Measured before this file was written, because the sibling rule —
+// *a struct STORED in a field of another struct is a copy* — points
+// the other way, and getting it wrong would make every upload a silent
+// no-op with a green suite over it.
+
+use lattice;
+use palette;
+use painted;
+use height;
+use passable;
+use render;
+use render_camera;
+use mesh_chunks;
+use ground_mesh;
+use mesh3d;
+use graphics;
+use gridmesh;
+
+// ⚠ `graphics` declares these file-scope and NOT `pub`, so they do not
+// cross the package boundary.  Mirrored from `graphics.loft` § GL state
+// and § Draw modes.  A wrong value here is silent — `gl_enable` of an
+// unknown capability does nothing — which is why `ground_gl_draw` is
+// the only caller and the gate asserts the picture rather than the flag.
+pub const GL_CAP_DEPTH_TEST: integer = 1;
+pub const GL_CAP_CULL_FACE:  integer = 3;
+pub const GL_MODE_TRIANGLES: integer = 0;
+
+// Cull the BACK face — GL's default, restated because the whole winding
+// argument (M0, M1) is an argument about which face is front.
+pub const GL_CULL_BACK: integer = 0;
+
+// pos (3) + normal (3), which is what `mesh3d::mesh_to_floats` emits.
+// ⚠ The normal is uploaded and unused: dropping to stride 3 would save
+// a third of the bandwidth and would mean the mesh a lit renderer needs
+// is not the mesh this one uploads.  M4's ratio is the trigger.
+pub const GROUND_GL_STRIDE: integer = 6;
+
+// The vertex stage is the camera and nothing else.
+//
+// ⚠ A BACKTICK string with DOUBLED braces: loft interpolates `{…}` in
+// every string form, so a GLSL block has to be written `{{ }}`.  A
+// plain `"…"` fails to parse at the first `{`, naming the shader line.
+pub const GROUND_GL_VERT: text = `
+#version 330 core
+layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec3 aNormal;
+uniform mat4 uVP;
+void main() {{ gl_Position = uVP * vec4(aPos, 1.0); }}
+`;
+
+// One uniform colour, and nothing read — see § Flat unlit is a gate
+// requirement.
+pub const GROUND_GL_FRAG: text = `
+#version 330 core
+uniform vec3 uColor;
+out vec4 FragColor;
+void main() {{ FragColor = vec4(uColor, 1.0); }}
+`;
+
+// The shader's uniform names, in one place — a misspelling is silent
+// (`gl_set_uniform_*` looks the name up and returns quietly when it is
+// not found), so the two sites that must agree are named once.
+pub const GROUND_GL_U_VP:    text = "uVP";
+pub const GROUND_GL_U_COLOR: text = "uColor";
+
+// The GPU-side ground: the program, and one upload cache per kind.
+pub struct GroundGl {
+    program: integer,
+    sets:    vector<GroupVboSet>,
+}
+
+// Compile the shader and open one cache per palette kind.
+//
+// ⚠ `program` is 0 when the link failed, and every draw is then a quiet
+// no-op — `ground_gl_ready` is what a caller asks instead of assuming.
+pub fn ground_gl_new(kinds: integer) -> GroundGl {
+    ggn = GroundGl {
+        program: gl_create_shader(GROUND_GL_VERT, GROUND_GL_FRAG),
+        sets:    [],
+    };
+    for _ in 0..kinds {
+        ggn.sets += [group_vbos_new(GROUND_GL_STRIDE, GL_MODE_TRIANGLES)];
+    }
+    ggn
+}
+
+// Did the shader link?  A frame drawn through a program of 0 is black,
+// and a black frame satisfies `other == 0` perfectly — which is the
+// trap `plans/25` § M3 names, so the gate asks this out loud.
+pub fn ground_gl_ready(gg: const GroundGl) -> boolean {
+    gg.program != 0 && len(gg.sets) > 0
+}
+
+// One palette kind's colour, as the three 0..1 floats the uniform takes.
+//
+// ⚠ **The exactness of the whole gate chain passes through here.**  GL
+// converts a float channel back to 8 bits by `round(f * 255)`, so
+// `channel / 255.0` round-trips to the same byte — and
+// `tests/25_m3_the_ground_gl.loft` asserts that for all twelve kinds
+// rather than trusting the sentence.  ⚠ It reads `render.loft`'s
+// `palette_color`, which is the table `classify_canvas` builds its
+// buckets from: a second colour table would let the drawing and the
+// measurement drift apart, and each would still look right alone.
+//
+// Example: @DRY-001, @DRY-002, @DRY-003
+pub fn ground_gl_colour(kind: integer) -> (float, float, float) {
+    ggc = palette_color(kind as u8? ?? 0);
+    (
+        ((((ggc >> 16) & 255) as float) / 255.0) ?? 0.0,
+        ((((ggc >> 8)  & 255) as float) / 255.0) ?? 0.0,
+        (((ggc         & 255) as float) / 255.0) ?? 0.0,
+    )
+}
+
+// One tile's world bounds, for the set's stored cull box.
+//
+// ⚠ `group_vbos_upsert` names its four `min_x / min_z / max_x / max_z`
+// — a Y-up, ground-in-XZ frame, which is moros's and not dryopea's.
+// dryopea's ground lies in XY with `+z` up (`lat_to_world`), so the
+// `_z` arguments take dryopea's **y**.  The bounds are only stored (for
+// a frustum cull that does not exist yet), so this is a naming mismatch
+// rather than a fault — and it is exactly the shape of thing that gets
+// the wrong pair passed to it, which is why it is computed once here.
+fn ground_gl_bounds(cx: integer, cy: integer) -> (float, float, float, float) {
+    ggb_span = mesh_chunk_span();
+    ggb_o    = mesh_chunk_origin(cx, cy);
+    ggb_lo   = lat_to_world(ggb_o, 0.0);
+    ggb_hi   = lat_to_world(Hex { q: ggb_o.q + ggb_span, r: ggb_o.r + ggb_span }, 0.0);
+    // ⚠ min/max rather than lo/hi: the y negation in `lat_to_world`
+    // means the tile's high ROW is its low world y.
+    (
+        if ggb_lo.x < ggb_hi.x { ggb_lo.x } else { ggb_hi.x },
+        if ggb_lo.y < ggb_hi.y { ggb_lo.y } else { ggb_hi.y },
+        if ggb_lo.x > ggb_hi.x { ggb_lo.x } else { ggb_hi.x },
+        if ggb_lo.y > ggb_hi.y { ggb_lo.y } else { ggb_hi.y },
+    )
+}
+
+// Re-mesh and re-upload exactly these tiles.
+//
+// ⚠ **Every kind, not only the kinds present.**  A tile whose last wall
+// was just erased has to have its `wall` group EMPTIED, or the buffer
+// stays on the GPU and the wall goes on being drawn after the map says
+// it is gone — a stale frame that no state assertion can see.  So a
+// kind the tile no longer holds is upserted with zero vertices, which
+// `group_vbos_draw_all` skips.
+//
+// ⚠ It is skipped where the set has nothing for that tile anyway, so a
+// first build costs one upload per kind that is actually there rather
+// than twelve per tile.
+pub fn ground_gl_upload_chunks(gg: GroundGl, pal: vector<GroundType>, pw: PaintedWorld,
+                               hl: const HeightLayer, cks: vector<ChunkKey>) {
+    for ggu_k in cks {
+        ggu_have = ground_chunk_kinds(pal, pw, hl, ggu_k.cx, ggu_k.cy);
+        ggu_b    = ground_gl_bounds(ggu_k.cx, ggu_k.cy);
+        for ggu_i in 0..len(gg.sets) {
+            ggu_set = gg.sets[ggu_i];
+            if ggu_set == null { continue; }
+
+            ggu_present = false;
+            for ggu_h in ggu_have {
+                if ggu_h == ggu_i { ggu_present = true; }
+            }
+            if !ggu_present {
+                // Nothing of this kind here.  Clear the tile's group
+                // only if it HAS one — an upsert of nothing still makes
+                // a VAO, so clearing a group that never existed is pure
+                // cost on every tile of every empty kind.
+                if ggu_set.slots[ggu_k.ck] != null {
+                    ggu_empty: vector<single> = [];
+                    group_vbos_upsert(ggu_set, ggu_k.ck, ggu_empty,
+                                      ggu_b.0 as single, ggu_b.1 as single,
+                                      ggu_b.2 as single, ggu_b.3 as single);
+                }
+                continue;
+            }
+
+            ggu_m = mesh("ground");
+            ground_chunk_mesh(ggu_m, pal, pw, hl, ggu_k.cx, ggu_k.cy, ggu_i);
+            group_vbos_upsert(ggu_set, ggu_k.ck, mesh_to_floats(ggu_m),
+                              ggu_b.0 as single, ggu_b.1 as single,
+                              ggu_b.2 as single, ggu_b.3 as single);
+        }
+    }
+}
+
+// Every tile the world has anything to draw in — a cold build.
+pub fn ground_gl_upload_all(gg: GroundGl, pal: vector<GroundType>, pw: PaintedWorld,
+                            hl: const HeightLayer) {
+    ground_gl_upload_chunks(gg, pal, pw, hl, mesh_chunks_all(pw, hl));
+}
+
+// Re-upload everything ONE edit can have moved.
+//
+// ⚠ The tile list is `mesh_chunks_touched`, which is the same mechanism
+// the build rule sums over — deriving the two separately is how a tile
+// edge goes stale (`mesh_chunks.loft` § There is no ChunkField here).
+pub fn ground_gl_upload_edit(gg: GroundGl, pal: vector<GroundType>, pw: PaintedWorld,
+                             hl: const HeightLayer, q: integer, r: integer) {
+    ground_gl_upload_chunks(gg, pal, pw, hl, mesh_chunks_touched(q, r));
+}
+
+// Draw every uploaded tile, one palette kind at a time.
+//
+// ⚠ The GL state is set HERE — see § Culling is on.  ⚠ And the kind
+// order is the sets' order, which is the palette's: an upload order and
+// a draw order that are both the palette's are one fact, and the depth
+// buffer is what makes the picture independent of it.
+pub fn ground_gl_draw(gg: const GroundGl, vp: const Mat4) {
+    if !ground_gl_ready(gg) { return; }
+
+    gl_enable(GL_CAP_DEPTH_TEST);
+    gl_enable(GL_CAP_CULL_FACE);
+    gl_cull_face(GL_CULL_BACK);
+
+    gl_use_shader(gg.program);
+    gl_set_uniform_mat4(gg.program, GROUND_GL_U_VP, vp.m);
+
+    for ggd_i in 0..len(gg.sets) {
+        ggd_set = gg.sets[ggd_i];
+        if ggd_set == null { continue; }
+        if len(ggd_set.slots) == 0 { continue; }
+        ggd_c = ground_gl_colour(ggd_i);
+        gl_set_uniform_vec3(gg.program, GROUND_GL_U_COLOR, ggd_c.0, ggd_c.1, ggd_c.2);
+        group_vbos_draw_all(ggd_set);
+    }
+}
+
+// Free every VAO and the program.  ⚠ The sets are emptied rather than
+// dropped, so a caller may upload into the same `GroundGl` again after
+// a world reset.
+pub fn ground_gl_destroy(gg: GroundGl) {
+    for ggx_i in 0..len(gg.sets) {
+        ggx_set = gg.sets[ggx_i];
+        if ggx_set == null { continue; }
+        group_vbos_destroy(ggx_set);
+    }
+    if gg.program != 0 {
+        gl_delete_shader(gg.program);
+        gg.program = 0;
+    }
+}

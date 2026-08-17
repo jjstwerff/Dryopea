@@ -1,0 +1,137 @@
+# the-ground — plan 25 M3's headline fixture: a world that FILLS the frame.
+#
+# ⚠⚠ The filling is the whole design of this file.  M3's gate says
+# `other == 0` — no pixel that is not a palette colour — and a 3-D frame
+# of a finite world is mostly BACKGROUND, which is not a palette colour
+# by deliberate choice (`plans/25` § Open 5: make the clear colour a
+# palette colour and an erased-gap hole becomes invisible to the gate).
+# So the camera has to look at nothing but ground, and that means the
+# paint has to reach past the frustum.
+#
+# At the overview's near boom (20 m, 89°, 60° fov, 4:3) the ground plane
+# spans about ±11.5 m by ±15.4 m, which is r ±11 and q ±12.  Painted to
+# q ±22 and r ±14, so a camera change has to be large before the gate
+# starts measuring the coastline instead of the ground.
+#
+# ⚠ The two LANDMARKS are the other half.  A per-kind pixel count is
+# permutation-invariant — a MIRRORED world has the identical counts — so
+# the gate also asks where two uniquely-coloured hexes landed and
+# compares that to `camera_screen`'s prediction.  They are:
+#
+#   sand at (-7,  7)   the only kind-4 hex in the world
+#   rock at ( 7, -5)   the only kind-7 hex in the world
+#
+# Both are off-axis and on opposite sides of the origin, so no
+# reflection and no quarter turn leaves both in place.  ⚠ Move either
+# and `src/gl_gate.loft` must move with it — it names them.
+#
+# ⚠⚠ **And both are FLAT, which is not a detail.**  The gate compares
+# the CENTROID of a colour with the projected centre of that hex's top
+# face, and a column that STANDS also draws its sides in the same
+# colour — sides that sit between the top face and the screen centre,
+# because a camera above the middle of the frame sees the inward face of
+# an off-centre column.  Measured: `wall_high` at (-5, 3) came out
+# **29 px** from its top face's centre for exactly that reason, where a
+# 1 m rubble pile came out 2.3 px.  A landmark at ground level in
+# ground-level surroundings emits no side quad at all (`@X046`), so its
+# centroid IS its centre and the tolerance can stay tight enough to mean
+# something.  ⚠ Loosening the tolerance instead would have hidden the
+# geometry rather than measured it.
+
+echo the-ground: a frame-filling world with two landmarks
+
+at 0 0 1
+
+# ── The ground.  One drag per row; 29 rows of 45. ──
+palette 5
+drag -22 -14 22 -14
+drag -22 -13 22 -13
+drag -22 -12 22 -12
+drag -22 -11 22 -11
+drag -22 -10 22 -10
+drag -22  -9 22  -9
+drag -22  -8 22  -8
+drag -22  -7 22  -7
+drag -22  -6 22  -6
+drag -22  -5 22  -5
+drag -22  -4 22  -4
+drag -22  -3 22  -3
+drag -22  -2 22  -2
+drag -22  -1 22  -1
+drag -22   0 22   0
+drag -22   1 22   1
+drag -22   2 22   2
+drag -22   3 22   3
+drag -22   4 22   4
+drag -22   5 22   5
+drag -22   6 22   6
+drag -22   7 22   7
+drag -22   8 22   8
+drag -22   9 22   9
+drag -22  10 22  10
+drag -22  11 22  11
+drag -22  12 22  12
+drag -22  13 22  13
+drag -22  14 22  14
+
+# ── A wall, deliberately NOT symmetric. ──
+#
+# A ring would be its own mirror image, and the landmarks would then be
+# the only thing standing between the gate and a reflected world.  This
+# one has a long SOUTH face (r = -7 is the smallest row, and r grows
+# NORTH — `camera.loft` § pan north is `r += 1`), two returns of unequal
+# length, and an open north-east corner.
+palette 9
+drag -9 -7  9 -7
+drag  9 -7  9  0
+drag -9 -7 -9  4
+drag -9  4 -2  4
+
+# ── Two more structure heights, for the per-kind counts to see. ──
+#
+# ⚠ Content, not landmarks: a 5 m column and a 1 m pile are exactly the
+# things whose drawn area is NOT centred on their top face, so they are
+# gated by pixel COUNT and never by position.
+palette 10
+click -5 3
+
+raise 7 -6 1.0 wreckage
+
+# ── The landmarks — flat, unique, and on opposite sides. ──
+palette 4
+click -7 7
+
+palette 7
+click 7 -5
+
+# ── What the SOFTWARE gate can already see about this world. ──
+#
+# ⚠ These are not the GL measurements — `.keys` has no GL verb and
+# deliberately does not (a frame command that needed a context would put
+# every one of the 33 headless scripts behind an X server).  They are
+# here so this fixture is a real scenario in its own right: play it with
+# `validate.sh` and the world is checked before anything is drawn.
+kind   0   0 grass
+kind  -5   3 wall_high
+kind   9  -3 wall
+kind  -9  -7 wall
+kind  23   0 sea
+kind   0  15 sea
+
+# The landmarks.  ⚠ That each is the ONLY hex of its kind is what makes
+# a centroid mean "where that hex is" — and `.keys` has no per-kind
+# census verb, so `src/gl_gate.loft` asserts it where it can actually be
+# seen: a second sand hex anywhere in the frame would roughly double the
+# colour's PIXEL COUNT, which the landmark check bands.
+kind  -7   7 sand
+kind   7  -5 rock
+
+# ⚠ The rubble landmark asserts BOTH halves, and the pair is the point.
+# `kind` reads the AUTHORED ground and a pile is a LAYER over it
+# (`CLAUDE.md` § Rubble is a LAYER, never a repaint), so the hex under
+# the heap is still grass — while the mesher colours it by the SURFACE
+# and draws it violet.  Assert only the pile and a mesher that lost the
+# surface lookup still passes here; assert only the ground and the
+# landmark below has nothing standing behind it.
+kind   7  -6 grass
+pile   7  -6 1.0 1.0

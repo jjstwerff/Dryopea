@@ -1,0 +1,515 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// The GL gate — plan 25 phase M3.
+//
+// `scripts/validate.sh` plays 33 scripts and measures what the SOFTWARE
+// rasteriser drew.  This is the same idea one rasteriser over: a world
+// authored in `.keys`, meshed by `ground_mesh.loft`, drawn by
+// `ground_gl.loft` through a real GL context, read back with
+// `gl_screenshot`, decoded by `imaging` and counted by the SAME
+// `classify_canvas` every band in this repo was sized against.
+//
+// ── ⚠⚠ Why this is a SEPARATE entry, and not rows in validate.sh ──
+//
+// `plan 21` § R4 says *"`scripts/validate.sh` gains GL scenarios under
+// `xvfb`"*.  Taken literally that puts all 33 existing scripts behind an
+// X server — and `docs/RENDERER.md` § R0's probe went out of its way to
+// avoid exactly that: its readback runs with no display *"on purpose:
+// the gate it stands for must not need a display, or it could not run in
+// CI either."*  So the headless gate stays headless and this one is
+// `scripts/validate_gl.sh`.  A machine with no xvfb still runs the gate
+// it can.  `@X076`.
+//
+// ── ⚠⚠ What `other == 0` means in a frame with a HORIZON ────────
+//
+// `plans/25` § Open 5 left this to M3, and it is a real tension.  A 3-D
+// frame of a finite world is mostly background; the background is not a
+// palette colour, so it lands in `unknown` and `other == 0` cannot hold.
+// The two ways out are to classify the clear colour as a bucket of its
+// own, or to point the camera at nothing but ground.
+//
+// ⚠ **The first is refused**, for the reason § Open 3 gives: an erased
+// gap in the paint draws a HOLE, a hole shows the clear colour, and the
+// only thing that makes that hole visible to a gate is those pixels
+// landing in `unknown`.  Classify the clear colour and `@X075`'s one
+// named failure mode goes silent.
+//
+// ⚠ So the clear colour is MAGENTA — `palette_color`'s own
+// "unknown kind" answer, and therefore not one of the twelve buckets —
+// and `the-ground` paints past the frustum so there is no background in
+// it at all.  `other == 0` then means exactly what it says: every pixel
+// of that frame is an exact palette colour.  `@X077`.
+//
+// ── ⚠⚠ And the fixture that proves the gate can FAIL ────────────
+//
+// `other == 0` is also what a gate that cannot see background reports,
+// and what a BLACK frame reports if black were bucketed.  So
+// `an-island` draws a patch far too small to fill the frame and asserts
+// the opposite — `other` large, and every one of those pixels EXACTLY
+// the clear colour.  ⚠ Without it the headline reading is a statement
+// about framing rather than about colour exactness, which is
+// `tests/21_r1`'s finding (a gate that reads PERFECT is as suspect as
+// one that reads wrong) arriving in a fourth place.
+//
+// ── ⚠⚠ A COUNT CANNOT SEE A MIRRORED WORLD ─────────────────────
+//
+// Per-kind pixel counts are permutation-invariant: reflect the world
+// about any axis and every count is identical.  `render_camera.loft`'s
+// header says a mirrored world is the failure that *"reads as a base
+// that is its own reflection rather than as an error"* — so the counts
+// alone would be blind to the one defect that file is most afraid of.
+//
+// ⚠ So the gate also asks WHERE two uniquely-coloured hexes landed and
+// compares that to `camera_screen`'s prediction — the same function
+// `@M022` measured the overview against the editor with.  That chains
+// the drawn pixels to the camera, and the camera to the software
+// rasteriser, which is `@X010`'s *two rasterisers over ONE geometry*
+// stated as something a frame can fail.  `@X078`.
+
+use lattice;
+use palette;
+use painted;
+use height;
+use passable;
+use render;
+use render_camera;
+use measure;
+use editor_step;
+use editor_view;
+use script;
+use ground_gl;
+use mesh3d;
+use graphics;
+use imaging;
+
+pub const GL_GATE_SCRIPTS_DIR: text = "tests/gl";
+pub const GL_GATE_SHOTS_DIR:   text = "shots";
+pub const GL_GATE_PALETTE:     text = "examples/palette.json";
+
+const GL_GATE_EXT: text = ".keys";
+
+// ⚠ The editor's own window size, so the GL frame and the software
+// frame are the same picture at the same resolution and a share
+// measured on one is comparable with a share measured on the other.
+pub const GL_GATE_W: integer = VIEW_W;
+pub const GL_GATE_H: integer = VIEW_H;
+
+// ⚠⚠ NOT a palette colour, and that is load-bearing — § What
+// `other == 0` means.  Magenta is what `render.loft::palette_color`
+// answers for a kind it does not know, so it is guaranteed to stay
+// outside the twelve buckets as the palette grows.
+//
+// Example: @DRY-004
+pub const GL_GATE_CLEAR: integer = 0xff00ff;
+
+// How far a landmark may sit from where the camera says it will, in
+// pixels.  ⚠ Not zero: a centroid is the average over a hex's whole
+// drawn area — top face plus whatever of its sides the camera can see —
+// and the prediction is the centre of one face.  `probe/m3` measured
+// the disagreement at 2.3 px; a mirror moves a landmark by hundreds, so
+// six is loose enough to be stable and tight enough to be a gate.
+//
+// Example: @DRY-009, @DRY-010
+pub const GL_GATE_MARK_TOLERANCE: float = 6.0;
+
+pub struct GlGateReport {
+    cases:   integer,
+    passed:  integer,
+    failed:  integer,
+    checks:  integer,
+    shots:   integer,
+    message: text,      // "" when green
+}
+
+pub fn gl_gate_report_empty() -> GlGateReport {
+    GlGateReport { cases: 0, passed: 0, failed: 0, checks: 0, shots: 0, message: "" }
+}
+
+// ─── Measurement, printed beside the band it wanted ─────────────
+//
+// Same contract as `script.loft`'s `measure_*`: a passing measurement
+// PRINTS, so the transcript is a record of what was checked rather than
+// only of what broke.  A gate that speaks only on failure cannot be read
+// afterwards.
+
+fn gl_band(rep: GlGateReport, label: text, got: integer, lo: integer, hi: integer) -> text {
+    if got < lo || got > hi {
+        return "{label}: {got}, wanted {lo}..{hi}";
+    }
+    println("   ok  {label}: {got}  ({lo}..{hi})");
+    rep.checks += 1;
+    ""
+}
+
+fn gl_exact(rep: GlGateReport, label: text, got: integer, want: integer) -> text {
+    if got != want {
+        return "{label}: {got}, wanted exactly {want}";
+    }
+    println("   ok  {label}: {got}");
+    rep.checks += 1;
+    ""
+}
+
+fn gl_at_least(rep: GlGateReport, label: text, got: integer, lo: integer) -> text {
+    if got < lo {
+        return "{label}: {got}, wanted at least {lo}";
+    }
+    println("   ok  {label}: {got}  (>= {lo})");
+    rep.checks += 1;
+    ""
+}
+
+// ─── Reading a captured frame back ──────────────────────────────
+
+// A PNG on disk, as a `Canvas` — so `classify_canvas` reads a GL frame
+// on exactly the terms it reads a software one.
+//
+// ⚠ Re-implementing the count here instead would measure a classifier
+// nobody ships; `probe/r0` did that and could only say the PIXELS
+// survived, not that the instrument agrees about them.
+pub fn gl_png_canvas(path: text) -> Canvas {
+    gpc_img = file(path).png();
+    if gpc_img == null { return canvas(0, 0, 0); }
+    gpc_cv = canvas(gpc_img.width, gpc_img.height, 0);
+    gpc_d  = &gpc_cv.data;
+    gpc_i  = 0;
+    for gpc_p in gpc_img.data {
+        gpc_d[gpc_i] = gpc_p.value();
+        gpc_i += 1;
+    }
+    gpc_cv
+}
+
+// How many pixels are EXACTLY this colour.
+//
+// ⚠ Separate from `classify_canvas`, which folds everything unrecognised
+// into one `unknown`.  The gate needs to say *the unknown pixels are the
+// background and nothing else*, and that needs the background counted by
+// name.
+pub fn gl_count_colour(cv: const Canvas, want: integer) -> integer {
+    gcc_d = &cv.data;
+    gcc_n = cv.width * cv.height;
+    gcc_c = 0;
+    for gcc_i in 0..gcc_n {
+        if ((gcc_d[gcc_i] ?? 0) & 0xffffff) == want { gcc_c += 1; }
+    }
+    gcc_c
+}
+
+// Where the pixels of one colour sit, on average, and how many there
+// are.  ⚠ The count comes back with the position because a centroid
+// over zero pixels is the origin, and the origin is a plausible-looking
+// answer — the caller must assert the landmark was drawn at all.
+pub fn gl_centroid(cv: const Canvas, want: integer) -> (float, float, integer) {
+    gce_d  = &cv.data;
+    gce_n  = cv.width * cv.height;
+    gce_sx = 0.0;
+    gce_sy = 0.0;
+    gce_c  = 0;
+    for gce_i in 0..gce_n {
+        if ((gce_d[gce_i] ?? 0) & 0xffffff) == want {
+            gce_sx += (((gce_i % cv.width) ?? 0) as float) ?? 0.0;
+            gce_sy += (((gce_i / cv.width) ?? 0) as float) ?? 0.0;
+            gce_c  += 1;
+        }
+    }
+    if gce_c == 0 { return (0.0, 0.0, 0); }
+    ((gce_sx / (gce_c as float)) ?? 0.0, (gce_sy / (gce_c as float)) ?? 0.0, gce_c)
+}
+
+// ─── The camera the gate photographs from ───────────────────────
+
+// The overview, pulled in to its near boom.
+//
+// ⚠ Not a bespoke camera: `camera_overview` at 89° is the preset
+// `@M022` measured against the editor's own view, so a frame taken
+// through it is comparable with every software measurement in the repo.
+// What is chosen here is only the BOOM, and it is chosen so a world a
+// `.keys` file can reasonably paint reaches past the frustum.
+//
+// Example: @DRY-007, @DRY-008
+pub fn gl_gate_camera() -> RenderCamera {
+    ggc = render_camera_default();
+    camera_overview(vec3(0.0, 0.0, 0.0), ggc);
+    ggc.distance = CAMERA_OVERVIEW_MIN_DISTANCE;
+    ggc
+}
+
+fn gl_gate_vp() -> Mat4 {
+    gv_cam = gl_gate_camera();
+    camera_view_projection(gv_cam, ((GL_GATE_W as float) / (GL_GATE_H as float)) ?? 1.0)
+}
+
+// ─── One landmark ───────────────────────────────────────────────
+
+// Where the CAMERA says a hex's top face will land, in pixels.
+//
+// ⚠ Split from the comparison below on purpose: this side is a
+// statement about the camera and the other is a statement about the
+// pixels, and folding them into one function would leave nothing to
+// disagree.  It reads the hex's real height, because a 5 m column's top
+// is displaced outward from a 0 m one by perspective and predicting the
+// ground plane would build that error into the tolerance.
+pub fn gl_predict(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+                  q: integer, r: integer) -> (float, float) {
+    camera_screen(gl_gate_vp(),
+                  lat_to_world(Hex { q: q, r: r }, hex_height(pal, pw, hl, q, r)),
+                  GL_GATE_W as float, GL_GATE_H as float)
+}
+
+// Did the hex whose colour is `want` land where the camera said it
+// would?  ⚠ This is the whole answer to *a count cannot see a mirrored
+// world*, so it asserts the landmark exists before it asserts where it
+// is.
+fn gl_landmark(rep: GlGateReport, cv: const Canvas, label: text, want: integer,
+               gl_p: (float, float), lo: integer, hi: integer) -> text {
+    gl_seen = gl_centroid(cv, want);
+    if gl_seen.2 == 0 {
+        return "landmark {label} drew NO pixels — a frame with the ground missing passes every count in this file";
+    }
+    // ⚠ **A centroid only means "where that hex is" while the colour is
+    // unique**, and `.keys` has no per-kind census verb to assert that
+    // with.  So it is asserted HERE, where it is visible: a second hex
+    // of this kind roughly doubles the colour's area, and two hexes on
+    // opposite sides of the prediction would average out to a centroid
+    // that passes.  The band is one hex's worth of pixels.
+    if gl_seen.2 < lo || gl_seen.2 > hi {
+        return "landmark {label} covers {gl_seen.2} px, wanted {lo}..{hi} — one hex's worth, so this is a second hex of the same kind or a camera that moved";
+    }
+
+    gl_dx = gl_seen.0 - gl_p.0;
+    gl_dy = gl_seen.1 - gl_p.1;
+    gl_d  = sqrt(gl_dx * gl_dx + gl_dy * gl_dy);
+    if gl_d > GL_GATE_MARK_TOLERANCE {
+        return "landmark {label}: the camera says ({gl_p.0:6.1}, {gl_p.1:6.1}) and the frame drew it at ({gl_seen.0:6.1}, {gl_seen.1:6.1}) — {gl_d:5.1} px away, so the drawn world is not the world the camera was pointed at";
+    }
+    println("   ok  landmark {label}: {gl_seen.2} px at ({gl_seen.0:6.1}, {gl_seen.1:6.1}), camera said ({gl_p.0:6.1}, {gl_p.1:6.1}) — {gl_d:4.1} px");
+    rep.checks += 1;
+    ""
+}
+
+// ─── The two cases ──────────────────────────────────────────────
+//
+// ⚠ Expectations live HERE and not in the `.keys` file, and the split is
+// deliberate: `.keys` has no GL verb, because a `frame` command that
+// needed a context would put all 33 headless scripts behind an X server.
+// The consequence is a rule — a fixture with no case below is a fixture
+// nobody measures — and `gl_gate_all` refuses an unknown name rather
+// than skipping it.
+
+fn gl_case_the_ground(rep: GlGateReport, cv: const Canvas, fc: const FrameCounts,
+                      pal: vector<GroundType>, pw: PaintedWorld,
+                      hl: const HeightLayer) -> text {
+    // ⚠⚠ The headline, and it is only meaningful because `an-island`
+    // proves the same instrument reports background when there is any.
+    gtg = gl_exact(rep, "pixels that are not a palette colour", fc.unknown, 0);
+    if gtg != "" { return gtg; }
+
+    gtg2 = gl_exact(rep, "background pixels", gl_count_colour(cv, GL_GATE_CLEAR), 0);
+    if gtg2 != "" { return gtg2; }
+
+    // ⚠ Sea is what the one-hex ring draws (`@X075`), so ZERO sea is the
+    // assertion that the paint really does reach past the frustum.  It
+    // is what stops the reading above from being about framing.
+    gtg3 = gl_exact(rep, "sea", fc.counts[0] ?? 0, 0);
+    if gtg3 != "" { return gtg3; }
+
+    // ⚠ Bands, not exact counts: a band survives a driver that
+    // rasterises an edge pixel differently, an exact count does not —
+    // and the failure this gate is for moves a count by tens of
+    // thousands, not by ones.
+    gtg4 = gl_band(rep, "grass",     fc.counts[5]  ?? 0, 480000, 560000);
+    if gtg4 != "" { return gtg4; }
+    gtg5 = gl_band(rep, "wall",      fc.counts[9]  ?? 0, 100000, 190000);
+    if gtg5 != "" { return gtg5; }
+    gtg6 = gl_band(rep, "wall_high", fc.counts[10] ?? 0,   4000,   7000);
+    if gtg6 != "" { return gtg6; }
+    gtg7 = gl_band(rep, "rubble",    fc.counts[11] ?? 0,   1000,   3000);
+    if gtg7 != "" { return gtg7; }
+
+    // ⚠⚠ The two the counts above cannot see — § A count cannot see a
+    // mirrored world.  Their coordinates are `tests/gl/the-ground.keys`'
+    // and that file says so.
+    // ⚠ Both are FLAT hexes in flat surroundings, and that is a
+    // requirement rather than a coincidence — a column that stands draws
+    // its SIDES in the same colour, and those sides sit between the top
+    // face and the screen centre, so its centroid is not its centre.
+    // Measured: `wall_high` at (-5, 3) reads 29 px off for that reason
+    // where a flat hex reads under one.  `tests/gl/the-ground.keys`
+    // carries the argument beside the paint.
+    gtg8 = gl_landmark(rep, cv, "sand at (-7, 7)",
+                       palette_color(4 as u8) & 0xffffff,
+                       gl_predict(pal, pw, hl, -7, 7), 900, 2400);
+    if gtg8 != "" { return gtg8; }
+    gl_landmark(rep, cv, "rock at (7, -5)",
+                palette_color(7 as u8) & 0xffffff,
+                gl_predict(pal, pw, hl, 7, -5), 900, 2400)
+}
+
+fn gl_case_an_island(rep: GlGateReport, cv: const Canvas, fc: const FrameCounts) -> text {
+    // ⚠⚠ The point of the whole fixture: the instrument CAN see a pixel
+    // that is not a palette colour.  Without this, `the-ground`'s zero
+    // is a reading from an instrument nobody has falsified.
+    gai = gl_at_least(rep, "pixels that are not a palette colour", fc.unknown, 500000);
+    if gai != "" { return gai; }
+
+    // ⚠ …and every one of them is the background rather than drift in
+    // the ground that WAS drawn.  This is the exactness claim
+    // `probe/m3` measured, kept measured.
+    gai2 = gl_exact(rep, "unknown pixels that are exactly the clear colour",
+                    gl_count_colour(cv, GL_GATE_CLEAR), fc.unknown);
+    if gai2 != "" { return gai2; }
+
+    // The island itself is drawn, and drawn small.  ⚠ A frame that drew
+    // nothing at all satisfies both assertions above.
+    gai3 = gl_band(rep, "grass", fc.counts[5] ?? 0, 20000, 140000);
+    if gai3 != "" { return gai3; }
+    gl_at_least(rep, "wall", fc.counts[9] ?? 0, 1000)
+}
+
+// ─── One case, end to end ───────────────────────────────────────
+
+fn gl_gate_one(rep: GlGateReport, name: text, scripts_dir: text, shots_dir: text,
+               palette_path: text) -> text {
+    if name != "the-ground" && name != "an-island" {
+        return "{name}{GL_GATE_EXT} has no case in `src/gl_gate.loft` — a fixture with no expectations is a fixture nobody measures";
+    }
+
+    ggo_pal = load_palette(palette_path);
+    ggo_s   = editor_state_new(palette_path);
+    editor_state_attach(ggo_s,
+                        "{shots_dir}/{name}.gl.save.json",
+                        "{shots_dir}/{name}.gl.save_markers.json");
+    ggo_run = script_run_file(ggo_s, "{scripts_dir}/{name}{GL_GATE_EXT}", shots_dir);
+    if !ggo_run.ok {
+        return "{name} line {ggo_run.line}: {ggo_run.message}";
+    }
+    rep.checks += ggo_run.checks;
+
+    // ── Mesh it, upload it, draw it ──
+    ggo_gg = ground_gl_new(len(ggo_pal));
+    if !ground_gl_ready(ggo_gg) {
+        return "{name}: the ground shader did not link — every frame below would be the clear colour";
+    }
+    ground_gl_upload_all(ggo_gg, ggo_pal, ggo_s.pw, ggo_run.play.wave.heights);
+
+    gl_clear(GL_GATE_CLEAR);
+    ground_gl_draw(ggo_gg, gl_gate_vp());
+
+    // ⚠ BEFORE the swap — `gl_screenshot` reads GL_BACK.
+    ggo_shot = "{shots_dir}/gl-{name}.png";
+    ggo_ok   = gl_screenshot(GL_GATE_W, GL_GATE_H, ggo_shot);
+    gl_swap_buffers();
+    ground_gl_destroy(ggo_gg);
+    if !ggo_ok {
+        return "{name}: gl_screenshot refused to write {ggo_shot}";
+    }
+    rep.shots += 1;
+
+    // ── Read it back through dryopea's own instrument ──
+    ggo_cv = gl_png_canvas(ggo_shot);
+    if ggo_cv.width != GL_GATE_W || ggo_cv.height != GL_GATE_H {
+        return "{name}: captured {ggo_cv.width}x{ggo_cv.height}, expected {GL_GATE_W}x{GL_GATE_H}";
+    }
+    ggo_fc = classify_canvas(ggo_cv, len(ggo_pal));
+
+    if name == "the-ground" {
+        return gl_case_the_ground(rep, ggo_cv, ggo_fc, ggo_pal, ggo_s.pw,
+                                  ggo_run.play.wave.heights);
+    }
+    gl_case_an_island(rep, ggo_cv, ggo_fc)
+}
+
+// ─── The sweep ──────────────────────────────────────────────────
+
+// Every fixture in `tests/gl/`, drawn and measured.
+//
+// ⚠ The preconditions are `validate.loft`'s, for its reasons: a gate
+// that finds no scripts, or loads no palette, and then reports "all
+// green" is the confident meaningless number this repo's second gate
+// exists to refuse.  One is added — the GL CONTEXT, without which every
+// draw is a quiet no-op and every frame is the clear colour.
+//
+// Example: @DRY-005, @DRY-006
+pub fn gl_gate_all(scripts_dir: text, shots_dir: text, palette_path: text,
+                   only: text = "") -> GlGateReport {
+    gga = gl_gate_report_empty();
+
+    if len(load_palette(palette_path)) == 0 {
+        gga.message = "palette {palette_path} loaded 0 entries — every colour below would be measuring against nothing";
+        return gga;
+    }
+    if list_dir(scripts_dir) == null {
+        gga.message = "no such fixtures directory: {scripts_dir}";
+        return gga;
+    }
+    gga_names: vector<text> = [];
+    gga_n = GL_GATE_EXT.size();
+    for gga_e in list_dir(scripts_dir) ?? [] {
+        if gga_e.size() > gga_n && gga_e.starts_with_at(gga_e.size() - gga_n, GL_GATE_EXT) {
+            gga_names += [gga_e[0..gga_e.size() - gga_n]];
+        }
+    }
+    if len(gga_names) == 0 {
+        gga.message = "{scripts_dir} holds no {GL_GATE_EXT} fixtures — a gate that sweeps nothing passes for the wrong reason";
+        return gga;
+    }
+
+    // ⚠⚠ A named fixture is resolved BEFORE the context is opened, and
+    // the order is load-bearing twice over.  It fails fast on a typo
+    // rather than after opening a window and sweeping past every name —
+    // and it is what lets `tests/25_m3` reach this path at all, because
+    // a GL call inside `loft test` answers *"native function not
+    // loaded"*.  Every branch a test can reach must come first.
+    if only != "" {
+        gga_found = false;
+        for gga_c in gga_names {
+            if gga_c == only { gga_found = true; }
+        }
+        if !gga_found {
+            gga.message = "no fixture named '{only}' in {scripts_dir}";
+            return gga;
+        }
+    }
+
+    if !gl_create_window(GL_GATE_W, GL_GATE_H, "dryopea gl gate") {
+        gga.message = "no GL context — run this under xvfb (scripts/validate_gl.sh does)";
+        return gga;
+    }
+
+    for gga_name in gga_names {
+        if only != "" && gga_name != only { continue; }
+
+        println("");
+        println("── {gga_name} ─────────────────────────────────────");
+        gga.cases += 1;
+        gga_msg = gl_gate_one(gga, gga_name, scripts_dir, shots_dir, palette_path);
+        if gga_msg == "" {
+            gga.passed += 1;
+            println("   ok — shots/gl-{gga_name}.png");
+        } else {
+            gga.failed += 1;
+            println("   FAILED — {gga_msg}");
+            if gga.message == "" { gga.message = gga_msg; }
+        }
+    }
+
+    gl_destroy_window();
+
+    if gga.message == "" && gga.checks == 0 {
+        gga.message = "{gga.cases} fixtures were drawn and not one of them measured anything";
+    }
+    gga
+}
+
+// The one line a shell reads at the end — `validate.loft`'s contract,
+// counts either way.
+pub fn gl_gate_verdict(r: const GlGateReport) -> text {
+    ggv = "validate-gl: {r.cases} fixtures, {r.passed} passed, {r.failed} failed, {r.checks} measurements, {r.shots} shots";
+    if r.message == "" {
+        "{ggv}\nvalidate-gl: all green"
+    } else {
+        "{ggv}\nvalidate-gl: FAILED — {r.message}"
+    }
+}

@@ -87,7 +87,8 @@ exists today.
 | AND IT EASES: the camera lives on `PlayState`, steps on every frame, and shortens its boom behind a wall.  ⚠⚠ The approach is **`1 − e^(−k·dt)`** and moros's linear `k·dt` was REFUSED — `play.loft` is frame-rate independent and the linear form is not (`@M023`).  ⚠⚠ **The ease is what makes a LATTICE look like a moving world**: un-eased the camera moves on 12 frames of 240 and jumps a whole hex, eased on 221 with a worst frame nine times smaller | [21](plans/21-the-renderer/README.md), R2 shipped — plan **complete** |
 | ⚠⚠ **THE GROUND IS NOT MESHED YET** — and the job is HALF what plan 21 sized it at.  dryopea's ground is a flat plane with pillars on it (`height_override` non-null on **2 of 12** palette kinds), so moros's corner-height MEAN is a no-op at every hex and the mesher does not blend (`@X072`); `mesh3d::mesh_to_floats` + `graphics::GroupVboSet` already publish the whole GPU-side chunk cache.  ⚠ Colour is a **UNIFORM**, one mesh per palette kind (`@X074`) — a flat-unlit frame built that way can only contain palette colours, which is what keeps the exact classification alive.  ⚠⚠ **A reversed fan changes no count, no height and no vertex position — and draws NOTHING under `GL_CULL_FACE`**, so M0 gates the winding as DATA three phases before anything is drawn | [25](plans/25-the-terrain-mesh/README.md), M0 shipped |
 | A COLUMN HAS SIDES: one vertical quad per edge where a hex stands above its neighbour, emitted **once**, by the side that STANDS.  ⚠⚠ **Both halves of `hh <= nh` fail invisibly** — no guard draws every faced edge twice and the copy is back-facing; `<` grows a zero-area sliver at every hex boundary in the world — so it is gated as four COUNTS on four fixtures (**6 / 10 / 0 / 5+6**).  ⚠⚠ A quad's NORMAL (from the two centres) and its WINDING (from the corner ring) are two facts that can disagree, and the test asserts they AGREE | [25](plans/25-the-terrain-mesh/README.md), M1 shipped |
-| THE WORLD, IN TILES: 32×32 hexes meshed one palette kind at a time, compared by folding the geometry to an integer, and the mesher's reach **measured** against `MESH_HALO_K` rather than restated — so plan 02's blend goes red here.  ⚠⚠ **The drawn region is the painted set plus a ONE-HEX RING** (`@X075`) — sea is stored as ABSENCE, so meshing what is stored leaves an erased region as a hole in the ground at the height of the land round it.  ⚠⚠ **M2's headline gate could not fail and its own control said so**: loft's keyed collections iterate in KEY order, not insertion order (`@M025`) | [25](plans/25-the-terrain-mesh/README.md), M2 shipped — M3 next |
+| THE WORLD, IN TILES: 32×32 hexes meshed one palette kind at a time, compared by folding the geometry to an integer, and the mesher's reach **measured** against `MESH_HALO_K` rather than restated — so plan 02's blend goes red here.  ⚠⚠ **The drawn region is the painted set plus a ONE-HEX RING** (`@X075`) — sea is stored as ABSENCE, so meshing what is stored leaves an erased region as a hole in the ground at the height of the land round it.  ⚠⚠ **M2's headline gate could not fail and its own control said so**: loft's keyed collections iterate in KEY order, not insertion order (`@M025`) | [25](plans/25-the-terrain-mesh/README.md), M2 shipped |
+| **AND IT IS DRAWN, AND GATED**: `make validate-gl` meshes a `.keys` world, draws it flat-unlit through real GL under `xvfb`, captures it and counts every pixel with **`classify_canvas` itself** — `other == 0` over 691 200 px.  ⚠⚠ **A per-kind COUNT cannot see a MIRRORED world** — every band stays green while the world is reflected, and only a LANDMARK against `camera_screen` sees it, at **490.8 px** (`@M027`, `@X078`).  ⚠ A landmark must be FLAT: a column draws its sides in the same colour, 29 px off | [25](plans/25-the-terrain-mesh/README.md), M3 shipped — M4 next |
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number
 is derived rather than picked: **a single-hex body ramp onto a structure
@@ -103,7 +104,7 @@ That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
 
-**Suite: 1227/1227 green under `scripts/test.sh`** (~177 s re-measured
+**Suite: 1237/1237 green under `scripts/test.sh`** (~177 s re-measured
 2026-08-17 — the `frame` measurements classify full 960x720 frames, the
 cost gate ticks a radius-40 world twice, and since plan 13 a dozen tests
 run whole scenarios to their fall.  ⚠ This line carried "~35 s" from
@@ -124,7 +125,17 @@ measurements).  ⚠ Plan 24 W2 moved **8 of the 33** — a steering change
 re-prices scenarios rather than breaking them, and the numbers of record
 are `@M020`.  ⚠ Plan 21 R1 **and** R2 moved **none of them**, which is
 the point: a camera is not a simulation, and the day it re-prices a
-scenario is the day something is reading it that should not be.
+scenario is the day something is reading it that should not be.  ⚠ Nor
+did any of plan 25's four phases: a MESHER is not a simulation either.
+
+**Third gate: 2 fixtures green under `scripts/validate_gl.sh`** (26
+measurements) — the ground actually DRAWN, through real GL under `xvfb`,
+captured and classified.  ⚠⚠ **It is deliberately NOT part of
+`validate.sh`** (`@X076`): folding it in would put all 33 headless
+scripts behind an X server, and `docs/RENDERER.md` § R0 went out of its
+way to prove the readback needs no display.  A machine with no xvfb
+still runs the 654.  ⚠ `make validate-gl`, or
+`make validate-gl FIXTURE=the-ground`.
 
 ⚠ **[loft#939](https://github.com/loft-lang/loft/issues/939) is FIXED
 and CLOSED** (loft `ac8fb1dc`, *"A vector field assigned from a view
@@ -174,6 +185,18 @@ rust-lld: error: unable to find library -lloft_graphics_native
 which is a DIFFERENT library's auto-cdylib (`hex_grid`) linking against
 `graphics` while `libloft_graphics_native.so` is absent.  loft rebuilds
 graphics 2-3 times in a single run and the artefact ends up missing.
+
+⚠ **Seen again 2026-08-17** (plan 25 M3), as `gridmesh`'s auto-cdylib
+failing to link with `libloft_graphics_native.so` simply gone from
+`~/.loft/build-cache/graphics-0.5.2/release/`.  ⚠ Two things worth
+knowing: **`ps` showed another project (`moros`) mid-`cargo build`** on
+the same box, which is the correlate every occurrence has had; and
+**plan 25 M3 added `imaging` to `loft.toml`, which widens the link line**
+(`-lloft_graphics_native -lloft_imaging`) without being the cause — the
+missing artefact was `graphics`, which was already the documented one.
+⚠ The hand rebuild below fixed it, and it emitted a `.fingerprint` write
+error while still producing a good `.so` — another sign of a concurrent
+writer rather than of a broken build.
 
 ⚠ **Two explanations were tried and FALSIFIED, so skip them**: it is not
 simply *two loft binaries sharing `~/.loft/build-cache`* (it reproduces
@@ -510,6 +533,28 @@ wrong justification** is what to look for when a gate refuses to fail.
 ⚠ The other direction is plan 12 B3's fence tripwire: written to go red the
 day a steering rule landed, still green when it did (`@M020`).
 
+⚠⚠ **A COUNT IS PERMUTATION-INVARIANT, SO IT CANNOT SEE A MIRRORED
+WORLD** (plan 25 M3, `@M027`).  Reflect the drawn world in y — tops and
+sides together, winding reversed to match — and the GL gate reports
+`other == 0`, `sea == 0`, and grass / wall / wall_high / rubble every one
+**in band**.  Only a LANDMARK, compared against `camera_screen`'s own
+prediction, sees it, and it sees it at **490.8 px**.
+⚠ `render_camera.loft` calls a mirrored world the failure that *"reads as
+a base that is its own reflection rather than as an error"*, so a gate
+built out of counts is blind to the one defect that file is most afraid
+of.  **Any gate that counts pixels needs one assertion about WHERE.**
+⚠ **A landmark has to be FLAT**: a column that stands draws its sides in
+its own colour, and those sides sit between the top face and the screen
+centre (a camera above the middle of the frame sees the inward face of an
+off-centre column) — measured at **29 px** for a 5 m `wall_high` against
+**0.6 px** for a flat hex.  Loosening the tolerance would have hidden
+that rather than measured it.
+⚠⚠ **And a FALSIFICATION has to be clean or it proves the wrong claim.**
+The first mirror attempt moved only the tops, so tops and sides disagreed
+and opened background — the gate fired on `other` and the landmark check
+was never reached.  A gate that reports its FIRST failure ranks its
+assertions exactly as M1's bundled test function did.
+
 ⚠⚠ **AN EMPTY ARTEFACT SATISFIES EVERY EQUALITY** (plan 25 M2).
 `mesh_crc` of an empty mesh is **0** — the fold starts at all-ones and ends
 by inverting — so a mesher stubbed to emit nothing makes every *"one build
@@ -697,6 +742,13 @@ scripts/test.sh
 scripts/validate.sh                  # all of them (~11 s)
 scripts/validate.sh paint-a-base     # just one, while iterating
 
+# Draw every tests/gl/*.keys through REAL GL and classify the frame —
+# the THIRD gate (plan 25 M3).  Needs xvfb; `validate.sh` deliberately
+# does not, so a machine without it still runs the 654.  Captures land
+# in shots/gl-*.png.  `make validate-gl` is the same thing.
+scripts/validate_gl.sh               # both fixtures
+scripts/validate_gl.sh the-ground    # just one
+
 # Run the game / editor (opens a 960x720 GL window; P toggles play).
 # Use `make play` — it passes --interpret, and the NATIVE backend is
 # broken for dryopea today: it panics on the marker load, and where it
@@ -784,6 +836,8 @@ navigational summary of it.
 | `render_camera.loft` | **the GAME's camera** (plan 21 R1) — `RenderCamera`, the two presets, and `lat_to_world`; and since R2 the EASE — `CameraRig`, `camera_rig_step`, `camera_boom_free`.  ⚠⚠ Its world is `+y` **NORTH** with `+z` up, which is NOT dryopea's `+y`-south canvas frame: that one is left-handed once z points up, and `mat4_look_at` MIRRORS it.  ⚠ Assert on `camera_eye_of_view`, never on the struct.  ⚠⚠ The approach is `1 − e^(−k·dt)`, never `k·dt` |
 | `ground_mesh.loft` | **the GROUND, as triangles** (plan 25 M0-M2) — `ground_top_face`, a six-triangle fan per hex in the CAMERA's world; `ground_side_faces`, one vertical quad per faced edge; and `ground_chunk_mesh` / `ground_chunk_kinds`, one TILE for one palette kind.  ⚠⚠ There is no blend and that is measured, not lazy (`@X072`): the corner mean is a no-op at every hex in both directions.  ⚠ HEIGHT off `hex_height`, COLOUR off `hex_surface_index` — two lookups, and swapping them makes debris LOWER a wall.  ⚠ Colour is a UNIFORM, so it emits one mesh per palette kind (`@X074`); putting it on the vertex throws away the exact classification.  ⚠⚠ A side face is emitted ONCE, by the column that STANDS (`if hh <= nh { continue; }`) — and **both halves of that guard fail invisibly**, so they are gated as COUNTS.  ⚠⚠ A tile is walked by COORDINATE, and the reason is COVERAGE rather than determinism (`@M025`) |
 | `mesh_chunks.loft` | **the mesher's DOMAIN** (plan 25 M2) — which hexes are drawn, which 32×32 tile each lands in, and which tiles an edit invalidates.  ⚠⚠ The drawn region is the painted set **plus a one-hex ring** (`@X075`), because sea is stored as absence — and its limit (a gap wider than two hexes still holes) is asserted so closing it is deliberate.  ⚠⚠ **TWO reaches share the value 1 and not a constant**: `MESH_HALO_K` is how far an edit REACHES, the ring is how far past the paint anything is DRAWN.  ⚠⚠ No `ChunkField` — `collect_dirty_inputs` skips a dirty chunk owning no cells, and `mark_borders` steps chunk coords rectangularly.  ⚠ `mesh_chunks_touched` is ONE mechanism: the dirty rule read as an edit, the tile list summed over the paint |
+| `ground_gl.loft` | **the ground, DRAWN** (plan 25 M3) — one flat-unlit shader, one `graphics::GroupVboSet` per palette kind keyed by chunk, the kind's colour as a UNIFORM.  ⚠⚠ Flat unlit is a GATE requirement (`@X074`): the frame can only contain palette colours, so `classify_canvas`'s exact lookup survives GL — measured at zero drift (`@M026`).  ⚠⚠ It turns `GL_CULL_FACE` **on** itself, because M0's and M1's winding arguments depend on it and a reversed winding draws NOTHING with every other valve healthy.  ⚠ `_upload_chunks` CLEARS a kind a tile no longer holds, or the GPU goes on drawing an erased wall |
+| `gl_gate.loft` / `gl_gate_main.loft` | **the THIRD gate** (plan 25 M3) — sweep `tests/gl/*.keys`, draw each through real GL, capture, decode with `imaging`, count with `classify_canvas` ITSELF.  ⚠⚠ A per-kind COUNT cannot see a MIRRORED world (`@X078`), so it also asks WHERE two uniquely-coloured hexes landed vs `camera_screen`.  ⚠ Expectations live HERE, never in the `.keys` file — a fixture with no case is REFUSED by name.  ⚠ Every branch a TEST can reach comes before `gl_create_window` |
 | `mesh_crc.loft` | **do two mesh builds agree?** (plan 25 M2) — the geometry folded to one integer, because a count cannot see a mesh with the right vertices in the wrong places and a golden agrees with a shear.  ⚠⚠ It folds the **TRIANGLES** too, where moros's port folds vertices only: a top face SHARES its rim vertices, so M0's reversed fan moves no vertex at all.  ⚠ It ROUNDS where moros's truncates, and that guard was unreachable until a branch test reached it.  ⚠⚠ An **empty mesh folds to 0**, so every equality needs a non-zero floor.  ⚠ It belongs in `mesh3d` |
 | `painted.loft` | `PaintedHex` / `PaintedWorld` — sparse, sea-default ground |
 | `palette.loft` | `GroundType` + `load_palette` + `GROUND_RUBBLE` |
@@ -1179,7 +1233,8 @@ signature.
 | Mesh a TILE, or ask which tiles an edit invalidates | `src/ground_mesh.loft::ground_chunk_mesh` (one tile, one palette kind) over `src/mesh_chunks.loft` (the domain), and [`plans/25`](plans/25-the-terrain-mesh/README.md) § M2.  ⚠⚠ **`mesh_chunks_touched` is ONE mechanism read two ways** — as an edit it is the dirty rule, summed over the paint it is the tile list; derive them separately and they disagree about a tile edge.  ⚠⚠ **No `ChunkField`, and that is a change of plan** (`@X075`): `collect_dirty_inputs` SKIPS a dirty chunk owning no cells, which with a one-hex ring is a tile that still has sea to draw, and `mark_borders` steps CHUNK coords rectangularly where only `lat_neighbour` may step a coordinate.  ⚠ `gridmesh::chunk_of` still earns its keep — its `chunk_div` FLOORS, which a hand-rolled `>>` gets wrong left of the origin.  ⚠ The kind list is ASCENDING because it is an upload order |
 | Ask what draws SEA, or why the mesh is wider than the paint | `src/mesh_chunks.loft::mesh_hex_drawn` and [`plans/25`](plans/25-the-terrain-mesh/README.md) § M2 — ⚠⚠ **the drawn region is the painted set PLUS A ONE-HEX RING** (`@X075`), because `painted.loft` ERASES a hex painted sea: mesh only what is stored and an erased region is a **hole in the ground at exactly the height of the land around it**, which no side quad covers (sea and grass are both 0 m).  ⚠ **Its limit is asserted, not assumed** — a gap wider than two hexes still holes, and `test_a_gap_wider_than_the_ring_still_holes` pins it so closing it is deliberate.  ⚠ The two rejected candidates each fail on a principle: a bounding box is unbounded cost on a sparse world, and the tile's full extent makes how far the ocean reaches a function of where the tile boundaries fell.  ⚠ The real answer is water's **DROP**, which the palette already carries and nothing reads — a SIMULATION decision, so [`plan 02`](plans/02-solver-validation-viewer/README.md)'s |
 | Compare two builds of one mesh | `src/mesh_crc.loft::mesh_crc` — the geometry folded to one integer, because a COUNT cannot see a mesh with the right number of vertices in the wrong places and a golden AGREES WITH A SHEAR.  ⚠⚠ It folds the **TRIANGLES** as well as the vertices, where moros's port folds vertices only: `ground_top_face` SHARES its six rim vertices between the six fan triangles, so **M0's reversed fan moves no vertex at all**.  ⚠⚠ **An empty mesh folds to 0**, so every equality needs a non-zero floor.  ⚠ The SCALE is a tolerance and it ROUNDS rather than truncates — every palette height sits exactly on truncation's discontinuity — and reaching that branch needs its own test, because every comparison in a gate runs identical arithmetic on identical inputs.  ⚠ It belongs in `mesh3d`; the trigger to move it is a second non-test caller |
-| Gate anything that is DRAWN by GL | [`docs/RENDERER.md`](docs/RENDERER.md) § R0 + § R4 — `xvfb` → GL → `gl_screenshot` → `imaging::png` → `classify_world`, measured at **zero** colour drift.  ⚠ Render FLAT UNLIT for the gate: a shaded frame turns one palette colour into a range and `unknown` stops meaning "fault".  ⚠ Never loosen to nearest-colour — that discards the property R0 measured |
+| Gate anything that is DRAWN by GL | `scripts/validate_gl.sh` over `src/gl_gate.loft` (BUILT, plan 25 M3) and [`docs/RENDERER.md`](docs/RENDERER.md) § R4 — `xvfb` → GL → `gl_screenshot` → `imaging::png` → **`classify_canvas` itself**, measured at **zero** colour drift for a blit (`@M002`) and for a SHADER (`@M026`).  ⚠ Render FLAT UNLIT: a shaded frame turns one palette colour into a range and `unknown` stops meaning "fault".  ⚠ Never loosen to nearest-colour — that discards the property R0 measured.  ⚠⚠ **And never gate on COUNTS alone**: a mirrored world passes every band (`@M027`), so add a LANDMARK against `camera_screen` |
+| Add a GL fixture, or ask why `other == 0` is a legal thing to ask | `tests/gl/*.keys` + a case in `src/gl_gate.loft` — ⚠ a fixture with no case there is REFUSED by name, because `.keys` has no GL verb and must not grow one (`@X076`).  ⚠⚠ **`other == 0` is only legal for a fixture that FILLS the frame** (`@X077`): the clear colour is magenta and deliberately outside the palette, so a hole and a horizon both read as faults — a fixture that cannot fill the frame asserts `an-island`'s shape instead (`other` large, and every one of those pixels EXACTLY the clear colour).  ⚠ A LANDMARK must be a FLAT hex in flat surroundings: a column draws its sides in its own colour and they sit between the top face and the screen centre, 29 px off for a 5 m wall against 0.6 px flat |
 | Ask what a tower's top is, in the art | `docs/PARTS.md` § D3 — it is a SOCKET, and the simulation has had one since plan 17 T2 (`tower_detach_top` / `tower_mount_top`, which refuses an occupied tower).  ⚠ Which pose a tower draws in is ASKED of `TowerState`, never a second flag beside it |
 | Write/edit a `.loft` file | Loft language conventions: see § Important conventions above + loft's own `loft-write` skill |
 | Run the editor | `loft src/main.loft` |

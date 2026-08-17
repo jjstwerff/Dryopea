@@ -1,0 +1,63 @@
+// Probe M3, third question — is the GL frame's NORTH the same north the
+// software rasteriser draws?
+//
+// The captured frame put the rubble heap at (2, 2) ABOVE the wall_high
+// hex at (0, 0), and r grows SOUTH.  Either the eye is reading it right
+// and the reasoning is wrong, or the mesher and the camera disagree about
+// a y-negation — which is the one defect `render_camera.loft`'s header
+// says mirrors the world while every valve reads healthy.
+//
+// So: where does `camera_screen` PREDICT those two hexes land, and where
+// did the pixels actually go?  A prediction that matches is the answer.
+
+#cwd
+
+use dryopea;
+use imaging;
+use mesh3d;
+
+const PROBE_W: integer = 960;
+const PROBE_H: integer = 720;
+
+fn centroid(img: Image, want: integer) -> (float, float, integer) {
+    ct_sx = 0.0;
+    ct_sy = 0.0;
+    ct_n  = 0;
+    ct_i  = 0;
+    for ct_p in img.data {
+        if ct_p.value() == want {
+            ct_sx += ((ct_i % PROBE_W) as float) ?? 0.0;
+            ct_sy += ((ct_i / PROBE_W) as float) ?? 0.0;
+            ct_n  += 1;
+        }
+        ct_i += 1;
+    }
+    if ct_n == 0 { return (0.0, 0.0, 0); }
+    ((ct_sx / (ct_n as float)) ?? 0.0, (ct_sy / (ct_n as float)) ?? 0.0, ct_n)
+}
+
+fn main() {
+    cam = render_camera_default();
+    camera_overview(vec3(0.0, 0.0, 0.0), cam);
+    cam.distance = CAMERA_OVERVIEW_MIN_DISTANCE;
+    vp = camera_view_projection(cam, (PROBE_W as float) / (PROBE_H as float) ?? 1.333);
+
+    // PREDICTED, through the function every plan-21 assertion goes
+    // through.  ⚠ `camera_screen` answers y DOWN — canvas convention.
+    p00 = camera_screen(vp, lat_to_world(Hex { q: 0, r: 0 }, 5.0),
+                        PROBE_W as float, PROBE_H as float);
+    p22 = camera_screen(vp, lat_to_world(Hex { q: 2, r: 2 }, 1.0),
+                        PROBE_W as float, PROBE_H as float);
+    println("WHERE: predicted (0,0) at ({p00.0}, {p00.1})");
+    println("WHERE: predicted (2,2) at ({p22.0}, {p22.1})");
+
+    img = file("capture_out.png").png();
+    if img == null { println("WHERE: FAIL — no capture to compare against"); return; }
+    m00 = centroid(img, 0x7a1818);        // wall_high, the lone hex at (0,0)
+    m22 = centroid(img, 0x8878a8);        // rubble, the lone heap at (2,2)
+    println("WHERE: measured  (0,0) at ({m00.0}, {m00.1})  over {m00.2} px");
+    println("WHERE: measured  (2,2) at ({m22.0}, {m22.1})  over {m22.2} px");
+
+    println("WHERE: dy predicted {p22.1 - p00.1}, measured {m22.1 - m00.1}");
+    println("WHERE: dx predicted {p22.0 - p00.0}, measured {m22.0 - m00.0}");
+}

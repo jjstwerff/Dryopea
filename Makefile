@@ -32,6 +32,16 @@
 #   make validate SCRIPT=paint-a-base
 #                   Just that one script, for iterating on a scenario.
 #
+#   make validate-gl
+#                   The THIRD gate (plan 25 M3): draw every fixture in
+#                   tests/gl/ through a real GL context under xvfb,
+#                   capture the frame and classify every pixel.  Needs
+#                   xvfb; `make validate` does not, and that split is
+#                   deliberate — see scripts/validate_gl.sh.
+#
+#   make validate-gl FIXTURE=the-ground
+#                   Just that one fixture.
+#
 #   make help       Print this overview again.
 #
 # If you are working on dryopea itself:
@@ -64,7 +74,7 @@
 # package registry via loft.toml + loft.lock, so no --lib path is passed.
 LOFT_BIN  ?= loft
 
-.PHONY: help play play-native test validate check clean
+.PHONY: help play play-native test validate validate-gl check clean
 
 # ── Help ─────────────────────────────────────────────────────────
 
@@ -117,6 +127,13 @@ test:
 # game and leaves pictures behind.  SCRIPT=<name> plays just one.
 validate:
 	@LOFT_BIN=$(LOFT_BIN) scripts/validate.sh $(SCRIPT)
+
+# The THIRD gate (plan 25 M3): the ground, actually DRAWN.  Kept
+# separate from `validate` because it needs an X server and that one
+# must not — docs/RENDERER.md § R0 measured the readback headless on
+# purpose, so a machine with no xvfb still runs 654 measurements.
+validate-gl:
+	@LOFT_BIN=$(LOFT_BIN) scripts/validate_gl.sh $(FIXTURE)
 
 # ── Development helpers ──────────────────────────────────────────
 

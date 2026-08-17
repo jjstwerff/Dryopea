@@ -9,15 +9,31 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**M0 + M1 + M2 done** (2026-08-17).  Suite **1227** green (1198 + 4 + 9 + 16),
-gate 33 scripts / **654 measurements unchanged** across all three — a mesher is
-not a simulation, and the day it re-prices a scenario is the day something is
-reading it that should not be.
+**M0 + M1 + M2 + M3 done** (2026-08-17).  Suite **1237** green
+(1198 + 4 + 9 + 16 + 10), gate 33 scripts / **654 measurements unchanged**
+across all four — a mesher is not a simulation, and the day it re-prices a
+scenario is the day something is reading it that should not be.  **M3 adds a
+THIRD gate**: `scripts/validate_gl.sh`, 2 fixtures / 26 measurements, under
+`xvfb`.
 
-⚠ **Every test in all three phases passed on the first run, which is when to
-check the gate can FAIL.**  Fifteen load-bearing assertions were falsified
-deliberately and all fifteen fired, each at the value predicted for it.  § M0,
-§ M1 and § M2 have the tables.
+⚠ **Every test in all four phases passed on the first run, which is when to
+check the gate can FAIL.**  Twenty-two load-bearing assertions were falsified
+deliberately and all twenty-two fired, each at the value predicted for it.
+§ M0, § M1, § M2 and § M3 have the tables.
+
+⚠⚠ **M3's headline is that the gate everyone would have written is BLIND to
+the defect `render_camera.loft` is most afraid of.**  A fully mirrored world
+passes `other == 0`, passes `sea == 0`, and passes every per-kind pixel count
+in band — because a count is permutation-invariant.  Only a LANDMARK, compared
+against `camera_screen`'s own prediction, can see it, and it sees it at
+**490.8 px** (`@M027`).  § M3.
+
+⚠⚠ **M1's falsification found a defect in the TEST rather than in the code**,
+and it is the reusable half: four counts bundled into one function are RANKED,
+not independent — loft abandons a test function at its first failed assertion,
+so three of the four could never be printed.  ⚠ M3 met the same shape from the
+other side: an IMPURE falsification (mirroring the tops but not the sides) trips
+an earlier assertion and so proves a different claim than the one it aimed at.
 
 ⚠⚠ **M1's falsification found a defect in the TEST rather than in the code**,
 and it is the reusable half: four counts bundled into one function are RANKED,
@@ -185,8 +201,8 @@ costs.  `@X073`.
 | **M0** — the top face | S | `tests/25_m0_the_top_face.loft` (4 fns) — one hex as six triangles at `hex_height`, keyed by `hex_surface_index`, winding recomputed from the emitted triangles.  ⚠ Both assertions falsified deliberately and both fired | **Done** (2026-08-17) |
 | **M1** — the sides | M | `tests/25_m1_the_sides.loft` (9 fns) — a quad per faced edge, emitted from the standing side only, over `lat_edge_corners`.  ⚠ Five breaks tried, five fired | **Done** (2026-08-17) |
 | **M2** — the world, in chunks | M | `tests/25_m2_the_rebuild.loft` (16 fns) — `mesh_crc` (ported, and it folds the TRIANGLES too), the drawn region, one-tile == all-tiles, and the reach measured against `MESH_HALO_K`.  ⚠ Eight breaks tried, eight fired | **Done** (2026-08-17) |
-| **M3** — it is DRAWN, and gated | MH | a GL scenario under `xvfb`: upload per (chunk × kind), flat-unlit with colour as a **uniform**, capture, classify | **Next** |
-| **M4** — cost | S | `tests/25_m4_the_mesh_budget.loft` — a ratio, the `11_f8` shape | Blocked on M3 |
+| **M3** — it is DRAWN, and gated | MH | `scripts/validate_gl.sh` — 2 fixtures under `xvfb`, 26 measurements; plus `tests/25_m3_the_ground_gl.loft` (10 fns) for the half that needs no context.  ⚠ Seven breaks tried, seven fired | **Done** (2026-08-17) |
+| **M4** — cost | S | `tests/25_m4_the_mesh_budget.loft` — a ratio, the `11_f8` shape | **Next** |
 
 ## M0 — the top face (2026-08-17)
 
@@ -501,33 +517,173 @@ one-pass shape is a `Mesh` per kind held together, and `CLAUDE.md` § Loft
 gotchas is why it is not written that way (a struct in a container is a copy).
 ⚠ The trigger to solve it is **M4's ratio**, not a hunch.
 
-## M3 — it is drawn, and gated
+## M3 — it is drawn, and gated (2026-08-17)
 
-One `graphics::GroupVboSet` **per palette kind**, keyed by chunk; a flat-unlit
-shader; the colour as a uniform; `GL_DEPTH_TEST` and `GL_CULL_FACE` on.
-`camera_view_projection` supplies the matrix.
+`src/ground_gl.loft` + `src/gl_gate.loft` + `src/gl_gate_main.loft` +
+`scripts/validate_gl.sh` + `tests/gl/*.keys` (2 fixtures) +
+`tests/25_m3_the_ground_gl.loft` (10 fns).  One `graphics::GroupVboSet` **per
+palette kind**, keyed by chunk; a flat-unlit shader; the colour as a uniform;
+`GL_DEPTH_TEST` and `GL_CULL_FACE` on; `camera_view_projection` supplies the
+matrix.  The frame is captured with `gl_screenshot`, decoded by `imaging` and
+counted by **`classify_canvas` itself** — the same instrument every software
+band in the repo was sized against.
 
-⚠ **`imaging` joins `loft.toml` here**, with this phase as the reason.  It is
-the decoder R0's probe needed and dryopea's manifest deliberately does not carry
-— `probe/README.md`: *"adding it to dryopea's manifest on the strength of a
-probe is how an experiment becomes a commitment nobody decided to make."*
+**Suite 1227 → 1237.  Gate 33 scripts / 654 measurements UNCHANGED** — the
+fourth phase in a row, and still the point: a mesher is not a simulation.
+**New third gate: 2 fixtures / 26 measurements.**
+
+⚠ **`imaging` joins `loft.toml` here**, with this phase as the reason —
+`probe/README.md`: *"adding it to dryopea's manifest on the strength of a probe
+is how an experiment becomes a commitment nobody decided to make."*
 
 ⚠ **The edit-mode view does not move.**  `render_editor_frame` keeps the
-software rasteriser and all 654 measurements; the GL path draws when
-`play_mode(ps)` is true.  `docs/RENDERER.md` § R2 records the trigger for
-collapsing them, and it is not this plan.
+software rasteriser and all 654 measurements.  ⚠ Wiring the GL path into
+`play_mode` is **not** in M3: this phase gives the ground a gate, not a window.
 
-### ⚠ Where the GL gate RUNS is an open choice, and the default is wrong
+### ⚠⚠ 1. The probe first — R0 answered for a BLIT, not for a SHADER
 
-Plan 21 § R4 says *"`scripts/validate.sh` gains GL scenarios under `xvfb`"*.
-⚠ Taken literally that puts all **33** existing scripts behind an X server, and
-R0's own probe went out of its way to avoid that: its readback step runs with no
-display *"on purpose: the gate it stands for must not need a display, or it
-could not run in CI either."*
+`probe/m3/` was written before a line of this phase.  R0 measured
+`gl_upload_canvas` + `draw_texture_at`: pixels that were already 8-bit
+integers, handed to GL and blitted back.  M3 draws something else — a fragment
+shader writing a **float** colour into the default framebuffer, which has its
+own ways to lose a bit (`GL_DITHER` is on by default in the GL spec, an
+sRGB-capable visual re-encodes on write, and float→unorm8 rounding is the
+driver's business).  ⚠ One bit of drift and `other == 0` is not a gate that
+can be written at all.
 
-*Recommendation: a separate entry (`scripts/validate_gl.sh`, or a flag) so the
-33 headless scripts stay headless and a machine with no xvfb still runs the
-gate it can.*  M3 decides.
+Measured over 691 200 pixels, on the real mesher and the real camera with
+culling on: **drift 0**, `unknown` 0.  `@M026`.  ⚠ The probe carries its own
+`loft.toml` with a path-dep back to dryopea, deliberately — a hand-written
+triangle would have answered for a triangle nobody ships.
+
+### ⚠⚠ 2. `other == 0` in a frame with a HORIZON — Open 5, decided
+
+Both halves of § Open 5's tension are real, and the resolution is to refuse the
+easy half:
+
+- **The clear colour is NOT classified**, and stays magenta —
+  `palette_color`'s own "unknown kind" answer, so it is outside the twelve
+  buckets by construction as the palette grows.  Classify it and `@X075`'s one
+  named failure mode (an erased gap draws a HOLE, and a hole shows the clear
+  colour) goes silent.  `@X077`.
+- **So the camera looks at nothing but ground.**  `the-ground.keys` paints
+  q ±22, r ±14 against a frustum of about q ±12, r ±11 at the overview's near
+  boom, and `sea == 0` is the assertion that says the paint really does outrun
+  the camera.  `other == 0` then means what it says: **every pixel of that
+  frame is an exact palette colour.**
+
+⚠ The fixture and the boom are one fact stated in two files, so
+`test_the_fixture_paints_past_the_frustum` projects the fixture's four corners
+and requires them OUTSIDE the viewport — with the origin as its control, or
+"outside the frame" would be true of a camera pointed at nothing.
+
+### ⚠⚠ 3. THE HEADLINE: a per-kind count cannot see a MIRRORED WORLD
+
+Pixel counts are permutation-invariant.  `render_camera.loft`'s header calls a
+mirrored world the failure that *"reads as a base that is its own reflection
+rather than as an error"* — so a gate built only of counts is blind to the one
+defect that file is most afraid of.
+
+⚠ **Measured, not argued.**  The mesher was mirrored in y — tops and sides
+together, with the winding reversed to match, so the geometry is a clean
+reflection — and the gate reported:
+
+| measurement | mirrored world |
+|---|---|
+| pixels that are not a palette colour | **0** — passes |
+| background pixels | **0** — passes |
+| sea | **0** — passes |
+| grass | 521 636 (true 520 408) — **in band, passes** |
+| wall | 158 998 (true 160 118) — **in band, passes** |
+| wall_high | 5 432 (true 5 489) — **in band, passes** |
+| rubble | 2 297 (true 2 335) — **in band, passes** |
+| **landmark `sand` at (-7, 7)** | **490.8 px away — FAILS** |
+
+Every count passes.  Only the landmark can see it.  `@M027`.
+
+So the gate asks WHERE two uniquely-coloured hexes landed and compares that to
+**`camera_screen`**'s prediction — the same function `@M022` measured the
+overview against the editor with.  That chains the drawn pixels to the camera
+and the camera to the software rasteriser, which is `@X010`'s *two rasterisers
+over ONE geometry* stated as something a frame can fail.  `@X078`.
+
+### ⚠⚠ 4. A landmark must be FLAT, and the gate said so before the plan did
+
+The first landmarks were `wall_high` and the rubble pile — the two most
+distinctive things in the fixture.  The gate went red at **29 px**, and the
+reason is geometry rather than a defect: a column that STANDS draws its sides
+in the same colour, and those sides sit **between the top face and the screen
+centre**, because a camera above the middle of the frame sees the inward face
+of an off-centre column.  A 1 m pile reads 2.3 px off for the same reason; a
+5 m column reads 29.
+
+⚠ **Loosening the tolerance would have hidden that rather than measured it.**
+Moved to two FLAT hexes (`sand`, `rock`) in flat surroundings, which emit no
+side quad at all (`@X046`), the disagreement is **0.6 px and 0.5 px** — so the
+6 px tolerance keeps ten times its headroom while a mirror is 491 px out.
+⚠ `test_the_landmark_hexes_stand_on_nothing` pins the flatness in the palette,
+because `.keys` has no verb for it, and
+`test_a_mirrored_landmark_is_far_outside_the_tolerance` pins the headroom.
+
+### ⚠⚠ 5. The fixture that proves the gate can FAIL
+
+`other == 0` is what a correct frame reports — and also what an instrument that
+cannot see background reports.  So `an-island.keys` draws a patch far too small
+to fill the frame and asserts the opposite: `unknown` **large**, and every one
+of those pixels **exactly** the clear colour.
+
+⚠ It earned its keep in the falsification round.  Set the clear colour to a
+palette colour and `the-ground` still reports *pixels that are not a palette
+colour: **0*** — a perfect reading from a broken instrument — while
+`an-island` says `0, wanted at least 500000`.  That is `tests/21_r1`'s finding
+in a fourth place: **a gate that reads PERFECT is as suspect as one that reads
+wrong.**
+
+### ⚠ Where the GL gate runs — Open 1, decided: a SEPARATE entry
+
+`scripts/validate_gl.sh`, not rows in `scripts/validate.sh`.  Plan 21 § R4's
+literal reading puts all 33 existing scripts behind an X server, and R0's probe
+went out of its way to prove the readback does not need a display.  A machine
+with no xvfb still runs the gate it can, and `validate.sh`'s 654 measurements
+never wait on a GL context.  `@X076`.
+
+⚠ **The consequence is a rule**: `.keys` has no GL verb, so a fixture's
+expectations live in `src/gl_gate.loft` and a fixture with no case there is
+**refused by name** rather than skipped.
+
+### ⚠ Two things the gate found in its own harness
+
+- ⚠ **`gl_gate_all` opened a GL context before checking the fixture name
+  existed**, so a typo cost a window and a full sweep.  Found by
+  `test_naming_a_missing_fixture_is_a_failure`, which could not otherwise run
+  at all — **a GL call inside `loft test` answers "native function not
+  loaded"**, so every branch a test can reach has to come before the context.
+  Fixed; it is better behaviour independently.
+- ⚠ **The fixture's own `kind 7 -6 rubble` was wrong** and the runner said so:
+  `kind` reads the AUTHORED ground and a pile is a LAYER over it.  The fixture
+  now asserts both halves, which is the pair a mesher can fail — assert only
+  the pile and a mesher that lost the surface lookup still passes.
+
+### ⚠ Seven breaks tried, seven fired, each at its predicted value
+
+| the break | what the gate said |
+|---|---|
+| `ground_gl_colour` divides by 256 | *kind 1: palette_color says 2784960, the uniform round-trips to **2784959*** — one bit, and every pixel of that kind would land in `unknown` |
+| the clear colour made a palette colour | **two**: `an-island` *pixels that are not a palette colour: **0**, wanted at least 500000*, and `the-ground` *background pixels: 520408, wanted exactly 0* |
+| the gate camera zoomed out to the default boom | **two**: *the boom is 80 and the fixture was painted for 20*, and *the fixture's corner (-22, -14) lands INSIDE the frame — so `other == 0` is measuring the coastline* |
+| cull the FRONT face | *pixels that are not a palette colour: **587425**, wanted exactly 0* |
+| the drawn world MIRRORED (tops + sides, winding matched) | every count green; *landmark sand: the camera says (218.5, 116.2) and the frame drew it at (214.3, 606.9) — **490.8 px** away* |
+| colour off the PAINTED kind instead of the surface | *rubble: **0**, wanted 1000..3000* — the oldest trap in the repo, seen in a frame |
+| the top-face fan mirrored WITHOUT matching the sides | *pixels that are not a palette colour: 43795* — ⚠ the impure version of the mirror, and it fires on the wrong assertion |
+
+⚠ **That last row is a finding about the GATE, not about the code.**  The
+first mirror attempt moved only the tops, so tops and sides disagreed and
+opened background — and because the gate returns its FIRST failure, the
+landmark check was never reached.  The counts in `gl_case_the_ground` are
+RANKED, not independent, exactly as M1 found for a bundled test function.
+⚠ Here that is `validate.loft`'s deliberate contract (*the first failure is the
+verdict*) rather than an accident — but it means **a falsification has to be
+clean, or it proves a different assertion than the one you aimed at.**
 
 ## What this plan does NOT build
 
@@ -554,8 +710,11 @@ granularity must not follow the CAMERA.
 
 ## Open questions
 
-1. **Where the GL gate runs** — § M3.  *Recommendation: a separate entry, so
-   the 33 headless scripts stay headless.*  M3 decides.
+1. ✅ **Where the GL gate runs — ANSWERED by M3** (`@X076`): a separate entry,
+   `scripts/validate_gl.sh`, so the 33 headless scripts stay headless and a
+   machine with no xvfb still runs the gate it can.  ⚠ Its consequence is a
+   rule — `.keys` has no GL verb, so a fixture's expectations live in
+   `src/gl_gate.loft` and a fixture with no case there is refused by name.
 2. **Does a rubble heap draw as a step or a heap?**  This plan draws it as a
    step, because `can_step` treats it as one and § What was measured first, 1
    argues the picture must not disagree with the rule.  ⚠ But rubble is the one
@@ -570,13 +729,15 @@ granularity must not follow the CAMERA.
    waterfall 8) and nothing reads — which changes `hex_height` for every
    consumer, so it is a decision about the SIMULATION and belongs with
    [`plan 02`](../02-solver-validation-viewer/README.md).
-5. ⚠⚠ **NEW, found by M2: what does `other == 0` mean in a frame with a
-   HORIZON?**  M3's invariant row asks for zero unknown pixels, and a 3-D frame
-   of a finite world is mostly background.  So the gate is either *`other` ==
-   the sky's count* or the clear colour becomes a classified entry in its own
-   right.  ⚠ **It must not be a palette colour**: an erased-gap hole (question 3)
-   shows the clear colour, and the only thing that makes that hole visible to a
-   gate is those pixels landing in `unknown`.  M3 decides.
+5. ✅ **What `other == 0` means in a frame with a HORIZON — ANSWERED by M3**
+   (`@X077`): the clear colour stays OUTSIDE the palette (magenta,
+   `palette_color`'s own "unknown kind" answer) and **the gate's camera looks
+   at nothing but ground** — `the-ground.keys` paints past the frustum, and
+   `sea == 0` is the assertion that says so.  Classifying the background as a
+   bucket was refused, because it would silence question 3's hole.  ⚠ The
+   consequence lands on any FUTURE fixture: one that cannot fill the frame
+   cannot use `other == 0`, and `an-island` is the worked example of what such
+   a fixture asserts instead.
 4. **What draws the marker layer?**  Spawn markers, targets and tower sites are
    drawn by `marker_render.loft` into the software canvas today.  ⚠ They are UI
    over the world rather than part of it, so they are not the mesher's — but the

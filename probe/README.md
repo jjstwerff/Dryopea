@@ -18,6 +18,16 @@ environment it measured could change under the project.
 | probe | question | answer |
 |---|---|---|
 | [`r0/`](r0/) | can a GL frame be **gated with no display**? | **yes** — and with **zero** colour drift over 76 800 px.  [`docs/RENDERER.md`](../docs/RENDERER.md) § R0 |
+| [`m3/`](m3/) | does a **SHADER-written** palette colour survive that round trip **exactly**? | **yes** — drift **0** over 691 200 px, on the real mesher and camera with culling on.  [`plans/25`](../plans/25-the-terrain-mesh/README.md) § M3, `@M026` |
+
+⚠ **`m3` is not `r0` again, and that is the point of it existing.**  `r0`
+measured a canvas BLIT: pixels that were already 8-bit integers, handed to GL
+and read back.  A fragment shader writes a **float**, which can lose a bit to
+`GL_DITHER` (on by default in the GL spec), to an sRGB-encoding framebuffer, or
+to the driver's float→unorm8 rounding — and one bit would have made plan 25
+M3's `other == 0` a gate that could not be written.  ⚠ It depends on dryopea by
+path on purpose: a hand-written triangle would have answered for a triangle
+nobody ships.
 
 ## Running one
 

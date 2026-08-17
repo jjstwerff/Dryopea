@@ -554,6 +554,62 @@ src/
                    `mesh_to_floats`, and moros has a private copy
                    too, which is two).  Trigger to move it: a
                    second non-test caller, or plan 20's entities.
+  ground_gl.loft   THE GROUND, DRAWN (plan 25 M3) — one shader,
+                   one `graphics::GroupVboSet` per palette kind
+                   keyed by chunk, and the kind's colour as a
+                   UNIFORM.  `ground_gl_new` / `_upload_all` /
+                   `_upload_edit` / `_draw` / `_destroy`.
+                   ⚠⚠ FLAT UNLIT is a GATE requirement, not a
+                   placeholder: the fragment stage writes one
+                   uniform colour and reads nothing, so the frame
+                   CAN ONLY CONTAIN PALETTE COLOURS and
+                   `classify_canvas`'s exact lookup survives GL
+                   (@X074, measured at zero drift — @M026).  Light
+                   it and one colour becomes a RANGE; the answer is
+                   an ID buffer, never a loosened lookup.
+                   ⚠⚠ CULLING IS ON, and this file turns it on —
+                   the ground's correctness argument depends on it,
+                   and a reversed winding (M0, M1) draws NOTHING
+                   with every other valve reading healthy.  Depth
+                   testing likewise: the draw order is a PALETTE
+                   order, not a depth one.
+                   ⚠ `_upload_chunks` clears a kind a tile no
+                   longer holds — leave it and the GPU goes on
+                   drawing a wall the map says is gone, which no
+                   state assertion can see.  It skips tiles with no
+                   such group, because an upsert of nothing still
+                   makes a VAO.
+                   ⚠ An element read out of a `vector<Struct>`
+                   ALIASES in loft (measured), which is what lets
+                   the sets live in a field; the sibling rule — a
+                   struct STORED in a field is a COPY — points the
+                   other way.
+  gl_gate.loft     THE THIRD GATE (plan 25 M3) — `gl_gate_all`
+                   sweeps `tests/gl/*.keys`, draws each through a
+                   real context, captures with `gl_screenshot`,
+                   decodes with `imaging` and counts with
+                   `classify_canvas` ITSELF.
+                   ⚠⚠ SEPARATE from validate.sh on purpose (@X076):
+                   folding GL into it would put all 33 headless
+                   scripts behind an X server.
+                   ⚠⚠ The clear colour is NOT a palette colour and
+                   the camera sees nothing but ground (@X077) — so
+                   `other == 0` means every pixel is an exact
+                   palette colour, and an erased-gap HOLE still
+                   registers as a fault.
+                   ⚠⚠ A per-kind COUNT cannot see a MIRRORED world
+                   (@X078, @M027: every count green, landmark 490.8
+                   px out), so it also asks where two uniquely-
+                   coloured hexes landed vs `camera_screen`.
+                   ⚠ A landmark must be FLAT — a column draws its
+                   sides in the same colour and they sit between
+                   the top face and the screen centre (29 px for a
+                   5 m column, 0.6 px flat).
+                   ⚠ Expectations live HERE, not in the `.keys`
+                   file; a fixture with no case is REFUSED by name.
+                   ⚠ Every branch a TEST can reach comes before
+                   `gl_create_window` — a GL call inside `loft
+                   test` answers "native function not loaded".
   painted.loft     PaintedHex { q, r, kind: u8 }
                    + PaintedWorld { painted: hash<PaintedHex[q, r]> }
                    + paint(), lookup_painted(), paint_line()

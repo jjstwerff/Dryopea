@@ -1,0 +1,36 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 25 M3 — the GL gate's entry point.
+//
+// Launch (per CLAUDE.md § Key commands):
+//   scripts/validate_gl.sh                every fixture in tests/gl/
+//   scripts/validate_gl.sh the-ground     just that one
+//
+// This file is to `src/gl_gate.loft` what `src/validate_main.loft` is to
+// `src/validate.loft`: the shell, and nothing else.  It holds no
+// decision, because a `#cwd` file cannot be `use`d as a library and so
+// is compiled by nothing.
+//
+// ⚠ Parse-check it by hand after every edit — `scripts/test.sh` cannot
+// see it (`make check FILE=src/gl_gate_main.loft`).
+
+#cwd
+
+use dryopea;
+
+fn main() {
+    gm_only = arguments()[0] ?? "";
+
+    println("dryopea validate-gl — {GL_GATE_SCRIPTS_DIR}/*.keys, shots to {GL_GATE_SHOTS_DIR}/");
+    gm_rep = gl_gate_all(GL_GATE_SCRIPTS_DIR, GL_GATE_SHOTS_DIR,
+                         GL_GATE_PALETTE, gm_only);
+    println("");
+    println(gl_gate_verdict(gm_rep));
+
+    // `panic` is the only way a loft program hands a non-zero status to
+    // the shell today — the verdict is already printed above.
+    if gm_rep.message != "" {
+        panic("validate-gl: {gm_rep.message}");
+    }
+}

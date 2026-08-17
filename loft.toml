@@ -50,6 +50,19 @@ hex_grid = ">=0.1.0"
 # distance.  Zero dependencies of its own.
 mesh3d = ">=0.1.1"
 
+# Plan 25 M3 — the GL gate.  `gl_screenshot` writes a PNG and
+# `imaging::png` is the only decoder in the registry, so this is what
+# closes docs/RENDERER.md § R4's chain: GL → capture → decode →
+# `classify_canvas`, the SAME instrument every software band in this
+# repo was sized against.
+#
+# ⚠ It was deliberately NOT a dependency until now.  `probe/r0` needed
+# it in 2026-08-15 and carried it in the probe's own manifest instead —
+# `probe/README.md`: "adding it to dryopea's manifest on the strength of
+# a probe is how an experiment becomes a commitment nobody decided to
+# make."  M3 is the phase that needs it, so M3 is when it joins.
+imaging = ">=0.2.0"
+
 # `moros_map` is the shared world data model — Map / Chunk / Hex with
 # {q,r,cy} multi-floor, height, material, walls, items.  Plan 07 W1
 # will adopt it so world-building routines interchange with moros.

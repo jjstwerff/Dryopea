@@ -1,0 +1,20 @@
+[package]
+name    = "probe_m3"
+version = "0.0.1"
+loft    = ">=0.8.5"
+
+# ⚠ `imaging` is not a dryopea dependency at the moment this probe runs.
+# Plan 25 § M3 is the phase that adds it, WITH this probe as the reason —
+# which is the order `probe/README.md` asks for: the experiment first, the
+# commitment second.
+#
+# ⚠ `dryopea` itself is a path dep, and that is the point of this probe
+# rather than a convenience.  R0 answered the question for a canvas BLIT;
+# this one has to ask it of the REAL mesher, the REAL camera and the REAL
+# winding under `GL_CULL_FACE`, because a hand-written triangle would
+# answer for a triangle nobody ships.
+[dependencies]
+graphics = ">=0.5.0"
+imaging  = ">=0.2.0"
+mesh3d   = ">=0.1.1"
+dryopea  = { path = "../.." }

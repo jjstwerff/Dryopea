@@ -1,0 +1,39 @@
+# an-island — plan 25 M3's NEGATIVE control, and it is the reason the
+# headline gate means anything.
+#
+# ⚠⚠ `other == 0` over `the-ground` is satisfied by a frame with no
+# background in it — which is what that fixture arranges — but it is ALSO
+# satisfied by a gate that cannot see background at all.  If the clear
+# colour were a palette colour, or if `classify_canvas` were bucketing
+# everything, `other` would read 0 for a reason that has nothing to do
+# with the ground being drawn correctly.
+#
+# So: the same camera, over a world far too small to fill the frame.
+# `other` must come out LARGE, and every one of those pixels must be
+# EXACTLY the clear colour.  Two facts in one fixture —
+#
+#   other > 0                the instrument can see a non-palette pixel
+#   other == clear pixels    and what it is seeing is the background,
+#                            not drift in the ground it did draw
+#
+# ⚠ The second is what makes `the-ground`'s reading a statement about
+# COLOUR EXACTNESS rather than about framing.  `probe/m3` measured the
+# same thing before the phase was written; this keeps it measured.
+
+echo an-island: a patch too small to fill the frame
+
+at 0 0 1
+
+palette 5
+drag -3 -2 3 -2
+drag -3 -1 3 -1
+drag -3  0 3  0
+drag -3  1 3  1
+drag -3  2 3  2
+
+palette 9
+click 0 0
+
+kind  0  0 wall
+kind  3  2 grass
+kind 12  0 sea
