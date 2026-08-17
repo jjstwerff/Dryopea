@@ -9,7 +9,15 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**Opened 2026-08-17.  L0 through L6 shipped 2026-08-17 — the plan is COMPLETE on the dryopea side; publishing and the moros half remain.**  This
+**Opened 2026-08-17.  L0 through L6 shipped 2026-08-17.  COMPLETE — `fixstep 0.1.1`
+is published and dryopea consumes it.**
+
+⚠ **The one half that is not dryopea's is not outstanding either.**  § Cross-repo
+coordination's *moros digests byte-identical* clause belongs to moros, which has its
+own agent and its own flow; as of 2026-08-18 that repo is adopting `fixstep::approach`
+at five call sites with the package pinned by sha256.  Holding this plan open on
+another repo's work would make its `## Status` a report about a tree this one cannot
+see — which is the drift every § Status rule here exists to prevent.  This
 plan came out of a comparison of dryopea's tick pacing against moros's, run
 before it was written; the readings are § What was measured first and three of
 them are defects nothing in either repo can currently see.
