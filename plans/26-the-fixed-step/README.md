@@ -55,10 +55,18 @@ interpreter, so that target is UNVERIFIED rather than passing.  ⚠ Repro:
 `loft_repros/path_dep_suppresses_lib_search/`.  ⚠ The parity gate stands at **interpreter 13/13 and
 `--native` 13/13, identical**; the package claims no target it has not run.
 
-⚠ **What L6 did NOT do**: publish.  The package is consumed from a local install while
-it is proved against its first consumer, and the registry submission — plus the moros
-half of § Cross-repo coordination, where `cam_approach` is the LINEAR form — is
-deliberately a separate, reversible step.
+⚠ **PUBLISHED** 2026-08-17: `fixstep 0.1.0` is in the registry
+(`loft-lang/registry@4144a06`, index re-signed and the trust gate green), released at
+`loft-libs-game@fixstep-v0.1.0`, sha256 `70cc1fed…`, 28 294 bytes.  ⚠⚠ **The proof is
+that the DEV COPY WAS REMOVED FIRST**: `~/.loft/lib/fixstep` shadows the registry
+([loft#667]), so dryopea's 1322 + 654 are green against the published *tarball* rather
+than against the working tree it was built from.  ⚠ The CDN served a stale index for
+~1 h afterwards (`20:25` against the pushed `22:03`), which the runbook names in advance
+and which must not be read as a failed publish.
+
+⚠ **What L6 still has NOT done**: the moros half of § Cross-repo coordination, where
+`cam_approach` is the LINEAR form and nothing consumes the package.  That is another
+repo's change and stays a separate, reversible step.
 
 ⚠⚠ **L5's headline is that an eased follow camera does not REMOVE a lattice
 mover's jump — it MOVES it, off the world and onto the mover, and the jump
