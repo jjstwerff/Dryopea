@@ -5,13 +5,23 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # 21 — The renderer: a camera that comes to the vehicle
 
-**Value:** `G` · **Effort:** `VH`
+**Value:** `G` · **Effort:** `M` (was `VH` — see § Status)
 
 ## Status
 
-**R0 + R1 + R2 done** (R2 2026-08-17).  R3 is next.  Suite **1198** green, gate
-33 scripts / **654 measurements unchanged** — the camera touches no simulation,
-and R2 moved none of them either.
+**COMPLETE at R2** (2026-08-17).  R0 + R1 + R2 shipped; **R3-R5 moved to
+[`plan 25`](../25-the-terrain-mesh/README.md)**, which is what this document
+said twice should happen — *"it is `VH` and it should be split further before it
+is started"*, *"R3 alone is plausibly its own plan"*.  Suite **1198** green,
+gate 33 scripts / **654 measurements unchanged** — the camera touches no
+simulation, and R2 moved none of them either.
+
+⚠ **All three of R3-R5 moved, not R3 alone**, and that is the part the split
+had to get right: R4 draws what R3 emits and R5 prices it, so leaving them here
+would have left two plans that can only advance in lockstep.  What is left is
+one coherent thing — **the camera**: its frame, its two presets, its ease, its
+boom, and the R0 measurement that made any of it affordable.  ⚠ The effort
+letter came down with the scope; `VH` was always R3's.
 
 ⚠⚠ **R2's headline is a rule dryopea already had and the camera nearly broke**:
 `play.loft` is frame-rate independent by construction (`19-P0`), so moros's
@@ -52,20 +62,28 @@ without its answer.
 The decisions live in [`docs/RENDERER.md`](../../docs/RENDERER.md); this plan
 does not restate them.
 
-⚠⚠ **This is the largest single item in the repo's history**, and the reason is
-not the camera — it is that a follow camera at ground level makes the TERRAIN
-three-dimensional, and dryopea's ground has been a flat painting of hexagons
-since plan 01.  § R3.
+⚠⚠ **This document called R3 "the largest single item in the repo's history",
+and [`plan 25`](../25-the-terrain-mesh/README.md) MEASURED that it is not.**
+The claim was sized against moros's 3 257-line `hex_mesh`; against dryopea's
+actual world the two mechanisms that make `hex_mesh` big — the corner-height
+mean and the halo it needs — are both no-ops, because dryopea's ground is a
+flat plane with pillars on it and `height_override` is non-null on exactly two
+of twelve palette kinds.  ⚠ **Sizing a port by the DONOR's line count is sizing
+it by a world you do not have**, and the correction cost one reading of a JSON
+file.
 
-⚠ **It is `VH` and it should be split further before it is started.**  R3 alone
-(the terrain mesh) is plausibly its own plan.  This document is the design and
-the ordering; the phase table below is honest about which rows are still
-lumps.
+⚠ The split this section asked for happened: R3-R5 are plan 25.
 
 ## Goal
 
-The game is drawn from a camera that follows the vehicle, in three dimensions,
-and **every frame is still measured by the instrument that measures the editor's**.
+The game has a camera that comes to the vehicle — one orbit camera whose
+overview preset **is** the editor's existing view — and a measured answer to
+whether a GL frame can be gated with no display.
+
+⚠ *"…and every frame is still measured by the instrument that measures the
+editor's"* was the second half of this sentence, and it left with R4 to
+[`plan 25`](../25-the-terrain-mesh/README.md).  R0 is what proved it possible;
+R4 is what does it.
 
 ## Anchors
 
@@ -89,9 +107,7 @@ Implements, and does not restate:
 | **R0** ✓ | a GL frame captured under `xvfb` and decoded: red 9 600 px = exactly 120×80, green 8 005 ≈ π·50², **`other` = 0** | classification is an EXACT lookup and survives GL → PNG → decode | ⚠ `gl_screenshot` returning `true` proves NOTHING about pixels — probe 1 alone would have "passed" against a black frame, which is why probe 2 exists and is the one that counts |
 | **R1** ✓ | `camera_follow` puts the eye behind the vehicle's velocity at all four cardinal headings; `camera_overview` at 89° reproduces the editor's view to **0.0014 rad and 0.56% of scale** (`@M022`) | one camera, two presets — the editor's existing view is a MODE of the game's camera | ⚠ **read the eye out of the VIEW MATRIX** (`eye = −Rᵀt`), never out of the camera's own trace.  ⚠⚠ **TWO controls FIRED and a third was missing**: § The moros formula puts the camera abeam fired as designed; `@M021`'s south-frame sweep fired (zero azimuths of eight); and the overview gate itself **read a perfect 0.0 rad twice while measuring nothing** — the missing control was *"can this gate produce a non-trivial reading at all?"*, now an assertion |
 | **R2** ✓ | the ease is exponential and lands on the same camera at 60 fps and 10 fps (`@M023`); a `wall_high` on the sight line takes the boom 5.831 m → 3.624 m, a `wall` at the same cell takes nothing (`@M024`) | the ease is PUBLISHED, not merely solved | ⚠⚠ **the exact bug moros shipped**: the solve sat inside `if moved`, so a converged camera never left the server and the fault was invisible in precisely the case the camera exists for.  The control is § A standing vehicle still brings the camera home, plus § A frame that spends no tick still moves the camera — a 0.1 s frame buys zero ticks and must still move the eye.  ⚠ The linear ease is measured BESIDE the exponential one and asserted to disagree, so a stubbed ease cannot pass |
-| **R3** | a hex carrying rubble meshes at `hex_height` (structure **+** layer) and colours from `hex_ground` (`rubble`) | the surface is not the painted kind (`CLAUDE.md`'s oldest trap) | ⚠ get it backwards and piling debris on a wall LOWERS it — visibly, and no existing test would fail |
-| **R4** | the same scenario, drawn by GL and classified, lands in the same bands the software path reports | one geometry layer under two rasterisers (§ R2) | ⚠ **lighting breaks exact classification** — a shaded frame turns one palette colour into a range and `unknown` stops meaning "fault".  The gate renders FLAT UNLIT; loosening to nearest-colour would discard what R0 measured |
-| **R5** | a frame-cost RATIO inside `loft test` | cost is a ratio, never a stopwatch | ⚠ `CLAUDE.md` § Cost: an unchanged file timed 173 / 737 / 754 ms on three interpreter runs, and discarded structs are not freed — a standalone stopwatch here measures the harness |
+| ~~R3~~ ~~R4~~ ~~R5~~ | — | — | ⚠ **moved to [`plan 25`](../25-the-terrain-mesh/README.md)** with their gates intact; that plan's § What was measured first sharpens all three before they are built |
 
 ## Phases
 
@@ -100,9 +116,9 @@ Implements, and does not restate:
 | **R0** — can a GL frame be gated headlessly? | XS | two probes: `xvfb` + GL context + `gl_screenshot`, then `imaging::png` + exact classification.  **Measured: `other` = 0 over 76 800 px** | **Done** (2026-08-15) |
 | **R1** — the camera | M | `tests/21_r1_the_camera.loft` (15 fns) — `RenderCamera` ported with moros's fields; follow puts the eye behind the VELOCITY; overview at 89° matches the editor's projection to 0.08° and 0.56%.  ⚠ Asserted on the VIEW MATRIX, not on the struct | **Done** (2026-08-17) |
 | **R2** — the boom: ease and occlusion | M | `tests/21_r2_the_boom.loft` (21 fns) — the ease is exponential and frame-rate independent, the azimuth wraps the short way, the boom shortens behind a wall on the line and not beside it, and rest is EXACT.  ⚠ Occlusion asks the walker `tower_sees` asks, which R2 factored out into `passable.loft::sight_first_block`.  ⚠ Carried R1's deferred half: `PlayState.cam` (`@X014`), as a `CameraRig` | **Done** (2026-08-17) |
-| **R3** — the terrain mesh | **H** — ⚠ probably its own plan | `tests/21_r3_the_mesh.loft` — top faces at `hex_height`, side quads to lower neighbours, rubble surfaces coloured from `hex_ground`, rebuilt per dirty chunk | **Next** |
-| **R4** — the GL path and the gate chain | MH | `scripts/validate.sh` gains GL scenarios under `xvfb`; `classify_world` reads a decoded capture.  Flat-unlit render mode for the gate | Blocked on R3 |
-| **R5** — cost | S | `tests/21_r5_the_frame_budget.loft` — a RATIO, the shape `11_f8` already uses | Blocked on R4 |
+| **R3** — the terrain mesh | — | — | **Moved** → [`plan 25`](../25-the-terrain-mesh/README.md) M0-M2 |
+| **R4** — the GL path and the gate chain | — | — | **Moved** → [`plan 25`](../25-the-terrain-mesh/README.md) M3 |
+| **R5** — cost | — | — | **Moved** → [`plan 25`](../25-the-terrain-mesh/README.md) M4 |
 
 ## R1 — the camera (2026-08-17)
 
@@ -184,13 +200,17 @@ the mesher is even for.  ⚠ And because `camera_overview` at 89° is what makes
 editor's view a MODE rather than a second renderer — if that fails to reproduce,
 the two-rasteriser plan in § R2 is wrong and better to know first.
 
-**R3 is the lump.**  Everything else on this list is a few hundred lines; the
-terrain mesh is the reason this plan is `VH`.  ⚠ It should be re-read as its own
-plan before it is started, and the phase table says so rather than pretending.
+**R3 was the lump, and it was re-read as its own plan** — which is what this
+row asked for and what [`plan 25`](../25-the-terrain-mesh/README.md) is.  ⚠ The
+re-reading is the part worth keeping: it did not confirm the size, it **halved**
+the scope, because the plan had been sized against moros's world rather than
+dryopea's.  A phase honest enough to say *"this row is still a lump"* is what
+made the correction cheap.
 
 **R4 after R3** because a gate over an empty world is not a gate — the same
 lesson `tests/11_f8_the_tick_budget.loft` learned when it ticked a MARKERLESS
-world and could not have seen a line-of-sight regression.
+world and could not have seen a line-of-sight regression.  ⚠ Both are plan 25's
+now, in that order (M2 → M3).
 
 ## R2 — the boom (2026-08-17)
 

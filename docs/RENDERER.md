@@ -354,6 +354,40 @@ migration rather than a rewrite.
 incoherent.**  This is the part of the pivot that is easy to under-scope: entity
 art is a few hundred lines, and **the terrain mesh is the real work**.
 
+### ⚠⚠ SCOPED 2026-08-17, and this section is sized for the wrong world
+
+The terrain mesh became [`plans/25`](../plans/25-the-terrain-mesh/README.md),
+and its opening probes contradict the paragraph above and most of what follows
+it.  Read that plan's § What was measured first before reading the rest of this
+section; the two findings that matter:
+
+**1. ⚠⚠ The corner-height MEAN is a no-op in dryopea, so `@X044` and `@X045`
+below do not apply yet.**  `examples/palette.json` has `height_override`
+non-null on exactly **two of twelve** kinds — `wall` at 3 m and `wall_high` at
+5 m.  There is no heightfield: the ground is a flat plane with pillars standing
+on it.  So across ground every term of the mean is 0, and across a structure's
+edge `faced_between` skips the mean anyway — it changes nothing at any hex, in
+either direction.  dryopea meshes **flat tops and vertical side quads and does
+not blend** (`@X072`).  ⚠ That is also the honest picture rather than a
+shortcut: the simulation asks `can_step`, which is a height DIFFERENCE, and a
+mesh that sloped where the rule steps would draw a ramp the vehicle cannot
+climb.  The blend arrives with [`plans/02`](../plans/02-solver-validation-viewer/README.md).
+
+**2. ⚠⚠ The GPU-side chunk cache is already published**, so *"the terrain mesh
+is the real work"* over-states what is left to write.  `mesh3d::mesh_to_floats`
+flattens a `Mesh` to `vector<single>` at stride 6, straight into
+`gl_upload_vertices`; `graphics::GroupVboSet` is a per-group VBO cache whose own
+comment reads *"call this only for the DIRTY groups each edit; untouched groups
+keep their cached VBOs."*  What plan 25 writes is a mesher, a shader and a gate.
+
+⚠ **The general lesson is about the sizing, not the mesh**: this section sized
+the job by `hex_mesh`'s 3 257 lines.  *Sizing a port by the DONOR's line count
+is sizing it by a world you do not have* — and the correction cost one reading
+of a JSON file.
+
+⚠ What follows is still the **construction** to copy when the ground does get
+elevation, and it is left intact for that reason.
+
 What dryopea already has, and it is more than it looks:
 
 | needed | dryopea has |
