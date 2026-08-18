@@ -9,7 +9,9 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**A1-A4 SHIPPED 2026-08-18; A5 is blocked on [plan 21](../21-the-renderer/README.md).**
+**A1-A4 SHIPPED 2026-08-18; A5 is next and is no longer blocked** — [plan 21](../21-the-renderer/README.md)
+is complete at R2 and [plan 25](../25-the-terrain-mesh/README.md) shipped the
+GL path, so the renderer A5 waited for exists.
 ⚠ **Re-scoped on 2026-08-15**, before any code: the first design baked sprites
 at a fixed projection, and the project owner's answer — *the dynamic camera of
 moros, and exploration as a pillar* — replaced that with geometry.
@@ -401,7 +403,7 @@ worth saying because silence reads as "gate done".
 | **A2** — the geometry emitter | MH | `tests/20_a2_the_geometry.loft` — a part poses its joints and emits triangles in world space.  ⚠ Gated on NUMBERS, not pixels: a hinge at 0.25 turns puts the canopy's far edge where trigonometry says, a box emits 12 triangles, a disc emits its fan, and every vertex is inside the declared extent | **SHIPPED** 2026-08-18 |
 | **A3** — the catalogue | M | `tests/20_a3_the_catalogue.loft` — **11 tests**; the hover unit, the robot, the tower base + top, and the helper which is the hover unit rather than a fifth entry.  ⚠ Its real gate is the footprint, and the footprint is DERIVED from the limb table so the check is not a tautology | **SHIPPED** 2026-08-18 |
 | **A4** — poses come from the SIMULATION | S | `tests/20_a4_the_joints.loft` — **13 tests**; a tower with no top emits no top triangles, the canopy follows the CARGO ledger, and the rotors' rate is `vehicle_speed`'s own ratio.  ⚠ Asked of `TowerState` / `Vehicle` / `CargoLayer`, never a second flag.  ⚠⚠ It found `socket_world` blind six metres up and a disc that cannot show it is turning (`@M039`) | **SHIPPED** 2026-08-18 |
-| **A5** — entities in the frame (was plan 19 P4) | M | `tests/20_a5_the_frame.loft` — `classify_world` shares for enemies, vehicle and crew; a `.keys` scenario with `snap` | ⚠ Blocked on **[plan 21](../21-the-renderer/README.md)** |
+| **A5** — entities in the frame (was plan 19 P4) | M | `tests/20_a5_the_frame.loft` — `classify_world` shares for enemies, vehicle and crew; a `.keys` scenario with `snap` | ⚠⚠ **UNBLOCKED 2026-08-18** — [plan 21](../21-the-renderer/README.md) is COMPLETE at R2 (the camera) and [plan 25](../25-the-terrain-mesh/README.md) shipped R3-R5 (the mesh, the GL path, its cost), so what A5 needs now exists: `ground_gl.loft`'s flat-unlit shader and `gl_gate.loft`'s third gate.  ⚠ It is the LAST phase of this plan |
 
 ### Why the order is this order
 
