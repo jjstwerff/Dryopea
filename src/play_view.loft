@@ -46,9 +46,12 @@
 //
 // ── ⚠ What this file does NOT do ────────────────────────────────
 //
-// **No HUD.**  The wallet, the wave and the tick are still console
-// lines.  A HUD over a 3-D frame is a second composition and a second
-// gate.
+// **Almost no HUD, and that is `docs/DESIGN.md` § HUD rather than a
+// gap.**  `play_hud_canvas` draws the WALLET and nothing else, because
+// that document's entire numeric HUD is *"one corner number […] That's
+// the entire HUD.  No wave-number, no inter-wave countdown, no minimap,
+// no boost cooldown bar."*  ⚠ The tick and the enemy count stay console
+// lines deliberately: they are a developer's readout, not the player's.
 //
 // **No interpolation.**  Entities are re-uploaded when the TICK moves,
 // not per frame, so a mover steps a whole hex at a time — and `@M035`
@@ -73,6 +76,8 @@ use ground_gl;
 use entity_view;
 use entity_gl;
 use editor_view;
+use hud;
+use wallet;
 use editor_step;
 use markers;
 use spawn;
@@ -202,6 +207,47 @@ pub fn mesh_watch_note(w: MeshWatch, hl: const HeightLayer) {
     w.built = true;
 }
 
+// ─── The one number (plan 19 P7) ────────────────────────────────
+
+// The overlay's size and where it sits, in pixels.
+//
+// ⚠ **TOP-LEFT**, because the vehicle sits low and centre under a
+// follow camera and the wallet must never be behind it.  ⚠ It is sized
+// for four digits, which is one more than `WALLET_STARTING_POINTS` ever
+// needs — a fifth would clip silently.
+pub const PLAY_HUD_W:      integer = 4 * HUD_DIGIT_W + 3 * HUD_DIGIT_GAP;
+pub const PLAY_HUD_H:      integer = HUD_DIGIT_H;
+pub const PLAY_HUD_MARGIN: integer = 16;
+
+// The digits' colour.
+//
+// ⚠ Amber, and distinct from every palette colour AND every entity
+// colour — the same argument `@X092` makes one layer down, for the same
+// reason: the GL gate reads a frame by exact colour, so a HUD painted in
+// `sand` would be counted as ground and a HUD painted in `scout` as a
+// robot.  `tests/19_p7` asserts the distinctness rather than trusting
+// the eye.
+//
+// Example: @DRY-074
+pub const PLAY_HUD_INK: integer = 0xffc000;
+
+// The overlay, as a Canvas: TRANSPARENT everywhere the digits are not.
+//
+// ⚠⚠ **THE FILL IS ALPHA 0 AND THE INK IS ALPHA 255**, which is the one
+// thing that makes this an overlay rather than a panel.  `rgb()` sets
+// alpha to 255 and a bare `0x…` literal leaves it 0 — the distinction
+// that cost `gl_gate.loft` a false failure (`@M041`).  ⚠ `fill_rect`
+// STORES its colour rather than blending it (`graphics` says so), so the
+// alpha reaches the texture and the painter's blend does the rest.
+//
+// Example: @DRY-073, @DRY-075
+pub fn play_hud_canvas(ps: const PlayState) -> Canvas {
+    phc = canvas(PLAY_HUD_W, PLAY_HUD_H, 0);
+    render_number(phc, hud_wallet_points(ps.wave.wallet),
+                  PLAY_HUD_W, 0, rgb(0xff, 0xc0, 0x00));
+    phc
+}
+
 // ─── The frame ──────────────────────────────────────────────────
 
 // Simulated time, in the clock's base units, at the tick just played.
@@ -280,11 +326,26 @@ pub fn play_view_sync(w: MeshWatch, gg: GroundGl, eg: EntityGl,
 // toggling P would see it and a gate never would, because the gate
 // draws one frame and exits.
 pub fn play_view_draw(gg: const GroundGl, eg: const EntityGl,
-                      ps: const PlayState, w: integer, h: integer) {
+                      ps: const PlayState, painter: const Painter2D,
+                      w: integer, h: integer) {
     pvd_vp = camera_view_projection(ps.cam.cam, ((w as float) / (h as float)) ?? 1.0);
     gl_clear(PLAY_SKY);
     ground_gl_draw(gg, pvd_vp);
     entity_gl_draw(eg, pvd_vp);
     gl_disable(GL_CAP_DEPTH_TEST);
     gl_disable(GL_CAP_CULL_FACE);
+
+    // ⚠ The HUD is built and uploaded EVERY frame, and it is cheap
+    // enough to be measured rather than cached: the overlay is 68 x 24
+    // pixels against the frame's 691 200, and the wallet drains
+    // continuously while an enemy stands on the core, so a cache keyed
+    // on the number would miss almost nothing.  ⚠ The texture is
+    // deleted the same frame — a per-frame upload with no delete is a
+    // leak the window would show as a slow death.
+    pvd_cv  = play_hud_canvas(ps);
+    pvd_tex = gl_upload_canvas(pvd_cv.data, pvd_cv.width, pvd_cv.height);
+    draw_texture_at(painter, pvd_tex,
+                    PLAY_HUD_MARGIN as float, PLAY_HUD_MARGIN as float,
+                    PLAY_HUD_W as float, PLAY_HUD_H as float);
+    gl_delete_texture(pvd_tex);
 }

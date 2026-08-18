@@ -736,9 +736,23 @@ src/
                    against a 5 ms frame); the frame draws every time,
                    because the camera eases whether or not anything
                    moved.
-                   ⚠ Not built: a HUD, interpolation, and an editor in
-                   3-D.  Pressing P goes back to the software frame,
-                   where the picker, the hover preview and all 654 of
+                   ⚠⚠ THE HUD IS ONE NUMBER (plan 19 P7, @X097) —
+                   PLAY_HUD_W / _H / _MARGIN / _INK and
+                   `play_hud_canvas`, which draws the WALLET and
+                   nothing else because `DESIGN.md` § HUD refuses
+                   everything else by name.  The overlay is
+                   TRANSPARENT except where the digits are: `rgb()`
+                   sets alpha 255 and a bare `0x…` leaves it 0, which
+                   is the distinction that cost `gl_gate.loft` a false
+                   failure (@M041).
+                   ⚠ Built and uploaded EVERY frame — 114 x 40 pixels
+                   against a frame's 691 200, and the wallet drains
+                   continuously, so a cache keyed on the number would
+                   miss almost nothing.  The texture is deleted the
+                   same frame.
+                   ⚠ Not built: interpolation, and an editor in 3-D.
+                   Pressing P goes back to the software frame, where
+                   the picker, the hover preview and all 654 of
                    `validate.sh`'s measurements live.
   painted.loft     PaintedHex { q, r, kind: u8 }
                    + PaintedWorld { painted: hash<PaintedHex[q, r]> }

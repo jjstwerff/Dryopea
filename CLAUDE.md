@@ -51,18 +51,20 @@ truth** and [`plans/README.md`](plans/README.md) indexes them.
 seven-wave base to its end, and **the game is PLAYABLE AND VISIBLE** — `make
 play`, press **P**, and the map editor becomes the game: the ground as
 triangles, every entity as a part-tree, through an eased camera that follows
-the vehicle.  Press P again and the editor comes back.  ⚠⚠ **The player still
-cannot BUILD** ([`plans/ROADMAP.md`](plans/ROADMAP.md) § The critical path,
-item 3 — the biggest missing mechanic, and it gates three finished designs),
-and there is no HUD: the wallet, the wave and the tick are console lines.
+the vehicle, with the WALLET in the corner.  Press P again and the editor
+comes back.  ⚠ The HUD is one number and `docs/DESIGN.md` § HUD says it should
+be — no wave counter, no health bar, no minimap; everything else is diegetic.
+⚠⚠ **The player still cannot BUILD** ([`plans/ROADMAP.md`](plans/ROADMAP.md)
+§ The critical path, item 3 — the biggest missing mechanic, and it gates three
+finished designs).
 
 ### The three gates, and their numbers
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1397 green**, ~180 s, 100 files |
+| tests | `scripts/test.sh` | **1405 green**, ~180 s, 101 files |
 | scenarios | `scripts/validate.sh` | **33 scripts, 654 measurements**, ~14 s |
-| drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 53 measurements** (needs xvfb) |
+| drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
 
 ⚠ `scripts/test.sh` is the canonical runner — **never `loft test` directly**
 (§ Key commands says what it does that you would otherwise skip).
@@ -469,7 +471,7 @@ navigational summary of it.
 | `markers.loft` / `marker_file.loft` / `marker_render.loft` | the marker layer, its save format and its drawing.  `place_marker` is the ONE dispatch |
 | `map_file.loft` / `save.loft` | the save record (6 fields — see § Known constraints) and the save/load path |
 | `render.loft` | the software rasteriser over `graphics::Canvas` |
-| `picker.loft` / `hud.loft` / `editor_mode.loft` / `chunks.loft` / `history.loft` | palette UI, HUD, the mode flag, the dirty-chunk set, undo/redo |
+| `picker.loft` / `hud.loft` / `editor_mode.loft` / `chunks.loft` / `history.loft` | palette UI, HUD, the mode flag, the dirty-chunk set, undo/redo.  ⚠ Since plan 19 P7 `hud.loft` also owns **the ONE number the game shows** — `digit_segments` / `render_digit` / `render_number` / `hud_wallet_points`.  ⚠⚠ **The digits are RECTANGLES and that is forced** (`@X097`): `graphics::draw_text` rasterises through `#native` and needs a font file, so a text HUD is one no test and no `snap` could see.  ⚠ A wrong row in the segment table draws a good-looking digit that reads the wrong number, so it is gated by an INDEPENDENT ORACLE — the lit-segment counts 6 2 5 5 4 5 6 3 7 6 |
 | `spawn.loft` | **the tick** — `WaveState`, `wave_tick`, enemy movement, targeting, deaths, the schedule, `TICK_SECONDS`, and since plan 23 K2a the banked `enemy_bank` / `enemy_step` pair the mover is built on.  ⚠ Since plan 26 L2 `enemy_bank` takes INTEGER base units and its epsilon is gone |
 | `waves.loft` | the authored wave list, its lull, and what a wave is MADE OF — `WavePart` / `wave_schedule_compose`.  ⚠ A wave's size is SUMMED from its parts, never stored |
 | `flow.loft` | the distance field — `flow_build` / `flow_step` / `flow_steps` / `flow_desire` |
@@ -870,6 +872,8 @@ signature.
 | Gate anything that is DRAWN by GL | `scripts/validate_gl.sh` over `src/gl_gate.loft` (BUILT, plan 25 M3) and [`docs/RENDERER.md`](docs/RENDERER.md) § R4 — `xvfb` → GL → `gl_screenshot` → `imaging::png` → **`classify_canvas` itself**, measured at **zero** colour drift for a blit (`@M002`) and for a SHADER (`@M026`).  ⚠ Render FLAT UNLIT: a shaded frame turns one palette colour into a range and `unknown` stops meaning "fault".  ⚠ Never loosen to nearest-colour — that discards the property R0 measured.  ⚠⚠ **And never gate on COUNTS alone**: a mirrored world passes every band (`@M027`), so add a LANDMARK against `camera_screen` |
 | Ask what makes the GL gate's claim TOTAL rather than a share | `src/gl_gate.loft::gl_entity_pixels` + `gl_case_a_defended_base` (plan 20 A5) — an entity colour is deliberately not a palette colour (`@X092`), so it lands in `unknown` exactly as the background does and the gate sums the ten by NAME: `unknown - entity pixels == 0` over a frame-filling world means **every pixel is a palette colour, an entity colour or the clear colour, and nothing else**.  ⚠ The roster is drawn for ALL THREE fixtures, so `the-ground`'s and `an-island`'s `other == 0` also say *nothing was drawn for a base with no roster* |
 | Add a GL fixture, or ask why `other == 0` is a legal thing to ask | `tests/gl/*.keys` + a case in `src/gl_gate.loft` — ⚠ a fixture with no case there is REFUSED by name, because `.keys` has no GL verb and must not grow one (`@X076`).  ⚠⚠ **`other == 0` is only legal for a fixture that FILLS the frame** (`@X077`): the clear colour is magenta and deliberately outside the palette, so a hole and a horizon both read as faults — a fixture that cannot fill the frame asserts `an-island`'s shape instead (`other` large, and every one of those pixels EXACTLY the clear colour).  ⚠ A LANDMARK must be a FLAT hex in flat surroundings: a column draws its sides in its own colour and they sit between the top face and the screen centre, 29 px off for a 5 m wall against 0.6 px flat |
+| Add something to the HUD | ⚠⚠ **Read [`docs/DESIGN.md`](docs/DESIGN.md) § HUD first — it almost certainly says no.**  Its entire numeric HUD is *one corner number, the wallet*, and it names what it refuses: no wave-number, no inter-wave countdown, no minimap, no boost cooldown bar (`@X097`).  Everything else is DIEGETIC and already built — rotors show boost (`@X091`), the canopy shows cargo (`@X090`), a tower's top shows whether it has one.  ⚠ The build is `hud.loft` § The wallet + `play_view.loft` § The one number; a second number is a design change, not a feature |
+| Draw TEXT anywhere in dryopea | you cannot, and the reason is worth knowing (`@X097`): `graphics::draw_text` rasterises through `#native rasterize_text_into`, which answers *"native function not loaded"* under `loft test`, and it needs a FONT FILE this repo does not have.  **A thing nothing headless can draw is a thing no test and no `snap` can see.**  ⚠ Numbers go through `hud.loft`'s seven-segment digits, which are `fill_rect`s every gate already reads; `picker.loft` reached the same conclusion in plan 01 |
 | Draw the game in the WINDOW, or ask what a play frame costs | `src/play_view.loft` (plan 19 P6) — `play_view_sync` then `play_view_draw`, which is all `main.loft` does in play mode.  ⚠ Measured in a real window: an idle frame is **5 ms**, the roster's per-tick upload **10 ms**, entering play mode one **218 ms** cold bake, and a one-hex terrain change **7 ms** (`@M041`).  ⚠⚠ **A play frame is never cached** — the camera eases toward the vehicle whether or not the vehicle moved |
 | Ask how the renderer knows the TERRAIN moved | `src/play_view.loft::mesh_watch_dirty` (`@X095`) — it DIFFS a snapshot of the height layer, because a live session breaks walls and drops bodies without the caller ever touching `paint`.  ⚠⚠ It is exact only because **every terrain change a tick can make moves the HEIGHT LAYER** (`break_structure` raises masonry BEFORE it repaints), and `tests/19_p6::test_the_maintained_ground_equals_a_cold_rebuild` asserts that against a played base.  ⚠ A dirty list on `HeightLayer` is the refused alternative: it is not state, and `state_diff` would have to pretend it is |
 | Ask why the ground tile is 8x8 | `@X096` + `@M041` — plan 25 M4 measured that 8x8 buys 8.6x on an edit for 12x the draw calls and changed NOTHING, naming *the phase that wires GL into `play_mode`* as its inheritor.  Plan 19 P6 measured the other half in a real window: **96 tiles draw as fast as 8**, so the draw calls are free and the edit decides.  ⚠ At 32x32 a body falling cost 54-112 ms and grew with the map; at 8x8 it is a constant 7 ms.  ⚠ Both fixtures that encoded 32 are now derived from `mesh_chunk_span()` and pass at 8, 16 and 32 |

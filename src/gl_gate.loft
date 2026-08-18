@@ -81,6 +81,10 @@ use script;
 use ground_gl;
 use entity_view;
 use entity_gl;
+use play;
+use play_view;
+use hud;
+use wallet;
 use part;
 use catalogue;
 use mesh3d;
@@ -636,6 +640,69 @@ fn gl_gate_state_restored(rep: GlGateReport, shots_dir: text, kinds: integer) ->
                     gsr_n, GL_GATE_W * GL_GATE_H);
 }
 
+// ⚠⚠ **THE SECOND CLAIM THAT IS NOT ABOUT A FIXTURE**: the HUD is a
+// SMALL, PARTIALLY TRANSPARENT quad over a 3-D frame, and both halves
+// of that can fail silently.  A fill with alpha 255 puts an opaque slab
+// over the corner of the world — which looks deliberate; a fill with
+// alpha 0 everywhere draws nothing at all — which looks like a HUD
+// nobody wired up.  ⚠ Neither is visible to a test: `loft test` cannot
+// blend, and the software `snap` composes no overlay.
+//
+// So this asserts BOTH, and asserts them against the overlay's OWN
+// canvas rather than against a number: the ink on screen is exactly the
+// ink in the canvas (the blit is 1:1 at native size), and every other
+// pixel inside the overlay's box is still the frame that was under it.
+fn gl_gate_hud_overlays(rep: GlGateReport, shots_dir: text) -> text {
+    ggh_p  = create_painter_2d(GL_GATE_W as float, GL_GATE_H as float);
+    ggh_ps = play_state_new();
+    ggh_cv = play_hud_canvas(ggh_ps);
+    ggh_want = 0;
+    for ggh_y in 0..ggh_cv.height {
+        for ggh_x in 0..ggh_cv.width {
+            if (ggh_cv.get_pixel(ggh_x, ggh_y) & 0xffffff) == (PLAY_HUD_INK & 0xffffff) {
+                ggh_want += 1;
+            }
+        }
+    }
+    if ggh_want == 0 {
+        return "the overlay canvas is blank before anything is drawn — this check would pass for a HUD nobody wired up";
+    }
+
+    // A frame of nothing but the clear colour, so the overlay's
+    // transparent half has something recognisable to fail to cover.
+    gl_clear(GL_GATE_CLEAR);
+    ggh_tex = gl_upload_canvas(ggh_cv.data, ggh_cv.width, ggh_cv.height);
+    draw_texture_at(ggh_p, ggh_tex,
+                    PLAY_HUD_MARGIN as float, PLAY_HUD_MARGIN as float,
+                    PLAY_HUD_W as float, PLAY_HUD_H as float);
+    ggh_shot = "{shots_dir}/gl-hud.png";
+    ggh_ok   = gl_screenshot(GL_GATE_W, GL_GATE_H, ggh_shot);
+    gl_swap_buffers();
+    gl_delete_texture(ggh_tex);
+    if !ggh_ok { return "gl_screenshot refused to write {ggh_shot}"; }
+    rep.shots += 1;
+
+    ggh_seen = gl_png_canvas(ggh_shot);
+    ggh_e = gl_exact(rep, "the wallet's digits reach the screen",
+                     gl_count_colour(ggh_seen, PLAY_HUD_INK & 0xffffff), ggh_want);
+    if ggh_e != "" { return ggh_e; }
+
+    // ⚠ …and the overlay did not paint over the world where it has no
+    // digits.  A slab reads as *the HUD is drawn* on every count above.
+    ggh_kept = 0;
+    for ggh_by in 0..PLAY_HUD_H {
+        for ggh_bx in 0..PLAY_HUD_W {
+            if (ggh_cv.get_pixel(ggh_bx, ggh_by) & 0xffffff) != (PLAY_HUD_INK & 0xffffff)
+               && (ggh_seen.get_pixel(PLAY_HUD_MARGIN + ggh_bx, PLAY_HUD_MARGIN + ggh_by)
+                   & 0xffffff) == (GL_GATE_CLEAR & 0xffffff) {
+                ggh_kept += 1;
+            }
+        }
+    }
+    gl_exact(rep, "the world still shows through the overlay's transparent half",
+             ggh_kept, PLAY_HUD_W * PLAY_HUD_H - ggh_want)
+}
+
 // ─── The sweep ──────────────────────────────────────────────────
 
 // Every fixture in `tests/gl/`, drawn and measured.
@@ -719,6 +786,15 @@ pub fn gl_gate_all(scripts_dir: text, shots_dir: text, palette_path: text,
         gga.failed += 1;
         println("   FAILED — {gga_sr}");
         if gga.message == "" { gga.message = gga_sr; }
+    }
+
+    println("");
+    println("── the HUD over a 3-D frame ──────────────────────");
+    gga_hd = gl_gate_hud_overlays(gga, shots_dir);
+    if gga_hd != "" {
+        gga.failed += 1;
+        println("   FAILED — {gga_hd}");
+        if gga.message == "" { gga.message = gga_hd; }
     }
 
     gl_destroy_window();

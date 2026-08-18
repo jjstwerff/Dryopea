@@ -2120,6 +2120,16 @@ Numeric / state HUD reduced to the bare minimum:
 That's the entire HUD.  No wave-number, no inter-wave
 countdown, no minimap, no boost cooldown bar.
 
+⚠⚠ **BUILT 2026-08-18** ([`plans/19`](../plans/19-the-interactive-loop/README.md)
+§ P7, `@X097`): the wallet is a seven-segment number in the play frame's
+top-left corner, and **nothing else was built, because this section names
+what it refuses**.  ⚠ The digits are RECTANGLES rather than text —
+`graphics::draw_text` rasterises through a `#native` call unavailable under
+`loft test` and needs a font file dryopea does not have, so a text HUD would be
+one no test and no `snap` could see.  ⚠ The *active palette entry* half is the
+editor's `picker.loft`, built since plan 01; **paint mode is not built at all**,
+and its *vehicle tint is the primary signal* rule is waiting on building.
+
 ## 13. Economy + progression
 
 ### Currency — points

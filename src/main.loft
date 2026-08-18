@@ -153,7 +153,7 @@
 // the same two things as before, the CLOCK and the render GATE:
 //
 //     play_view_sync(watch, gg, eg, ps, s, palette);   // GPU <- session
-//     play_view_draw(gg, eg, ps, VIEW_W, VIEW_H);      // and draw it
+//     play_view_draw(gg, eg, ps, painter, VIEW_W, VIEW_H);      // and draw it
 //
 // ⚠ **A live frame is never cached.**  The editor's picture is redrawn
 // only when something changed; a play frame moves every time, because
@@ -417,7 +417,7 @@ fn main() {
             if pv_baked > 0 {
                 println("dryopea: re-baked {pv_baked} ground tile(s) at t{ps.ticks}");
             }
-            play_view_draw(gg, eg, ps, VIEW_W, VIEW_H);
+            play_view_draw(gg, eg, ps, painter, VIEW_W, VIEW_H);
             gl_swap_buffers();
             // ⚠ The editor's cached texture is dropped, so the frame
             // after P is drawn from scratch rather than from a picture

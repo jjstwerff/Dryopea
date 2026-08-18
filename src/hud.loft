@@ -1,18 +1,23 @@
 // Copyright (c) 2026 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// Editor HUD — extra-status indicators that sit alongside the
-// picker (palette swatches) and the mode badge.  Pure Canvas,
-// no font dependency.
+// THE HUD — the editor's status indicators, and the ONE number the
+// game shows.
 //
-// Today: a single save-state dot.  Future additions land here
-// as more status fits in the HUD's small corner real-estate
-// (count displays, save-pulse animation, mode-conditional
-// shortcuts, etc.).
+// Pure Canvas, no font dependency.  ⚠⚠ **THAT IS A CONSTRAINT AND NOT
+// A STYLE.**  `graphics` does publish `draw_text`, and it is unusable
+// here twice over: it rasterises through `#native
+// rasterize_text_into`, which answers *"native function not loaded"*
+// under `loft test`, and it needs a FONT FILE this repo does not have.
+// A HUD nothing headless can draw is a HUD no test and no `snap` can
+// see — so the digits below are RECTANGLES, which every gate in the
+// repo can already read.  ⚠ `picker.loft` reached the same conclusion
+// in plan 01 and its note is the older half of this one.
 //
-// Plan 03 follow-up — QoL polish.
+// Plan 03 follow-up — QoL polish.  ⚠ Plan 19 P7 added § The wallet.
 
 use graphics;
+use wallet;
 
 // ─── Save-state indicator ───────────────────────────────────────
 //
@@ -33,4 +38,141 @@ pub fn render_save_indicator(cv: Canvas, dirty: boolean, cx: integer, cy: intege
     rsi_bg = if dirty { SAVE_INDICATOR_DIRTY_BG } else { SAVE_INDICATOR_CLEAN_BG };
     cv.fill_circle(cx, cy, SAVE_INDICATOR_RADIUS, rsi_bg);
     cv.draw_circle(cx, cy, SAVE_INDICATOR_RADIUS, SAVE_INDICATOR_BORDER);
+}
+
+// ─── The wallet — the ONE number the game shows (plan 19 P7) ────
+//
+// ⚠⚠ **`docs/DESIGN.md` § HUD IS EMPHATIC, AND MOST OF THIS SECTION IS
+// WHAT IT REFUSES.**  Its whole numeric HUD is:
+//
+//   > **Wallet** (points) — one corner number.  The only number the
+//   > player must see to make build decisions.
+//   > […] That's the entire HUD.  No wave-number, no inter-wave
+//   > countdown, no minimap, no boost cooldown bar.
+//
+// So there is no health bar, no tick counter, no enemy count and no
+// wave readout here, and adding one is a DESIGN change rather than a
+// feature.  ⚠ Everything else the player needs is diegetic and already
+// built: the rotors show boost (`@X091`), the canopy shows cargo
+// (`@X090`), a tower's top shows whether it has one (`@X093`), and
+// § No wave HUD applies the rule *uncompromisingly* to waves.
+
+// A seven-segment digit, as the seven bits `a b c d e f g`.
+//
+//        aaa
+//       f   b
+//        ggg
+//       e   c
+//        ddd
+//
+// ⚠ **The table is DATA and a wrong row is invisible** — a `5` drawn
+// with a `6`'s segments is a perfectly good-looking digit that reads
+// the wrong number, and no pixel count can see it.  ⚠ The gate is an
+// INDEPENDENT ORACLE: the number of lit segments per digit is the
+// classic **6 2 5 5 4 5 6 3 7 6**, which is derived from nothing in
+// this file.
+//
+// Example: @DRY-068, @DRY-069
+pub fn digit_segments(d: integer) -> integer {
+    if d == 0 { return 0x3f; }   // a b c d e f
+    if d == 1 { return 0x06; }   //   b c
+    if d == 2 { return 0x5b; }   // a b   d e   g
+    if d == 3 { return 0x4f; }   // a b c d     g
+    if d == 4 { return 0x66; }   //   b c     f g
+    if d == 5 { return 0x6d; }   // a   c d   f g
+    if d == 6 { return 0x7d; }   // a   c d e f g
+    if d == 7 { return 0x07; }   // a b c
+    if d == 8 { return 0x7f; }   // every one
+    if d == 9 { return 0x6f; }   // a b c d   f g
+    0
+}
+
+// How wide one digit is drawn, how tall, how thick its strokes, and
+// how far apart two of them sit — in pixels.
+//
+// ⚠ The height is `3 * THICK + 2 * half`, so it is chosen to DIVIDE:
+// 40 = 3 x 6 + 2 x 11.  A height that does not leaves a digit a pixel
+// short of its box, and only `test_a_digit_fills_its_box` can see it.
+// ⚠ The first version shipped 14 x 24 and was measured in the window
+// against a 960 x 720 frame: legible, but a squint.  A HUD is read at a
+// glance or it is not read.
+pub const HUD_DIGIT_W:     integer = 24;
+pub const HUD_DIGIT_H:     integer = 40;
+pub const HUD_DIGIT_THICK: integer = 6;
+pub const HUD_DIGIT_GAP:   integer = 6;
+
+// Draw one digit with its top-left corner at `(x, y)`.
+//
+// ⚠ A digit the table does not know draws NOTHING rather than a
+// plausible wrong glyph — `digit_segments` answers 0 — which is the
+// same rule `palette_color` follows for a kind it does not know.
+//
+// Example: @DRY-069, @DRY-070
+pub fn render_digit(cv: Canvas, d: integer, x: integer, y: integer, colour: integer) {
+    rd_s = digit_segments(d);
+    rd_t = HUD_DIGIT_THICK;
+    // The half-height of a vertical stroke, so the three horizontal
+    // strokes and two halves fill the box exactly.
+    rd_h = ((HUD_DIGIT_H - 3 * rd_t) / 2) ?? 0;
+    rd_w = HUD_DIGIT_W;
+    // ⚠ Seven statements rather than a rectangle table: a
+    // `vector<Struct>` local here would be seven allocations on every
+    // digit of every frame, and the segments are not a list anybody
+    // iterates for any other reason.
+    if rd_s & 0x01 != 0 { cv.fill_rect(x + rd_t, y, rd_w - 2 * rd_t, rd_t, colour); }
+    if rd_s & 0x02 != 0 { cv.fill_rect(x + rd_w - rd_t, y + rd_t, rd_t, rd_h, colour); }
+    if rd_s & 0x04 != 0 { cv.fill_rect(x + rd_w - rd_t, y + 2 * rd_t + rd_h, rd_t, rd_h, colour); }
+    if rd_s & 0x08 != 0 { cv.fill_rect(x + rd_t, y + 2 * rd_t + 2 * rd_h, rd_w - 2 * rd_t, rd_t, colour); }
+    if rd_s & 0x10 != 0 { cv.fill_rect(x, y + 2 * rd_t + rd_h, rd_t, rd_h, colour); }
+    if rd_s & 0x20 != 0 { cv.fill_rect(x, y + rd_t, rd_t, rd_h, colour); }
+    if rd_s & 0x40 != 0 { cv.fill_rect(x + rd_t, y + rd_t + rd_h, rd_w - 2 * rd_t, rd_t, colour); }
+}
+
+// Draw `n` right-aligned so its LAST digit ends at `right`, with the
+// top of the digits at `top`.  Answers how many digits were drawn.
+//
+// ⚠⚠ **RIGHT-ALIGNED, because it is a corner readout**: a number that
+// grows leftward from a fixed edge never moves the digit the eye is
+// resting on, and a left-aligned one shifts every digit when the
+// hundreds column appears or goes.
+//
+// ⚠ **A negative `n` draws `0`.**  `wallet_left` really can go below
+// zero — `wallet_spent` is unbounded and `wallet_broke` is `spent >=
+// 200` — and *minus forty points* is not a thing the player can act
+// on.  Zero is what they have.
+//
+// Example: @DRY-072
+pub fn render_number(cv: Canvas, n: integer, right: integer, top: integer,
+                     colour: integer) -> integer {
+    rn_n = n;
+    if rn_n < 0 { rn_n = 0; }
+    rn_x = right - HUD_DIGIT_W;
+    rn_c = 0;
+    // ⚠ A `while` rather than a digit-count-then-loop, so that 0 draws
+    // one digit rather than none: the first pass always runs.
+    while true {
+        render_digit(cv, (rn_n % 10) ?? 0, rn_x, top, colour);
+        rn_c += 1;
+        rn_n = (rn_n / 10) ?? 0;
+        if rn_n == 0 { break; }
+        rn_x -= HUD_DIGIT_W + HUD_DIGIT_GAP;
+    }
+    rn_c
+}
+
+// The wallet, floored, as the number the corner shows.
+//
+// ⚠ **FLOOR and not round**, and it is the meaning rather than the
+// arithmetic: `DESIGN.md` calls this *the only number the player must
+// see to make build decisions*, and a tower costs 100 whole points.
+// Rounding 99.6 up to 100 would show a tower the player cannot buy.
+// ⚠ It reads 0 for a run that is alive with 0.4 points left, which is
+// honest for the same reason — and *is the run over* is
+// `wallet_broke`, never this number.
+//
+// Example: @DRY-071
+pub fn hud_wallet_points(w: const Wallet) -> integer {
+    hwp = floor(wallet_left(w)) as integer? ?? 0;
+    if hwp < 0 { return 0; }
+    hwp
 }
