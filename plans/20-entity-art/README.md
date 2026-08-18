@@ -62,6 +62,23 @@ special case and its signature unchanged, plus `rig_world_seg3`, `bone_planar` /
 3. **`rig_world_seg` is not re-expressed** through the 3-D path — it would move
    every existing consumer's numbers by an ulp to buy nothing.
 
+⚠⚠ **AND THE PUBLISH ROUTINE REFUSED THE FIRST CUT, BECAUSE THE DROP-IN CLAIM
+WAS FALSE.**  It shipped with `api_compatible_with = "0.1.0"` on the reasoning
+that *every 0.1.0 signature is unchanged* — true, and beside the point.
+`loft compat check --full` answered `0.1.0: BREAK`, and the break is real:
+`struct Rig` is PUBLIC and gained four fields, so a consumer who built one by
+LITERAL (the six-field shape `rig_new` itself uses) now omits them, and under
+[loft#914] an absent axis reads as `(0,0,0)` — **measured, that literal answers
+`rig_admissible = false` where 0.1.0 answered true**.  ⚠ It is refused rather
+than repaired, deliberately, because a silent repair is what that library
+refuses everywhere else; the pin is raised to `0.2.0`, the shape is pinned as a
+test, and the release carrying the false claim was DELETED rather than amended.
+⚠ dryopea is unaffected — `part.loft` builds through `rig_new` + `rig_bone`,
+never a literal — which is why A1's 18 tests pass unchanged against the release.
+⚠⚠ **The transferable half: `loft compat check` is a gate dryopea does not have
+and could not have run itself**, and it caught a claim three humans-worth of
+review in this session did not.
+
 ⚠ **And the falsification found a defect in the GATE, not the code**: of eleven
 deliberate breaks ten fired, and dropping `rig_eq`'s axis comparison changed
 **nothing** — the control compared `(0,1,0)` against `(1,0,0)`, which differ in
@@ -211,7 +228,7 @@ worth saying because silence reads as "gate done".
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
 | **A1** — adopt `hex_body`, and build the SOCKET | S | `tests/20_a1_the_part.loft` — **18 tests**, `src/part.loft`, and dryopea re-implements none of the rig: `Rig`, `Joint`, `rig_world_seg`, `rig_count` and `rig_admissible` all arrive as a dependency, and `part_fault` asks the LIBRARY's doorstep before any question of its own.  ⚠⚠ The 3-D axis is NOT here — it is `rig_bone3` in `loft-libs-world` (§ Cross-repo coordination), and A2 is what needs it | **SHIPPED** 2026-08-18 |
-| **A2** — the geometry emitter | MH | `tests/20_a2_the_geometry.loft` — a part poses its joints and emits triangles in world space.  ⚠ Gated on NUMBERS, not pixels: a hinge at 0.25 turns puts the canopy's far edge where trigonometry says, a box emits 12 triangles, a disc emits its fan, and every vertex is inside the declared extent | **Next** — `hex_body` **0.2.0** ships `rig_bone3` and closes [#14](https://github.com/loft-lang/loft-libs-world/issues/14) (§ A1b).  ⚠ Waiting only on the registry signature, after which dryopea repins to `>=0.2` |
+| **A2** — the geometry emitter | MH | `tests/20_a2_the_geometry.loft` — a part poses its joints and emits triangles in world space.  ⚠ Gated on NUMBERS, not pixels: a hinge at 0.25 turns puts the canopy's far edge where trigonometry says, a box emits 12 triangles, a disc emits its fan, and every vertex is inside the declared extent | **Next** — `hex_body` **0.2.0** ships `rig_bone3` and closes [#14](https://github.com/loft-lang/loft-libs-world/issues/14) (§ A1b).  ⚠ `hex_body` **0.2.0 is published** and dryopea is repinned to `>=0.2`; A1's 18 tests pass against it unchanged |
 | **A3** — the catalogue | M | `tests/20_a3_the_catalogue.loft` — the hover unit, the robot, the helper livery, the tower base + top.  ⚠ Its real gate is the FOOTPRINT check against the simulation's constants | ⚠⚠ **A1 unblocked it and a PROBE re-blocked it**: every plan dimension the gate would bind to is read by nothing, and § D7's hover unit is 2.07x the width `numbers.json` gives.  Needs § Open questions 3 decided first — see § Before A2 and A3 |
 | **A4** — poses come from the SIMULATION | S | `tests/20_a4_the_joints.loft` — a tower with no top emits no top triangles; the canopy angle follows the sim; rotor spin follows boost.  ⚠ Asked of `TowerState` / `Vehicle`, never a second flag | Blocked on A2, A3 |
 | **A5** — entities in the frame (was plan 19 P4) | M | `tests/20_a5_the_frame.loft` — `classify_world` shares for enemies, vehicle and crew; a `.keys` scenario with `snap` | ⚠ Blocked on **[plan 21](../21-the-renderer/README.md)** |

@@ -157,7 +157,10 @@ gets its own record tag `bone3` rather than extra words on the `bone` line
 back as the bone's PLANAR PROJECTION and report success), and the rotation is
 carried as a MATRIX rather than a quaternion (measured — Rodrigues at `(0,0,1)`
 keeps a single planar bone bit-identical where a quaternion's half-angle does
-not).
+not).  ⚠⚠ **And 0.2.0 is NOT a drop-in for 0.1.0** — `struct Rig` gained four
+fields, so a rig built by LITERAL now reads as having no axis and
+`rig_admissible` refuses it.  dryopea is unaffected because `src/part.loft`
+builds through `rig_new` + `rig_bone`, never a literal.
 
 ⚠⚠ **CORRECTED 2026-08-18 — this paragraph named the wrong repo.**  It said
 `hex_body` *"belongs to hexbody/lavition … so the enhancement is proposed there"*.

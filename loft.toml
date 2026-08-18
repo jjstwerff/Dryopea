@@ -118,4 +118,11 @@ fixstep = ">=0.1"
 # 4 000 unpublished lines whose premise is *"a part IS a world"*, i.e. a
 # `hex_voxel` store with its own `.hxw` format.  Its socket records are the
 # shape `src/part.loft` follows; the dependency is not.
-hex_body = ">=0.1"
+# ⚠ `>=0.2`, not `>=0.1`: A2's canopy hinges about a LATERAL axis while the
+# rotors sit at four heights (`PARTS.md` § D7), and `rig_bone3` is 0.2.0.
+# ⚠⚠ 0.2.0 is NOT a drop-in for 0.1.0 and its manifest says so — `struct Rig`
+# gained four fields, so a consumer who built one by LITERAL now omits them and
+# an absent axis reads as (0,0,0).  dryopea is unaffected because `part.loft`
+# builds through `rig_new` + `rig_bone`, never a literal — which is what the
+# library's README and USAGE both show.
+hex_body = ">=0.2"
