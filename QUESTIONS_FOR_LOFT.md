@@ -31,7 +31,11 @@ fix / feature, move it to **Resolved**.
 
 ## Open
 
-### Measuring a part and EMITTING one in the same process corrupts the interpreter heap
+## Submitted
+
+### Interleaving two library functions over one `vector<Struct>` field truncates it — [loft#969](https://github.com/loft-lang/loft/issues/969)
+
+Filed 2026-08-18 (plan 20 A2).
 
 - **Found while:** plan 20 A3, deriving a part's extent from its limbs.
 - **Kind:** bug (interpreter crash)
@@ -102,12 +106,13 @@ time, which is the one constant.
 A3 needs the second.  A2's emitter is held out of the tree rather than landing
 a suite that segfaults.
 
-⚠ **No minimal reproducer yet**, which is why this is Open rather than
-Submitted: the trigger needs an aggregated library plus a registry dependency,
-and every attempt to shrink it so far has made it disappear.  The crash report
-is `.loft/loft-crash-1383923.txt`.
-
-## Submitted
+⚠⚠ **FILED WITHOUT A SELF-CONTAINED REPRO, KNOWINGLY.**  Eight ingredients were
+added to a fresh two-module package and NONE reproduced — the failed attempt is
+kept as a NEGATIVE CONTROL at
+[`loft_repros/emit_then_measure_corrupts/`](loft_repros/emit_then_measure_corrupts/README.md)
+with the full list, so nobody repeats it.  ⚠ The recipe that DOES reproduce is
+ten lines and three calls, and it is inline in the issue; the alternative was to
+leave silent heap corruption unreported while a consumer worked around it.
 
 ### `use <pkg>;` resolves a package the manifest never declared — [loft#968](https://github.com/loft-lang/loft/issues/968)
 

@@ -1,0 +1,77 @@
+use hex_body;
+
+// The MEASURE half: a struct holding a vector of sub-structs, and a
+// function that walks it and answers a 6-tuple.
+pub struct Limb {
+  lb_bone: integer,
+  lb_cx: float, lb_cy: float, lb_cz: float,
+  lb_kind: integer,
+  lb_sx: float, lb_sy: float, lb_sz: float,
+}
+
+pub struct Socket { sk_name: text, sk_kind: text, sk_bone: integer, sk_t: float }
+pub struct Binding { bd_socket: text, bd_part: text }
+
+pub struct Part {
+  pt_name: text,
+  pt_fits: text,
+  pt_rig:  Rig,                 // a struct from ANOTHER LIBRARY, in a field
+  pt_limbs: vector<Limb>,
+  pt_socks: vector<Socket>,
+  pt_binds: vector<Binding>,
+}
+
+pub struct PartSet { ps_parts: hash<Part[pt_name]> }
+
+pub fn part_new(name: text) -> Part {
+  Part { pt_name: name, pt_fits: "", pt_rig: rig_new(),
+         pt_limbs: [], pt_socks: [], pt_binds: [] }
+}
+
+pub fn part_bone(p: Part, parent: integer, oz: float) -> Part {
+  p.pt_rig = rig_bone3(p.pt_rig, parent, 0.0, 0.0, oz, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0);
+  p
+}
+
+pub fn part_limb(p: Part, bone: integer, cz: float, kind: integer, sz: float) -> Part {
+  p.pt_limbs += [Limb { lb_bone: bone, lb_cx: 0.0, lb_cy: 0.0, lb_cz: cz,
+                        lb_kind: kind, lb_sx: 1.0, lb_sy: 1.0, lb_sz: sz }];
+  p
+}
+
+pub fn partset_new() -> PartSet { PartSet { ps_parts: [] } }
+pub fn partset_add(ps: PartSet, p: Part) { ps.ps_parts += [p]; }
+pub fn partset_get(ps: PartSet, name: text) -> Part? { ps.ps_parts[name] }
+
+// THE MEASURE: walk the limbs, walk each limb's ancestors, answer a box.
+pub fn part_box(p: Part) -> (float, float, float, float, float, float) {
+  if len(p.pt_limbs) == 0 { return (0.0, 0.0, 0.0, 0.0, 0.0, 0.0); }
+  lo_z = 0.0; hi_z = 0.0;
+  for l in p.pt_limbs {
+    bz = 0.0;
+    anc = l.lb_bone;
+    while anc >= 0 && anc < rig_count(p.pt_rig) {
+      up = p.pt_rig.rg_parent[anc] ?? -1;
+      if up >= 0 { bz += p.pt_rig.rg_oz[anc] ?? 0.0; }
+      anc = up;
+    }
+    cz = bz + l.lb_cz;
+    rz = l.lb_sz / 2.0 ?? 0.0;
+    if l#first { lo_z = cz - rz; hi_z = cz + rz; }
+    else {
+      if cz - rz < lo_z { lo_z = cz - rz; }
+      if cz + rz > hi_z { hi_z = cz + rz; }
+    }
+  }
+  (0.0, 0.0, lo_z, 0.0, 0.0, hi_z)
+}
+
+pub fn part_socket(p: Part, name: text, kind: text, bone: integer, t: float) -> Part {
+  p.pt_socks += [Socket { sk_name: name, sk_kind: kind, sk_bone: bone, sk_t: t }];
+  p
+}
+
+pub fn part_bind(p: Part, socket: text, what: text) -> Part {
+  p.pt_binds += [Binding { bd_socket: socket, bd_part: what }];
+  p
+}

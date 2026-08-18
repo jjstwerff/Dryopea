@@ -1,0 +1,34 @@
+use emitrepro;
+
+fn thing(name: text, limbs: integer) -> Part {
+  p = part_new(name);
+  p = part_bone(p, -1, 0.0);
+  p = part_bone(p, 0, 6.0);
+  for i in 0..limbs { p = part_limb(p, 0, (i as float) * 0.3, 0, 0.3); }
+  p
+}
+
+fn build() -> PartSet {
+  ps = partset_new();
+  partset_add(ps, thing("top", 1));
+  partset_add(ps, thing("robot", 1));
+  a = thing("hover", 8);
+  partset_add(ps, a);
+  b = thing("base", 1);
+  b = part_socket(b, "top", "top", 1, 0.0);
+  b = part_bind(b, "top", "top");
+  partset_add(ps, b);
+  ps
+}
+
+fn main() {
+  ps = build();
+  q = partset_get(ps, "hover")?;
+  a = mesh("A");
+  println("1 emit  = {part_emit(a, q)}   (expect 8)");
+  (z0, z1, z2, z3, z4, z5) = part_box(q);
+  println("2 box   = z {z2}..{z5}");
+  b = mesh("B");
+  println("3 emit  = {part_emit(b, q)}   (expect 8)");
+  println("4 limbs = {len(q.pt_limbs)}   (expect 8)");
+}

@@ -39,13 +39,18 @@ landing a suite that crashes.  ⚠ `part_box`'s own answers stay correct
 throughout — it is everything AFTER it that decays, which is why A3 has been
 green all along.
 
-⚠ **Six narrowings, each measured, none of them the trigger**: binding the rig
-to a local; splitting `part_box` into three small passes; precomputing the bone
-bases so the container is never passed on from inside its own limb loop;
-avoiding `Vec3` locals reused across `add_vertex`; iterating the limb vector
-alone; a 6-tuple return alone.  ⚠ The byte-identical body in a program ENTRY is
+⚠⚠ **AND THE FAULT IS NOT WHAT IT LOOKED LIKE.**  Narrowed to ten lines and
+three calls: a tiny emitter walking `p.pt_limbs` and appending to a `Mesh`,
+then `part_box`, then the emitter again — which answers **1 limb where the part
+has 8**, and a later `part_size` reads `(0,0,0)`.  ***`part_box` TRUNCATES the
+vector it walked***, and the damage spreads to other parts in the same set.  ⚠
+Each function alone repeats correctly for ever; only the interleaving corrupts,
+which is why A3 has been green throughout.  ⚠ Six narrowings of `part_box`
+itself found nothing: binding the rig to a local; splitting it into three small
+passes; precomputing the bone bases; avoiding `Vec3` locals reused across
+`add_vertex`; iterating the limb vector alone; a 6-tuple return alone.  ⚠ The byte-identical body in a program ENTRY is
 correct every time — the one constant, and the same axis as [loft#962]'s family.
-`QUESTIONS_FOR_LOFT.md` § Open carries it.
+Filed as [loft#969](https://github.com/loft-lang/loft/issues/969), with the eight standalone ingredients that do NOT trigger it kept as a negative control in `loft_repros/emit_then_measure_corrupts/`.
 
 ⚠ **What A2 did land is upstream**: `hex_body` **0.3.0** — `Frame` /
 `rig_world_frame3` / `frame_point` / `rig_world_point3`, published and signed.
