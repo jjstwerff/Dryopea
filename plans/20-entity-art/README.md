@@ -71,10 +71,14 @@ Rewritten as four one-field-apart rigs, all four now fire separately.
 
 Gates: `--interpret` and `--native` both **17 passed** under
 `LOFT_DENY_WARNINGS=1`, and CI's *Compatibility with published releases* step
-green against 0.1.0.  ⚠ The repo's aggregate CI run is RED for an unrelated
-reason — `hex_roof/src/hex_roof.loft:106` has an unused loop variable that a
-newer loft now diagnoses, and `hex_draw` / `hex_fit` fail on it transitively.
-Not dryopea's to fix; the one-character fix is `i` → `_`.
+green against 0.1.0.  ⚠ The repo's aggregate CI run was RED on arrival for an
+unrelated reason — `hex_roof/src/hex_roof.loft:106` named a fill loop's counter
+it never reads, which a newer loft diagnoses and which failed `hex_draw` and
+`hex_fit` transitively.  **Fixed and released as `hex_roof` 0.1.1** at the
+project owner's word: swept first, and that one line was the ONLY warning in all
+fourteen packages.  ⚠ It earned a version rather than just a commit because a
+registry CONSUMER builds from the tarball — the fix on `main` turns the repo's
+own CI green and does nothing for anyone downstream.
 
 **A3's PREMISE needs correcting, and the correction is measured.**  § D6 says
 dryopea's sizes are *"already written down and already load-bearing in the
