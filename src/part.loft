@@ -124,8 +124,46 @@ pub struct Part {
   pt_name:  text,
   pt_fits:  text,
   pt_rig:   Rig,                  // hex_body's — see the header
+  pt_limbs: vector<Limb>,         // what it is MADE of (plan 20 A3)
   pt_socks: vector<Socket>,
   pt_binds: vector<Binding>,
+}
+
+// ─── What a part is MADE of ─────────────────────────────────────
+
+// The shapes a limb can be.
+//
+// ⚠ **Three, and each earns its place from a catalogue entry that needs
+// it** — a box is the chassis and the robot, a disc is a rotor, a
+// truncated cone is the tower (`PROXY_ART.md` § Tower: *"wider at base,
+// narrower at top"*).  A fourth costs a constant and a case in
+// `part_extent`, so add one when an entry needs it and not before.
+pub const LIMB_BOX  = 0;    // a cuboid: sx x sy x sz, full extents
+pub const LIMB_DISC = 1;    // a disc in the bone's xy plane: sx = sy = radius, sz = thickness
+pub const LIMB_CONE = 2;    // a truncated cone about +z: sx = bottom radius, sy = top radius, sz = height
+
+// One piece of a part's body.
+//
+// ⚠⚠ **THERE IS NO SOLIDITY FIELD, AND THAT IS A DECISION.**  moros's
+// model has three limb kinds — solid, yielding, visual-only — and they
+// are a HITBOX property.  dryopea's hitbox is one hex, full stop
+// (`PARTS.md` § D6: *"the hitbox is a SUBSET of the skin, and it is the
+// SIM's, not the art's"*), so a per-limb solid flag would be a field
+// nobody reads — and reading it would be exactly the *"derive
+// passability from a part's extent"* that § D6 forbids and
+// `passable.loft` is the one door for.
+//
+// ⚠ The size fields mean different things per kind, which is what a
+// tagged shape record is; `part_extent` is the one place that knows.
+pub struct Limb {
+  lb_bone: integer,     // which bone of the part's rig it rides
+  lb_cx:   float,       // centre, in that bone's frame
+  lb_cy:   float,
+  lb_cz:   float,
+  lb_kind: integer,     // LIMB_BOX / LIMB_DISC / LIMB_CONE
+  lb_sx:   float,       // box: full x extent.  disc: radius.  cone: bottom radius
+  lb_sy:   float,       // box: full y extent.  disc: radius.  cone: top radius
+  lb_sz:   float,       // box: full z extent.  disc: thickness.  cone: height
 }
 
 // The catalogue: parts by name.
@@ -149,7 +187,8 @@ pub struct PartSet {
 //
 // Example: @DRY-016, @DRY-020
 pub fn part_new(name: text, fits: text, rig: Rig) -> Part {
-  Part { pt_name: name, pt_fits: fits, pt_rig: rig, pt_socks: [], pt_binds: [] }
+  Part { pt_name: name, pt_fits: fits, pt_rig: rig,
+         pt_limbs: [], pt_socks: [], pt_binds: [] }
 }
 
 // Offer a socket, riding bone `bone` at `t` along it.  Chains, the way
@@ -210,6 +249,120 @@ pub fn partset_add(ps: PartSet, p: Part) -> text {
 // Example: @DRY-020
 pub fn partset_get(ps: PartSet, name: text) -> Part? {
   ps.ps_parts[name]
+}
+
+// Give the part a limb.  Chains, like `part_socket`.
+//
+// Example: @DRY-028, @DRY-029
+pub fn part_limb(p: Part, bone: integer, cx: float, cy: float, cz: float,
+                 kind: integer, sx: float, sy: float, sz: float) -> Part {
+  p.pt_limbs += [Limb { lb_bone: bone, lb_cx: cx, lb_cy: cy, lb_cz: cz,
+                        lb_kind: kind, lb_sx: sx, lb_sy: sy, lb_sz: sz }];
+  p
+}
+
+// ─── How big it is, and the number is DERIVED ───────────────────
+
+// The half-widths a limb reaches from its own centre, per axis.
+//
+// ⚠ A DISC and a CONE are round about `+z`, so both reach their radius
+// in x AND in y — a cone by its LARGER radius, which for a tower is the
+// base.  Getting this wrong shrinks a footprint silently, so
+// `tests/20_a3` reads a cone's extent off the wider end specifically.
+fn limb_reach_x(l: Limb) -> float {
+  if l.lb_kind == LIMB_BOX { return l.lb_sx / 2.0 ?? 0.0; }
+  if l.lb_kind == LIMB_DISC { return l.lb_sx; }
+  if l.lb_sx > l.lb_sy { return l.lb_sx; }
+  l.lb_sy
+}
+
+fn limb_reach_y(l: Limb) -> float {
+  if l.lb_kind == LIMB_BOX { return l.lb_sy / 2.0 ?? 0.0; }
+  limb_reach_x(l)
+}
+
+fn limb_reach_z(l: Limb) -> float {
+  if l.lb_kind == LIMB_CONE { return l.lb_sz / 2.0 ?? 0.0; }
+  l.lb_sz / 2.0 ?? 0.0
+}
+
+// ⚠⚠ **THE FOOTPRINT IS DERIVED FROM THE LIMBS, NEVER DECLARED BESIDE
+// THEM** — and that is what stops `PARTS.md` § D6's gate being a
+// tautology.  A part declaring its own size would agree with itself for
+// ever; a part whose size is COMPUTED disagrees with the simulation's
+// constant the moment somebody moves a rotor, which is the drift § D6
+// exists to catch.
+//
+// The box the part occupies at its NEUTRAL pose (every joint 0), as
+// `(minx, miny, minz, maxx, maxy, maxz)` about the part's origin.
+//
+// ⚠ NEUTRAL, and it has to be: a footprint is a nominal figure the
+// simulation carries, and a posed part sweeps a different volume every
+// frame.  `PARTS.md` § D6 compares the nominal one.
+//
+// Example: @DRY-028, @DRY-030
+pub fn part_box(p: Part) -> (float, float, float, float, float, float) {
+  if len(p.pt_limbs) == 0 { return (0.0, 0.0, 0.0, 0.0, 0.0, 0.0); }
+  lo_x = 0.0; lo_y = 0.0; lo_z = 0.0;
+  hi_x = 0.0; hi_y = 0.0; hi_z = 0.0;
+  for l in p.pt_limbs {
+    // ⚠⚠ AT THE NEUTRAL POSE EVERY ROTATION IS THE IDENTITY, so a bone's
+    // base is simply the SUM OF ITS ANCESTORS' OFFSETS and a limb sits at
+    // that plus its own centre.  `rig_world_seg3` would answer the same
+    // thing and this walk is what it reduces to with every joint at zero.
+    //
+    // ⚠ It is written out rather than called for a second reason as well:
+    // calling `rig_world_seg3` from HERE **SIGSEGVs the interpreter**
+    // while the byte-identical function body in a program ENTRY answers
+    // correctly — the library/entry axis of [loft#962]'s family.  Filed;
+    // see `loft_repros/`.  This walk is also cheaper and needs no
+    // per-call `zeros` vector, so it is not a workaround wearing a
+    // comment: it is what the neutral pose actually is.
+    bx = 0.0; by = 0.0; bz = 0.0;
+    anc = l.lb_bone;
+    while anc >= 0 && anc < rig_count(p.pt_rig) {
+      up = p.pt_rig.rg_parent[anc] ?? -1;
+      if up >= 0 {
+        // the ROOT's own offset is not part of any base — `rig_world_seg3`
+        // puts bone 0 at the origin and ignores it, and so must this
+        bx += p.pt_rig.rg_ox[anc] ?? 0.0;
+        by += p.pt_rig.rg_oy[anc] ?? 0.0;
+        bz += p.pt_rig.rg_oz[anc] ?? 0.0;
+      }
+      anc = up;
+    }
+    cx = bx + l.lb_cx; cy = by + l.lb_cy; cz = bz + l.lb_cz;
+    rx = l.lb_sx / 2.0 ?? 0.0; ry = l.lb_sy / 2.0 ?? 0.0; rz = l.lb_sz / 2.0 ?? 0.0;
+    if l.lb_kind == LIMB_DISC { rx = l.lb_sx; ry = l.lb_sy; }
+    if l.lb_kind == LIMB_CONE {
+      rx = l.lb_sx; if l.lb_sy > rx { rx = l.lb_sy; }
+      ry = rx;
+    }
+    if l#first {
+      lo_x = cx - rx; hi_x = cx + rx;
+      lo_y = cy - ry; hi_y = cy + ry;
+      lo_z = cz - rz; hi_z = cz + rz;
+    } else {
+      if cx - rx < lo_x { lo_x = cx - rx; }
+      if cx + rx > hi_x { hi_x = cx + rx; }
+      if cy - ry < lo_y { lo_y = cy - ry; }
+      if cy + ry > hi_y { hi_y = cy + ry; }
+      if cz - rz < lo_z { lo_z = cz - rz; }
+      if cz + rz > hi_z { hi_z = cz + rz; }
+    }
+  }
+  (lo_x, lo_y, lo_z, hi_x, hi_y, hi_z)
+}
+
+// The part's SIZE — width (x), length (y), height (z) — which is the
+// shape `PARTS.md` § D6 compares against the simulation.  The other
+// door onto `part_box`, for the caller that wants three numbers rather
+// than six.
+//
+// Example: @DRY-028, @DRY-029
+pub fn part_size(p: Part) -> (float, float, float) {
+  (lo_x, lo_y, lo_z, hi_x, hi_y, hi_z) = part_box(p);
+  (hi_x - lo_x, hi_y - lo_y, hi_z - lo_z)
 }
 
 // ─── Where a socket IS ──────────────────────────────────────────

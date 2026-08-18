@@ -89,6 +89,18 @@ pub const TOWER_DAMAGE_PER_SHOT: float = 10.0;
 // which is the whole reason `DESIGN.md` § LOS is a HEIGHT question
 // says the ridge works for free: a tower standing on 3 m of wall sees
 // from 9 m with nothing written for elevation at all.
+// The tower's footprint across the flats — three hexes, which is the
+// `hex_disc_radius_1` layout `numbers.json` names (a centre hex plus its
+// six neighbours).
+//
+// ⚠⚠ **A LITERAL, and it may not be derived here.**  The honest form is
+// `3.0 * HEX_FLAT_TO_FLAT`, and a file-scope const initialised from a
+// SIBLING MODULE's const panics the compiler through the aggregator
+// ([loft#962]).  So the relation is asserted at RUNTIME instead —
+// `tests/20_a3_the_catalogue.loft` derives it from the lattice and fails
+// if the literal drifts from three hexes.
+pub const TOWER_FOOTPRINT_M: float = 3.897114;   // = 3 x HEX_FLAT_TO_FLAT
+
 pub const TOWER_HEIGHT_METRES: float = 6.0;
 
 // numbers.json § tower.shot_budget_per_charge — how many shots a tower

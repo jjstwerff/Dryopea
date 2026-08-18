@@ -1,0 +1,194 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// #examples
+//
+// THE CATALOGUE — what each entity is made of.
+//
+// Plan 20 phase A3.  `docs/PARTS.md` § D7 specifies the hover unit limb
+// by limb, § D8 says the crew is that same part and the enemies are ONE
+// part with per-class data, and § D3 makes the tower a base offering a
+// socket with a top that fits it.  This file is those four decisions as
+// constructors.
+//
+// ── ⚠⚠ THE SIZE IS DERIVED, WHICH IS WHAT MAKES ITS GATE REAL ───
+//
+// `PARTS.md` § D6: *"a part declares its footprint, and a test compares
+// it to the number the simulation uses"*.  ⚠ **This file declares no
+// footprint at all** — it declares LIMBS, and `part_size` computes the
+// extent from them.  The difference is the whole gate: a part that
+// declared its own size would agree with itself for ever, while a part
+// whose size is COMPUTED disagrees with `VEHICLE_WIDTH_M` the moment
+// somebody moves a rotor.  That drift is what § D6 exists to catch, and
+// `tests/20_a3_the_catalogue.loft` is where it fails, naming both
+// numbers.
+//
+// ⚠ So there are THREE copies of every size and TWO gates between them:
+// the limb table here, the `.loft` constant the simulation reads, and
+// `numbers.json`'s documented figure.  `tests/20_a3` binds the first two
+// and `tests/numbers_design_targets.loft` binds the last two.
+//
+// ── ⚠ What this file does NOT contain ───────────────────────────
+//
+// **No triangles** — plan 20 A2 emits those from these limbs, and its
+// own gate is that every vertex lands inside the extent computed here.
+//
+// **No colour, and no livery.**  § D8 makes a helper *"the hover unit
+// part with a different livery"* and a robot class *"a row of data (a
+// colour, a scale factor, at most one distinguishing limb)"*.  A colour
+// is what the RENDERER varies per instance; putting one on the part
+// would make the catalogue hold one entry per class, which is the thing
+// § D8 refuses.
+//
+// **No boom.**  ⚠⚠ § D7's four booms are the one entry this file cannot
+// express, and the reason is worth knowing before A2 starts: a boom runs
+// DIAGONALLY from the chassis to a rotor hub, and neither `Limb` nor
+// `hex_body::Rig` carries a REST ORIENTATION — a bone's length runs
+// along its own `+x` and its only rotation is the joint VALUE, which is
+// a pose rather than a fact about the part.  Omitting them costs this
+// phase nothing (they sit strictly inside the rotor envelope, so the
+// extent is unchanged), and it hands A2 a named problem rather than a
+// surprise.  ⚠ The same gap is why the tower's socket rides a
+// zero-length bone at an OFFSET rather than the tip of a 6 m one.
+
+use lattice;
+use part;
+use vehicle;
+use damage;
+use tower;
+
+// ─── The hover unit  (`PARTS.md` § D7) ──────────────────────────
+
+// ⚠⚠ **§ D7's size column has no axis labels, and the SKID is what
+// proves it cannot be read positionally**: *"1.20 x 0.10 x 0.22"* read
+// as `(x, y, z)` is a rail 1.20 m ACROSS at `x = +-0.34`, so the two
+// skids would intersect through the middle of the vehicle.  A skid runs
+// fore-and-aft, so its 1.20 is along `+y`.  Every limb below therefore
+// states its axes explicitly, and § D7's table was corrected to match.
+//
+// The frame is § D7's: `+y` forward, `+x` starboard, `+z` up, origin at
+// the centre of the footprint at hover height.
+//
+// Example: @DRY-028, @DRY-029
+pub fn cat_hover_unit() -> Part {
+  r = rig_new();
+  // bone 0 — the fixed chassis.  ⚠ Length 0: a bone's length is the
+  // segment `hex_body` bounds with `bone_obb`, and dryopea's hitbox is a
+  // HEX (§ D6), so nothing reads it.  The limbs carry the size.
+  r = rig_bone3(r, -1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0);
+  // bone 1 — the canopy hinge: at the canopy's REAR TOP edge, about a
+  // LATERAL axis, opening backwards through 0.30 turns (108 deg).
+  // ⚠ This is the joint that needed `rig_bone3` and could not be
+  // expressed at all before hex_body 0.2.0.
+  r = rig_bone3(r, 0, 0.0, -0.02, 0.56, 0.0, 1.0, 0.0, 0.0, 0.0, 0.30);
+
+  p = part_new("hover_unit", "", r);
+  // the chassis slab — 1.50 across, 0.80 fore-aft, 0.30 deep
+  p = part_limb(p, 0, 0.0, 0.0, 0.0, LIMB_BOX, 1.50, 0.80, 0.30);
+  // two landing skids, running fore-and-aft under the chassis
+  p = part_limb(p, 0,  0.34, -0.05, -0.26, LIMB_BOX, 0.10, 1.20, 0.22);
+  p = part_limb(p, 0, -0.34, -0.05, -0.26, LIMB_BOX, 0.10, 1.20, 0.22);
+  // the four rotors — ⚠ the REAR pair is 44% larger, which is the
+  // silhouette the project owner asked for ("bigger behind the cockpit
+  // rotors") and is what sets the width and the length both
+  p = part_limb(p,  0,  0.52,  0.55, 0.26, LIMB_DISC, 0.36, 0.36, 0.03);
+  p = part_limb(p,  0, -0.52,  0.55, 0.26, LIMB_DISC, 0.36, 0.36, 0.03);
+  p = part_limb(p,  0,  0.62, -0.62, 0.30, LIMB_DISC, 0.52, 0.52, 0.03);
+  p = part_limb(p,  0, -0.62, -0.62, 0.30, LIMB_DISC, 0.52, 0.52, 0.03);
+  // the canopy, on the hinge — its centre is (0, +0.28, +0.36) in the
+  // PART's frame, which is (0, +0.30, -0.20) in the hinge's
+  p = part_limb(p, 1, 0.0, 0.30, -0.20, LIMB_BOX, 0.62, 0.60, 0.40);
+  p
+}
+
+// ⚠ **The crew is the SAME part** (§ D8: *"same chassis as the player"*,
+// and the code already means it — `drive_along` is the shared chassis).
+// This is a function rather than a second entry so that a future second
+// part-tree has to be written deliberately; `tests/20_a3` asserts the
+// two are identical in size, which is the claim § D8 makes.
+//
+// Example: @DRY-031
+pub fn cat_helper() -> Part { cat_hover_unit() }
+
+// ─── The robot  (`PARTS.md` § D8, `PROXY_ART.md` § Enemy) ───────
+
+// ONE robot part.  ⚠ A class is a row of DATA — a colour, a scale, at
+// most one distinguishing limb — and a class that needs its own
+// part-tree has broken `CLAUDE.md`'s *"ONE AI, per-class DATA"* one
+// layer up.  There are four small robots and this is the only part.
+//
+// Example: @DRY-030
+pub fn cat_robot() -> Part {
+  r = rig_new();
+  r = rig_bone3(r, -1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0);
+  p = part_new("robot", "", r);
+  // a long box, sitting ON the ground rather than centred on it
+  p = part_limb(p, 0, 0.0, 0.0, 0.5, LIMB_BOX, 1.3, 2.7, 1.0);
+  p
+}
+
+// ─── The tower  (`PARTS.md` § D3, `PROXY_ART.md` § Tower) ───────
+
+// The base: a truncated cone over the 7-hex footprint, offering the ONE
+// socket the simulation has had since plan 17 T2.
+//
+// ⚠⚠ **The socket rides a ZERO-LENGTH BONE at an OFFSET, not the tip of
+// a 6 m one**, and that is forced rather than chosen: a `hex_body` bone
+// runs along its own `+x` and carries no rest orientation, so a 6 m
+// "mast" bone would put its tip 6 m to STARBOARD instead of overhead.
+// An offset carries the geometry exactly and needs nothing hex_body does
+// not have.  See this file's header — the same gap omits the booms.
+//
+// Example: @DRY-032
+pub fn cat_tower_base() -> Part {
+  r = rig_new();
+  r = rig_bone3(r, -1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0);
+  // bone 1 — the mount, 6 m up
+  r = rig_bone3(r, 0, 0.0, 0.0, 6.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0);
+  p = part_new("tower_base", "", r);
+  // the body: wider at the base than at the top, standing ON the ground
+  p = part_limb(p, 0, 0.0, 0.0, 3.0, LIMB_CONE, 1.948557, 0.85, 6.0);
+  p = part_socket(p, "top", "tower_top", 1, 0.0);
+  p
+}
+
+// The detachable top — `tower_detach_top` takes this off and
+// `tower_mount_top` refuses to put a second one on.
+//
+// Example: @DRY-032
+pub fn cat_tower_top() -> Part {
+  r = rig_new();
+  r = rig_bone3(r, -1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0);
+  p = part_new("tower_top", "tower_top", r);
+  p = part_limb(p, 0, 0.0, 0.0, 0.0, LIMB_DISC, 0.85, 0.85, 0.50);
+  p
+}
+
+// ─── The catalogue itself ───────────────────────────────────────
+
+// Every entry, by name.
+//
+// ⚠⚠ **The gate SWEEPS this**, which is what stops it going vacuous over
+// anything new: `tests/20_a3` requires every name here to be either
+// checked against a simulation constant or listed as art-only WITH a
+// reason, so a fifth entry cannot slip in ungated.  That is the negative
+// control `plans/20` § Invariant gate asks for — *"a part with no
+// simulation counterpart must fail too"*.
+//
+// Example: @DRY-033
+pub fn catalogue_names() -> vector<text> {
+  ["hover_unit", "robot", "tower_base", "tower_top"]
+}
+
+// The whole catalogue, defined and bound: the tower with its top in.
+//
+// Example: @DRY-032, @DRY-033
+pub fn catalogue() -> PartSet {
+  ps = partset_new();
+  partset_add(ps, cat_hover_unit());
+  partset_add(ps, cat_robot());
+  partset_add(ps, cat_tower_top());
+  base = cat_tower_base();
+  base = part_bind(base, "top", "tower_top");
+  partset_add(ps, base);
+  ps
+}

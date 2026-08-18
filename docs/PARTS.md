@@ -647,6 +647,25 @@ centre of the footprint at hover height.
 
 **Overall: 2.28 m wide × 2.05 m long × ~0.9 m tall.**
 
+⚠⚠ **SETTLED 2026-08-18 (project owner): the vehicle IS 2.28 x 2.05, and the
+simulation moved to match it.**  `numbers.json` § player_vehicle said 2.4 long x
+1.1 wide — a long narrow car — and § Open question 3 asked which was real.  The
+answer is this table, so the JSON now reads **2.05 long x 2.28 wide x 0.93
+tall** and `src/vehicle.loft` carries `VEHICLE_LENGTH_M` / `VEHICLE_WIDTH_M` /
+`VEHICLE_HEIGHT_M`.  ⚠ **It is a SIMULATION change and § D7 said it would be**:
+the vehicle is now WIDER than the 1.5 m hex it occupies, `blocker_at` is still
+one hex, and nothing derives passability from it (§ D6).  ⚠ The height is
+**0.93** rather than the *"~0.9"* below, because plan 20 A3 DERIVES it from this
+table — skid bottom at −0.37 to canopy top at +0.56 — rather than restating it.
+
+⚠⚠ **AND THE SIZE COLUMN NEEDED AXIS LABELS, WHICH THE SKID PROVES.**  Read
+*"1.20 x 0.10 x 0.22"* as `(x, y, z)` and each skid is a rail 1.20 m ACROSS at
+`x = ±0.34`, so the two would intersect through the middle of the vehicle.  A
+skid runs fore-and-aft, so its 1.20 is along `+y`.  The column is therefore
+ambiguous by construction and `src/catalogue.loft` states every limb's axes
+explicitly; read the table below as *the numbers*, and the catalogue as *which
+axis each one is on*.
+
 ⚠ **These sizes were chosen under the sprite design and want re-opening.**  They
 were bounded by *"how much reads at 55 px"* and by not overlapping neighbouring
 hexes too badly in a top-down view.  Under § D4's camera neither pressure

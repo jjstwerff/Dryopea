@@ -31,6 +31,55 @@ fix / feature, move it to **Resolved**.
 
 ## Open
 
+### A library function calling `rig_world_seg3` SIGSEGVs; the identical body in an ENTRY does not
+
+- **Found while:** plan 20 A3, deriving a part's extent from its limbs.
+- **Kind:** bug (interpreter crash)
+- **What dryopea needs:** either a fix, or a rule saying which shapes are unsafe
+  in an aggregated library.
+
+`src/part.loft::part_box` iterated a struct's `vector<Limb>` field and called
+`hex_body::rig_world_seg3(p.pt_rig, zeros, l.lb_bone)` per limb.  Under
+`loft test` and under a plain program run it dies:
+
+```
+=== loft crash (loft) SIGSEGV caught ===
+  last op:  OpGetVectorNullable (op=207)
+  at:      ~/.loft/registry/hex_body-0.2.0/src/hex_body.loft:424:11
+```
+
+— which is `p = r.rg_parent[k] ?? -1;`, a line 0.1.0 has carried unchanged since
+July.
+
+⚠⚠ **The byte-identical function body in a program ENTRY answers correctly.**
+Pasted into the `fn main` file with only its name changed, it returns
+`(-1.14, -1.14, -0.37) .. (1.14, 0.91, 0.56)` — the right answer — and exits 0.
+Moving it back into `src/part.loft` (reached through `use dryopea;`) crashes.
+
+⚠ **Narrowed, and each of these is NOT sufficient on its own** — every one of
+them ran clean from the library:
+
+- calling `rig_world_seg3` once and returning a float;
+- calling it in a loop over the struct's limb vector;
+- taking the `Part` as a parameter rather than a local;
+- reading the module's own file-scope consts;
+- returning a 6-tuple;
+- `#first` on the loop, and the min/max walk.
+
+So it is the whole function together, which is the shape of [loft#935]'s
+*"the function's SIZE is an ingredient"* rather than any one construct.
+
+⚠ **Workaround in dryopea**: `part_box` walks the parent chain itself.  At the
+neutral pose every rotation is the identity, so a bone's base is the sum of its
+ancestors' offsets — which is what `rig_world_seg3` reduces to there anyway,
+needs no per-call `zeros` vector and is cheaper.  Recorded in the function.
+
+⚠ **No minimal reproducer yet**, which is why this is Open rather than
+Submitted: the trigger needs an aggregated library plus a registry dependency
+plus a function large enough, and cutting it standalone is real work.  The crash
+report is `.loft/loft-crash-1383923.txt` and the pre-workaround source is in
+this repo's history.
+
 ## Submitted
 
 ### `use <pkg>;` resolves a package the manifest never declared — [loft#968](https://github.com/loft-lang/loft/issues/968)

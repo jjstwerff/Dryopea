@@ -889,6 +889,25 @@ src/
                    ⚠ The first file in the repo to opt into
                    `docs/EXAMPLES.md` with `// #examples`, so all twelve
                    public functions cite a test (`@DRY-016`..`@DRY-027`).
+  catalogue.loft   what each entity is MADE of (plan 20 A3) — cat_hover_unit
+                   / cat_helper / cat_robot / cat_tower_base /
+                   cat_tower_top, plus catalogue / catalogue_names.
+                   ⚠⚠ **It declares no footprint.**  `part_size` DERIVES
+                   the extent from the limb table, and that is the only
+                   reason PARTS.md § D6's check against VEHICLE_WIDTH_M
+                   is not a tautology: the vehicle's 2.28 x 2.05 falls
+                   out of where § D7 puts the four rotors.
+                   ⚠ The helper IS the hover unit (§ D8), never a fifth
+                   entry; and a robot class is a row of DATA, so no
+                   colour lives here.
+                   ⚠ § D7's four BOOMS are absent: they run diagonally
+                   and neither Limb nor hex_body::Rig carries a rest
+                   orientation.  A2's to solve — the same gap puts the
+                   tower's socket on a zero-length bone at an offset
+                   rather than the tip of a 6 m one.
+                   ⚠ The constructors are `cat_*` because loft's
+                   namespace is FLAT and a bare `robot` collided with a
+                   local in a dozen test files.
                    ⚠ **Conservation is STRUCTURAL, not maintained**: ONE
                    record with an `owner` field, where "on the ground"
                    is a VALUE of that field rather than a different

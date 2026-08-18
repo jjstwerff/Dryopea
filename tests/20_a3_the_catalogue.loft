@@ -1,0 +1,301 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 20 phase A3 — the catalogue, and the footprint gate.
+//
+// ── The one claim ────────────────────────────────────────────────────
+//
+// > **A part's size is COMPUTED from its limbs, and the simulation's
+// > constant is an independent copy of the same number.  When the two
+// > drift, this file names both.**
+//
+// `docs/PARTS.md` § D6 is the decision — *"a part declares its
+// footprint, and a test compares it to the number the simulation
+// uses"* — and the word that carries it is **independent**.  A part
+// that declared its own size would agree with itself for ever.  So
+// `src/catalogue.loft` declares LIMBS, `part_size` derives the extent,
+// and the constants below are the simulation's own copy.
+//
+// ⚠ Three copies, two gates: the limb table, the `.loft` constant, and
+// `numbers.json`'s documented figure.  This file binds the first two;
+// `tests/numbers_design_targets.loft` binds the last two, because
+// nothing loads the JSON.
+//
+// ── ⚠ What the gate must refuse, or it is decoration ────────────────
+//
+// `plans/20` § Invariant gate asks for two negative controls and both
+// are here: **a part whose art grew must FAIL naming both numbers**
+// (`test_moving_a_rotor_breaks_the_footprint`), and **a part with no
+// simulation counterpart must fail too**, or the gate is vacuous over
+// anything added later (`test_every_catalogue_entry_is_accounted_for`).
+
+#cwd
+
+use dryopea;
+
+fn near3(a: float, b: float) -> boolean {
+    d = a - b;
+    if d < 0.0 { d = -d; }
+    d < 0.000001
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// The hover unit — the entry the size decision was about
+// ─────────────────────────────────────────────────────────────────────
+
+// @DRY-028 — the hover unit's footprint is its ROTOR ENVELOPE, derived
+//
+// ⚠⚠ This is the phase's headline.  2.28 x 2.05 is not a number
+// somebody typed next to the part: it falls out of where § D7 puts the
+// four rotors, and the simulation's `VEHICLE_WIDTH_M` is a separate copy
+// that has to agree.
+fn test_the_hover_units_footprint_is_derived_from_its_rotors() {
+    (w, l, h) = part_size(cat_hover_unit());
+
+    assert(near3(w, VEHICLE_WIDTH_M),
+           "art {w} m wide vs simulation VEHICLE_WIDTH_M {VEHICLE_WIDTH_M} m");
+    assert(near3(l, VEHICLE_LENGTH_M),
+           "art {l} m long vs simulation VEHICLE_LENGTH_M {VEHICLE_LENGTH_M} m");
+    assert(near3(h, VEHICLE_HEIGHT_M),
+           "art {h} m tall vs simulation VEHICLE_HEIGHT_M {VEHICLE_HEIGHT_M} m");
+
+    // ⚠ And WHICH limb sets each axis, so the derivation is legible
+    // rather than merely correct.  The rear rotors sit at x +-0.62 with
+    // radius 0.52, so the width is 2 x 1.14 and nothing else reaches it.
+    assert(near3(w, 2.0 * (0.62 + 0.52)),
+           "the width is the rear rotors' reach, twice: {w}");
+    // The length runs from the rear rotors' far edge to the front ones'.
+    assert(near3(l, (0.55 + 0.36) + (0.62 + 0.52)),
+           "the length is front rotor tip to rear rotor tip: {l}");
+}
+
+// @DRY-029 — the vehicle is WIDER than it is long, and wider than its hex
+//
+// ⚠ The shape claim, asserted rather than left implicit: this is a
+// quadcopter and not a car, which is what changed on 2026-08-18.  ⚠ And
+// it overhangs the 1.5 m hex it occupies — accepted by § D6, and the
+// reason § D7 calls going bigger a SIMULATION change.
+fn test_the_vehicle_is_a_quadcopter_and_overhangs_its_hex() {
+    (w, l, _) = part_size(cat_hover_unit());
+    assert(w > l, "a quadcopter is wider than it is long: {w} vs {l}");
+    assert(w > HEX_DIAMETER,
+           "and wider than the {HEX_DIAMETER} m hex it stands on: {w}");
+    // ⚠ The bound that is NOT crossed: it must not read as two hexes.
+    assert(w < 2.0 * HEX_DIAMETER,
+           "but not two hexes wide, or it lies about where it fits: {w}");
+}
+
+// ⚠⚠ THE NEGATIVE CONTROL `plans/20` ASKS FOR: art that grew must fail,
+// naming both numbers.  Without this the gate could be a tautology and
+// nothing would say so.
+fn test_moving_a_rotor_breaks_the_footprint() {
+    grown = cat_hover_unit();
+    // one rear rotor pushed 0.1 m outboard — the kind of edit an artist
+    // makes without thinking about `blocker_at`
+    grown = part_limb(grown, 0, 0.72, -0.62, 0.30, LIMB_DISC, 0.52, 0.52, 0.03);
+    (w, _, _) = part_size(grown);
+    assert(!near3(w, VEHICLE_WIDTH_M),
+           "a rotor moved outboard MUST break the footprint gate, got {w}");
+    // ⚠ ONE side moved, so the width grows by that side alone: the new
+    // rotor reaches 0.72 + 0.52 = 1.24 and the untouched one still
+    // reaches 1.14.  (Writing 2.48 here — as if both had moved — is the
+    // slip this line exists to have caught once.)
+    assert(near3(w, (0.72 + 0.52) + (0.62 + 0.52)),
+           "and by exactly the distance that one rotor moved: {w}");
+
+    // the control: the unmodified part still passes, so the assertion
+    // above is about the edit and not about the instrument
+    (ok_w, _, _) = part_size(cat_hover_unit());
+    assert(near3(ok_w, VEHICLE_WIDTH_M), "the untouched part is still {ok_w}");
+}
+
+// @DRY-031 — the crew is the SAME part, not a second one
+//
+// ⚠ `PARTS.md` § D8: *"a helper is the hover unit part with a different
+// livery, and never a second part"*.  If a helper ever needs its own
+// tree, the *same chassis* claim has broken somewhere the simulation
+// cannot see, and this is where it shows.
+fn test_the_crew_is_the_same_part_as_the_player() {
+    (pw, pl, ph) = part_size(cat_hover_unit());
+    (hw, hl, hh) = part_size(cat_helper());
+    assert(pw == hw && pl == hl && ph == hh,
+           "the helper is the player's part: ({pw}, {pl}, {ph}) vs ({hw}, {hl}, {hh})");
+    assert(len(cat_hover_unit().pt_limbs) == len(cat_helper().pt_limbs),
+           "limb for limb, and not merely the same size");
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// The robot and the tower
+// ─────────────────────────────────────────────────────────────────────
+
+// @DRY-030 — one robot part, and its box is the simulation's numbers
+fn test_the_robots_box_is_the_simulations_numbers() {
+    (w, l, h) = part_size(cat_robot());
+    assert(near3(w, ENEMY_WIDTH_M),
+           "art {w} m wide vs simulation ENEMY_WIDTH_M {ENEMY_WIDTH_M} m");
+    assert(near3(l, ENEMY_LENGTH_M),
+           "art {l} m long vs simulation ENEMY_LENGTH_M {ENEMY_LENGTH_M} m");
+    assert(near3(h, ENEMY_HEIGHT_METRES),
+           "art {h} m tall vs simulation ENEMY_HEIGHT_METRES {ENEMY_HEIGHT_METRES} m");
+
+    // ⚠ It stands ON the ground rather than centred in it — the height
+    // the tower's sight line aims at is measured from the terrain
+    // (`tower_sees` descends from 6.0 m to `ENEMY_HEIGHT_METRES`), so a
+    // robot centred on z = 0 would put half of it underground.
+    (_, _, lo_z, _, _, hi_z) = part_box(cat_robot());
+    assert(near3(lo_z, 0.0) && near3(hi_z, ENEMY_HEIGHT_METRES),
+           "the robot stands on the ground: z {lo_z} .. {hi_z}");
+}
+
+// @DRY-032 — the tower is the § D3 socket, and its footprint is 3 hexes
+fn test_the_tower_is_three_hexes_across_and_offers_one_socket() {
+    (w, l, h) = part_size(cat_tower_base());
+    assert(near3(w, TOWER_FOOTPRINT_M),
+           "art {w} m across vs simulation TOWER_FOOTPRINT_M {TOWER_FOOTPRINT_M} m");
+    assert(near3(l, TOWER_FOOTPRINT_M), "and round, so the length matches: {l}");
+    assert(near3(h, TOWER_HEIGHT_METRES),
+           "art {h} m tall vs simulation TOWER_HEIGHT_METRES {TOWER_HEIGHT_METRES} m");
+
+    // ⚠⚠ The constant is a LITERAL because a const initialised from a
+    // sibling module's const panics the compiler ([loft#962]), so the
+    // relation it stands for is asserted HERE instead: three hexes, flat
+    // to flat.  A tuned `HEX_FLAT_TO_FLAT` fails this and nothing else.
+    assert(near3(TOWER_FOOTPRINT_M, 3.0 * HEX_FLAT_TO_FLAT),
+           "the footprint is three hexes: {TOWER_FOOTPRINT_M} vs {3.0 * HEX_FLAT_TO_FLAT}");
+
+    // the § D3 socket, and the top in it
+    ps = catalogue();
+    assert(part_fault(ps, "tower_base") == "",
+           "the tower is legal: {part_fault(ps, \"tower_base\")}");
+    base = partset_get(ps, "tower_base")?;
+    assert(socket_index(base, "top") == 0, "it offers 'top'");
+    assert(len(base.pt_binds) == 1, "with the top in it");
+
+    // ⚠ And WHERE the top sits is derived, not stored — 6 m up, which is
+    // the height the sight line already uses.
+    (sx, sy) = socket_world(base, [0.0, 0.0], socket_index(base, "top"));
+    (_, _, mz, _, _, _) = rig_world_seg3(base.pt_rig, [0.0, 0.0], 1);
+    assert(near3(mz, TOWER_HEIGHT_METRES),
+           "the socket's bone sits at the tower's own height: {mz}");
+    assert(near3(sx, 0.0) && near3(sy, 0.0), "on the axis: ({sx}, {sy})");
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// The catalogue as a whole
+// ─────────────────────────────────────────────────────────────────────
+
+// @DRY-033 — every entry is either GATED or declared art-only, by name
+//
+// ⚠⚠ THE SECOND NEGATIVE CONTROL, and the one that keeps this file
+// honest as the catalogue grows: a fifth entry added tomorrow fails here
+// until somebody decides whether the simulation carries its size.
+// Without it the gate would be *vacuous over anything new* — it would go
+// on passing while covering three parts of five.
+fn test_every_catalogue_entry_is_accounted_for() {
+    gated: vector<text> = ["hover_unit", "robot", "tower_base"];
+    // ⚠ ART-ONLY, and each needs a reason rather than a shrug.
+    // `tower_top` is a carry object to the simulation — `tower_take` /
+    // `tower_mount_top` move a MAGAZINE, and no number anywhere says how
+    // big the emitter is.  Inventing a constant nothing reads would be
+    // worse than saying so here.
+    art_only: vector<text> = ["tower_top"];
+
+    for n in catalogue_names() {
+        seen = 0;
+        for g in gated { if g == n { seen += 1; } }
+        for a in art_only { if a == n { seen += 1; } }
+        assert(seen == 1,
+               "catalogue entry '{n}' is in neither list (or both): decide whether "
+               + "the simulation carries its size, then add it to `gated` or to "
+               + "`art_only` with a reason");
+    }
+    assert(len(catalogue_names()) == len(gated) + len(art_only),
+           "and no list holds a name the catalogue does not: {len(catalogue_names())} "
+           + "entries vs {len(gated)} + {len(art_only)}");
+}
+
+// ⚠ The whole catalogue passes A1's doorstep — sockets well formed, no
+// socket filled twice, nothing containing itself, every rig admissible.
+fn test_the_whole_catalogue_is_legal() {
+    ps = catalogue();
+    for n in catalogue_names() {
+        assert(part_fault(ps, n) == "", "'{n}': {part_fault(ps, n)}");
+    }
+}
+
+// ⚠ Every part has limbs, or its derived size is a silent zero — the
+// failure mode `part_box` answers `(0,0,0,0,0,0)` for, and the one that
+// would make every footprint assertion above pass vacuously if a
+// constant were ever zeroed to match.
+fn test_no_catalogue_entry_is_empty() {
+    ps = catalogue();
+    for n in catalogue_names() {
+        p = partset_get(ps, n)?;
+        assert(len(p.pt_limbs) > 0, "'{n}' has no limbs, so its size would read 0");
+        (w, l, h) = part_size(p);
+        assert(w > 0.0 && l > 0.0 && h > 0.0,
+               "'{n}' measures ({w}, {l}, {h}) — a zero is not a size");
+    }
+}
+
+// ⚠⚠ THE ROOT'S OWN OFFSET IS NOT PART OF ANY BASE, and nothing in the
+// catalogue could see that: every entry's root sits at (0,0,0), so a
+// deliberate break that counted the root's offset into every bone PASSED
+// every test above.  `rig_world_seg3` puts bone 0 at the origin and
+// ignores its offset, and `part_box` has to agree or a part would drift
+// by a number its own rig says is meaningless.
+fn test_a_roots_own_offset_does_not_move_the_part() {
+    r = rig_new();
+    // a root deliberately authored away from the origin
+    r = rig_bone3(r, -1, 5.0, 7.0, 9.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0);
+    p = part_new("offset_root", "", r);
+    p = part_limb(p, 0, 0.0, 0.0, 0.0, LIMB_BOX, 2.0, 2.0, 2.0);
+    (lo_x, lo_y, lo_z, hi_x, hi_y, hi_z) = part_box(p);
+    assert(near3(lo_x, -1.0) && near3(hi_x, 1.0),
+           "the part sits at the ORIGIN, not at its root's offset: x {lo_x}..{hi_x}");
+    assert(near3(lo_y, -1.0) && near3(hi_y, 1.0), "y {lo_y}..{hi_y}");
+    assert(near3(lo_z, -1.0) && near3(hi_z, 1.0), "z {lo_z}..{hi_z}");
+
+    // the control: a CHILD's offset DOES move its limb, so the walk is
+    // not simply ignoring every offset
+    q = rig_new();
+    q = rig_bone3(q, -1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0);
+    q = rig_bone3(q, 0, 0.0, 0.0, 4.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0);
+    c = part_new("offset_child", "", q);
+    c = part_limb(c, 1, 0.0, 0.0, 0.0, LIMB_BOX, 2.0, 2.0, 2.0);
+    (_, _, clo, _, _, chi) = part_box(c);
+    assert(near3(clo, 3.0) && near3(chi, 5.0),
+           "a child's offset lifts its limb: z {clo}..{chi}");
+}
+
+// ⚠ The canopy is the joint `rig_bone3` was filed for: it hinges about a
+// LATERAL axis, which a planar rig cannot express at all.  Asserted on
+// the AXIS rather than on a pose, because that is the fact that changed.
+fn test_the_canopy_hinges_about_a_lateral_axis() {
+    hv = cat_hover_unit();
+    // ⚠⚠ ASSERT THE AXIS, NOT MERELY `!bone_planar` — this test claimed a
+    // LATERAL hinge and checked something weaker, and a deliberate break
+    // swapping the axis to the planar `(0,0,1)` PASSED it: `bone_planar`
+    // is also false whenever `oz` is non-zero, which the canopy's 0.56
+    // already made true.  The axis is the fact that changed.
+    assert((hv.pt_rig.rg_ax[1] ?? 0.0) == 1.0,
+           "the canopy turns about +x — a LATERAL axis, which is what "
+           + "`rig_bone3` was filed for");
+    assert((hv.pt_rig.rg_az[1] ?? 0.0) == 0.0, "and not about the planar +z");
+    assert(!bone_planar(hv.pt_rig, 1), "so the bone is not planar");
+    assert(!rig_planar(hv.pt_rig), "and neither is the rig");
+
+    // ⚠ And the behavioural half: opening it must LEAVE THE PLANE.  A
+    // planar hinge cannot move the canopy in z at all, which is the whole
+    // reason this phase needed hex_body 0.2.0.
+    (_, _, sz, _, _, _) = rig_world_seg3(hv.pt_rig, [0.0, 0.0], 1);
+    (_, _, oz2, _, _, _) = rig_world_seg3(hv.pt_rig, [0.0, 0.25], 1);
+    assert(near3(sz, oz2),
+           "the hinge's own base does not move — it is the pivot: {sz} vs {oz2}");
+
+    // and it opens BACKWARDS, through the range § D7 specifies
+    j = rig_joint(hv.pt_rig, 1);
+    assert(joint_fits(j, 0.30), "the canopy opens to 0.30 turns");
+    assert(!joint_fits(j, 0.31), "and no further");
+    assert(!joint_fits(j, -0.01), "and never forwards");
+}

@@ -36,9 +36,9 @@
 
   "player_vehicle": {
     "_doc": "The player's hover unit. Smaller + brighter than enemies; noncombatant; conditionally damageable only when blocking core access.",
-    "length": { "value": 2.4, "units": "m", "doc": "Along the facing axis. Sized to fit comfortably in a single hex with movement headroom." },
-    "width":  { "value": 1.1, "units": "m", "doc": "Across the facing axis. Two vehicles can pass abreast in a 2-hex-wide entrance." },
-    "height": { "value": 0.9, "units": "m", "doc": "Reads as 'vehicle' silhouette; flatter than enemies." },
+    "length": { "value": 2.05, "units": "m", "doc": "Along the facing axis. \u26a0\u26a0 WAS 2.4 until 2026-08-18, and the vehicle changed SHAPE rather than size: it is now WIDER than it is long, because it is a quadcopter (docs/PARTS.md \u00a7 D7). The old pair described a long narrow car and was chosen under a SPRITE design that a free camera deleted. Project owner, 2026-08-18. DERIVED, not picked: the front rotors reach y +0.91 and the rear ones y -1.14, so the length is the rotor envelope and nothing else. src/vehicle.loft VEHICLE_LENGTH_M; tests/20_a3_the_catalogue.loft derives it from the limb table and fails naming both numbers if they drift." },
+    "width":  { "value": 2.28, "units": "m", "doc": "Across the facing axis. \u26a0\u26a0 WAS 1.1 until 2026-08-18 \u2014 see length. DERIVED: the rear rotors sit at x \u00b10.62 with radius 0.52, so the width is 2 \u00d7 1.14. \u26a0 This is WIDER THAN THE 1.5 m HEX IT OCCUPIES, which is accepted rather than overlooked (PARTS.md \u00a7 D6: art overhangs the hitbox, and the enemy proxy already does at 2.7 m) \u2014 but it is the reason \u00a7 D7 calls going bigger a SIMULATION change: blocker_at is one hex, and a vehicle reading as ~1.75 hexes wide tells the player something false about where it fits. src/vehicle.loft VEHICLE_WIDTH_M." },
+    "height": { "value": 0.93, "units": "m", "doc": "Reads as 'vehicle' silhouette; flatter than enemies. \u26a0 0.93 rather than \u00a7 D7's rounded '~0.9': DERIVED from the limb table, skid bottom at z -0.37 to canopy top at z +0.56. src/vehicle.loft VEHICLE_HEIGHT_M." },
     "hover_clearance_idle":  { "value": 0.4, "units": "m", "doc": "Baseline hover above local terrain. Always visibly above ground." },
     "hover_clearance_boost": { "value": 3.0, "units": "m", "doc": "Peak during boost. High enough to clear walls + steep_rock cliffs." },
     "speed_normal":  { "value": 3.0, "units": "hex/s", "doc": "Cruising speed. ≈ 4 m/s. Brisk drive." },

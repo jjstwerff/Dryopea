@@ -67,6 +67,32 @@ pub const VEHICLE_BOOST_HEX_PER_SECOND: float = 6.0;
 // with a bigger number.  A 5.0 m `wall_high` is still refused, so the
 // anti-insect barrier is anti-PLAYER too.  Nobody wrote that down; it
 // falls out of the two numbers meeting (plan 13 V0).
+// ─── How big the player IS  (plan 20 A3) ────────────────────────
+//
+// ⚠⚠ **THE VEHICLE CHANGED SHAPE ON 2026-08-18, NOT MERELY SIZE**
+// (project owner).  It was 2.4 m long x 1.1 m wide — a long narrow car,
+// chosen under a SPRITE design that the free camera deleted — and it is
+// now 2.05 long x 2.28 WIDE, which is a quadcopter: `docs/PARTS.md`
+// § D7's rotors sit at x +-0.62 with radius 0.52.
+//
+// ⚠ **These are the SIMULATION's copy, and the art derives its own**
+// (`PARTS.md` § D6): `src/catalogue.loft` computes the hover unit's
+// extent from its limb table and `tests/20_a3_the_catalogue.loft` fails
+// naming both numbers if the two drift.  Nothing loads `numbers.json`,
+// so these are hand-copied and `tests/numbers_design_targets.loft` pins
+// them to the documented figures.
+//
+// ⚠⚠ **2.28 m is WIDER THAN THE 1.5 m HEX the vehicle occupies**, and
+// that is accepted rather than overlooked — § D6 lets art overhang the
+// hitbox, and the enemy proxy already does at 2.7 m.  But it is why
+// § D7 calls going bigger a SIMULATION change: `blocker_at` is one hex,
+// so a vehicle reading as ~1.75 hexes wide tells the player something
+// false about where it fits.  Nothing here changes passability, and
+// deriving passability from a part's extent is what § D6 forbids.
+pub const VEHICLE_WIDTH_M:  float = 2.28;   // across the facing axis
+pub const VEHICLE_LENGTH_M: float = 2.05;   // along the facing axis
+pub const VEHICLE_HEIGHT_M: float = 0.93;   // skid bottom to canopy top
+
 pub const VEHICLE_CLIMB_METRES:       float = 0.4;
 pub const VEHICLE_BOOST_CLIMB_METRES: float = 3.0;
 

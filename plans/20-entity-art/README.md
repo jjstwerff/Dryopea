@@ -14,6 +14,63 @@ code: the first design baked sprites at a fixed projection, and the project
 owner's answer — *the dynamic camera of moros, and exploration as a pillar* —
 replaced that with geometry.
 
+### A3 — the catalogue, and a footprint that is DERIVED (2026-08-18)
+
+`src/catalogue.loft` + `tests/20_a3_the_catalogue.loft`, **11 tests**.  Four
+entries — the hover unit, the robot, the tower base and its top — plus the
+`Limb` record and `part_extent` in `src/part.loft`.  Gates:
+`scripts/test.sh` **1351 green** (96 files), `scripts/validate.sh` **654
+measurements green and UNMOVED**.
+
+⚠⚠ **THE FOOTPRINT IS DERIVED, WHICH IS THE ONLY REASON ITS GATE IS REAL.**
+§ D6 asks that *"a part declares its footprint, and a test compares it to the
+number the simulation uses"* — and a part that DECLARED its size would agree
+with itself for ever.  So the catalogue declares **limbs**, `part_size` computes
+the extent, and the vehicle's **2.28 × 2.05 × 0.93 falls out of where § D7 puts
+the four rotors**: the rear pair at `x ±0.62` with radius 0.52 sets the width to
+2 × 1.14, and the front pair's `+0.91` against the rear pair's `−1.14` sets the
+length.  Move one rotor 0.1 m outboard and the gate fails naming both numbers —
+which is `test_moving_a_rotor_breaks_the_footprint`.
+
+⚠ **Three copies, two gates**: the limb table, the `.loft` constant the
+simulation reads, and `numbers.json`'s figure.  `tests/20_a3` binds the first
+two, `tests/numbers_design_targets.loft` the last two.
+
+⚠⚠ **AND THE FALSIFICATION FOUND TWO GATES WEAKER THAN THEIR OWN CLAIMS** —
+nine of eleven deliberate breaks fired and the two that did not are the finding:
+
+- *"the canopy hinges about a LATERAL axis"* asserted only `!bone_planar`, and
+  swapping the axis to the planar `(0,0,1)` **passed** — because `bone_planar`
+  is false whenever `oz` is non-zero, and the canopy's 0.56 already made it so.
+  ***The assertion tested a consequence the other field also satisfies.***
+- *"the root's own offset is not part of any base"* could not fail, because
+  every catalogue entry's root sits at `(0,0,0)`.  The fixture could not
+  express the thing the guard is for.
+
+Both are now asserted directly — the axis by its components, the root by a
+part deliberately authored away from the origin — and both breaks fire.
+
+⚠ **`hex_body` 0.2.0 is load-bearing here for the first time**: the canopy's
+lateral hinge is `rig_bone3`, and a planar rig cannot express it at all.
+
+⚠⚠ **A loft CRASH is worked around and filed** (`QUESTIONS_FOR_LOFT.md`
+§ Open): calling `rig_world_seg3` from a function in dryopea's LIBRARY
+SIGSEGVs the interpreter (`OpGetVectorNullable`), while the **byte-identical
+function body in a program ENTRY answers correctly** — the library/entry axis
+of [loft#962]'s family.  ⚠ `part_box` walks the parent chain itself instead,
+which at the neutral pose is what `rig_world_seg3` reduces to anyway (every
+rotation is the identity), needs no per-call `zeros` vector and is cheaper — so
+the workaround is not a workaround wearing a comment.
+
+⚠ **Three things A3 deliberately does not carry**: no colour or livery (§ D8
+makes a class *a row of data*, so a colour on the part would force one entry
+per class); no solidity on a limb (dryopea's hitbox is a HEX, and reading a
+limb's solidity would be the *derive passability from art* § D6 forbids); and
+**no booms** — § D7's four run DIAGONALLY, and neither `Limb` nor
+`hex_body::Rig` carries a REST ORIENTATION.  ⚠ That gap is A2's to solve and it
+bites twice: it is also why the tower's socket rides a zero-length bone at an
+offset rather than the tip of a 6 m one.
+
 ### ⚠⚠ Before A2 and A3 — two probes, and each moved a phase (2026-08-18)
 
 **A2 was BLOCKED upstream, and dryopea unblocked it by shipping the
@@ -229,7 +286,7 @@ worth saying because silence reads as "gate done".
 |---|---|---|---|
 | **A1** — adopt `hex_body`, and build the SOCKET | S | `tests/20_a1_the_part.loft` — **18 tests**, `src/part.loft`, and dryopea re-implements none of the rig: `Rig`, `Joint`, `rig_world_seg`, `rig_count` and `rig_admissible` all arrive as a dependency, and `part_fault` asks the LIBRARY's doorstep before any question of its own.  ⚠⚠ The 3-D axis is NOT here — it is `rig_bone3` in `loft-libs-world` (§ Cross-repo coordination), and A2 is what needs it | **SHIPPED** 2026-08-18 |
 | **A2** — the geometry emitter | MH | `tests/20_a2_the_geometry.loft` — a part poses its joints and emits triangles in world space.  ⚠ Gated on NUMBERS, not pixels: a hinge at 0.25 turns puts the canopy's far edge where trigonometry says, a box emits 12 triangles, a disc emits its fan, and every vertex is inside the declared extent | **Next** — `hex_body` **0.2.0** ships `rig_bone3` and closes [#14](https://github.com/loft-lang/loft-libs-world/issues/14) (§ A1b).  ⚠ `hex_body` **0.2.0 is published** and dryopea is repinned to `>=0.2`; A1's 18 tests pass against it unchanged |
-| **A3** — the catalogue | M | `tests/20_a3_the_catalogue.loft` — the hover unit, the robot, the helper livery, the tower base + top.  ⚠ Its real gate is the FOOTPRINT check against the simulation's constants | ⚠⚠ **A1 unblocked it and a PROBE re-blocked it**: every plan dimension the gate would bind to is read by nothing, and § D7's hover unit is 2.07x the width `numbers.json` gives.  Needs § Open questions 3 decided first — see § Before A2 and A3 |
+| **A3** — the catalogue | M | `tests/20_a3_the_catalogue.loft` — **11 tests**; the hover unit, the robot, the tower base + top, and the helper which is the hover unit rather than a fifth entry.  ⚠ Its real gate is the footprint, and the footprint is DERIVED from the limb table so the check is not a tautology | **SHIPPED** 2026-08-18 |
 | **A4** — poses come from the SIMULATION | S | `tests/20_a4_the_joints.loft` — a tower with no top emits no top triangles; the canopy angle follows the sim; rotor spin follows boost.  ⚠ Asked of `TowerState` / `Vehicle`, never a second flag | Blocked on A2, A3 |
 | **A5** — entities in the frame (was plan 19 P4) | M | `tests/20_a5_the_frame.loft` — `classify_world` shares for enemies, vehicle and crew; a `.keys` scenario with `snap` | ⚠ Blocked on **[plan 21](../21-the-renderer/README.md)** |
 
@@ -352,8 +409,14 @@ EDITOR's, since the game's camera is plan 21's and never touches
    the JSON.  Heights agree at 0.9 m.  So the two are a **different shape**, not
    two sizes of one — a wide short quadcopter against a long narrow car — and
    nothing arbitrates, because no `.loft` constant carries either pair and
-   nothing in the simulation reads them.  ⚠ **A3's gate pins whichever wins**,
-   which is why it is now a blocking question rather than a phase decision.
+   nothing in the simulation reads them.
+
+   ⚠⚠ **ANSWERED 2026-08-18 (project owner): 2.28 × 2.05, and the SIMULATION
+   moved.**  `numbers.json` § player_vehicle now reads 2.05 long × 2.28 wide ×
+   **0.93** tall — the height DERIVED from § D7's limb table rather than its
+   rounded *"~0.9"* — and `src/vehicle.loft` carries the three constants A3
+   gates against.  ⚠ The vehicle is now wider than the hex it stands on, which
+   § D7 called a simulation change and which nothing derives passability from.
 
 ## See also
 
