@@ -466,9 +466,19 @@ tower (part)                       the sim
 ⚠ **The sprite follows the simulation, and never a second flag.**  Which pose a
 tower draws in is *"is its socket filled"*, asked of `TowerState` — the same
 rule `CLAUDE.md` states for a carrier and its cargo (*"a slot on the carrier and
-an owner on the object are two facts that can disagree"*).  `plans/20` A6 gates
+an owner on the object are two facts that can disagree"*).  `plans/20` **A4** gates
 exactly this: detach the top in the sim and the top must vanish from the frame,
-measured.
+measured.  ⚠ This said *A6* until 2026-08-18 and that phase has never existed —
+plan 20 runs A1–A5, and *poses come from the SIMULATION* is A4.
+
+⚠ **The socket's other half is BUILT** (plan 20 A1, 2026-08-18):
+`src/part.loft` holds the `Socket` a part offers and the `Binding` that fills
+it, over `hex_body::Rig`, refusing a socket filled twice and a part that
+contains itself.  ⚠⚠ **It carries no pose and no coordinate**, which is where
+it deviates from `hex_part::Binding`'s `bd_open`: where a socket IS, is
+computed from the posed rig by `socket_world` and stored nowhere, so A4 has one
+place to ask *is this tower's socket filled* and no second flag to disagree
+with.
 
 **The other joint the game already has** is the canopy — new, and the one the
 project owner specified.  It is a `HING` and nothing else.

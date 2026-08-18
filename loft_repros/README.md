@@ -42,13 +42,17 @@ no longer reproducing).
 | [`mutating_a_returned_struct_is_lost.loft`](mutating_a_returned_struct_is_lost.loft) | A write through a struct RETURNED from a function is silently discarded, while the SAME element indexed inline or reached through a loop variable writes through.  No diagnostic — and `lost-write` is exactly the analysis that should have caught a write to a temporary discarded one instruction later. | [loft#894](https://github.com/loft-lang/loft/issues/894) |
 | [`const_from_aggregator_import/`](const_from_aggregator_import/README.md) | A file-scope `const` whose INITIALISER reads a sibling module's const — where the sibling is reached through the package AGGREGATOR rather than imported directly — panics the variable allocator (`index out of bounds: the len is N but the index is 65535`) in any CONSUMER entry.  ⚠ Three conditions and each alone defuses it: the aggregator import, the read being in a const initialiser rather than a function body, and the compiled program being a consumer.  ⚠⚠ **Compiling the aggregator itself is completely clean**, so the library looks healthy and every consumer fails.  ⚠ The diagnostic points at an unrelated FUNCTION's return type. | [loft#962](https://github.com/loft-lang/loft/issues/962) |
 | [`lost_write_false_positive/`](lost_write_false_positive/README.md) | An ambiguous bare struct name aborts the compile correctly — and dumps a FALSE `warning[lost-write]` beside it, against a loop-variable mutation in a *different package* whose write persists on both backends. | [loft#883](https://github.com/loft-lang/loft/issues/883) |
+| [`path_dep_suppresses_lib_search/`](path_dep_suppresses_lib_search/README.md) | Declaring a package as a PATH dependency SUPPRESSES the `--lib` search that would otherwise resolve it — so the declaration is strictly worse than saying nothing.  ⚠ The first diagnosis (*`loft test` ignores `--lib`*) was WRONG and the four-row matrix is what overturned it. | [loft#963](https://github.com/loft-lang/loft/issues/963) |
+| [`bare_install_installs_the_project/`](bare_install_installs_the_project/README.md) | Bare `loft install` installs the PROJECT into `~/.loft/lib/` under the DIRECTORY's name rather than the manifest's, and resolves no dependency — while `loft api` recommends that exact command for an unresolved one.  ⚠⚠ A new route into loft#667's shadowing. | [loft#966](https://github.com/loft-lang/loft/issues/966) |
+| [`undeclared_registry_package_resolves/`](undeclared_registry_package_resolves/README.md) | `use <pkg>;` resolves a registry package the manifest never declared — and writes it into `loft.lock`.  ⚠⚠ So a consumer can prove its IMPORT is load-bearing and can never prove its MANIFEST is: dropping a dependency from `loft.toml` **and** from the lock leaves an 18-test gate green.  ⚠ It may be deliberate; what is asked is whether an undeclared `use` should warn. | [loft#968](https://github.com/loft-lang/loft/issues/968) |
 
-⚠ **A reproducer may be a DIRECTORY.**  `lost_write_false_positive/` and
-`const_from_aggregator_import/` are, because their triggers need more
-than one file — the first two libraries declaring the same struct name,
-the second a package with an aggregator, two submodules and a consumer
-entry.  Its own README carries
-the run command and the attribution table.
+⚠ **A reproducer may be a DIRECTORY**, and six of them are, because
+their triggers need more than one file — two libraries declaring the same
+struct name; a package with an aggregator, two submodules and a consumer
+entry; and the three PACKAGING ones, whose trigger is a `loft.toml` and
+therefore cannot be a single file at all.  Each carries its own README
+with the run command and the attribution table, and the packaging three
+carry a `run.sh` that prints the whole matrix in one go.
 
 Five reproducers were **deleted on 2026-08-12** after re-running them
 against loft 2026.8.0 showed their bugs no longer reproduce — per the rule

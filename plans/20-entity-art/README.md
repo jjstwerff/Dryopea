@@ -9,10 +9,56 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**Designed, nothing built** (2026-08-15).  ⚠ **Re-scoped the same day**, before
-any code: the first design baked sprites at a fixed projection, and the project
+**A1 SHIPPED 2026-08-18; A2 next.**  ⚠ **Re-scoped on 2026-08-15**, before any
+code: the first design baked sprites at a fixed projection, and the project
 owner's answer — *the dynamic camera of moros, and exploration as a pillar* —
 replaced that with geometry.
+
+### A1 — the socket, over a published rig (2026-08-18)
+
+`src/part.loft` + `tests/20_a1_the_part.loft`.  `Socket` / `Binding` / `Part` /
+`PartSet` over `hex_body::Rig`, twelve public functions, **18 tests**, and
+`@DRY-016`..`@DRY-027` as the worked examples — the first file in the repo to
+opt into `docs/EXAMPLES.md` with `// #examples`, so every one of the twelve
+cites a test.  Gates: `scripts/test.sh` **1340 green** (18 new, 95 files),
+`scripts/validate.sh` **654 measurements green and UNMOVED** — nothing draws a
+part yet, so the scenario gate cannot see this and is not expected to.
+
+⚠⚠ **THE PHASE'S OWN STATED NEGATIVE CONTROL COULD NOT FIRE, AND FINDING THAT
+OUT IS A1'S MOST REUSABLE RESULT.**  § Invariant gate asked for *"delete
+dryopea's `hex_body` dependency and A1's tests must fail to compile"*.
+Measured:
+
+| what was removed | result |
+|---|---|
+| nothing — the shipped state | 18 passed |
+| the `hex_body` line from `loft.toml` | **18 passed** |
+| that line **and** the `[[package]]` block from `loft.lock` | **18 passed** |
+| `use hex_body;` from `src/part.loft` | `Error: Undefined type Rig` |
+
+`use <pkg>;` resolves an **undeclared** registry package and writes it back
+into the lock, so **a consumer can prove its IMPORT is load-bearing and can
+never prove its MANIFEST is**.  The control the phase actually runs is the
+fourth row.  ⚠ Queued to loft with a standalone repro —
+[`loft_repros/undeclared_registry_package_resolves/`](../../loft_repros/undeclared_registry_package_resolves/README.md),
+the third dryopea has hit where the manifest is not authoritative
+([loft#963], [loft#966]).
+
+⚠⚠ **And the FALSIFICATION found the thing the gate list would not have.**
+Ten deliberate breaks, each firing on exactly its named test and nothing else —
+but the one worth keeping is break 4: replacing the cycle walk's **path** with
+a **visited set** left `test_a_part_that_contains_itself_is_refused` GREEN and
+was seen by the DIAMOND control alone.  That is `hex_part::cycle.loft`'s own
+argument reproduced rather than quoted: *a global "seen" set refuses a
+catalogue that is fine*, and the test that says so is the one nobody writes.
+
+⚠ Three deviations from `hex_part`'s records, each with its reason in
+`src/part.loft`'s header: a socket rides a **BONE at `t`** (a part here is a
+`Rig`, not a voxel world); **one class token**, not a kind AND a size (§ D6
+gates the size against the simulation, which is A3); and **a binding carries no
+pose**, where `hex_part::Binding` carries `bd_open` — that field is right in a
+saved DOCUMENT and wrong in a catalogue asset whose angles come from the
+simulation (§ D3, which is A4).
 
 ⚠⚠ **The renderer and the camera SPLIT OUT to
 [`plans/21`](../21-the-renderer/README.md)**, and 21 comes first.  What is left
@@ -57,7 +103,7 @@ worth saying because silence reads as "gate done".
 
 | Phase | Expected result | Invariant | Negative control |
 |---|---|---|---|
-| **A1** | ⚠⚠ **REWRITTEN 2026-08-18 — the row asked for a model that is already PUBLISHED.**  `loft api hex_body` answers `Rig` + `rig_bone(parent, ox, oy, len, lo, hi)`, `Joint {value, lo, hi}` with `joint_fits` / `joint_offer` / `joint_residual`, `rig_write` / `rig_read`, `rig_world_seg`, `bone_obb` / `obb_contains`, `rig_admissible` and `rig_eq` — most of what this row asked to be written by hand.  So the expected result is now: **dryopea declares `hex_body` and re-implements none of it**, and what A1 builds is the part that is genuinely dryopea's — the SOCKET (`PARTS.md` § D3, whose simulation half has existed since plan 17 T2) over a `Rig` — refusing a socket filled twice and a part that contains itself | **reuse is the rule** (`CLAUDE.md` § Loft consumer relationship, `PARTS.md` § D1 / `@X001`): a dryopea-local `Part` / `Limb` / `Hinge` beside a published `Rig` is a second implementation of one thing, and the one a future reader would reach for | ⚠⚠ **The original row's headline gate cannot be met in dryopea at all** — *a hinge with a zero-length axis is refused by name* needs an AXIS, and `hex_body` is strictly 2-D with not one `z` in the package.  That gate belongs to the `rig_bone3` enhancement and therefore to `loft-libs-world`, not here.  ⚠ So the negative control for A1 is the one that says the reuse is real: **delete dryopea's `hex_body` dependency and A1's tests must fail to compile** — if they still pass, something local is standing in for it |
+| **A1** | ⚠⚠ **REWRITTEN 2026-08-18 — the row asked for a model that is already PUBLISHED.**  `loft api hex_body` answers `Rig` + `rig_bone(parent, ox, oy, len, lo, hi)`, `Joint {value, lo, hi}` with `joint_fits` / `joint_offer` / `joint_residual`, `rig_write` / `rig_read`, `rig_world_seg`, `bone_obb` / `obb_contains`, `rig_admissible` and `rig_eq` — most of what this row asked to be written by hand.  So the expected result is now: **dryopea declares `hex_body` and re-implements none of it**, and what A1 builds is the part that is genuinely dryopea's — the SOCKET (`PARTS.md` § D3, whose simulation half has existed since plan 17 T2) over a `Rig` — refusing a socket filled twice and a part that contains itself | **reuse is the rule** (`CLAUDE.md` § Loft consumer relationship, `PARTS.md` § D1 / `@X001`): a dryopea-local `Part` / `Limb` / `Hinge` beside a published `Rig` is a second implementation of one thing, and the one a future reader would reach for | ⚠⚠ **The original row's headline gate cannot be met in dryopea at all** — *a hinge with a zero-length axis is refused by name* needs an AXIS, and `hex_body` is strictly 2-D with not one `z` in the package.  That gate belongs to the `rig_bone3` enhancement and therefore to `loft-libs-world`, not here.  ⚠ So the negative control for A1 is the one that says the reuse is real: **delete dryopea's `hex_body` dependency and A1's tests must fail to compile** — if they still pass, something local is standing in for it.  ⚠⚠ **RUN 2026-08-18, AND IT COULD NOT FIRE**: dropping the declaration from `loft.toml` — and the `[[package]]` block from `loft.lock` with it — leaves all 18 green, because `use <pkg>;` resolves an undeclared registry package and rewrites the lock to match.  The control that DOES fire is one layer in, **remove `use hex_body;` from `src/part.loft`** (`Error: Undefined type Rig`) — which proves the IMPORT is load-bearing and says nothing about the manifest.  See § Status |
 
 | **A2** | a canopy hinged at 0.0 turns and at 0.25 turns puts its far edge exactly where trigonometry says — asserted as a COORDINATE, not as a stored angle | the pose is a transform: emitting at angle 0 equals the unposed part, and two 0.125-turn steps equal one 0.25 step | ⚠ a hinge in DEGREES is indistinguishable from one in TURNS until something swings — `0.25` must travel a quarter of the way round, which is the one assertion that can tell them apart |
 | **A3** | every catalogue entry's declared footprint equals the simulation's constant for it | ⚠ **the durable artefact is the SIZE** (`PARTS.md` § D6) — the same shape as `tests/numbers_design_targets.loft` | a part whose art grew past its hitbox must FAIL naming both numbers; a part with no simulation counterpart must fail too, or the gate is vacuous over anything new |
@@ -68,7 +114,7 @@ worth saying because silence reads as "gate done".
 
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
-| **A1** — adopt `hex_body`, and build the SOCKET | S | `tests/20_a1_the_part.loft` — dryopea declares `hex_body = ">=0.1"` and builds ONLY the socket over a `Rig`.  ⚠ Effort drops M → S because the model is published: `Rig`, `Joint`, the limits, the text round trip and the per-bone hitbox all arrive as a dependency.  ⚠⚠ The 3-D axis is NOT here — it is `rig_bone3` in `loft-libs-world` (§ Cross-repo coordination), and A2 is what needs it | **Next** (re-cut 2026-08-18) |
+| **A1** — adopt `hex_body`, and build the SOCKET | S | `tests/20_a1_the_part.loft` — **18 tests**, `src/part.loft`, and dryopea re-implements none of the rig: `Rig`, `Joint`, `rig_world_seg`, `rig_count` and `rig_admissible` all arrive as a dependency, and `part_fault` asks the LIBRARY's doorstep before any question of its own.  ⚠⚠ The 3-D axis is NOT here — it is `rig_bone3` in `loft-libs-world` (§ Cross-repo coordination), and A2 is what needs it | **SHIPPED** 2026-08-18 |
 | **A2** — the geometry emitter | MH | `tests/20_a2_the_geometry.loft` — a part poses its joints and emits triangles in world space.  ⚠ Gated on NUMBERS, not pixels: a hinge at 0.25 turns puts the canopy's far edge where trigonometry says, a box emits 12 triangles, a disc emits its fan, and every vertex is inside the declared extent | Blocked on A1 |
 | **A3** — the catalogue | M | `tests/20_a3_the_catalogue.loft` — the hover unit, the robot, the helper livery, the tower base + top.  ⚠ Its real gate is the FOOTPRINT check against the simulation's constants | Blocked on A1 |
 | **A4** — poses come from the SIMULATION | S | `tests/20_a4_the_joints.loft` — a tower with no top emits no top triangles; the canopy angle follows the sim; rotor spin follows boost.  ⚠ Asked of `TowerState` / `Vehicle`, never a second flag | Blocked on A2, A3 |

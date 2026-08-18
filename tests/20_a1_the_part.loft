@@ -1,0 +1,414 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 20 phase A1 — the SOCKET, over a published rig.
+//
+// ── The one claim ───────────────────────────────────────────────
+//
+// > **Where a socket is, is COMPUTED from the posed rig.  It is stored
+// > nowhere, and there is no field it could be stored in.**
+//
+// `src/part.loft`'s header says why that absence is the mechanism:
+// move the tower and its top follows, because there is no second
+// coordinate that could be forgotten.  A `bd_q` added later *for
+// convenience* would end the design without failing a test — so the
+// gate reads ONE socket record at TWO poses and asserts two answers.
+// A stored position passes every single-pose test ever written.
+//
+// ── ⚠⚠ And the phase's OTHER gate is a negative one ─────────────
+//
+// A1 was re-cut on 2026-08-18 because its original row asked for a
+// `Part` / `Limb` / `Hinge` / `Socket` / `Prim` model that `hex_body`
+// already publishes.  So the invariant this file gates second is
+// **reuse**, and its control cannot be written as an assertion:
+//
+//     drop `hex_body` from loft.toml and this file must fail to COMPILE
+//
+// — if it still passes, something dryopea-local is standing in for the
+// library.  The result of running it is in `plans/20` § A1.
+//
+// ── What is NOT here ────────────────────────────────────────────
+//
+// **No triangles** (A2), **no catalogue entry** and **no footprint
+// check against the simulation's constants** (A3), **no pose taken
+// from `TowerState`** (A4), **and no pixel at all** (A5, and it is
+// blocked on plan 21).  The fixtures below are the smallest rigs that
+// can carry a socket; their SIZES mean nothing yet and `PARTS.md` § D6
+// is where they start to.
+//
+// ⚠ The rigs are 2-D because `hex_body` is — there is not one `z` in
+// the package.  Read the fixture plane as the tower's ELEVATION: a
+// bone at angle 0 runs along +x, which is the mast's height.  The 3-D
+// axis is proposed upstream as `rig_bone3`
+// ([loft-libs-world#14](https://github.com/loft-lang/loft-libs-world/issues/14))
+// and A2 is the phase that needs it.
+
+#cwd
+
+use dryopea;
+
+// A tolerance, and it is a float round-trip's rather than a knob: a
+// quarter turn goes through `cos(τ/4)`, which is 6.1e-17 and not 0.
+// Every disagreement this file gates is metres wide, so the guard has
+// eight orders of magnitude of headroom.
+fn near(a: float, b: float) -> boolean {
+    d = a - b;
+    if d < 0.0 { d = -d; }
+    d < 0.000000001
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The fixtures
+// ─────────────────────────────────────────────────────────────────
+
+// The § D3 tower: one mast that does not turn, offering "top" at its tip.
+//
+// ⚠ Its socket class is `tower_top`, spelled the same on both sides —
+// the class is a CONTRACT matched by spelling, and `bind_fault` is what
+// refuses a part that fits something else.
+fn tower_part() -> Part {
+    r = rig_new();
+    r = rig_bone(r, -1, 0.0, 0.0, 3.0, 0.0, 0.0);
+    p = part_new("tower", "", r);
+    p = part_socket(p, "top", "tower_top", 0, 1.0);
+    p
+}
+
+// What goes in it — a part that FITS `tower_top` and offers nothing.
+fn tower_top_part() -> Part {
+    r = rig_new();
+    r = rig_bone(r, -1, 0.0, 0.0, 0.6, -0.5, 0.5);
+    part_new("tower_top", "tower_top", r)
+}
+
+// A boom that genuinely swings — one bone, 2 m, free through a full
+// half turn either way.  Two sockets on it, so the gate can read a
+// socket at the tip AND one halfway along the same bone.
+fn boom_part() -> Part {
+    r = rig_new();
+    r = rig_bone(r, -1, 0.0, 0.0, 2.0, -0.5, 0.5);
+    p = part_new("boom", "", r);
+    p = part_socket(p, "tip", "lamp", 0, 1.0);
+    p = part_socket(p, "mid", "lamp", 0, 0.5);
+    p
+}
+
+fn lamp_part() -> Part {
+    r = rig_new();
+    r = rig_bone(r, -1, 0.0, 0.0, 0.2, 0.0, 0.0);
+    part_new("lamp", "lamp", r)
+}
+
+// The § D3 catalogue: a tower with its top in the socket.
+fn d3_set() -> PartSet {
+    ps = partset_new();
+    partset_add(ps, tower_top_part());
+    t = tower_part();
+    t = part_bind(t, "top", "tower_top");
+    partset_add(ps, t);
+    ps
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Where a socket is
+// ─────────────────────────────────────────────────────────────────
+
+// @DRY-016 — a socket rides the bone it names, at the place it names
+fn test_a_socket_rides_the_bone_it_names() {
+    p = tower_part();
+    i = socket_index(p, "top");
+    assert(i == 0, "the tower offers one socket, 'top', at index 0: got {i}");
+    assert(socket_index(p, "muzzle") == -1,
+           "a socket the part does not offer answers -1, not 0");
+
+    // At rest the mast runs along +x, so its tip — and the socket at
+    // `t = 1.0` — is 3 m out, which is the mast's own length.
+    (x, y) = socket_world(p, [0.0], i);
+    assert(near(x, 3.0) && near(y, 0.0),
+           "'top' sits at the mast's tip (3.0, 0.0), got ({x}, {y})");
+}
+
+// @DRY-017 — ONE socket record, TWO poses, TWO answers
+//
+// ⚠⚠ THE INVARIANT.  A socket that stored its position would satisfy
+// every assertion in `@DRY-016`; only reading the same record twice at
+// two poses can tell the two designs apart.
+fn test_one_socket_answers_two_points_at_two_poses() {
+    p = boom_part();
+    i = socket_index(p, "tip");
+
+    (x0, y0) = socket_world(p, [0.0], i);
+    (x1, y1) = socket_world(p, [0.25], i);
+
+    assert(near(x0, 2.0) && near(y0, 0.0),
+           "at rest the tip is 2 m along +x, got ({x0}, {y0})");
+    assert(near(x1, 0.0) && near(y1, 2.0),
+           "a quarter turn puts it 2 m along +y, got ({x1}, {y1})");
+
+    // ⚠ The control the rule in CLAUDE.md asks for: can this gate
+    // produce a non-trivial reading at all?  The two answers are
+    // 2.828 m apart, against a tolerance of 1e-9.
+    dx = x1 - x0;
+    dy = y1 - y0;
+    moved = sqrt(dx * dx + dy * dy);
+    assert(moved > 2.8,
+           "the two poses must be far apart or the gate is vacuous: {moved} m");
+}
+
+// @DRY-018 — a socket half way along a bone is the segment's midpoint,
+// at EVERY pose
+//
+// ⚠ An algebraic identity rather than a trigonometric reading, so it
+// holds at poses whose cosine is not a round number — which is what
+// makes it a check on `sk_t` rather than on `hex_body`'s rotation.
+fn test_a_socket_at_half_a_bone_is_its_midpoint_at_every_pose() {
+    p = boom_part();
+    mid = socket_index(p, "mid");
+    tip = socket_index(p, "tip");
+
+    for v in [0.0, 0.125, 0.25, -0.3, 0.5] {
+        (mx, my) = socket_world(p, [v], mid);
+        (tx, ty) = socket_world(p, [v], tip);
+        // The bone's base is the rig's root, so the tip's midpoint is
+        // simply half of it.
+        assert(near(mx, tx / 2.0) && near(my, ty / 2.0),
+               "at {v} turns 'mid' must be ({tx / 2.0}, {ty / 2.0}) — half of "
+               + "'tip' at ({tx}, {ty}) — and it is ({mx}, {my})");
+    }
+}
+
+// A socket index the part does not have answers the part's ORIGIN.
+//
+// ⚠ Pinned so it is a decision rather than an accident: it is
+// `hex_body`'s own convention (`rig_world_seg` answers `(0,0,0,0)` for
+// a bone that is not there, every index being `?? 0.0`), and the
+// doorstep is a separate call.
+fn test_a_socket_that_is_not_there_answers_the_origin() {
+    p = tower_part();
+    (x, y) = socket_world(p, [0.0], 7);
+    assert(near(x, 0.0) && near(y, 0.0),
+           "an index past the offer answers the origin, got ({x}, {y})");
+    (bx, by) = socket_world(p, [0.0], -1);
+    assert(near(bx, 0.0) && near(by, 0.0),
+           "and so does a negative one, got ({bx}, {by})");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The catalogue, and its doorstep
+// ─────────────────────────────────────────────────────────────────
+
+// @DRY-020 — the § D3 tower, defined, filled, and clean at the doorstep
+fn test_the_tower_of_section_d3() {
+    ps = d3_set();
+
+    assert(part_fault(ps, "tower") == "",
+           "the § D3 tower is legal: {part_fault(ps, \"tower\")}");
+    assert(part_fault(ps, "tower_top") == "",
+           "and so is its top: {part_fault(ps, \"tower_top\")}");
+
+    got = partset_get(ps, "tower");
+    assert(got != null, "the catalogue holds 'tower'");
+    t = got?;
+    assert(len(t.pt_binds) == 1,
+           "its socket is filled once, got {len(t.pt_binds)} bindings");
+    assert(t.pt_binds[0].bd_part == "tower_top", "by the top");
+
+    // ⚠ The invariant, restated where a reader will look for it: the
+    // binding names a socket and a part, and NOTHING ELSE.  Where the
+    // top is comes from `socket_world`.
+    (x, y) = socket_world(t, [0.0], socket_index(t, "top"));
+    assert(near(x, 3.0) && near(y, 0.0),
+           "and where it sits is derived: ({x}, {y})");
+
+    assert(part_fault(ps, "gantry") == "part 'gantry' is not defined",
+           "a name nobody defined is refused by name: {part_fault(ps, \"gantry\")}");
+}
+
+// @DRY-021 — a second part under one name is refused
+fn test_a_name_is_an_identity() {
+    ps = partset_new();
+    assert(partset_add(ps, tower_top_part()) == "",
+           "the first definition is accepted");
+    why = partset_add(ps, tower_top_part());
+    assert(why == "'tower_top' is already defined",
+           "the second is refused by name: got '{why}'");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// What a part OFFERS — `socket_fault`
+// ─────────────────────────────────────────────────────────────────
+
+// @DRY-019 — a socket riding a bone the rig does not have is refused
+fn test_a_socket_on_a_bone_the_rig_does_not_have_is_refused() {
+    ok = tower_part();
+    assert(socket_fault(ok) == "",
+           "the control: a socket on bone 0 of a one-bone rig is fine");
+
+    bad = part_socket(tower_part(), "mast_light", "lamp", 3, 0.5);
+    why = socket_fault(bad);
+    assert(why == "part 'tower' socket 'mast_light' rides bone 3 of a rig with 1",
+           "the refusal names the socket, the bone and the rig: got '{why}'");
+}
+
+// @DRY-027 — two sockets under one name are refused
+//
+// ⚠ Without this, `socket_index` answers the FIRST of them and the
+// second is unreachable — a socket that exists, cannot be filled, and
+// nothing says so.
+fn test_two_sockets_under_one_name_are_refused() {
+    p = part_socket(tower_part(), "top", "tower_top", 0, 0.5);
+    why = socket_fault(p);
+    assert(why == "part 'tower' offers 2 sockets named 'top'",
+           "the refusal counts them and names them: got '{why}'");
+}
+
+fn test_a_socket_with_no_name_is_refused() {
+    p = part_socket(tower_part(), "", "lamp", 0, 0.5);
+    assert(socket_fault(p) == "part 'tower' offers a socket with no name",
+           "got '{socket_fault(p)}'");
+}
+
+fn test_a_socket_with_no_class_is_refused() {
+    p = part_socket(tower_part(), "hook", "", 0, 0.5);
+    assert(socket_fault(p) == "part 'tower' socket 'hook' names no class",
+           "got '{socket_fault(p)}'");
+}
+
+fn test_a_socket_off_its_bone_is_refused() {
+    p = part_socket(tower_part(), "hook", "lamp", 0, 1.5);
+    why = socket_fault(p);
+    assert(why == "part 'tower' socket 'hook' sits at 1.5 along its bone, outside 0..1",
+           "past the tip is refused: got '{why}'");
+
+    q = part_socket(tower_part(), "hook", "lamp", 0, -0.25);
+    assert(socket_fault(q) != "", "and so is behind the joint");
+    assert(socket_fault(tower_part()) == "",
+           "the control: 0..1 itself is accepted");
+}
+
+// ⚠ The rig's own doorstep is the LIBRARY's, and `part_fault` asks it
+// first — the reuse, made visible in the one place a consumer would
+// otherwise be tempted to re-derive it.
+fn test_a_rig_that_is_not_admissible_is_refused() {
+    r = rig_new();
+    r = rig_bone(r, -1, 0.0, 0.0, 1.0, 0.5, -0.5);   // limits out of order
+    ps = partset_new();
+    partset_add(ps, part_new("bent", "", r));
+    assert(part_fault(ps, "bent") == "part 'bent' has a rig that is not admissible",
+           "got '{part_fault(ps, \"bent\")}'");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// What FILLS a socket — `bind_fault`
+// ─────────────────────────────────────────────────────────────────
+
+// @DRY-022 — a socket filled twice is refused
+//
+// ⚠⚠ `PARTS.md` § D3's own rule, and the simulation reached it first:
+// `tower_mount_top` REFUSES an occupied tower, so a hot-swap is
+// composed out of a detach and a mount.  This is that rule in the art.
+fn test_a_socket_filled_twice_is_refused() {
+    ps = partset_new();
+    partset_add(ps, tower_top_part());
+
+    once = part_bind(tower_part(), "top", "tower_top");
+    assert(bind_fault(ps, once) == "",
+           "the control: one top in one socket is fine");
+
+    twice = part_bind(once, "top", "tower_top");
+    why = bind_fault(ps, twice);
+    assert(why == "part 'tower' fills socket 'top' 2 times",
+           "the refusal names the socket and the count: got '{why}'");
+}
+
+// @DRY-023 — a binding into a socket that is not offered is refused
+fn test_a_binding_into_a_socket_that_is_not_offered_is_refused() {
+    ps = partset_new();
+    partset_add(ps, tower_top_part());
+
+    p = part_bind(tower_part(), "muzzle", "tower_top");
+    why = bind_fault(ps, p);
+    assert(why == "part 'tower' binds into 'muzzle', a socket it does not offer",
+           "got '{why}'");
+}
+
+// @DRY-024 — a part that is not defined is refused, and NOT as a cycle
+//
+// ⚠ `hex_part::cycle.loft`'s rule, kept: a mistyped name and a part
+// that contains itself want completely different fixes, so they never
+// share a wording.  The second assertion is what pins that apart.
+fn test_a_part_that_is_not_defined_is_refused_and_is_not_a_cycle() {
+    ps = partset_new();
+    partset_add(ps, tower_top_part());
+
+    p = part_bind(tower_part(), "top", "tower_lid");
+    why = bind_fault(ps, p);
+    assert(why == "part 'tower' puts 'tower_lid' in socket 'top', and 'tower_lid' is not defined",
+           "got '{why}'");
+    assert(!contains(why, "contains itself"),
+           "a dangling name must not read as a recursion: '{why}'");
+}
+
+fn test_a_part_of_the_wrong_class_is_refused() {
+    ps = partset_new();
+    partset_add(ps, lamp_part());
+
+    p = part_bind(tower_part(), "top", "lamp");
+    why = bind_fault(ps, p);
+    assert(why == "part 'tower' socket 'top' takes 'tower_top' and 'lamp' fits 'lamp'",
+           "the refusal names both classes, because that is the fix: got '{why}'");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// A part may not contain itself — `cycle_fault`
+// ─────────────────────────────────────────────────────────────────
+
+// @DRY-025 — a part that contains itself is refused, by the path
+fn test_a_part_that_contains_itself_is_refused() {
+    ps = partset_new();
+    a = part_new("a", "b_class", rig_one());
+    a = part_socket(a, "hole", "c_class", 0, 1.0);
+    a = part_bind(a, "hole", "c");
+    b = part_new("b", "c_class", rig_one());
+    b = part_socket(b, "hole", "a_class", 0, 1.0);
+    b = part_bind(b, "hole", "a");
+    c = part_new("c", "c_class", rig_one());
+    c = part_socket(c, "hole", "b_class", 0, 1.0);
+    c = part_bind(c, "hole", "b");
+    partset_add(ps, a);
+    partset_add(ps, b);
+    partset_add(ps, c);
+
+    why = cycle_fault(ps, "a");
+    assert(why == "part 'a' contains itself: a → c → b → a",
+           "the refusal is the WHOLE chain, so the author can see where "
+           + "the loop was entered as well as where it closed: got '{why}'");
+}
+
+// @DRY-026 — a DIAMOND is not a cycle
+//
+// ⚠⚠ The control that keeps `cycle_fault` honest, and the reason it
+// carries a path rather than a visited set (`hex_part::cycle.loft`): a
+// part that uses one part in two sockets visits it twice and is
+// perfectly legal.  A global *seen* set refuses this catalogue, and
+// every assertion in `@DRY-025` still passes.
+fn test_a_diamond_is_not_a_cycle() {
+    ps = partset_new();
+    partset_add(ps, lamp_part());
+    b = boom_part();
+    b = part_bind(b, "tip", "lamp");
+    b = part_bind(b, "mid", "lamp");
+    partset_add(ps, b);
+
+    assert(cycle_fault(ps, "boom") == "",
+           "one lamp in two sockets is not a recursion: '{cycle_fault(ps, \"boom\")}'");
+    assert(part_fault(ps, "boom") == "",
+           "and the whole doorstep agrees: '{part_fault(ps, \"boom\")}'");
+}
+
+// A one-bone rig for the cycle fixtures, whose geometry means nothing.
+fn rig_one() -> Rig {
+    r = rig_new();
+    r = rig_bone(r, -1, 0.0, 0.0, 1.0, 0.0, 0.0);
+    r
+}

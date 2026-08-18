@@ -1,0 +1,409 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// #examples
+//
+// The SOCKET — what a part OFFERS, and what goes in it.
+//
+// Plan 20 phase A1.  `docs/PARTS.md` § D3 (`@X003`) is the finding this
+// file exists to serve: dryopea's tower has had a socket since
+// plan 17 T2 — `tower_detach_top` takes the top off, `tower_mount_top`
+// puts it on another tower and REFUSES an occupied one — so the art
+// does not need a parallel notion of *does this tower have a top*.
+//
+//     tower (part)                      the sim
+//       └── socket "top"  ──────────>   TowerState.top / tower_detach_top
+//            └── tower_top              the CarryObject, magazine in `subj`
+//
+// ── ⚠⚠ What this file does NOT contain, and why that is the point ─
+//
+// **No rig, no joint, no limit, no pose and no hitbox.**  Every one of
+// those is `hex_body`, published, and `PARTS.md` § D1 (`@X001`) is the
+// decision to consume it rather than write it: *"a body is a RIG —
+// bones and the limits in the joints between them, never a pose"* is
+// § D4's design already shipped.  A dryopea-local `Part` / `Limb` /
+// `Hinge` beside a published `Rig` would be a second implementation of
+// one thing, and the one a future reader reaches for.
+//
+// ⚠ So this file's own gate is a NEGATIVE one: drop the `hex_body`
+// dependency and `tests/20_a1_the_part.loft` must fail to COMPILE.  If
+// it still passes, something local is standing in for the library.
+//
+// ⚠ `hex_part` — moros's socket records — is NOT the dependency either,
+// and that half of § D1 is unchanged: it is 4 000 unpublished lines
+// whose premise is *"a part IS a world"*, a `hex_voxel` store with its
+// own `.hxw` format (`part_set_bindings` takes a `VoxelWorld`).  What
+// this file takes from it is the SHAPE, named below at each place it
+// deviates, so the two stay legible to one reader.
+//
+// ── ⚠⚠ THE ONE INVARIANT: a bound part's position is DERIVED ────
+//
+// > **Where a socket is, is computed from the posed rig.  It is stored
+// > nowhere, and there is no field it could be stored in.**
+//
+// That absence is the whole mechanism, and it is `hex_part::bind.loft`'s
+// stated invariant too: move the tower and its top follows, because
+// there is no second coordinate that could be forgotten.  A `bd_q`
+// added later *for convenience* would end the design without failing a
+// test — so the gate asserts it directly, by posing one rig two ways
+// and reading the socket twice.
+//
+// ⚠ **There is exactly ONE re-assertion site**: `socket_world`.  Nothing
+// else in dryopea may answer *where is the top*, and a second answer is
+// the defect this invariant exists to make impossible.
+//
+// ── ⚠ Three deviations from `hex_part`, each with its reason ────
+//
+// 1. **A socket rides a BONE, not a cell.**  `hex_part::Socket` is at
+//    `(q, r, h)` plus an edge-or-heading, because there a part IS a
+//    voxel world.  Here a part is a `Rig`, so the faithful translation
+//    of *a place on the body* is a bone index and how far along it —
+//    and `t` is the family's own spelling for that (`hex_fit`'s
+//    `feature_fits(p, cells, side, t, nedges)`).
+//
+// 2. **One class token, not a kind AND a size.**  `hex_part` splits
+//    `door` / `2x3` because §P3's examples are sized (`pillar/round-3`).
+//    dryopea's SIZE is gated somewhere else entirely — `PARTS.md` § D6
+//    makes a part's footprint answer to the simulation's own constant,
+//    which is plan 20 A3 — so a size here would be a second authority
+//    on one fact.
+//
+// 3. **A binding carries NO POSE**, where `hex_part::Binding` carries
+//    `bd_open` (how far the leaf is swung, in turns).  That field is
+//    right there and wrong here: `hex_part` is a saved DOCUMENT format,
+//    where a door left ajar is authored state, while a dryopea part is
+//    a CATALOGUE asset and its angles come from the simulation
+//    (`PARTS.md` § D3: *"the sprite follows the simulation, and never a
+//    second flag"*, which is plan 20 A4).  Storing an angle here would
+//    be exactly the second flag.
+//
+// ── ⚠ The refusals are TEXT, and the reason is dryopea's idiom ──
+//
+// `hex_part` answers with a code plus a why (`BindWrite { bw_code,
+// bw_why }`), because its callers branch on the code.  dryopea spells a
+// refusal as a `*_fault` returning the reason and `""` for none —
+// `stand_fault`, `step_fault`, `crop_fault`, `compose_fault` — and its
+// callers do not branch, they report.  ⚠ What survives the change of
+// spelling is `K-FIT`'s real requirement, that a refusal **names its
+// restriction**: a missing part and a cycle are two answers wanting
+// different fixes, so they never share a wording.
+
+use hex_body;
+
+// ─── What a part offers ─────────────────────────────────────────
+
+// One joint a part offers — a place another part may go.
+//
+// ⚠ **NO SIZE, ONLY A CLASS** (`hex_part::sock.loft`, kept): the class
+// is the CONTRACT, matched by spelling.  Whether the thing that goes in
+// it physically fits is a fact of the two parts' geometry and is plan
+// 20 A3's, gated against the simulation's own constant (§ D6).
+pub struct Socket {
+  sk_name: text,        // the author's handle for THIS socket — "top"
+  sk_kind: text,        // the contract token — what may fill it, "tower_top"
+  sk_bone: integer,     // which bone of the offering part's rig it rides
+  sk_t:    float,       // where along that bone: 0.0 its joint, 1.0 its tip
+}
+
+// What is in which socket — and NOT where it is.
+//
+// ⚠⚠ **Every field below names the joint; none of them says where.**
+// See this file's header: the absence IS the invariant.
+pub struct Binding {
+  bd_socket: text,      // the socket's name, in the part that offers it
+  bd_part:   text,      // what goes in it, by catalogue name
+}
+
+// A part: a rig, the sockets it offers, and what is in them.
+//
+// ⚠ `pt_fits` is the ONE class this part goes into, and one is not a
+// simplification — `hex_part::PartFits` argues it: a part is one thing
+// of one size, and a part offering several ways IN would be offering
+// sockets, which is the other record.  `""` fits nothing, which is what
+// a root part (the hover unit) is.
+pub struct Part {
+  pt_name:  text,
+  pt_fits:  text,
+  pt_rig:   Rig,                  // hex_body's — see the header
+  pt_socks: vector<Socket>,
+  pt_binds: vector<Binding>,
+}
+
+// The catalogue: parts by name.
+//
+// ⚠ A hash, because every question this file asks is a LOOKUP BY NAME
+// (a binding names its part, the cycle walk follows names) and loft
+// cannot iterate a hash — which is a fit rather than a compromise, as
+// nothing here ever needs to sweep the catalogue.
+pub struct PartSet {
+  ps_parts: hash<Part[pt_name]>,
+}
+
+// ─── Building one ───────────────────────────────────────────────
+
+// A part with a rig, offering nothing yet.
+//
+// ⚠ The rig is BUILT FIRST and handed over whole: a struct stored in a
+// field of another struct is a COPY (loft's `advice[avoidable-copy]`),
+// so `rig_bone` calls made after this land in the caller's rig and not
+// in the part's.
+//
+// Example: @DRY-016, @DRY-020
+pub fn part_new(name: text, fits: text, rig: Rig) -> Part {
+  Part { pt_name: name, pt_fits: fits, pt_rig: rig, pt_socks: [], pt_binds: [] }
+}
+
+// Offer a socket, riding bone `bone` at `t` along it.  Chains, the way
+// `hex_body::rig_bone` does: `p = part_socket(p, …)`.
+//
+// ⚠ It REFUSES nothing — a socket on a bone the rig does not have is
+// perfectly writable here and is `socket_fault`'s to name.  The
+// doorstep is a separate call for the reason `hex_body` gives about
+// `rig_admissible`: an author building a rig top-down passes through
+// states no predicate should reject.
+//
+// Example: @DRY-016, @DRY-020
+pub fn part_socket(p: Part, name: text, kind: text, bone: integer, t: float) -> Part {
+  p.pt_socks += [Socket { sk_name: name, sk_kind: kind, sk_bone: bone, sk_t: t }];
+  p
+}
+
+// Put `what` in socket `socket`.  Chains.
+//
+// ⚠ Also refuses nothing — see `bind_fault`, which is where a socket
+// filled twice, a socket that is not offered, a part that is not
+// defined and a class mismatch are each named.
+//
+// Example: @DRY-020, @DRY-022
+pub fn part_bind(p: Part, socket: text, what: text) -> Part {
+  p.pt_binds += [Binding { bd_socket: socket, bd_part: what }];
+  p
+}
+
+// An empty catalogue.
+//
+// Example: @DRY-020
+pub fn partset_new() -> PartSet {
+  PartSet { ps_parts: [] }
+}
+
+// Define a part.  Answers the reason it was refused, or `""`.
+//
+// ⚠ A NAME IS AN IDENTITY, so a second part under one name is refused
+// rather than overwriting: a catalogue that silently replaced would let
+// a typo delete an entry, and every binding that named it would go on
+// resolving — to the wrong thing.
+//
+// Example: @DRY-020, @DRY-021
+pub fn partset_add(ps: PartSet, p: Part) -> text {
+  if ps.ps_parts[p.pt_name] != null {
+    return "'{p.pt_name}' is already defined";
+  }
+  ps.ps_parts += [p];
+  ""
+}
+
+// The part under `name`, or null.
+//
+// ⚠ It is a COPY (loft returns a struct by value), so writing through
+// it is a silent no-op — build a part, then define it.
+//
+// Example: @DRY-020
+pub fn partset_get(ps: PartSet, name: text) -> Part? {
+  ps.ps_parts[name]
+}
+
+// ─── Where a socket IS ──────────────────────────────────────────
+
+// The index of the socket named `name`, or **-1**.
+//
+// Example: @DRY-016, @DRY-019
+pub fn socket_index(p: Part, name: text) -> integer {
+  for s in p.pt_socks {
+    if s.sk_name == name { return s#index; }
+  }
+  -1
+}
+
+// ⚠⚠ **THE INVARIANT'S ONE SITE.**  Where socket `i` is, with the rig
+// posed at `values` — its bone's segment, read at `sk_t` along it.
+//
+// Nothing is stored: pose the same part two ways and this answers two
+// points from the same `Socket` record.  A second function answering
+// *where is the top* is the defect the whole design is arranged to make
+// impossible, so add none.
+//
+// ⚠ A socket index the part does not have answers the part's ORIGIN,
+// which is `hex_body`'s own convention rather than a shrug — every
+// index in `rig_world_seg` is `?? 0.0`, so a bone that is not there
+// answers `(0, 0, 0, 0)` and the doorstep is a separate call.  Here
+// that doorstep is `socket_fault`, and `socket_index` answers -1 for a
+// name that is not offered.
+//
+// Example: @DRY-016, @DRY-017, @DRY-018
+pub fn socket_world(p: Part, values: vector<float>, i: integer) -> (float, float) {
+  if i < 0 || i >= len(p.pt_socks) { return (0.0, 0.0); }
+  // ⚠ A SWEEP RATHER THAN `p.pt_socks[i]`, and it is deliberate: an
+  // index read warns as possibly-null and `?? Socket { … }` would need a
+  // partial literal, which loft defaults silently ([loft#914]).  A part
+  // offers a handful of sockets, so do not "tidy" this into an index.
+  bone = 0;
+  along = 0.0;
+  for s in p.pt_socks {
+    if s#index == i { bone = s.sk_bone; along = s.sk_t; }
+  }
+  if bone < 0 || bone >= rig_count(p.pt_rig) { return (0.0, 0.0); }
+  (x0, y0, x1, y1) = rig_world_seg(p.pt_rig, values, bone);
+  (x0 + along * (x1 - x0), y0 + along * (y1 - y0))
+}
+
+// ─── The doorstep ───────────────────────────────────────────────
+
+// The class of the socket named `name`, or `""` — the lookup
+// `bind_fault` needs without an index it would have to bound-check.
+fn socket_kind(p: Part, name: text) -> text {
+  for s in p.pt_socks {
+    if s.sk_name == name { return s.sk_kind; }
+  }
+  ""
+}
+
+// Is what this part OFFERS well formed?  The reason it is not, or `""`.
+//
+// ⚠ It asks nothing about what fills the sockets — that is
+// `bind_fault`, and keeping them apart is what lets a catalogue entry
+// be checked before anything is put in it.
+//
+// Example: @DRY-019, @DRY-027
+pub fn socket_fault(p: Part) -> text {
+  bones = rig_count(p.pt_rig);
+  for s in p.pt_socks {
+    if s.sk_name == "" {
+      return "part '{p.pt_name}' offers a socket with no name";
+    }
+    if s.sk_kind == "" {
+      return "part '{p.pt_name}' socket '{s.sk_name}' names no class";
+    }
+    if s.sk_bone < 0 || s.sk_bone >= bones {
+      return "part '{p.pt_name}' socket '{s.sk_name}' rides bone {s.sk_bone} of a rig with {bones}";
+    }
+    if s.sk_t < 0.0 || s.sk_t > 1.0 {
+      return "part '{p.pt_name}' socket '{s.sk_name}' sits at {s.sk_t} along its bone, outside 0..1";
+    }
+  }
+  for a in p.pt_socks {
+    named = 0;
+    for b in p.pt_socks {
+      if b.sk_name == a.sk_name { named += 1; }
+    }
+    if named > 1 {
+      return "part '{p.pt_name}' offers {named} sockets named '{a.sk_name}'";
+    }
+  }
+  ""
+}
+
+// Is what fills this part's sockets legal?  The reason it is not, or `""`.
+//
+// The four refusals, and each names a different fix:
+//
+//   - a binding into a socket the part does not offer;
+//   - ⚠ **one socket filled twice** — `PARTS.md` § D3's own rule, and
+//     `tower_mount_top`'s, arrived at in the simulation first;
+//   - a binding naming a part that is not defined;
+//   - a part whose class is not the socket's.
+//
+// ⚠ *Not defined* is deliberately NOT spelled like a cycle
+// (`cycle_fault`): a mistyped name and a part that contains itself want
+// completely different fixes, and one wording for both makes a typo
+// read as a recursion the author cannot find.
+//
+// Example: @DRY-022, @DRY-023, @DRY-024
+pub fn bind_fault(ps: PartSet, p: Part) -> text {
+  for b in p.pt_binds {
+    kind = socket_kind(p, b.bd_socket);
+    if socket_index(p, b.bd_socket) < 0 {
+      return "part '{p.pt_name}' binds into '{b.bd_socket}', a socket it does not offer";
+    }
+    filled = 0;
+    for o in p.pt_binds {
+      if o.bd_socket == b.bd_socket { filled += 1; }
+    }
+    if filled > 1 {
+      return "part '{p.pt_name}' fills socket '{b.bd_socket}' {filled} times";
+    }
+    into = ps.ps_parts[b.bd_part];
+    if into == null {
+      return "part '{p.pt_name}' puts '{b.bd_part}' in socket '{b.bd_socket}', and '{b.bd_part}' is not defined";
+    }
+    if into.pt_fits != kind {
+      return "part '{p.pt_name}' socket '{b.bd_socket}' takes '{kind}' and '{b.bd_part}' fits '{into.pt_fits}'";
+    }
+  }
+  ""
+}
+
+// The walk `cycle_fault` runs — the chain CURRENTLY being followed.
+//
+// ⚠⚠ **A PATH, NOT A VISITED SET, and a diamond is what tells them
+// apart** (`hex_part::cycle.loft`, and its reason is kept whole): a
+// hover unit with two identical mounts uses one part twice and is
+// perfectly legal, while a global *seen* set calls the second use a
+// cycle and refuses a catalogue that is fine.  What makes a cycle is a
+// part appearing on the chain being walked, so that is what is carried.
+//
+// ⚠ It terminates with no depth bound: each step either finds a name
+// already on the path — refused — or descends to one that is not, and
+// the path only grows, so the walk is bounded by the number of parts
+// defined.
+fn part_walk(ps: PartSet, name: text, path: vector<text>) -> text {
+  for t in path {
+    if t == name {
+      // The whole chain, not the tail from the match — the author needs
+      // to see where the loop was entered as well as where it closed.
+      trail = "";
+      for u in path { trail += "{u} → "; }
+      return "part '{name}' contains itself: {trail}{name}";
+    }
+  }
+  here = ps.ps_parts[name];
+  if here == null { return "part '{name}' is not defined"; }
+  // ⚠ A whole-value bind COPIES (loft C86), which is exactly what is
+  // wanted: each branch of the walk owns its own chain, so a sibling
+  // cannot see what another sibling descended through.
+  down: vector<text> = path;
+  down += [name];
+  for b in here.pt_binds {
+    why = part_walk(ps, b.bd_part, down);
+    if why != "" { return why; }
+  }
+  ""
+}
+
+// Does `name` contain itself, transitively?  The path it does it by, or `""`.
+//
+// Example: @DRY-025, @DRY-026
+pub fn cycle_fault(ps: PartSet, name: text) -> text {
+  seed: vector<text> = [];
+  part_walk(ps, name, seed)
+}
+
+// THE DOORSTEP — is this catalogue entry usable?  One call, so a
+// consumer never has to remember which four questions to ask.
+//
+// ⚠ It asks `hex_body::rig_admissible` FIRST, and that is the reuse
+// made visible: the rig's own doorstep is the library's, and dryopea
+// adds only the questions the library cannot ask.
+//
+// Example: @DRY-020, @DRY-021
+pub fn part_fault(ps: PartSet, name: text) -> text {
+  p = ps.ps_parts[name];
+  if p == null { return "part '{name}' is not defined"; }
+  if !rig_admissible(p.pt_rig) {
+    return "part '{name}' has a rig that is not admissible";
+  }
+  why = socket_fault(p);
+  if why != "" { return why; }
+  why = bind_fault(ps, p);
+  if why != "" { return why; }
+  cycle_fault(ps, name)
+}

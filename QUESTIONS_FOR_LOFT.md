@@ -33,6 +33,53 @@ fix / feature, move it to **Resolved**.
 
 ## Submitted
 
+### `use <pkg>;` resolves a package the manifest never declared — [loft#968](https://github.com/loft-lang/loft/issues/968)
+
+Filed 2026-08-18 (plan 20 A1).
+
+- **Found while:** plan 20 A1, whose phase gate is a NEGATIVE one — *"drop the
+  `hex_body` dependency and A1's tests must fail to compile"*.  It did not fire.
+- **Kind:** question (possibly a bug, possibly deliberate — which is why it is
+  a question)
+- **What dryopea needs:** a way to prove a declared dependency is load-bearing.
+
+Measured 2026-08-18, `loft test tests/20_a1_the_part.loft` (18 tests):
+
+| what was removed | result |
+|---|---|
+| nothing — the shipped state | 18 passed |
+| the `hex_body` line from `loft.toml` | **18 passed** |
+| that line **and** the `[[package]]` block from `loft.lock` | **18 passed** |
+| `use hex_body;` from `src/part.loft` | `Error: Undefined type Rig` |
+
+⚠ `use <pkg>;` resolves an **undeclared** registry package from
+`~/.loft/registry/` and then **writes it back into `loft.lock`** — measured
+standalone in a project with no `[dependencies]` section at all, where
+`loft api` reports *"project dependencies (loft.toml): (none)"* in the same run
+that the compiler resolves `hex_grid` and runs it.
+
+⚠⚠ **The consequence, stated as what a consumer cannot do:** nothing in a
+project can distinguish *"we depend on this"* from *"this happens to be
+installed on the box that built it"*.  A dependency deleted from `loft.toml` by
+accident is invisible to every gate.  dryopea's A1 control is therefore
+*remove the `use` line*, which proves the IMPORT is real and says nothing about
+the manifest.
+
+⚠ **It may well be deliberate** — a qualified `lib::fn()` already auto-loads a
+library, and self-healing the lock is a reasonable convenience.  So the ask is
+narrow: should `use <pkg>;` for an undeclared package carry a **warning** that
+names the fix (`loft install <pkg>`), rather than resolving silently?
+
+⚠ Not measured, and it would sharpen the case: **which VERSION** an undeclared
+package resolves to when several are installed (this box has `graphics` 0.1.0
+through 0.5.2).  If it is the newest rather than a declared range, a pin is
+advisory too.
+
+Repro: `loft_repros/undeclared_registry_package_resolves/`.  The third dryopea
+has hit where the manifest is not authoritative, after [loft#963] (a declared
+path dep suppresses the `--lib` search) and [loft#966] (bare `loft install`
+installs the project).
+
 ### Bare `loft install` installs the PROJECT, not its dependencies — [loft#966](https://github.com/loft-lang/loft/issues/966)
 
 Filed 2026-08-17 (plan 26 L6).  Run with no arguments in a project dir it

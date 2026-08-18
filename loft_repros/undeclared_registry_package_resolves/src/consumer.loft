@@ -1,0 +1,12 @@
+// A program that uses a registry package the manifest never declares.
+//
+// `loft.toml` beside this file has NO `[dependencies]` section at all,
+// yet `hex_grid` resolves and runs — so the manifest is not what gates
+// resolution, and a project that drops a dependency keeps building on
+// any box where the package happens to be installed.
+use hex_grid;
+
+fn main() {
+    (q, r) = hex_neighbor(0, 0, 0);
+    println("hex_grid resolved with NO [dependencies]: hex_neighbor(0,0,0) = ({q}, {r})");
+}

@@ -98,3 +98,24 @@ moros_map = { path = "../moros/lib/moros_map" }
 # row reads *"frame counter, dt, scheduling"* — and `time` shipped as
 # date arithmetic instead, so the slot was never filled.  This fills it.
 fixstep = ">=0.1"
+
+# Plan 20 A1 — the PART MODEL, and dryopea re-implements none of it.
+# `docs/PARTS.md` § D1 (`@X001`) decided this after the first draft got it
+# wrong: it chose "a dryopea-native part model" on the strength of having
+# read moros's unpublished `hex_part` and never checking the published
+# family.  `hex_body` calls itself *"a body is a RIG — bones and the limits
+# in the joints between them, never a pose"*, which IS § D4's design, and
+# it ships `Rig` / `rig_bone` / `Joint` with `joint_fits` / `joint_offer` /
+# `joint_residual`, `rig_world_seg`, `bone_obb` / `obb_contains`,
+# `rig_write` / `rig_read` and `rig_admissible` / `rig_eq`.
+#
+# ⚠ Where it stops is 3-D: there is not one `z` in the package.  That is an
+# ADDITIVE enhancement proposed upstream rather than a shape dryopea
+# invents — loft-libs-world#14 (`rig_bone3`), which `plans/20` A2 needs and
+# A1 does not.
+#
+# ⚠ `hex_part` stays out of scope and that half of § D1 is unchanged: it is
+# 4 000 unpublished lines whose premise is *"a part IS a world"*, i.e. a
+# `hex_voxel` store with its own `.hxw` format.  Its socket records are the
+# shape `src/part.loft` follows; the dependency is not.
+hex_body = ">=0.1"

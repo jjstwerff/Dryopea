@@ -858,6 +858,37 @@ src/
                    with one of them while the other is a crew member
                    deleted with no fault raised.  A vector with stable
                    slots, never compacted — `WaveState.crew`'s shape.
+  part.loft        what an entity IS, structurally (plan 20 A1) — Socket +
+                   Binding + Part + PartSet over `hex_body::Rig`, with
+                   part_new / part_socket / part_bind / partset_new /
+                   partset_add / partset_get / socket_index /
+                   socket_world / socket_fault / bind_fault /
+                   cycle_fault / part_fault.
+                   ⚠⚠ **It contains no rig, no joint, no limit, no pose
+                   and no hitbox** — every one of those is `hex_body`,
+                   published, and `PARTS.md` § D1 is the decision to
+                   consume it (`part_fault` asks `rig_admissible` before
+                   any question of its own).  ⚠ The gate for that is a
+                   NEGATIVE one and it is the `use` line, never the
+                   manifest: dropping `hex_body` from `loft.toml` AND
+                   from `loft.lock` leaves all 18 tests green
+                   ([loft#968]), while deleting `use hex_body;` answers
+                   `Undefined type Rig`.
+                   ⚠⚠ **A socket's position is COMPUTED and stored
+                   nowhere** — `socket_world` is the ONE site, and the
+                   absence of a coordinate on `Binding` is what makes
+                   moving a part move everything in its sockets.
+                   ⚠ **A socket carries no POSE either**, where
+                   `hex_part::Binding` carries `bd_open`: a dryopea part
+                   is a catalogue asset and its angles come from the
+                   simulation (§ D3, plan 20 A4).
+                   ⚠ The cycle check walks a PATH, never a visited set —
+                   a diamond (one part in two sockets) is legal, and the
+                   diamond test is the only one that can see the
+                   difference.
+                   ⚠ The first file in the repo to opt into
+                   `docs/EXAMPLES.md` with `// #examples`, so all twelve
+                   public functions cite a test (`@DRY-016`..`@DRY-027`).
                    ⚠ **Conservation is STRUCTURAL, not maintained**: ONE
                    record with an `owner` field, where "on the ground"
                    is a VALUE of that field rather than a different
@@ -1100,6 +1131,9 @@ suite redirects its own shots into `tests/actual/`.
 | `Enemy` | `spawn.loft` | `{ q, r, kind, heading, alive, taken, stand, bank }` — ⚠ **three of the eight are ZERO-neutral and that is the trap**: `taken` is damage ABSORBED, `stand` is the pre-walk window still owed and `bank` is ground banked but not yet spent, so a literal that omits any of them is a HEALTHY enemy that has finished arriving and is carrying nothing.  ⚠ The carry joined in plan 23 K2a and had no `.keys` setter until K2b, because at 1.5 hex/s it is exactly zero after every tick and nothing in the repo could hold one.  ⚠ It became a `Bank` in plan 26 L2 — and stayed zero-neutral through the nesting only because a `Bank` holds no scale (`@X080`) |
 | `CarryObject` | `carry.loft` | one carryable thing — ⚠ `owner` is the WHOLE state machine (ground / a carrier / spent), because two fields that can disagree about one fact is the defect the model exists to make unwritable |
 | `CargoLayer` | `carry.loft` | every carryable thing in the run — ⚠ a VECTOR with stable slots, never a hash by hex: two objects share a hex and a hash deletes one |
+| `Socket` | `part.loft` | one joint a part OFFERS — a name, a class token, and **a bone plus a `t` along it**.  ⚠ NO SIZE: the class is the contract, and whether the thing physically fits is the simulation's constant to answer (`PARTS.md` § D6, plan 20 A3) |
+| `Binding` | `part.loft` | what is in which socket — **two texts and nothing else**.  ⚠⚠ The absence of a coordinate is the invariant, and the absence of a POSE is the deviation from `hex_part::Binding.bd_open`: a dryopea part is a catalogue asset, so its angles come from the sim |
+| `Part` / `PartSet` | `part.loft` | a rig, the sockets it offers, what fills them — and the catalogue they are looked up in.  ⚠ A `hash` keyed by name, because every question the file asks is a lookup by name and nothing ever sweeps it |
 | `HeightLayer` | `height.loft` | metres of rubble piled on the map at runtime, and what it is made of — never saved |
 | `DamageLayer` | `damage.loft` | HP each structure has ABSORBED — runtime, never saved; a miss means undamaged |
 | `FlowField` | `flow.loft` | one class's distance field: cells (distance + the height it was swept with), the core, and the CLIMB it was built for |
