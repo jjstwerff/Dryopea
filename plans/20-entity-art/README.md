@@ -14,6 +14,51 @@ code: the first design baked sprites at a fixed projection, and the project
 owner's answer — *the dynamic camera of moros, and exploration as a pillar* —
 replaced that with geometry.
 
+### ⚠⚠ Before A2 and A3 — two probes, and each moved a phase (2026-08-18)
+
+**A2 is BLOCKED and the block is upstream.**  `rig_bone3` is
+[loft-libs-world#14](https://github.com/loft-lang/loft-libs-world/issues/14),
+filed 2026-08-17 and **open with no comment**.  ⚠ A2 is where the 2-D limit
+becomes load-bearing rather than cosmetic: § D7 puts the four rotors at four
+different heights (`z` +0.26 front, +0.30 rear), the skids at −0.26 and the
+canopy hinge on a **lateral** axis (`ax: 1.0`), and `hex_body` has not one `z`
+in the package.  ⚠ `~/workspace/loft-libs-world` is checked out and `hex_body`
+is **307 lines of source and 95 of tests**, so contributing the enhancement is
+a small job rather than a fork — but the issue deliberately offers the opposite
+answer as a real option (*the planar rig stays planar and 3-D belongs to
+`hex_part` once published*), and implementing it before that is answered
+pre-empts a decision left open on purpose.
+
+**A3's PREMISE needs correcting, and the correction is measured.**  § D6 says
+dryopea's sizes are *"already written down and already load-bearing in the
+simulation"*.  Half of that is true:
+
+| what § D6 wants gated | in `numbers.json` | a `.loft` constant | READ by the sim |
+|---|---|---|---|
+| tower height 6.0 m | ✅ | `TOWER_HEIGHT_METRES` | ✅ `tower_sees`, the LOS eye |
+| robot height 1.0 m | ✅ | `ENEMY_HEIGHT_METRES` | ✅ `damage.loft`, the aim point |
+| body height 0.5 m | ✅ | `BODY_HEIGHT_METRES` | ✅ `height_raise`, the body ramp |
+| **vehicle 2.4 m × 1.1 m** | ✅ | ❌ **none** | ❌ **nothing** |
+| **robot 2.7 m × 1.3 m** | ✅ | ❌ **none** | ❌ **nothing** |
+| **tower footprint** (7 hexes) | ✅ as a *layout name* | ❌ **none** | ❌ **nothing** |
+
+⚠ So the three **HEIGHTS** are load-bearing and every **PLAN dimension** — which
+is what a *footprint* is — is written down and read by nobody: no constant,
+no consumer, and `tests/numbers_design_targets.loft` gates rates, HP, DPS and
+speed and **not one size**.  A3's gate as written therefore has three numbers to
+bind to and none of them is a footprint.
+
+⚠⚠ **And the first catalogue entry contradicts the file it would be gated
+against.**  § D7 specifies the hover unit at **2.28 m wide × 2.05 m long**;
+`numbers.json` § vehicle says **1.1 m wide × 2.4 m long** (`PROXY_ART.md`
+agrees with the JSON).  Heights agree at 0.9 m.  That is not a bigger vehicle,
+it is a **different shape** — a wide, short quadcopter against a long, narrow
+car, 2.07x the width — and § D7's own text flags it: the numbers *"were chosen
+under the sprite design and want re-opening"*, and going wider *"is a SIMULATION
+change if it is wanted, not an art one"*.  ⚠ § Open questions 3 already says
+**A3 decides this**, so A3 cannot start until it is decided: whichever way it
+goes, the gate A3 builds pins it.
+
 ### A1 — the socket, over a published rig (2026-08-18)
 
 `src/part.loft` + `tests/20_a1_the_part.loft`.  `Socket` / `Binding` / `Part` /
@@ -115,8 +160,8 @@ worth saying because silence reads as "gate done".
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
 | **A1** — adopt `hex_body`, and build the SOCKET | S | `tests/20_a1_the_part.loft` — **18 tests**, `src/part.loft`, and dryopea re-implements none of the rig: `Rig`, `Joint`, `rig_world_seg`, `rig_count` and `rig_admissible` all arrive as a dependency, and `part_fault` asks the LIBRARY's doorstep before any question of its own.  ⚠⚠ The 3-D axis is NOT here — it is `rig_bone3` in `loft-libs-world` (§ Cross-repo coordination), and A2 is what needs it | **SHIPPED** 2026-08-18 |
-| **A2** — the geometry emitter | MH | `tests/20_a2_the_geometry.loft` — a part poses its joints and emits triangles in world space.  ⚠ Gated on NUMBERS, not pixels: a hinge at 0.25 turns puts the canopy's far edge where trigonometry says, a box emits 12 triangles, a disc emits its fan, and every vertex is inside the declared extent | Blocked on A1 |
-| **A3** — the catalogue | M | `tests/20_a3_the_catalogue.loft` — the hover unit, the robot, the helper livery, the tower base + top.  ⚠ Its real gate is the FOOTPRINT check against the simulation's constants | Blocked on A1 |
+| **A2** — the geometry emitter | MH | `tests/20_a2_the_geometry.loft` — a part poses its joints and emits triangles in world space.  ⚠ Gated on NUMBERS, not pixels: a hinge at 0.25 turns puts the canopy's far edge where trigonometry says, a box emits 12 triangles, a disc emits its fan, and every vertex is inside the declared extent | ⚠⚠ **BLOCKED on [loft-libs-world#14](https://github.com/loft-lang/loft-libs-world/issues/14)** — § D7's rotors sit at four heights and its canopy hinges about a LATERAL axis, and `hex_body` is strictly 2-D.  See § Before A2 and A3 |
+| **A3** — the catalogue | M | `tests/20_a3_the_catalogue.loft` — the hover unit, the robot, the helper livery, the tower base + top.  ⚠ Its real gate is the FOOTPRINT check against the simulation's constants | ⚠⚠ **A1 unblocked it and a PROBE re-blocked it**: every plan dimension the gate would bind to is read by nothing, and § D7's hover unit is 2.07x the width `numbers.json` gives.  Needs § Open questions 3 decided first — see § Before A2 and A3 |
 | **A4** — poses come from the SIMULATION | S | `tests/20_a4_the_joints.loft` — a tower with no top emits no top triangles; the canopy angle follows the sim; rotor spin follows boost.  ⚠ Asked of `TowerState` / `Vehicle`, never a second flag | Blocked on A2, A3 |
 | **A5** — entities in the frame (was plan 19 P4) | M | `tests/20_a5_the_frame.loft` — `classify_world` shares for enemies, vehicle and crew; a `.keys` scenario with `snap` | ⚠ Blocked on **[plan 21](../21-the-renderer/README.md)** |
 
@@ -232,6 +277,15 @@ EDITOR's, since the game's camera is plan 21's and never touches
    remaining bound is gameplay, not art: the hitbox is one 1.5 m hex, and a
    vehicle that reads as two hexes wide tells the player something false about
    where it fits.  A3 decides; going bigger is a SIMULATION change.
+
+   ⚠⚠ **MEASURED 2026-08-18, and it is a conflict rather than an open
+   preference**: § D7 says **2.28 m wide × 2.05 m long**, `numbers.json`
+   § vehicle says **1.1 m wide × 2.4 m long**, and `PROXY_ART.md` agrees with
+   the JSON.  Heights agree at 0.9 m.  So the two are a **different shape**, not
+   two sizes of one — a wide short quadcopter against a long narrow car — and
+   nothing arbitrates, because no `.loft` constant carries either pair and
+   nothing in the simulation reads them.  ⚠ **A3's gate pins whichever wins**,
+   which is why it is now a blocking question rather than a phase decision.
 
 ## See also
 

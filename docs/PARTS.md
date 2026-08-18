@@ -571,7 +571,25 @@ in the simulation**.
 
 ⚠ **So a part declares its footprint, and a test compares it to the number the
 simulation uses.**  A vehicle whose art grew to 3 m while `VEHICLE_*` still says
-2.4 fails `scripts/test.sh` naming both numbers.  That is the same shape as
+2.4 fails `scripts/test.sh` naming both numbers.
+
+⚠⚠ **MEASURED 2026-08-18, and the claim above is HALF TRUE — there is no
+`VEHICLE_*` size at all.**  Of the numbers this gate would bind, three are
+load-bearing in the simulation and every PLAN dimension is read by nobody:
+
+| | in `numbers.json` | a `.loft` constant | read by the sim |
+|---|---|---|---|
+| tower height 6.0 m | ✅ | `TOWER_HEIGHT_METRES` | ✅ the LOS eye |
+| robot height 1.0 m | ✅ | `ENEMY_HEIGHT_METRES` | ✅ the aim point |
+| body height 0.5 m | ✅ | `BODY_HEIGHT_METRES` | ✅ the body ramp |
+| vehicle 2.4 × 1.1 m | ✅ | ❌ | ❌ |
+| robot 2.7 × 1.3 m | ✅ | ❌ | ❌ |
+| tower footprint | ✅ as a layout NAME | ❌ | ❌ |
+
+⚠ `tests/numbers_design_targets.loft` gates rates, HP, DPS and speed and **not
+one size**.  So the heights are gateable today and a FOOTPRINT is not — which is
+[`plans/20`](../plans/20-entity-art/README.md) A3's to close, and it has to add
+the constant before it can add the gate.  That is the same shape as
 `tests/numbers_design_targets.loft`, which pins `docs/NUMBERS.md`'s design
 targets against the running sim, and it exists for the same reason: **nothing
 loads a number from a document, so the two copies need a gate between them.**
