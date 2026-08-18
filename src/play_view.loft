@@ -219,18 +219,6 @@ pub const PLAY_HUD_W:      integer = 4 * HUD_DIGIT_W + 3 * HUD_DIGIT_GAP;
 pub const PLAY_HUD_H:      integer = HUD_DIGIT_H;
 pub const PLAY_HUD_MARGIN: integer = 16;
 
-// The digits' colour.
-//
-// ⚠ Amber, and distinct from every palette colour AND every entity
-// colour — the same argument `@X092` makes one layer down, for the same
-// reason: the GL gate reads a frame by exact colour, so a HUD painted in
-// `sand` would be counted as ground and a HUD painted in `scout` as a
-// robot.  `tests/19_p7` asserts the distinctness rather than trusting
-// the eye.
-//
-// Example: @DRY-074
-pub const PLAY_HUD_INK: integer = 0xffc000;
-
 // The overlay, as a Canvas: TRANSPARENT everywhere the digits are not.
 //
 // ⚠⚠ **THE FILL IS ALPHA 0 AND THE INK IS ALPHA 255**, which is the one
@@ -243,8 +231,13 @@ pub const PLAY_HUD_INK: integer = 0xffc000;
 // Example: @DRY-073, @DRY-075
 pub fn play_hud_canvas(ps: const PlayState) -> Canvas {
     phc = canvas(PLAY_HUD_W, PLAY_HUD_H, 0);
+    // ⚠ The ink RAMPS from amber to red over the wallet — one colour per
+    // whole point, so the colour can never disagree with the number
+    // because it is a function of it (`hud.loft` § the ramp).  ⚠ It is
+    // `rgb()`-built and therefore alpha 255, which is what makes the
+    // digits opaque over a transparent field.
     render_number(phc, hud_wallet_points(ps.wave.wallet),
-                  PLAY_HUD_W, 0, rgb(0xff, 0xc0, 0x00));
+                  PLAY_HUD_W, 0, hud_wallet_ink(ps.wave.wallet));
     phc
 }
 

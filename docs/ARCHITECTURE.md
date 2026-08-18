@@ -737,10 +737,13 @@ src/
                    because the camera eases whether or not anything
                    moved.
                    ⚠⚠ THE HUD IS ONE NUMBER (plan 19 P7, @X097) —
-                   PLAY_HUD_W / _H / _MARGIN / _INK and
-                   `play_hud_canvas`, which draws the WALLET and
-                   nothing else because `DESIGN.md` § HUD refuses
-                   everything else by name.  The overlay is
+                   PLAY_HUD_W / _H / _MARGIN and `play_hud_canvas`,
+                   which draws the WALLET and nothing else because
+                   `DESIGN.md` § HUD refuses everything else by name.
+                   ⚠ Its INK is `hud.loft::hud_wallet_ink`, a ramp from
+                   amber to red over the wallet (@X098) — not a
+                   constant, so a gate that counted one colour would
+                   pass vacuously at every other value.  The overlay is
                    TRANSPARENT except where the digits are: `rgb()`
                    sets alpha 255 and a bare `0x…` leaves it 0, which
                    is the distinction that cost `gl_gate.loft` a false

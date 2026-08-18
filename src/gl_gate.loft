@@ -656,10 +656,15 @@ fn gl_gate_hud_overlays(rep: GlGateReport, shots_dir: text) -> text {
     ggh_p  = create_painter_2d(GL_GATE_W as float, GL_GATE_H as float);
     ggh_ps = play_state_new();
     ggh_cv = play_hud_canvas(ggh_ps);
+    // ⚠ The ink is asked of the WALLET rather than read off a constant,
+    // because plan 19 P7's ramp makes it one colour per whole point —
+    // a constant here would gate one value of the wallet and pass
+    // vacuously at every other (`@M043`).
+    ggh_ink = hud_wallet_ink(ggh_ps.wave.wallet) & 0xffffff;
     ggh_want = 0;
     for ggh_y in 0..ggh_cv.height {
         for ggh_x in 0..ggh_cv.width {
-            if (ggh_cv.get_pixel(ggh_x, ggh_y) & 0xffffff) == (PLAY_HUD_INK & 0xffffff) {
+            if (ggh_cv.get_pixel(ggh_x, ggh_y) & 0xffffff) == ggh_ink {
                 ggh_want += 1;
             }
         }
@@ -684,7 +689,7 @@ fn gl_gate_hud_overlays(rep: GlGateReport, shots_dir: text) -> text {
 
     ggh_seen = gl_png_canvas(ggh_shot);
     ggh_e = gl_exact(rep, "the wallet's digits reach the screen",
-                     gl_count_colour(ggh_seen, PLAY_HUD_INK & 0xffffff), ggh_want);
+                     gl_count_colour(ggh_seen, ggh_ink), ggh_want);
     if ggh_e != "" { return ggh_e; }
 
     // ⚠ …and the overlay did not paint over the world where it has no
@@ -692,7 +697,7 @@ fn gl_gate_hud_overlays(rep: GlGateReport, shots_dir: text) -> text {
     ggh_kept = 0;
     for ggh_by in 0..PLAY_HUD_H {
         for ggh_bx in 0..PLAY_HUD_W {
-            if (ggh_cv.get_pixel(ggh_bx, ggh_by) & 0xffffff) != (PLAY_HUD_INK & 0xffffff)
+            if (ggh_cv.get_pixel(ggh_bx, ggh_by) & 0xffffff) != ggh_ink
                && (ggh_seen.get_pixel(PLAY_HUD_MARGIN + ggh_bx, PLAY_HUD_MARGIN + ggh_by)
                    & 0xffffff) == (GL_GATE_CLEAR & 0xffffff) {
                 ggh_kept += 1;

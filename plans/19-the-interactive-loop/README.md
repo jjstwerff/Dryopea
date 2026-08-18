@@ -10,7 +10,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 ## Status
 
 **P0 + P1 + P2 + P3 done** (2026-08-15); **P6 + P7 done** (2026-08-18).
-P5 is what is left.  Suite **1405** green (101 files), gate 33 scripts /
+P5 is what is left.  Suite **1407** green (101 files), gate 33 scripts /
 **654 measurements unchanged**, GL gate **3 fixtures / 55 measurements**.
 
 ⚠⚠ **dryopea can be played AND SEEN.**  `make play`, pan to the base,
@@ -21,7 +21,7 @@ own eased follow camera.  Press P again and the editor comes back.
 ### P7 — the HUD, which is one number (2026-08-18)
 
 `src/hud.loft` § The wallet + `src/play_view.loft` § The one number +
-`tests/19_p7_the_hud.loft` (8 tests) + two cases in `src/gl_gate.loft`.
+`tests/19_p7_the_hud.loft` (10 tests) + two cases in `src/gl_gate.loft`.
 
 ⚠⚠ **MOST OF THIS PHASE IS WHAT `docs/DESIGN.md` § HUD REFUSES**
 (`@X097`).  Its entire numeric HUD is *"Wallet (points) — one corner
@@ -76,11 +76,45 @@ against 5 ms without, so it is built and uploaded EVERY frame rather
 than cached — which is the honest shape when the wallet drains
 continuously and a cache keyed on the number would miss almost nothing.
 
-⚠ **Still open, and a design question rather than a defect**: the number
-has one colour at every value.  A ramp toward red as the wallet nears
-zero would add no HUD element and would make the run's ONE end state
-(`wallet_broke`) legible — but `DESIGN.md` does not ask for it, so it is
-not invented here.
+⚠⚠ **AND THE RAMP WENT IN THE SAME DAY** (project owner, 2026-08-18 —
+this paragraph used to say the colour was an open question).  The number
+runs **amber at 200 points to red at 0**, LINEAR over
+`WALLET_STARTING_POINTS`, which is the one curve that invents no number:
+the two endpoint colours are the only additions and the span is a
+constant the simulation already owns (`@X098`).  ⚠ The threshold a
+designer would reach for — *the number goes warm when you can no longer
+buy the cheapest thing* — needs `order_cost_points` (100), which lives in
+`examples/numbers.json` and in **no `.loft` constant**, because building
+is not built; a simulation constant nobody spends is one that drifts, so
+the trigger to add the band is BUILDING.
+
+⚠⚠ **IT READS `hud_wallet_points`, NOT `wallet_left`, AND THAT IS TWO
+DECISIONS.**  The colour can never disagree with the number, because it
+IS the number — read the float and they are two readings of one wallet
+that differ by a rounding, invisibly, both plausible.  And it makes the
+reachable colours FINITE: exactly **201**, so the test sweeps every one
+against the palette, the entity table and the clear colour instead of
+sampling.
+
+⚠⚠ **THE SWEEP CAUGHT A COLLISION ON ITS FIRST RUN** (`@M043`): amber to
+red passes through `#ff8000` at **exactly 134 points**, which was the
+SCOUT's colour.  At one value of the wallet the HUD would have been
+painted in a robot's colour, and the GL gate counts by EXACT colour — so
+those pixels would have been counted as a robot.  ***A ramp is not a
+colour, it is 201.***  The scout moved to `#a0e000`; the ramp's worst
+approach to anything a frame can hold is now **3969**, above the entity
+table's own 3264 floor, and the scout's drawn pixel count is unchanged at
+4687 because only its colour moved.
+
+⚠ **The sweep fired a second time, on this session's own botched fix** —
+the scout edit had been written into a file a failed assertion earlier in
+the same script prevented from saving, and the gate named
+`scout at 134 points` again.  *A gate that can see a defect can also see
+a botched fix.*  ⚠ And a top byte cost a false failure for the second
+time in two phases: `hud_ink_for` builds through `rgb()` and carries
+alpha 255 while `HUD_INK_FULL` is the bare 24 bits, so the endpoint
+assertions read **4294950912 against 16760832** (`@M041`'s shape, one
+layer out).
 
 ### P6 — the window draws the game (2026-08-18)
 
@@ -640,7 +674,7 @@ is still open.
 | **P4** — drawing the game | M | ⚠ **Superseded IN PART by [plan 20](../20-entity-art/README.md) A5** — that phase took *what an entity looks like and how it is gated* (a PART-TREE, and pixel counts against a GL frame).  ⚠⚠ The other half — *the WINDOW* — was always this plan's, and it is **P6** below | **Superseded** |
 | **P5** — capture from a live session | S | `tests/19_p5_capture.loft` — a key writes the situation, and the file replays to an S0-identical state ([plan 18](../18-scenario-capture/README.md)) | **Next** |
 | **P6** — the window draws the game | M | `tests/19_p6_the_window.loft` (5 fns) + `src/play_view.loft` + a case in `src/gl_gate.loft`.  ⚠⚠ Its headline gate is that the ground the renderer MAINTAINS equals a COLD rebuild after a real base is played, which is `11_f8`'s field-cache shape — and it holds because *every terrain change a tick can make moves the height layer*.  ⚠ It also settled plan 25 M4's deferred tile size on a measurement M4 could not make (`@X096`) and found a GL state leak that draws a **black window** on the second P press (`@M041`) | **Done** 2026-08-18 |
-| **P7** — the HUD, which is one number | S | `tests/19_p7_the_hud.loft` (8 fns) + two cases in `src/gl_gate.loft`.  ⚠⚠ `DESIGN.md` § HUD is emphatic and most of the phase is what it REFUSES — one corner number, the wallet, and nothing else.  ⚠ The digits are RECTANGLES because `draw_text` is `#native` and needs a font file, so a text HUD would be one no test and no `snap` could see (`@X097`).  ⚠ Gated by an INDEPENDENT ORACLE (the lit-segment counts 6 2 5 5 4 5 6 3 7 6) and by two GL cases that each fired against their own break (`@M042`) | **Done** 2026-08-18 |
+| **P7** — the HUD, which is one number | S | `tests/19_p7_the_hud.loft` (10 fns) + two cases in `src/gl_gate.loft`.  ⚠⚠ `DESIGN.md` § HUD is emphatic and most of the phase is what it REFUSES — one corner number, the wallet, and nothing else.  ⚠ The digits are RECTANGLES because `draw_text` is `#native` and needs a font file, so a text HUD would be one no test and no `snap` could see (`@X097`).  ⚠ Gated by an INDEPENDENT ORACLE (the lit-segment counts 6 2 5 5 4 5 6 3 7 6) and by two GL cases that each fired against their own break (`@M042`).  ⚠⚠ Its wallet RAMP (`@X098`) is 201 colours, and the sweep of them caught one that was exactly the SCOUT's (`@M043`) | **Done** 2026-08-18 |
 
 ### Why the order is this order
 

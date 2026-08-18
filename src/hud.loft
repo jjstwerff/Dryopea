@@ -160,6 +160,66 @@ pub fn render_number(cv: Canvas, n: integer, right: integer, top: integer,
     rn_c
 }
 
+// The digits' colour at a full wallet, and at a broke one.
+//
+// ⚠⚠ **THE RAMP IS NOT ONE COLOUR, IT IS 201** — one per whole point
+// the wallet can show — and that is the whole reason it is written as
+// a function of `hud_wallet_points` rather than of `wallet_left`.  A
+// ramp over the FLOAT reaches uncountably many colours and can only be
+// sampled; a ramp over the integer the digits already show reaches
+// exactly `WALLET_STARTING_POINTS + 1`, so `tests/19_p7` sweeps EVERY
+// ONE of them against the palette, the entity table and the clear
+// colour.  ⚠ It also means the colour can never disagree with the
+// number, because it IS the number.
+//
+// ⚠⚠ **AND THE SWEEP EARNED ITS KEEP IMMEDIATELY** (`@M043`): amber to
+// red passes through `#ff8000`, which was the SCOUT's colour, at
+// exactly **134 points** — so at one value of the wallet the HUD would
+// have been painted in a robot's colour and the GL gate would have
+// counted those pixels as a robot.  The scout moved; the lane is now
+// **3969** squared-RGB clear at its worst.
+pub const HUD_INK_FULL:  integer = 0xffc000;   // amber
+pub const HUD_INK_BROKE: integer = 0xff0000;   // red
+
+// The colour `points` is drawn in.
+//
+// ⚠ LINEAR in the wallet's remaining points, which is the one curve
+// that invents no number: the endpoints are the two colours above and
+// the span is `WALLET_STARTING_POINTS`, which the simulation already
+// owns.  ⚠⚠ **The threshold a designer would reach for — *the number
+// goes warm when you can no longer buy the cheapest thing* — needs
+// `order_cost_points` (100), which lives in `examples/numbers.json`
+// and in NO `.loft` constant**, because building is not built.
+// Introducing a simulation constant nobody spends, to colour a HUD, is
+// a constant that drifts; the trigger to add the band is BUILDING.
+//
+// Example: @DRY-074, @DRY-076
+pub fn hud_ink_for(points: integer) -> integer {
+    hif_t = floor(WALLET_STARTING_POINTS) as integer? ?? 0;
+    if hif_t <= 0 { return HUD_INK_FULL; }
+    hif_p = points;
+    // ⚠ Clamped BOTH ways: `wallet_earn` exists, so a run really can
+    // hold more than it started with, and a wallet above full is not a
+    // colour past amber — it is amber.
+    if hif_p < 0 { hif_p = 0; }
+    if hif_p > hif_t { hif_p = hif_t; }
+    rgb(hud_ink_channel(16, hif_p, hif_t),
+        hud_ink_channel(8,  hif_p, hif_t),
+        hud_ink_channel(0,  hif_p, hif_t))
+}
+
+// One channel of the ramp.
+//
+// ⚠ **INTEGER arithmetic with a NON-NEGATIVE numerator**, so the
+// truncation is one rounding rather than two and the 201 reachable
+// colours are exactly reproducible — which is what makes the sweep in
+// `tests/19_p7` an exhaustive statement rather than a sample.
+fn hud_ink_channel(shift: integer, points: integer, total: integer) -> integer {
+    hic_f = (HUD_INK_FULL  >> shift) & 255;
+    hic_b = (HUD_INK_BROKE >> shift) & 255;
+    ((hic_f * points + hic_b * (total - points)) / total) ?? 0
+}
+
 // The wallet, floored, as the number the corner shows.
 //
 // ⚠ **FLOOR and not round**, and it is the meaning rather than the
@@ -175,4 +235,12 @@ pub fn hud_wallet_points(w: const Wallet) -> integer {
     hwp = floor(wallet_left(w)) as integer? ?? 0;
     if hwp < 0 { return 0; }
     hwp
+}
+
+// The colour this wallet's number is drawn in — the ramp, read off the
+// same integer the digits show.
+//
+// Example: @DRY-076, @DRY-077
+pub fn hud_wallet_ink(w: const Wallet) -> integer {
+    hud_ink_for(hud_wallet_points(w))
 }

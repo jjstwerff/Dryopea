@@ -2130,6 +2130,15 @@ one no test and no `snap` could see.  ⚠ The *active palette entry* half is the
 editor's `picker.loft`, built since plan 01; **paint mode is not built at all**,
 and its *vehicle tint is the primary signal* rule is waiting on building.
 
+⚠⚠ **ONE ADDITION BEYOND THIS SECTION** (project owner, 2026-08-18, `@X098`):
+the number **ramps amber to red as the wallet drains**.  It adds no HUD
+element — it is the same one number — and it makes the run's ONLY end state
+(`wallet_broke`, § 14) legible at a glance.  ⚠ The obvious threshold — *warm
+when you can no longer buy the cheapest thing*, i.e. below the 100-point order
+cost above — is deliberately NOT built: that number lives only in
+`examples/numbers.json` because building does not exist yet, and a simulation
+constant nobody spends is one that drifts.  The trigger is building.
+
 ## 13. Economy + progression
 
 ### Currency — points
