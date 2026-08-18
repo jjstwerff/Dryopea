@@ -1,0 +1,643 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 20 phase A5 — the roster, in the frame.
+//
+// ── The one claim ────────────────────────────────────────────────────
+//
+// > **What is drawn IS the simulation's roster** — at the hex the state
+// > says, facing the way it is going, in the pose A4 derives, and in a
+// > colour no other thing in the frame can be.
+//
+// `plans/20` § Invariant gate asks for one control by name: *"a thing
+// not drawn reads as ZERO"*.  That is what makes this an assertion the
+// file can fail rather than a description of how it happens to work —
+// every claim below emits BOTH states.
+//
+// ── ⚠⚠ Four gates here cannot be reached by a picture at all ─────────
+//
+// 1. **The colours must be distinct** — from each other, from every
+//    palette colour and from the clear colour.  A collision reads as
+//    *shares slightly off*, which is exactly the failure `PARTS.md`
+//    § D3 says a frame gate cannot see.  ⚠ It has already fired once:
+//    `PROXY_ART.md` gives the tower's top the WALL's red, and says so.
+//
+// 2. **Every triangle must wind with its normal.**  `ground_gl.loft`
+//    turns `GL_CULL_FACE` on for the whole frame, so a part wound the
+//    other way draws NOTHING with every count, normal and vertex
+//    healthy.  M0 and M1 gated the ground's winding as DATA three
+//    phases before a pixel existed; this is that gate for the parts.
+//
+// 3. **A yaw must turn the BASIS and not only the origin.**  At rest
+//    every bone's basis is the identity, so a placement that rotated
+//    the origin alone would draw the whole catalogue correctly.  ⚠ The
+//    canopy is the one joint whose axis is LATERAL — the one rotation
+//    that does not commute with a yaw — so the test turns a vehicle
+//    with its canopy OPEN.
+//
+// 4. **Two of a thing must be twice one of it.**  [loft#974] makes a
+//    part fetched through an accessor read its limbs as EMPTY once an
+//    unrelated struct has been allocated, so the SECOND tower a
+//    renderer draws comes back blank — silently, on both backends.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+fn near4(a: float, b: float) -> boolean {
+    d = a - b;
+    if d < 0.0 { d = 0.0 - d; }
+    d < 0.0001
+}
+
+// The mesh's extent, as `(minx, maxx, miny, maxy, minz, maxz)`.
+fn span_of(m: const Mesh) -> (float, float, float, float, float, float) {
+    lox = 0.0; hix = 0.0; loy = 0.0; hiy = 0.0; loz = 0.0; hiz = 0.0;
+    for v in m.vertices {
+        if v#first {
+            lox = v.pos.x; hix = v.pos.x;
+            loy = v.pos.y; hiy = v.pos.y;
+            loz = v.pos.z; hiz = v.pos.z;
+        } else {
+            if v.pos.x < lox { lox = v.pos.x; }
+            if v.pos.x > hix { hix = v.pos.x; }
+            if v.pos.y < loy { loy = v.pos.y; }
+            if v.pos.y > hiy { hiy = v.pos.y; }
+            if v.pos.z < loz { loz = v.pos.z; }
+            if v.pos.z > hiz { hiz = v.pos.z; }
+        }
+    }
+    (lox, hix, loy, hiy, loz, hiz)
+}
+
+// A world of grass, wide enough that nothing under test is at sea.
+fn grassy() -> PaintedWorld {
+    g_pw = painted_empty();
+    for g_q in -6..7 {
+        for g_r in -6..7 {
+            paint(g_pw, g_q, g_r, as_u8(5));
+        }
+    }
+    g_pw
+}
+
+// Bake one class and answer the triangle count.
+fn bake(cls: integer, pw: PaintedWorld, mw: const MarkerWorld,
+        ws: const WaveState, units: integer) -> integer {
+    b_m = mesh("bake");
+    entity_bake(b_m, catalogue(), pal(), pw, mw, ws, units, cls)
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// The instrument — the colours, before anything is drawn with them
+// ─────────────────────────────────────────────────────────────────────
+
+// @DRY-047 — no two things in a frame can be the same colour
+//
+// ⚠⚠ THE GATE THAT COMES FIRST.  `measure.loft`'s founding rule is that
+// a pixel is an EXACT palette colour or a FAULT, so an entity painted in
+// a palette colour is absorbed into a ground bucket whose band is tens
+// of thousands of pixels wide, and two entity classes sharing a colour
+// collapse into one count that goes on reporting a number.
+fn test_no_two_things_in_a_frame_share_a_colour() {
+    nt_pal = pal();
+    assert(len(nt_pal) > 0, "the palette loaded: {len(nt_pal)}");
+    assert(entity_colours_distinct(len(nt_pal), GL_GATE_CLEAR),
+           "every entity colour is its own, and none of them is a palette "
+           + "colour or the clear colour");
+    // ⚠⚠ A DESIGN reading that MOVED TWO OF `PROXY_ART.md`'s NUMBERS
+    // (`@M040`).  Distinctness above is exact and says nothing about
+    // whether a PLAYER can tell two things apart; this is
+    // `palette_min_distance2`'s sibling and it is the number that can.
+    // Measured 2026-08-18, the document's own two greys were the two
+    // worst pairs in the frame:
+    //
+    //     player  #f0f0f0  vs  waterfall  #e8f4fc     224
+    //     crew    #c0c0c0  vs  rock       #b0b0b0     768
+    //
+    // — an RGB distance of 15 and 28, which is *the same colour* on a
+    // screen.  ⚠ `PROXY_ART.md` picks its greys explicitly *"distinct
+    // from terrain greys (rock #b0b0b0, steep_rock #555555)"*, so its own
+    // CRITERION is what the numbers fail; `waterfall` is simply a kind it
+    // never checked.  The rule beat the number: the player is a cream
+    // white and the crew a dimmed one, and the floor is now the crew
+    // against `rock` at **3264** (a distance of 57).
+    nt_d = entity_min_distance2(len(nt_pal));
+    assert(nt_d >= 3000,
+           "the closest two colours in a frame are {nt_d} apart (squared RGB) "
+           + "— under 3000 is a pair a player cannot tell apart");
+}
+
+// @DRY-048 — and the one collision `PROXY_ART.md` actually specifies
+//
+// ⚠⚠ THE NEGATIVE CONTROL FOR THE GATE ABOVE.  `PROXY_ART.md` § Tower
+// gives the top `#d04848` and names it *"the same placeholder red as the
+// wall body"* — which is `palette_color(9)` to the bit.  Shipping that
+// number would have put a tower's top in the WALL bucket, on a defended
+// base, where it reads as entirely plausible.  This asserts the number
+// MOVED, so putting it back fails here by name rather than in a share.
+fn test_the_tower_tops_colour_is_not_the_walls() {
+    tt_wall = palette_color(as_u8(9)) & 0xffffff;
+    assert(tt_wall == 0xd04848, "the wall is still PROXY_ART's red: {tt_wall}");
+    assert((entity_colour(ENT_TOWER_TOP) & 0xffffff) != tt_wall,
+           "and a tower's top is NOT that red — it would be counted as wall");
+}
+
+// @DRY-049 — a colour survives the shader's uniform bit for bit
+//
+// ⚠ `ground_gl.loft`'s claim, for the entity table: GL converts a float
+// channel back to eight bits by `round(f * 255)`, so `channel / 255.0`
+// has to round-trip.  One bit here and `classify_canvas` reports the
+// whole entity as `unknown`, which the GL gate reads as a FAULT.
+fn test_every_entity_colour_survives_the_uniform() {
+    for tec_c in 0..ENT_CLASSES {
+        tec_want = entity_colour(tec_c) & 0xffffff;
+        tec_f = entity_colour_rgb(tec_c);
+        tec_got = ((floor(tec_f.0 * 255.0 + 0.5) as integer? ?? 0) << 16)
+                | ((floor(tec_f.1 * 255.0 + 0.5) as integer? ?? 0) << 8)
+                |  (floor(tec_f.2 * 255.0 + 0.5) as integer? ?? 0);
+        assert(tec_got == tec_want,
+               "{entity_class_name(tec_c)} round-trips its colour: "
+               + "wanted {tec_want}, the uniform gives {tec_got}");
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// A thing not drawn reads as ZERO
+// ─────────────────────────────────────────────────────────────────────
+
+// @DRY-050 — an empty base draws no entities at all
+//
+// ⚠⚠ `plans/20` § Invariant gate's own words, and the floor every count
+// below stands on: with nothing in the state, every one of the ten
+// classes bakes zero triangles.  A renderer with a drawable list of its
+// own could not pass this after anything had ever been spawned.
+fn test_an_empty_base_draws_nothing() {
+    te_ws = wave_state_empty();
+    te_mw = marker_empty();
+    te_pw = grassy();
+    for te_c in 0..ENT_CLASSES {
+        assert(bake(te_c, te_pw, te_mw, te_ws, 0) == 0,
+               "{entity_class_name(te_c)} draws nothing on an empty base");
+    }
+}
+
+// @DRY-051 — the player appears and disappears with the simulation
+fn test_the_player_is_drawn_exactly_while_it_is_present() {
+    tp_ws = wave_state_empty();
+    tp_mw = marker_empty();
+    tp_pw = grassy();
+
+    assert(bake(KIND_VEHICLE, tp_pw, tp_mw, tp_ws, 0) == 0,
+           "a vehicle that has not landed draws nothing");
+
+    vehicle_place(tp_ws.player, 1, 1);
+    tp_n = bake(KIND_VEHICLE, tp_pw, tp_mw, tp_ws, 0);
+    assert(tp_n > 0, "and one that has landed draws triangles: {tp_n}");
+
+    // ⚠ And it lands in ITS OWN class and no other — the assertion a
+    // per-class count cannot make about itself.
+    for tp_c in 0..ENT_CLASSES {
+        if tp_c != KIND_VEHICLE {
+            assert(bake(tp_c, tp_pw, tp_mw, tp_ws, 0) == 0,
+                   "a lone vehicle draws nothing as {entity_class_name(tp_c)}");
+        }
+    }
+}
+
+// @DRY-052 — the crew is the SAME CHASSIS, and the count says so
+//
+// ⚠ `PARTS.md` § D8: *"same chassis as the player"*, which the
+// simulation already means (`drive_along` is one implementation with two
+// doors).  A helper that emitted a different triangle count would mean
+// the art had grown a second part-tree behind the claim.
+fn test_the_crew_is_the_players_chassis() {
+    tc_pw = grassy();
+    tc_mw = marker_empty();
+
+    tc_p = wave_state_empty();
+    vehicle_place(tc_p.player, 0, 0);
+    tc_np = bake(KIND_VEHICLE, tc_pw, tc_mw, tc_p, 0);
+
+    tc_c = wave_state_empty();
+    tc_c.crew += [helper_new(2, 0)];
+    tc_nc = bake(ENT_CREW, tc_pw, tc_mw, tc_c, 0);
+
+    assert(tc_np > 0 && tc_nc == tc_np,
+           "one crew member is one player's worth of triangles: {tc_nc} vs {tc_np}");
+
+    // …and a wrecked one is not drawn.  ⚠ Its body is a CARRYABLE where
+    // it fell (`helper.loft` § the wreck), so drawing the flier too
+    // would be two pictures of one fact.
+    (tc_c.crew[0] ?? Helper { }).alive = false;
+    assert(bake(ENT_CREW, tc_pw, tc_mw, tc_c, 0) == 0,
+           "a wrecked crew member is not drawn");
+}
+
+// @DRY-053 — every live enemy is drawn, and a dead one is not
+fn test_a_dead_enemy_is_not_drawn() {
+    td_ws = wave_state_empty();
+    td_ws.enemies += [Enemy { q: 1, r: 0, kind: as_u8(ENEMY_KIND_REGULAR),
+                              heading: 3 as u8, alive: true }];
+    td_ws.enemies += [Enemy { q: 2, r: 0, kind: as_u8(ENEMY_KIND_REGULAR),
+                              heading: 3 as u8, alive: true }];
+    td_pw = grassy();
+    td_mw = marker_empty();
+
+    td_two = bake(ENEMY_KIND_REGULAR, td_pw, td_mw, td_ws, 0);
+    assert(td_two > 0, "two robots draw triangles: {td_two}");
+
+    (td_ws.enemies[1] ?? Enemy { }).alive = false;
+    td_one = bake(ENEMY_KIND_REGULAR, td_pw, td_mw, td_ws, 0);
+    assert(td_one * 2 == td_two,
+           "a dead robot is exactly one robot's worth gone: {td_one} of {td_two}");
+}
+
+// @DRY-054 — TWO of a thing is TWICE one of it
+//
+// ⚠⚠ THE [loft#974] REGRESSION, stated as arithmetic.  A part fetched
+// through an accessor reads its `vector<Struct>` limbs as EMPTY once an
+// unrelated struct has been allocated in the caller, so a renderer's
+// SECOND tower comes back blank with no diagnostic on either backend.
+// `emit_tower_base` indexes the hash at the USE SITE for that reason,
+// and this is what says the workaround is still working.
+fn test_two_towers_are_twice_one_tower() {
+    tw_ws = wave_state_empty();
+    tw_pw = grassy();
+
+    tw_one = marker_empty();
+    place_marker(tw_one, 0, 0, MARKER_KIND_TOWER, 0 as u8);
+    tw_n1 = bake(ENT_TOWER_BASE, tw_pw, tw_one, tw_ws, 0);
+    assert(tw_n1 > 0, "one tower base draws triangles: {tw_n1}");
+
+    tw_two = marker_empty();
+    place_marker(tw_two, 0, 0, MARKER_KIND_TOWER, 0 as u8);
+    place_marker(tw_two, 3, 0, MARKER_KIND_TOWER, 0 as u8);
+    tw_n2 = bake(ENT_TOWER_BASE, tw_pw, tw_two, tw_ws, 0);
+    assert(tw_n2 == 2 * tw_n1,
+           "two tower bases are exactly twice one: {tw_n2} vs {tw_n1}");
+
+    tw_t2 = bake(ENT_TOWER_TOP, tw_pw, tw_two, tw_ws, 0);
+    tw_t1 = bake(ENT_TOWER_TOP, tw_pw, tw_one, tw_ws, 0);
+    assert(tw_t1 > 0 && tw_t2 == 2 * tw_t1,
+           "and so are their tops: {tw_t2} vs {tw_t1}");
+}
+
+// @DRY-055 — a tower's top is drawn exactly while the SIMULATION says so
+//
+// ⚠ A4's claim, arriving through the renderer: the top is its own drawn
+// class with its own colour, so the fact `tower_has_top` carries is now
+// visible as a count of the top's own triangles rather than as a
+// difference between two whole towers.
+fn test_a_tower_draws_its_top_only_while_the_sim_says_so() {
+    tt_ws = wave_state_empty();
+    tt_pw = grassy();
+    tt_mw = marker_empty();
+    place_marker(tt_mw, 0, 0, MARKER_KIND_TOWER, 0 as u8);
+
+    tt_base = bake(ENT_TOWER_BASE, tt_pw, tt_mw, tt_ws, 0);
+    tt_with = bake(ENT_TOWER_TOP, tt_pw, tt_mw, tt_ws, 0);
+    assert(tt_with > 0, "a fresh tower has its top: {tt_with}");
+
+    assert(tower_detach_top(tt_ws.towers, 0, 0) == 0, "the sim takes it off");
+    assert(bake(ENT_TOWER_TOP, tt_pw, tt_mw, tt_ws, 0) == 0,
+           "and the frame stops drawing it");
+    assert(bake(ENT_TOWER_BASE, tt_pw, tt_mw, tt_ws, 0) == tt_base,
+           "while the base is untouched: {tt_base}");
+}
+
+// @DRY-056 — six classes of robot bake into six different meshes
+//
+// ⚠ `PARTS.md` § D8: one robot part, and *a class is a row of DATA*.
+// The drawn class of an enemy IS its `kind`, so this is what says there
+// is no second enumeration to keep in step.
+fn test_each_robot_class_bakes_into_its_own_mesh() {
+    tr_ws = wave_state_empty();
+    tr_pw = grassy();
+    tr_mw = marker_empty();
+    tr_kinds = [ENEMY_KIND_REGULAR, ENEMY_KIND_INSECT, ENEMY_KIND_SCOUT,
+                ENEMY_KIND_HARVESTER, ENEMY_KIND_BUILDER, ENEMY_KIND_MINER];
+    tr_q = 0;
+    for tr_k in tr_kinds {
+        tr_ws.enemies += [Enemy { q: tr_q, r: 0, kind: as_u8(tr_k),
+                                  heading: 3 as u8, alive: true }];
+        tr_q += 1;
+    }
+    tr_one = 0;
+    for tr_k2 in tr_kinds {
+        tr_n = bake(tr_k2, tr_pw, tr_mw, tr_ws, 0);
+        if tr_one == 0 { tr_one = tr_n; }
+        assert(tr_n == tr_one && tr_n > 0,
+               "{entity_class_name(tr_k2)} bakes exactly one robot: {tr_n} vs {tr_one}");
+    }
+    // ⚠ and NOT into the vehicle's or the crew's
+    assert(bake(KIND_VEHICLE, tr_pw, tr_mw, tr_ws, 0) == 0,
+           "six robots draw nothing as the player");
+    assert(bake(ENT_CREW, tr_pw, tr_mw, tr_ws, 0) == 0,
+           "…and nothing as the crew");
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Where it stands, and which way it is facing
+// ─────────────────────────────────────────────────────────────────────
+
+// @DRY-057 — the nose lands where the COMPASS says, not 90 degrees off
+//
+// ⚠⚠ A part is authored facing NORTH (`+y` forward) and a bearing of
+// zero is EAST, so `facing_turns` is a quarter turn and not a scale.
+// Drop it and every entity in the game is drawn ninety degrees off its
+// heading — which still tracks, still turns the right way, and looks
+// like a working renderer with the art authored sideways.  ⚠ Asserted
+// as a COORDINATE, which is A2's own rule for an angle.
+fn test_the_nose_lands_where_the_compass_says() {
+    ps = catalogue();
+    tn_p = ps.ps_parts["robot"]?;
+    tn_v = part_values_rest(tn_p);
+
+    // The robot is 1.3 across and 2.7 long, so its LENGTH is its `+y`.
+    tn_north = mesh("north");
+    part_emit_facing(tn_north, tn_p, tn_v, facing_turns(PART_TAU * 0.25),
+                     0.0, 0.0, 0.0);
+    (tn_nx0, tn_nx1, tn_ny0, tn_ny1, _, _) = span_of(tn_north);
+    assert(near4(tn_ny1 - tn_ny0, 2.7) && near4(tn_nx1 - tn_nx0, 1.3),
+           "facing NORTH the robot is 2.7 long north-south and 1.3 across: "
+           + "{tn_ny1 - tn_ny0} x {tn_nx1 - tn_nx0}");
+
+    tn_east = mesh("east");
+    part_emit_facing(tn_east, tn_p, tn_v, facing_turns(0.0), 0.0, 0.0, 0.0);
+    (tn_ex0, tn_ex1, tn_ey0, tn_ey1, _, _) = span_of(tn_east);
+    assert(near4(tn_ex1 - tn_ex0, 2.7) && near4(tn_ey1 - tn_ey0, 1.3),
+           "facing EAST it is 2.7 long east-west and 1.3 across: "
+           + "{tn_ex1 - tn_ex0} x {tn_ey1 - tn_ey0}");
+}
+
+// @DRY-058 — and the SIGN of the quarter turn
+//
+// ⚠ The test above is satisfied by both signs — a box is symmetric
+// about its own centre, so ±90 degrees swap the same two extents.  This
+// is the reading that is not: the CANOPY sits at `+y` of the hover
+// unit's centre, so facing EAST puts it at `+x` and facing WEST at `-x`.
+fn test_the_quarter_turn_goes_the_right_way_round() {
+    ps = catalogue();
+    tq_p = ps.ps_parts["hover_unit"]?;
+    tq_v = part_values_rest(tq_p);
+
+    // The canopy's centre is (0, +0.30) in the hinge's frame, which is
+    // forward of the chassis — so the FORWARD half of the hull is the
+    // heavier one and its extreme `+y` is the nose.
+    tq_n = mesh("nose");
+    part_emit_facing(tq_n, tq_p, tq_v, facing_turns(0.0), 0.0, 0.0, 0.0);
+    (_, tq_hix, _, _, _, _) = span_of(tq_n);
+
+    tq_w = mesh("west");
+    part_emit_facing(tq_w, tq_p, tq_v, facing_turns(PART_TAU * 0.5), 0.0, 0.0, 0.0);
+    (tq_lox, _, _, _, _, _) = span_of(tq_w);
+
+    assert(near4(tq_hix, 0.0 - tq_lox),
+           "east and west are mirror images: {tq_hix} vs {tq_lox}");
+    assert(tq_hix > 0.0,
+           "and facing EAST the vehicle reaches into +x: {tq_hix}");
+}
+
+// @DRY-059 — a yaw turns the BASIS too, not only the origin
+//
+// ⚠⚠ THE GATE THAT ALMOST CANNOT FAIL, AND THE FIXTURE THAT MAKES IT
+// FAIL.  `frame_point` is `origin + M . local`, so a placement is
+// `R . origin + d` AND `R . M`.  At REST every bone's `M` is the
+// identity — bone 0 is unrotated, a joint at 0 turns nothing — so
+// rotating the origin alone draws the entire catalogue correctly.  The
+// canopy's axis is LATERAL, and a lateral rotation is the one that does
+// not commute with a yaw about `+z`: with the canopy OPEN, the two
+// versions disagree.
+fn test_a_yaw_turns_the_basis_and_not_only_the_origin() {
+    ps = catalogue();
+    ty_p = ps.ps_parts["hover_unit"]?;
+    ty_open = pose_hover_unit(ty_p, canopy_turns(ty_p, true), 0.0);
+    ty_shut = pose_hover_unit(ty_p, canopy_turns(ty_p, false), 0.0);
+
+    // Facing north (yaw 0) the open canopy leans back along -y and its
+    // top rises; a quarter turn to the WEST has to carry that lean onto
+    // the x axis.
+    ty_n = mesh("north");
+    part_emit_facing(ty_n, ty_p, ty_open, 0.0, 0.0, 0.0, 0.0);
+    (ty_nx0, ty_nx1, ty_ny0, ty_ny1, _, ty_nz1) = span_of(ty_n);
+
+    ty_w = mesh("west");
+    part_emit_facing(ty_w, ty_p, ty_open, 0.25, 0.0, 0.0, 0.0);
+    (ty_wx0, ty_wx1, ty_wy0, ty_wy1, _, ty_wz1) = span_of(ty_w);
+
+    // A rigid quarter turn about +z swaps the two horizontal extents
+    // and leaves the vertical one alone.  ⚠ An origin-only rotation
+    // would leave the canopy leaning along -y while the hull turned,
+    // so the y extent would keep the canopy's reach.
+    assert(near4(ty_wx1 - ty_wx0, ty_ny1 - ty_ny0)
+           && near4(ty_wy1 - ty_wy0, ty_nx1 - ty_nx0),
+           "a quarter turn swaps the horizontal extents: "
+           + "x {ty_wx1 - ty_wx0} vs y {ty_ny1 - ty_ny0}, "
+           + "y {ty_wy1 - ty_wy0} vs x {ty_nx1 - ty_nx0}");
+    assert(near4(ty_wz1, ty_nz1),
+           "and leaves the height alone: {ty_wz1} vs {ty_nz1}");
+
+    // ⚠ The negative control: the OPEN and SHUT poses must actually
+    // differ in the reading above, or the fixture cannot see a basis at
+    // all.  This is `@M034`'s rule — are the numbers I chose capable of
+    // disagreeing?
+    ty_s = mesh("shut");
+    part_emit_facing(ty_s, ty_p, ty_shut, 0.0, 0.0, 0.0, 0.0);
+    (_, _, _, _, _, ty_sz1) = span_of(ty_s);
+    assert(!near4(ty_sz1, ty_nz1),
+           "an open canopy is taller than a shut one — the fixture can see "
+           + "a joint off zero at all: {ty_nz1} vs {ty_sz1}");
+}
+
+// @DRY-060 — a hover unit is drawn at the height it can CLIMB
+//
+// ⚠⚠ `PROXY_ART.md`'s *"~0.4 m hover clearance"* and
+// `VEHICLE_CLIMB_METRES` are the same number for the same reason, so the
+// renderer reads `vehicle_climb` rather than restating it — and BOOST
+// becomes visible for nothing, exactly as it does in the rotors.
+fn test_a_hover_unit_floats_at_the_height_it_can_climb() {
+    th_pw = grassy();
+    th_mw = marker_empty();
+
+    th_idle = wave_state_empty();
+    vehicle_place(th_idle.player, 0, 0);
+    th_mi = mesh("idle");
+    entity_bake(th_mi, catalogue(), pal(), th_pw, th_mw, th_idle, 0, KIND_VEHICLE);
+    (_, _, _, _, th_iz0, _) = span_of(th_mi);
+
+    th_boost = wave_state_empty();
+    vehicle_place(th_boost.player, 0, 0);
+    assert(vehicle_boost(th_boost.player), "the vehicle boosts");
+    th_mb = mesh("boost");
+    entity_bake(th_mb, catalogue(), pal(), th_pw, th_mw, th_boost, 0, KIND_VEHICLE);
+    (_, _, _, _, th_bz0, _) = span_of(th_mb);
+
+    assert(near4(th_bz0 - th_iz0,
+                 VEHICLE_BOOST_CLIMB_METRES - VEHICLE_CLIMB_METRES),
+           "a boosting vehicle is drawn exactly its extra climb higher: "
+           + "{th_bz0 - th_iz0} vs "
+           + "{VEHICLE_BOOST_CLIMB_METRES - VEHICLE_CLIMB_METRES}");
+    assert(near4(th_iz0, 0.0 - 0.37 + VEHICLE_CLIMB_METRES),
+           "and an idle one floats its climb above the grass: {th_iz0}");
+}
+
+// @DRY-061 — and it stands on the ground it is ON, not on the plane
+//
+// ⚠ `hex_height` is the door, so a robot on a wall is drawn on the
+// wall.  A renderer that placed everything at `z = 0` draws a base full
+// of robots buried in their own terrain, and every per-class pixel
+// count survives it.
+fn test_a_robot_stands_on_what_it_is_standing_on() {
+    tg_ws = wave_state_empty();
+    tg_ws.enemies += [Enemy { q: 0, r: 0, kind: as_u8(ENEMY_KIND_REGULAR),
+                              heading: 3 as u8, alive: true }];
+    tg_mw = marker_empty();
+
+    tg_flat = grassy();
+    tg_mf = mesh("flat");
+    entity_bake(tg_mf, catalogue(), pal(), tg_flat, tg_mw, tg_ws, 0,
+                ENEMY_KIND_REGULAR);
+    (_, _, _, _, tg_fz, _) = span_of(tg_mf);
+
+    // paint the SAME hex as a wall — `palette.json` gives it a height
+    tg_high = grassy();
+    paint(tg_high, 0, 0, as_u8(9));
+    tg_mh = mesh("high");
+    entity_bake(tg_mh, catalogue(), pal(), tg_high, tg_mw, tg_ws, 0,
+                ENEMY_KIND_REGULAR);
+    (_, _, _, _, tg_hz, _) = span_of(tg_mh);
+
+    tg_rise = hex_height(pal(), tg_high, tg_ws.heights, 0, 0)
+              - hex_height(pal(), tg_flat, tg_ws.heights, 0, 0);
+    assert(tg_rise > 0.5, "a wall really is higher than grass: {tg_rise}");
+    assert(near4(tg_hz - tg_fz, tg_rise),
+           "and the robot rises with it: {tg_hz - tg_fz} vs {tg_rise}");
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Will it draw at all — the winding, which no count can see
+// ─────────────────────────────────────────────────────────────────────
+
+// @DRY-062 — every triangle winds with its own normal
+//
+// ⚠⚠ `ground_gl.loft` turns `GL_CULL_FACE` ON for the whole frame, and
+// it does so deliberately: *"a reversed winding changes no count, no
+// height and no vertex position, and draws NOTHING once culling is on"*.
+// M0 and M1 gated the ground's winding as DATA three phases before a
+// pixel existed.  This is that gate for the parts — the counter-clockwise
+// vertex order of every triangle in every catalogue entry, checked
+// against the normal the emitter stored on it.
+fn test_every_triangle_winds_with_its_normal() {
+    ps = catalogue();
+    for tw_name in catalogue_names() {
+        tw_p = ps.ps_parts[tw_name]?;
+        tw_m = mesh(tw_name);
+        // ⚠ Emitted TURNED and OFF the origin, because a placement that
+        // mirrored a part would reverse every winding in it and a test
+        // at the origin at yaw zero could not see that either.
+        part_emit_facing(tw_m, tw_p, part_values_rest(tw_p), 0.3,
+                         4.0, -3.0, 2.0);
+        tw_bad = 0;
+        tw_worst = 1.0;
+        for tw_t in tw_m.triangles {
+            tw_a = tw_m.vertices[tw_t.a] ?? Vertex { };
+            tw_b = tw_m.vertices[tw_t.b] ?? Vertex { };
+            tw_c = tw_m.vertices[tw_t.c] ?? Vertex { };
+            tw_g = cross(sub3(tw_b.pos, tw_a.pos), sub3(tw_c.pos, tw_a.pos));
+            tw_d = dot3(tw_g, tw_a.normal);
+            if tw_d <= 0.0 { tw_bad += 1; }
+            if tw_d < tw_worst { tw_worst = tw_d; }
+        }
+        assert(len(tw_m.triangles) > 0, "{tw_name} emits triangles at all");
+        assert(tw_bad == 0,
+               "{tw_name}: {tw_bad} of {len(tw_m.triangles)} triangles wind "
+               + "AGAINST their normal (worst dot {tw_worst}) — under "
+               + "GL_CULL_FACE those draw nothing");
+    }
+}
+
+// @DRY-063 — and `part_emit_at` is still `part_emit_facing` at zero
+//
+// ⚠ A2's emitter now delegates, so this is what says the delegation
+// changed no geometry: `cos(0)` and `sin(0)` are exactly `1.0` and
+// `0.0`, so every product is an exact `+ 0.0` and the two folds agree
+// to the bit.  ⚠ `mesh_crc` of an empty mesh is 0, so the floor is
+// asserted first (`@X065`).
+fn test_emitting_at_zero_yaw_is_emitting_at_an_offset() {
+    ps = catalogue();
+    tz_p = ps.ps_parts["hover_unit"]?;
+    tz_v = pose_hover_unit(tz_p, canopy_turns(tz_p, true), 0.37);
+
+    tz_a = mesh("at");
+    part_emit_at(tz_a, tz_p, tz_v, 3.0, -4.0, 5.0);
+    tz_f = mesh("facing");
+    part_emit_facing(tz_f, tz_p, tz_v, 0.0, 3.0, -4.0, 5.0);
+
+    assert(mesh_crc(tz_a) != 0, "the fold is not the empty mesh's zero");
+    assert(mesh_crc(tz_a) == mesh_crc(tz_f),
+           "a yaw of zero is a plain offset, to the bit: "
+           + "{mesh_crc(tz_a)} vs {mesh_crc(tz_f)}");
+}
+
+// @DRY-064 — the buffer the GPU is handed is the mesh, and its bounds
+//            bracket it
+//
+// ⚠⚠ `entity_gl_bake` exists so that a gate can measure THE CODE THE
+// RENDERER RUNS: `entity_gl_upload` cannot be called from `loft test` at
+// all (a GL call there answers *"native function not loaded"*), so
+// without a shared door a test would re-implement the walk and would
+// then be measuring a second implementation.  ⚠ Documenting that and
+// then calling it from nothing is the same hole one layer out, so this
+// is what makes the door real.
+fn test_the_baked_buffer_is_the_mesh_and_its_bounds_bracket_it() {
+    tb_pw = grassy();
+    tb_mw = marker_empty();
+    tb_ws = wave_state_empty();
+    vehicle_place(tb_ws.player, 3, 0);
+
+    tb_m = mesh("mine");
+    tb_tris = entity_bake(tb_m, catalogue(), pal(), tb_pw, tb_mw, tb_ws, 0,
+                          KIND_VEHICLE);
+    tb_v = entity_gl_bake(catalogue(), pal(), tb_pw, tb_mw, tb_ws, 0, KIND_VEHICLE);
+
+    assert(tb_tris > 0, "the vehicle emits triangles: {tb_tris}");
+    // ⚠ `mesh_to_floats` emits one vertex per triangle CORNER, six floats
+    // each (pos + normal) — which is what `GROUND_GL_STRIDE` says and
+    // what the VAO is built for.  A stride that disagreed would draw a
+    // sheared mess with every count healthy.
+    assert(len(tb_v) == tb_tris * 3 * GROUND_GL_STRIDE,
+           "the buffer is {tb_tris} x 3 x {GROUND_GL_STRIDE} floats: {len(tb_v)}");
+
+    // ⚠ The bounds are only STORED today (for a frustum cull that does
+    // not exist), which is exactly why they are asserted now: nothing
+    // else will notice them being wrong until something trusts them.
+    tb_b  = entity_gl_bounds(tb_v);
+    tb_at = lat_to_world(Hex { q: 3, r: 0 },
+                         hex_height(pal(), tb_pw, tb_ws.heights, 3, 0));
+    assert(tb_b.0 <= tb_at.x && tb_at.x <= tb_b.2
+           && tb_b.1 <= tb_at.y && tb_at.y <= tb_b.3,
+           "the box brackets the hex the vehicle is on: "
+           + "x {tb_b.0}..{tb_b.2} vs {tb_at.x}, y {tb_b.1}..{tb_b.3} vs {tb_at.y}");
+    // …and it is the PART's box, not the hex's: a hover unit is 2.28 m
+    // across, so the box is wider than a point and narrower than a map.
+    assert(tb_b.2 - tb_b.0 > 1.0 && tb_b.2 - tb_b.0 < 4.0,
+           "and it is one vehicle wide: {tb_b.2 - tb_b.0}");
+
+    // ⚠ An empty buffer is a degenerate box at the origin rather than a
+    // huge one — the honest answer when there is nothing to cull.
+    tb_e: vector<single> = [];
+    tb_z = entity_gl_bounds(tb_e);
+    assert(tb_z.0 == 0.0 && tb_z.1 == 0.0 && tb_z.2 == 0.0 && tb_z.3 == 0.0,
+           "nothing of a class bounds to a point, not to the world");
+}

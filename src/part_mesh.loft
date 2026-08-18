@@ -56,7 +56,11 @@ use part;
 // about identical geometry.
 pub const PART_ROUND_SEGMENTS: integer = 12;
 
-const PART_TAU: float = 6.283185307179586;
+// A whole turn in radians.  ⚠ **`pub` since plan 20 A5**: every angle in
+// this plan is in TURNS (`PARTS.md` § D4), so a caller holding a compass
+// bearing in RADIANS needs the conversion — and a second copy of tau is a
+// second place a factor of two can go missing.
+pub const PART_TAU: float = 6.283185307179586;
 
 // ─── One limb at a time ─────────────────────────────────────────
 
@@ -83,7 +87,7 @@ fn frame_dir(f: Frame, dx: float, dy: float, dz: float) -> (float, float, float)
 // face would read as curved — which is the same argument
 // `ground_mesh.loft` makes about not blending a flat plane.
 //
-// Example: @DRY-034
+// Example: @DRY-034, @DRY-062
 pub fn emit_box(m: Mesh, f: Frame, l: Limb) -> integer {
   hx = l.lb_sx / 2.0 ?? 0.0;
   hy = l.lb_sy / 2.0 ?? 0.0;
@@ -95,12 +99,32 @@ pub fn emit_box(m: Mesh, f: Frame, l: Limb) -> integer {
     if fc == 0 { ax = 1.0; } else if fc == 1 { ax = -1.0; }
     else if fc == 2 { ay = 1.0; } else if fc == 3 { ay = -1.0; }
     else if fc == 4 { az = 1.0; } else { az = -1.0; }
-    // two in-plane axes, right-handed about the outward one
+    // ⚠⚠ TWO IN-PLANE AXES WHOSE CROSS PRODUCT IS THE OUTWARD ONE — and
+    // the NEGATIVE faces swap them, which is what plan 20 A5 found
+    // missing.  `u x v = a` is what makes the quad below wind
+    // counter-clockwise seen from outside, and the three negative faces
+    // used the same pair as their positive partners: `y x z` is `+x` for
+    // both the `+x` and the `-x` face, so half of every box in the
+    // catalogue was wound INWARDS.
+    //
+    // ⚠ It changed no count, no vertex and no normal — `mesh_crc` folds
+    // the triangle INDICES and they were unchanged too, because the
+    // quad's four corners are the same rectangle walked the other way.
+    // The only instrument that can see it is a cross product against the
+    // stored normal, which is `tests/20_a5`'s
+    // `test_every_triangle_winds_with_its_normal`.
+    //
+    // ⚠ Scaling `u` by the outward SIGN does NOT fix it and looks as if
+    // it does: `us` below is derived from `u`, so both flip and `u * us`
+    // is unchanged.  The pair has to be SWAPPED.
     ux = 0.0; uy = 0.0; uz = 0.0;
     vx = 0.0; vy = 0.0; vz = 0.0;
-    if ax != 0.0 { uy = 1.0; vz = 1.0; }
-    else if ay != 0.0 { uz = 1.0; vx = 1.0; }
-    else { ux = 1.0; vy = 1.0; }
+    if fc == 0 { uy = 1.0; vz = 1.0; }        // +x:  y x z = +x
+    else if fc == 1 { uz = 1.0; vy = 1.0; }   // -x:  z x y = -x
+    else if fc == 2 { uz = 1.0; vx = 1.0; }   // +y:  z x x = +y
+    else if fc == 3 { ux = 1.0; vz = 1.0; }   // -y:  x x z = -y
+    else if fc == 4 { ux = 1.0; vy = 1.0; }   // +z:  x x y = +z
+    else { uy = 1.0; vx = 1.0; }              // -z:  y x x = -z
     n += emit_quad(m, f, l, ax * hx, ay * hy, az * hz,
                    ux * hx + uy * hy + uz * hz, ux, uy, uz,
                    vx * hx + vy * hy + vz * hz, vx, vy, vz, ax, ay, az);
@@ -249,9 +273,37 @@ pub fn part_emit(m: Mesh, p: Part, values: vector<float>) -> integer {
 // Example: @DRY-041
 pub fn part_emit_at(m: Mesh, p: Part, values: vector<float>,
                     dx: float, dy: float, dz: float) -> integer {
+  part_emit_facing(m, p, values, 0.0, dx, dy, dz)
+}
+
+// Emit every limb of `p`, posed at `values`, TURNED through `yaw` turns
+// about the world's `+z` and then moved to `(dx, dy, dz)`.
+//
+// ⚠⚠ **TURN THEN MOVE, and the order is the whole function.**  A part
+// is authored about its own origin, so the rotation has to happen while
+// that origin is still at zero: translate first and a vehicle two
+// hundred metres from the origin swings through a two-hundred-metre arc
+// instead of turning on the spot.  Both orders compile, both draw a
+// vehicle somewhere, and only one draws it where the simulation says.
+//
+// ⚠ **`part_emit_at` IS this at `yaw = 0.0`** — one loop, and the zero
+// case is bit-identical because `cos(0)` and `sin(0)` are exactly `1.0`
+// and `0.0`, so every product is an exact `+ 0.0`.
+// `tests/20_a2_the_geometry.loft`'s `mesh_crc` equality is what says so
+// rather than this sentence.
+//
+// ⚠ The yaw is in TURNS, like every angle in this plan — `PARTS.md`
+// § D4's units, and the reason A2's canopy gate asserts a COORDINATE:
+// degrees and turns are indistinguishable until something swings.
+// A caller holding a compass BEARING converts once, through
+// `entity_view.loft::facing_turns`, and never here.
+//
+// Example: @DRY-057, @DRY-059, @DRY-063
+pub fn part_emit_facing(m: Mesh, p: Part, values: vector<float>, yaw: float,
+                        dx: float, dy: float, dz: float) -> integer {
   n = 0;
   for bi in 0..rig_count(p.pt_rig) {
-    fr = frame_shift(rig_world_frame3(p.pt_rig, values, bi), dx, dy, dz);
+    fr = frame_place(rig_world_frame3(p.pt_rig, values, bi), yaw, dx, dy, dz);
     n += emit_bone_limbs(m, p, fr, bi);
   }
   n
@@ -271,6 +323,41 @@ fn frame_shift(f: Frame, dx: float, dy: float, dz: float) -> Frame {
           fr_00: f.fr_00, fr_01: f.fr_01, fr_02: f.fr_02,
           fr_10: f.fr_10, fr_11: f.fr_11, fr_12: f.fr_12,
           fr_20: f.fr_20, fr_21: f.fr_21, fr_22: f.fr_22 }
+}
+
+// One `Frame`, TURNED about the world's `+z` and then moved.
+//
+// ⚠⚠ **THE BASIS TURNS TOO, and forgetting it is silent on this
+// catalogue.**  `frame_point` is `origin + M . local`, so a placement is
+// `R . (origin + M . local) + d` — which is a new origin `R . origin + d`
+// AND a new basis `R . M`.  Rotate the origin alone and every limb keeps
+// its authored orientation while orbiting the part's centre: a vehicle
+// whose chassis stays pointing north while its skids swing round it.
+// ⚠ And at REST every bone's `M` is the identity — bone 0 is unrotated
+// and a joint at 0 turns nothing — so a wrong basis draws the right
+// picture for the whole catalogue until a joint is off zero.  That is
+// why `tests/20_a5` turns a vehicle with its CANOPY OPEN: the canopy's
+// axis is LATERAL, which is the one rotation that does not commute with
+// a yaw.
+//
+// ⚠ `M` is ROW-major with `fr_<row><col>` — read out of `hex_body`'s
+// own `frame_point`, not assumed.
+fn frame_place(f: Frame, yaw: float, dx: float, dy: float, dz: float) -> Frame {
+  fp_a = yaw * PART_TAU;
+  fp_c = cos(fp_a);
+  fp_s = sin(fp_a);
+  Frame {
+    fr_x: fp_c * f.fr_x - fp_s * f.fr_y + dx,
+    fr_y: fp_s * f.fr_x + fp_c * f.fr_y + dy,
+    fr_z: f.fr_z + dz,
+    fr_00: fp_c * f.fr_00 - fp_s * f.fr_10,
+    fr_01: fp_c * f.fr_01 - fp_s * f.fr_11,
+    fr_02: fp_c * f.fr_02 - fp_s * f.fr_12,
+    fr_10: fp_s * f.fr_00 + fp_c * f.fr_10,
+    fr_11: fp_s * f.fr_01 + fp_c * f.fr_11,
+    fr_12: fp_s * f.fr_02 + fp_c * f.fr_12,
+    fr_20: f.fr_20, fr_21: f.fr_21, fr_22: f.fr_22,
+  }
 }
 
 // Every limb riding one bone, through one frame.

@@ -79,6 +79,10 @@ use editor_step;
 use editor_view;
 use script;
 use ground_gl;
+use entity_view;
+use entity_gl;
+use part;
+use catalogue;
 use mesh3d;
 use graphics;
 use imaging;
@@ -218,6 +222,28 @@ pub fn gl_centroid(cv: const Canvas, want: integer) -> (float, float, integer) {
     ((gce_sx / (gce_c as float)) ?? 0.0, (gce_sy / (gce_c as float)) ?? 0.0, gce_c)
 }
 
+// How many pixels of this frame are an ENTITY — any drawn class, by
+// name.
+//
+// ⚠⚠ **THE OTHER HALF OF `other == 0`.**  An entity colour is
+// deliberately outside the palette (`entity_view.loft` § The colours are
+// outside the palette on purpose), so every entity pixel lands in
+// `classify_canvas`'s `unknown` exactly as the background does.  Summing
+// them by name is what lets a fixture with a roster in it make the same
+// TOTAL claim `the-ground` makes with an empty one: every pixel is a
+// palette colour, an entity colour, or the clear colour.
+//
+// ⚠ It is a SUM over distinct colours, which is only a count of entity
+// pixels because `entity_colours_distinct` holds — asserted in
+// `tests/20_a5`, where a failure names the pair.
+pub fn gl_entity_pixels(cv: const Canvas) -> integer {
+    gep = 0;
+    for gep_c in 0..ENT_CLASSES {
+        gep += gl_count_colour(cv, entity_colour(gep_c) & 0xffffff);
+    }
+    gep
+}
+
 // ─── The camera the gate photographs from ───────────────────────
 
 // The overview, pulled in to its near boom.
@@ -255,6 +281,21 @@ pub fn gl_predict(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLay
                   q: integer, r: integer) -> (float, float) {
     camera_screen(gl_gate_vp(),
                   lat_to_world(Hex { q: q, r: r }, hex_height(pal, pw, hl, q, r)),
+                  GL_GATE_W as float, GL_GATE_H as float)
+}
+
+// The same, `dz` metres above the ground — for a landmark that FLOATS.
+//
+// ⚠ A hover unit is drawn at its climb above its hex
+// (`entity_view.loft::entity_hover_metres`), and a camera 20 m up
+// displaces a raised object OUTWARD from the centre of the frame.
+// Predicting the ground plane under it would build that error into the
+// tolerance, which is `gl_predict`'s own argument about a 5 m column
+// one axis over.
+pub fn gl_predict_above(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+                        q: integer, r: integer, dz: float) -> (float, float) {
+    camera_screen(gl_gate_vp(),
+                  lat_to_world(Hex { q: q, r: r }, hex_height(pal, pw, hl, q, r) + dz),
                   GL_GATE_W as float, GL_GATE_H as float)
 }
 
@@ -368,11 +409,93 @@ fn gl_case_an_island(rep: GlGateReport, cv: const Canvas, fc: const FrameCounts)
     gl_at_least(rep, "wall", fc.counts[9] ?? 0, 1000)
 }
 
+fn gl_case_a_defended_base(rep: GlGateReport, cv: const Canvas, fc: const FrameCounts,
+                           pal: vector<GroundType>, pw: PaintedWorld,
+                           hl: const HeightLayer) -> text {
+    // ⚠ The ground still fills the frame, so there is no background —
+    // which is what makes the claim below TOTAL rather than a share.
+    gab = gl_exact(rep, "background pixels", gl_count_colour(cv, GL_GATE_CLEAR), 0);
+    if gab != "" { return gab; }
+
+    // ⚠⚠ **THE HEADLINE, AND IT IS AN EQUALITY.**  Every pixel that is
+    // not a palette colour is an ENTITY, named — no drift, no hole, no
+    // horizon, no colour this gate cannot account for.  `the-ground`
+    // says the same thing with zero on both sides; this says it with a
+    // roster standing in the frame.
+    gab2 = gl_exact(rep, "pixels that are neither a palette colour nor an entity",
+                    fc.unknown - gl_entity_pixels(cv), 0);
+    if gab2 != "" { return gab2; }
+
+    // ⚠ …and there really were entities, or the equality above is
+    // `the-ground`'s reading under another name.
+    gab3 = gl_at_least(rep, "entity pixels", gl_entity_pixels(cv), 20000);
+    if gab3 != "" { return gab3; }
+
+    // ── One band per drawn class ──
+    //
+    // ⚠ Per CLASS, because `PARTS.md` § D8 makes a class a row of DATA:
+    // four robots of three classes have to land in three counts, and a
+    // renderer that painted them all one colour would pass a single
+    // total.  ⚠ And the classes NOT in this fixture are asserted at
+    // ZERO, which is `plans/20` § Invariant gate's own control.
+    gab4 = gl_band(rep, "the player",  gl_count_colour(cv, entity_colour(KIND_VEHICLE) & 0xffffff),
+                   1400, 2600);
+    if gab4 != "" { return gab4; }
+    gab5 = gl_band(rep, "the crew",    gl_count_colour(cv, entity_colour(ENT_CREW) & 0xffffff),
+                   1400, 2600);
+    if gab5 != "" { return gab5; }
+    gab6 = gl_band(rep, "robots (two of them)", gl_count_colour(cv, entity_colour(ENEMY_KIND_REGULAR) & 0xffffff),
+                   6500, 12000);
+    if gab6 != "" { return gab6; }
+    gab7 = gl_band(rep, "the scout",   gl_count_colour(cv, entity_colour(ENEMY_KIND_SCOUT) & 0xffffff),
+                   3400, 6200);
+    if gab7 != "" { return gab7; }
+    gab8 = gl_band(rep, "the miner",   gl_count_colour(cv, entity_colour(ENEMY_KIND_MINER) & 0xffffff),
+                   3400, 6200);
+    if gab8 != "" { return gab8; }
+    gab9 = gl_band(rep, "tower bases (two of them)", gl_count_colour(cv, entity_colour(ENT_TOWER_BASE) & 0xffffff),
+                   26000, 46000);
+    if gab9 != "" { return gab9; }
+
+    // ⚠⚠ **ONE top for TWO towers**, which is A4's claim arriving as
+    // pixels: `tower_has_top` is a simulation fact and the fixture takes
+    // one off, so a renderer drawing the top from a flag beside the
+    // mechanic reads roughly DOUBLE here and right everywhere else.
+    gab10 = gl_band(rep, "tower tops (one of two towers has one)",
+                    gl_count_colour(cv, entity_colour(ENT_TOWER_TOP) & 0xffffff),
+                    3400, 6400);
+    if gab10 != "" { return gab10; }
+
+    // ⚠ The three classes with nobody in them.  *A thing not drawn reads
+    // as ZERO* is the phase's own control, and it is only a control if
+    // the same frame draws the other seven.
+    gab11 = gl_exact(rep, "insects (none in this base)",
+                     gl_count_colour(cv, entity_colour(ENEMY_KIND_INSECT) & 0xffffff), 0);
+    if gab11 != "" { return gab11; }
+    gab12 = gl_exact(rep, "harvesters (none in this base)",
+                     gl_count_colour(cv, entity_colour(ENEMY_KIND_HARVESTER) & 0xffffff), 0);
+    if gab12 != "" { return gab12; }
+    gab13 = gl_exact(rep, "builders (none in this base)",
+                     gl_count_colour(cv, entity_colour(ENEMY_KIND_BUILDER) & 0xffffff), 0);
+    if gab13 != "" { return gab13; }
+
+    // ⚠⚠ **THE LANDMARK — a count cannot see a mirrored world**
+    // (`@X078`).  The player is the only thing in its colour and it is
+    // parked at the centre of the frame, where a hover unit's 0.4 m of
+    // clearance displaces its centroid by half a pixel.  ⚠ Predicted
+    // ABOVE the ground, because predicting the plane under it would put
+    // the clearance into the tolerance.
+    gl_landmark(rep, cv, "the player at (0, 0)",
+                entity_colour(KIND_VEHICLE) & 0xffffff,
+                gl_predict_above(pal, pw, hl, 0, 0, VEHICLE_CLIMB_METRES),
+                1400, 2600)
+}
+
 // ─── One case, end to end ───────────────────────────────────────
 
 fn gl_gate_one(rep: GlGateReport, name: text, scripts_dir: text, shots_dir: text,
                palette_path: text) -> text {
-    if name != "the-ground" && name != "an-island" {
+    if name != "the-ground" && name != "an-island" && name != "a-defended-base" {
         return "{name}{GL_GATE_EXT} has no case in `src/gl_gate.loft` — a fixture with no expectations is a fixture nobody measures";
     }
 
@@ -394,13 +517,34 @@ fn gl_gate_one(rep: GlGateReport, name: text, scripts_dir: text, shots_dir: text
     }
     ground_gl_upload_all(ggo_gg, ggo_pal, ggo_s.pw, ggo_run.play.wave.heights);
 
+    // ⚠⚠ **THE ROSTER IS DRAWN FOR EVERY FIXTURE, INCLUDING THE TWO WITH
+    // NOBODY IN THEM** (plan 20 A5).  That is what turns `the-ground`'s
+    // and `an-island`'s `other == 0` into a statement about the
+    // ENTITIES too: a renderer that drew a robot where there is no robot
+    // fails them, because an entity colour is not a palette colour.
+    // Draw entities only for the fixture that has some and the control
+    // is gone.
+    ggo_ps = catalogue();
+    ggo_pf = part_fault(ggo_ps, "hover_unit");
+    if ggo_pf != "" {
+        return "{name}: the catalogue is broken before anything is drawn — {ggo_pf}";
+    }
+    ggo_eg = entity_gl_new();
+    if !entity_gl_ready(ggo_eg) {
+        return "{name}: the entity shader did not link — an empty roster and a dead shader draw the same frame";
+    }
+    entity_gl_upload(ggo_eg, ggo_ps, ggo_pal, ggo_s.pw, ggo_s.mw,
+                     ggo_run.play.wave, 0);
+
     gl_clear(GL_GATE_CLEAR);
     ground_gl_draw(ggo_gg, gl_gate_vp());
+    entity_gl_draw(ggo_eg, gl_gate_vp());
 
     // ⚠ BEFORE the swap — `gl_screenshot` reads GL_BACK.
     ggo_shot = "{shots_dir}/gl-{name}.png";
     ggo_ok   = gl_screenshot(GL_GATE_W, GL_GATE_H, ggo_shot);
     gl_swap_buffers();
+    entity_gl_destroy(ggo_eg);
     ground_gl_destroy(ggo_gg);
     if !ggo_ok {
         return "{name}: gl_screenshot refused to write {ggo_shot}";
@@ -417,6 +561,10 @@ fn gl_gate_one(rep: GlGateReport, name: text, scripts_dir: text, shots_dir: text
     if name == "the-ground" {
         return gl_case_the_ground(rep, ggo_cv, ggo_fc, ggo_pal, ggo_s.pw,
                                   ggo_run.play.wave.heights);
+    }
+    if name == "a-defended-base" {
+        return gl_case_a_defended_base(rep, ggo_cv, ggo_fc, ggo_pal, ggo_s.pw,
+                                       ggo_run.play.wave.heights);
     }
     gl_case_an_island(rep, ggo_cv, ggo_fc)
 }

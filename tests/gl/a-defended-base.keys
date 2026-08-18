@@ -1,0 +1,130 @@
+# a-defended-base — plan 20 A5's fixture: a world with a ROSTER in it.
+#
+# ⚠⚠ `the-ground` and `an-island` are worlds with nobody in them, and
+# that is now load-bearing rather than incidental: the GL gate draws the
+# entities for every fixture, so their `other == 0` says *no entity was
+# drawn in a base with no roster* as well as *no drift in the ground*.
+# This fixture is the other half — the same frame-filling grass, with
+# one of everything standing on it.
+#
+# ⚠ The ground FILLS THE FRAME for `the-ground`'s reason: the clear
+# colour is deliberately not a palette colour, so with no background in
+# the shot every non-palette pixel is an ENTITY and the gate can make an
+# exact, total claim —
+#
+#     every pixel is a palette colour, an entity colour, or the clear
+#     colour, and nothing else
+#
+# — which is what `src/gl_gate.loft::gl_case_a_defended_base` asserts by
+# summing the entity colours BY NAME and requiring the sum to be the
+# whole of `unknown`.
+#
+# ⚠⚠ **THE PLAYER AT (0, 0) IS THE LANDMARK**, and it is at the centre
+# of the frame on purpose.  A per-class pixel count is
+# permutation-invariant (`@X078`), so the gate also asks WHERE the player
+# landed — and a hover unit is drawn 0.4 m ABOVE its hex, which a camera
+# looking down from 20 m displaces outward everywhere except at the
+# centre.  At (0, 0) the displacement is 0.5 px, so the tolerance stays
+# tight enough to catch a mirrored world.
+#
+# ⚠ Every entity is inside q ±8, r ±7 — the visible ground plane is
+# about q ±11 by r ±10 at this camera, and a 6 m tower leans OUTWARD by
+# a factor of 20/(20-6) as it rises.
+
+echo a-defended-base: a base with one of everything standing in it
+
+at 0 0 1
+
+# ── The ground, painted past the frustum. ──
+palette 5
+drag -22 -14 22 -14
+drag -22 -13 22 -13
+drag -22 -12 22 -12
+drag -22 -11 22 -11
+drag -22 -10 22 -10
+drag -22  -9 22  -9
+drag -22  -8 22  -8
+drag -22  -7 22  -7
+drag -22  -6 22  -6
+drag -22  -5 22  -5
+drag -22  -4 22  -4
+drag -22  -3 22  -3
+drag -22  -2 22  -2
+drag -22  -1 22  -1
+drag -22   0 22   0
+drag -22   1 22   1
+drag -22   2 22   2
+drag -22   3 22   3
+drag -22   4 22   4
+drag -22   5 22   5
+drag -22   6 22   6
+drag -22   7 22   7
+drag -22   8 22   8
+drag -22   9 22   9
+drag -22  10 22  10
+drag -22  11 22  11
+drag -22  12 22  12
+drag -22  13 22  13
+drag -22  14 22  14
+
+# ── The two towers.  One whole, one with its top taken off. ──
+#
+# ⚠ The pair is the point: `tower_has_top` is a SIMULATION fact (plan 17
+# T2) and A4 made the drawing read it, so a frame with two towers and
+# ONE top is the smallest world in which a renderer that drew the top
+# from a second flag would still look right in half the picture.
+#
+# ⚠ Placed the editor's own way — `toggle_mode` into the marker layer,
+# `cycle_kind` twice (spawn -> target -> tower), then a click each.  A
+# `.keys` file has no "put a tower here" verb and deliberately does not:
+# every command names an ACTION, so the script exercises the same
+# `place_marker` dispatch the player does.
+do toggle_mode
+do cycle_kind
+do cycle_kind
+click  6  2
+click  7 -4
+do toggle_mode
+marker  6  2 tower
+marker  7 -4 tower
+count markers 2 2
+
+tower   7 -4 0 0.0 0.0 off
+top     6  2 on
+top     7 -4 off
+
+# ── The player, parked at the centre and pointed EAST. ──
+#
+# ⚠ `drive` sets the destination without spending a tick, which is what
+# gives a parked vehicle a FACING to draw — a bearing comes from the
+# velocity (`@X067`) and a vehicle whose destination is its own hex has
+# none.
+park  0 0
+drive 4 0
+vehicle 0 0
+
+# ── One crew member, pointed back at the core. ──
+crew 4 4
+send 0 0 0
+roster 1 1
+helper 0 4 4
+
+# ── Four robots of three classes, walking east into the base. ──
+#
+# ⚠ Three classes rather than one, because `PARTS.md` § D8 makes a class
+# *a row of DATA* — one shared colour would leave that unbuilt, and the
+# gate reads each class as its own count.
+place -6  0 robot 0
+place -6  4 robot 0
+place -6 -4 scout 0
+place  0 -7 miner 5
+count alive 4 4
+
+# ── What the SOFTWARE gate can already see. ──
+#
+# ⚠ Not the GL measurements — `.keys` has no GL verb and deliberately
+# does not (`@X076`).  These make the fixture a real scenario in its own
+# right, so `validate.sh` checks the world before anything is drawn.
+kind   0   0 grass
+kind  23   0 sea
+kind   0  15 sea

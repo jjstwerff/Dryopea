@@ -637,6 +637,68 @@ src/
                    ⚠ Every branch a TEST can reach comes before
                    `gl_create_window` — a GL call inside `loft
                    test` answers "native function not loaded".
+                   ⚠⚠ Since plan 20 A5 it also draws the ROSTER, for
+                   EVERY fixture including the two with nobody in
+                   them — which is what turns `the-ground`'s and
+                   `an-island`'s `other == 0` into a statement about
+                   the entities too.  `gl_entity_pixels` sums the ten
+                   entity colours by name, and
+                   `a-defended-base` asserts
+                   `unknown - entity pixels == 0`.
+  entity_view.loft THE ROSTER, AS TRIANGLES (plan 20 A5) — which
+                   entities exist, where they stand, which way they
+                   face and what colour each is, walked straight off a
+                   `WaveState` and a `MarkerWorld`.  ENT_CREW /
+                   ENT_TOWER_BASE / ENT_TOWER_TOP / ENT_CLASSES,
+                   entity_class_name / entity_colour /
+                   entity_colour_rgb / entity_colours_distinct /
+                   entity_min_distance2 / facing_turns / entity_yaw /
+                   entity_yaw_heading / entity_hover_metres /
+                   entity_bake.
+                   ⚠⚠ NOTHING HERE IS STATE, and that is the whole
+                   invariant: no drawable list, no per-entity render
+                   record, no spawn hook.  A robot is in the frame
+                   because `ws.enemies` has a live one — which is what
+                   makes "a thing not drawn reads as ZERO" an
+                   assertion that can fail.
+                   ⚠⚠ A DRAWN CLASS *IS* THE MOVER KIND (@X093):
+                   `entity_colour` is indexed by `passable.loft`'s own
+                   discriminants, `KIND_VEHICLE` scar and all, with
+                   crew / tower base / tower top APPENDED after the
+                   last one.  There is no second enumeration to drift.
+                   ⚠⚠ THE COLOURS ARE OUTSIDE THE PALETTE ON PURPOSE
+                   (@X092): a pixel is an exact palette colour or a
+                   FAULT, so an entity in a palette colour would be
+                   counted as ground.  They land in `unknown` and the
+                   GL gate sums them BY NAME, which makes its claim
+                   total.  `entity_colours_distinct` is what stops that
+                   being a wish — it caught PROXY_ART's tower-top red,
+                   which is `palette_color(9)` to the bit.
+                   ⚠ A hover unit is drawn at the height it can CLIMB
+                   (@X094) — `vehicle_climb`, so boost is visible for
+                   nothing — and `entity_emit_hover` decides clearance,
+                   rotor rate AND canopy on the OWNER id alone, which
+                   is the integer `CargoLayer` is keyed on.
+                   ⚠ ONE emitter for the player and the crew, which is
+                   PARTS.md § D8's "same chassis" made structural.
+                   ⚠ No interpolation: an entity is drawn on its hex,
+                   and @M035 has already priced the fix.
+  entity_gl.loft   THE ENTITIES, DRAWN (plan 20 A5) — one
+                   `GroupVboSet` per drawn class, re-upserted WHOLE
+                   every frame.  entity_gl_new / _ready / _bake /
+                   _upload / _draw / _destroy.
+                   ⚠ It compiles `ground_gl.loft`'s OWN shader source:
+                   flat unlit is a gate requirement (@X074) and two
+                   programs from one text is the cheap side of sharing
+                   — sharing the program object would make EntityGl
+                   borrow something it must not delete.
+                   ⚠⚠ EVERY class, EVERY frame, and an absent class is
+                   upserted EMPTY rather than skipped: the roster moves
+                   on every tick, so there is no clean dirty subset,
+                   and a skipped class leaves the GPU drawing last
+                   frame's robots after they died.
+                   ⚠ It turns culling on itself, and here that is
+                   load-bearing rather than defensive — see @D005.
   painted.loft     PaintedHex { q, r, kind: u8 }
                    + PaintedWorld { painted: hash<PaintedHex[q, r]> }
                    + paint(), lookup_painted(), paint_line()
@@ -957,9 +1019,22 @@ src/
                    something plausible.
                    ⚠ A box gives each face its own four corners (24
                    vertices, not 8) so the normals stay flat.
-                   ⚠ `part_emit_at` TRANSLATES and does not turn: a
-                   socketed child follows the socket's POSITION and not
-                   its orientation, because `hex_body` publishes no
+                   ⚠ `part_emit_facing` (plan 20 A5) TURNS about the
+                   world's `+z` and then MOVES, and `part_emit_at` is
+                   it at yaw 0.  ⚠⚠ `frame_place` rotates the BASIS as
+                   well as the origin, and forgetting it is silent on
+                   this catalogue — at rest every bone's basis is the
+                   identity, so only a joint off zero can see it (the
+                   canopy's LATERAL axis is the one that does not
+                   commute with a yaw).
+                   ⚠⚠ And `emit_box`'s three NEGATIVE faces used the
+                   same in-plane pair as their positive partners until
+                   A5, so half of every box was wound INWARDS — no
+                   count, vertex, normal or `mesh_crc` could see it
+                   (@D005).  Scaling `u` by the sign does NOT fix it:
+                   `us` is derived from `u`, so both flip.
+                   ⚠ A socketed child follows the socket's POSITION and
+                   not its orientation, because `hex_body` publishes no
                    way to compose two `Frame`s.  Every socket in the
                    catalogue rides an unrotated bone, so today the two
                    are the same picture to the bit; the fix, when a
@@ -970,8 +1045,14 @@ src/
                    ([loft#914]).
   pose.loft        THE POSE COMES FROM THE SIMULATION (plan 20 A4) —
                    ROTOR_IDLE_TURNS_PER_S, rotor_turns_per_second /
-                   rotor_phase / canopy_turns / pose_hover_unit /
-                   pose_vehicle / emit_tower.
+                   rotor_phase / rotor_phase_at / canopy_turns /
+                   pose_hover_unit / pose_vehicle / pose_crew /
+                   emit_tower / emit_tower_base / emit_tower_top.
+                   ⚠ The tower's base and top are SEPARATE doors since
+                   plan 20 A5, because they are different COLOURS and
+                   the shader carries one uniform colour per draw
+                   (@X074) — `emit_tower` still composes them, so A4's
+                   gate reads the same tower it always did.
                    ⚠⚠ **Three claims, three owners, and none of them is
                    new state**: the tower's top is `tower_has_top`
                    (plan 17 T2), the canopy is `cargo_carrying` (plan

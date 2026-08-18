@@ -275,6 +275,32 @@ pub fn lat_direction_unit(d: integer) -> (float, float) {
     ((ldu_nm.0 - ldu_om.0) * ldu_inv, (ldu_nm.1 - ldu_om.1) * ldu_inv)
 }
 
+// The compass BEARING from `a` to `b`, in radians, and whether there
+// is one — `0` is due east and `+pi/2` due north, which is `atan2`'s
+// own convention read on a compass.
+//
+// ⚠⚠ **It answers a PAIR, and the second half is the whole reason it
+// is not a bare float.**  `a == b` has no direction at all, and
+// `atan2(0, 0)` answers `0.0` — due east — which is a perfectly
+// plausible bearing.  Plan 19 P2 spells *stop* as
+// `vehicle_drive(v, v.q, v.r)`, so a parked mover's destination IS its
+// position: a bare float would swing every parked vehicle and every
+// camera behind one to face east on each key release (`@X067`).
+//
+// ⚠ **The y NEGATION is what makes it a compass and not a screen
+// angle.**  `lat_to_metres` grows `+y` SOUTH (§ the compass note at the
+// top of this file), so north is `-dy`.  Get it wrong and every bearing
+// is mirrored about the east-west axis, which still tracks, still
+// eases, and still looks like a working heading.
+pub fn lat_bearing(a: const Hex, b: const Hex) -> (float, boolean) {
+    lb_from = lat_to_metres(a);
+    lb_to   = lat_to_metres(b);
+    lb_east  = lb_to.0 - lb_from.0;
+    lb_north = -(lb_to.1 - lb_from.1);
+    if lb_east == 0.0 && lb_north == 0.0 { return (0.0, false); }
+    (atan2(lb_north, lb_east), true)
+}
+
 // ─── Lines and discs ────────────────────────────────────────────
 
 // Every hex on the line from `a` to `b`, endpoints included.

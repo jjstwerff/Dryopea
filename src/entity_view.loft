@@ -1,0 +1,480 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// #examples
+//
+// THE ROSTER, AS TRIANGLES — plan 20 phase A5.
+//
+// A1 built the socket, A2 the geometry, A3 the catalogue and A4 the
+// poses the simulation implies.  Every one of them answers a question
+// about ONE part.  This file answers the other one: **which parts exist
+// right now, where do they stand, which way are they facing, and what
+// colour is each of them** — walked straight off a `WaveState` and a
+// `MarkerWorld`, with nothing stored.
+//
+// `ground_mesh.loft` is the same file for the GROUND, and the split is
+// the same: this half is pure and `loft test` can gate every number in
+// it, `entity_gl.loft` is the half that needs a context.
+//
+// ── ⚠⚠ NOTHING HERE IS STATE, AND THAT IS THE WHOLE INVARIANT ───
+//
+// **What is drawn is the simulation's roster.**  There is no list of
+// drawables to keep in step, no per-entity render record, no spawn or
+// despawn hook.  A robot appears in the frame because `ws.enemies` has
+// a live one and stops appearing because it does not — which is why
+// *"a thing not drawn reads as ZERO"* (`plans/20` § Invariant gate) is
+// an assertion this file can actually fail rather than a description of
+// how it happens to work today.
+//
+// ⚠ The consequence to protect: adding a field like `Enemy.drawn` or a
+// `vector<Drawable>` beside the roster is the defect, exactly as a
+// `Vehicle.canopy_open` flag is one layer up (`pose.loft` § the
+// header).  Two facts that can disagree about one thing.
+//
+// ── ⚠⚠ A CLASS IS A ROW OF DATA, AND THE ROW IS KEYED BY THE
+//        SIMULATION'S OWN ENUMERATION ────────────────────────────
+//
+// `PARTS.md` § D8: *"one robot part, and a class is a row of data (a
+// colour, a scale factor, at most one distinguishing limb)"*, which is
+// `CLAUDE.md`'s *"ONE AI, per-class DATA"* one layer up.  So the drawn
+// class of an enemy IS its `kind` — `passable.loft`'s mover
+// discriminants, unmapped — and the colour table below is indexed by
+// it.  ⚠ There is no art-side class enumeration to keep in step with
+// the simulation's, because there is no second enumeration.
+//
+// ⚠ The three rows that are not movers append AFTER the last one, for
+// `passable.loft`'s own reason: *"new variants APPEND — never reorder"*.
+// `KIND_VEHICLE` sitting in the middle at 2 is the scar that file
+// already names, inherited rather than repeated.
+//
+// ── ⚠⚠ THE COLOURS ARE OUTSIDE THE PALETTE ON PURPOSE ───────────
+//
+// `measure.loft`'s founding rule is that a pixel is an EXACT palette
+// colour or it is a FAULT, and `ground_gl.loft` keeps a GL frame inside
+// that rule by drawing flat and unlit (`@X074`).  An entity colour that
+// WAS a palette colour would be counted as ground: a robot standing on
+// grass would be indistinguishable from grass, and every share in every
+// band would absorb it silently.
+//
+// So an entity colour is deliberately none of the twelve, and the gate
+// reads it the way `gl_gate.loft` already reads the background — by
+// name, with `gl_count_colour`.  The claim the GL gate then makes is
+// exact and total: **every pixel is a palette colour, an entity colour,
+// or the clear colour, and nothing else.**  `entity_colours_distinct`
+// is what stops that being a wish.
+//
+// ⚠⚠ **AND IT MOVED ONE OF `PROXY_ART.md`'s NUMBERS.**  That document
+// gives the tower's top `#d04848` and says so out loud — *"same
+// placeholder red as the wall body"* — which is `palette_color(9)` to
+// the bit.  Under exact classification a tower top would have been
+// counted as WALL, in the one class of frame (a defended base) where
+// that reads as perfectly plausible.  ⚠ It is the third finding in this
+// plan of the same shape: a gate that looks like it is measuring the
+// interesting thing and is measuring something else.
+//
+// ── ⚠ What this file does NOT do ────────────────────────────────
+//
+// **No interpolation.**  An entity is drawn on its hex.  `@M035` has
+// already measured what that costs — a lattice mover jumps 96 px under
+// a following camera — and priced the fix at `play_alpha` plus a camera
+// that follows the DRAWN point, which is ONE decision and is not this
+// one.  ⚠ When it lands, the alpha arrives as an argument here; there
+// is nothing to restructure.
+//
+// **No window.**  A5 gives the entities a GATE, exactly as plan 25 M3
+// gave the ground one — `make play` still draws nothing.
+
+use lattice;
+use palette;
+use painted;
+use height;
+use passable;
+use render;
+use render_camera;
+use occupancy;
+use carry;
+use vehicle;
+use helper;
+use tower;
+use markers;
+use spawn;
+use part;
+use part_mesh;
+use catalogue;
+use pose;
+use mesh3d;
+
+// ─── The drawn classes ──────────────────────────────────────────
+//
+// ⚠ 0..6 are `passable.loft`'s mover kinds, reused rather than
+// re-enumerated — see the header.  Three rows append after them.
+
+// A crew member — the hover unit in a different livery (§ D8).
+pub const ENT_CREW:       integer = 7;
+// A tower's body, which is the part offering the socket.
+pub const ENT_TOWER_BASE: integer = 8;
+// A tower's top, which the simulation puts in that socket or does not.
+pub const ENT_TOWER_TOP:  integer = 9;
+
+// How many drawn classes there are.  ⚠ One `GroupVboSet` and one draw
+// call each (`entity_gl.loft`), so this is a cost as well as a count.
+pub const ENT_CLASSES:    integer = 10;
+
+// ⚠ `KIND_VEHICLE` (2) is the PLAYER's row and there is no `ENT_PLAYER`
+// beside it — a second name for one number is a second thing that can
+// be wrong.
+
+// The class's name, for a message a failing gate can read.
+//
+// ⚠ It delegates to `enemy_class_name` for every mover row, so a class
+// renamed in the simulation is renamed here and cannot drift.
+//
+// Example: @DRY-050
+pub fn entity_class_name(cls: integer) -> text {
+    if cls == ENT_CREW       { return "crew"; }
+    if cls == ENT_TOWER_BASE { return "tower_base"; }
+    if cls == ENT_TOWER_TOP  { return "tower_top"; }
+    if cls < 0 || cls >= ENT_CLASSES { return "class {cls}"; }
+    enemy_class_name(cls as u8? ?? 0)
+}
+
+// ─── The colours ────────────────────────────────────────────────
+
+// What one drawn class is painted in, as `0xRRGGBB`.
+//
+// ⚠ **`PROXY_ART.md`'s own numbers wherever it authored one** — the
+// near-white player, the silver crew, the magenta-purple robot, the
+// near-black tower body.  Only the tower's TOP moved, and the header
+// says why: the number that document gives it is the wall's, exactly.
+//
+// ⚠ The four small robots get four colours because `PARTS.md` § D8 says
+// a class is *a colour, a scale factor, at most one distinguishing
+// limb* — one shared colour would make the first of those unbuilt, and
+// the next reader would reach for a second part-tree.
+//
+// ⚠ **`insect` and the four small robots are art-only today** in the
+// sense that the schedule still emits only regulars (`spawn.loft`
+// § the SCHEDULE still emits only regulars).  They are here because a
+// `.keys` file can `place` one, which is what makes the row testable.
+//
+// Example: @DRY-047, @DRY-048
+pub fn entity_colour(cls: integer) -> integer {
+    if cls == ENEMY_KIND_REGULAR   { return rgb(0xa0, 0x40, 0xc0); }  // magenta-purple
+    if cls == ENEMY_KIND_INSECT    { return rgb(0x40, 0xe0, 0xa0); }  // mint
+    if cls == KIND_VEHICLE         { return rgb(0xff, 0xff, 0xc0); }  // cream white — the player
+    if cls == ENEMY_KIND_SCOUT     { return rgb(0xff, 0x80, 0x00); }  // orange
+    if cls == ENEMY_KIND_HARVESTER { return rgb(0x00, 0xd0, 0xd0); }  // cyan
+    if cls == ENEMY_KIND_BUILDER   { return rgb(0xc0, 0xa0, 0x00); }  // mustard
+    if cls == ENEMY_KIND_MINER     { return rgb(0x50, 0x30, 0xa0); }  // indigo
+    if cls == ENT_CREW             { return rgb(0xa8, 0xa8, 0x78); }  // dimmed cream
+    if cls == ENT_TOWER_BASE       { return rgb(0x1a, 0x1a, 0x1a); }  // near-black
+    if cls == ENT_TOWER_TOP        { return rgb(0xff, 0x30, 0x60); }  // rose
+    rgb(0xff, 0x00, 0xff)                                             // unknown -> magenta
+}
+
+// The same colour as the three 0..1 floats the shader's uniform takes.
+//
+// ⚠ **The exactness of the whole gate chain passes through here**, for
+// `ground_gl_colour`'s reason: GL converts a float channel back to 8
+// bits by `round(f * 255)`, so `channel / 255.0` round-trips to the
+// same byte.  `tests/20_a5_the_frame.loft` asserts it for every class
+// rather than trusting the sentence.
+//
+// Example: @DRY-049
+pub fn entity_colour_rgb(cls: integer) -> (float, float, float) {
+    ecr = entity_colour(cls);
+    (
+        ((((ecr >> 16) & 255) as float) / 255.0) ?? 0.0,
+        ((((ecr >> 8)  & 255) as float) / 255.0) ?? 0.0,
+        (((ecr         & 255) as float) / 255.0) ?? 0.0,
+    )
+}
+
+// Is every entity colour distinct from every other, from every palette
+// colour, and from the clear colour?
+//
+// ⚠⚠ **THE INSTRUMENT COMES FIRST.**  A collision here is not a
+// cosmetic clash: two classes sharing a colour collapse into one count
+// and the gate goes on reporting a number, and an entity sharing a
+// PALETTE colour is absorbed into a ground bucket whose band is tens of
+// thousands of pixels wide.  Both read as *slightly off shares* — which
+// is `PARTS.md` § D3's own description of the failure a frame gate
+// cannot see.  It is cheap, so it is checked rather than assumed —
+// `measure.loft::palette_colors_distinct` is the same guard one layer
+// out, and it is what caught `PROXY_ART.md`'s tower-top red.
+//
+// Example: @DRY-047
+pub fn entity_colours_distinct(buckets: integer, clear: integer) -> boolean {
+    for ecd_i in 0..ENT_CLASSES {
+        ecd_a = entity_colour(ecd_i) & 0xffffff;
+        if ecd_a == (clear & 0xffffff) { return false; }
+        for ecd_j in 0..ENT_CLASSES {
+            if ecd_i < ecd_j && ecd_a == (entity_colour(ecd_j) & 0xffffff) { return false; }
+        }
+        for ecd_k in 0..buckets {
+            if ecd_a == (palette_color(ecd_k as u8? ?? 0) & 0xffffff) { return false; }
+        }
+    }
+    true
+}
+
+// Smallest squared RGB distance between any two colours a frame can
+// hold — entity against entity, and entity against palette.
+//
+// ⚠ Nothing here needs it; classification is exact.  It is
+// `palette_min_distance2`'s sibling and exists for the same reason: two
+// colours a PLAYER cannot tell apart are a design fault, and this is
+// the number that makes one visible before a scenario trips over it.
+// ⚠ Today's minimum is the crew against `rock`, which is
+// `PROXY_ART.md`'s deliberate *"grey version of the player white"*
+// meeting a grey the palette already had.
+//
+// Example: @DRY-047
+pub fn entity_min_distance2(buckets: integer) -> integer {
+    emd_best = -1;
+    for emd_i in 0..ENT_CLASSES {
+        emd_a = entity_colour(emd_i) & 0xffffff;
+        for emd_j in 0..ENT_CLASSES {
+            if emd_i < emd_j {
+                emd_d = entity_colour_distance2(emd_a, entity_colour(emd_j) & 0xffffff);
+                if emd_best < 0 || emd_d < emd_best { emd_best = emd_d; }
+            }
+        }
+        for emd_k in 0..buckets {
+            emd_p = entity_colour_distance2(emd_a, palette_color(emd_k as u8? ?? 0) & 0xffffff);
+            if emd_best < 0 || emd_p < emd_best { emd_best = emd_p; }
+        }
+    }
+    emd_best
+}
+
+fn entity_colour_distance2(a: integer, b: integer) -> integer {
+    ecd_r = ((a >> 16) & 255) - ((b >> 16) & 255);
+    ecd_g = ((a >> 8)  & 255) - ((b >> 8)  & 255);
+    ecd_b = (a         & 255) - (b         & 255);
+    ecd_r * ecd_r + ecd_g * ecd_g + ecd_b * ecd_b
+}
+
+// ─── Which way a thing is facing ────────────────────────────────
+
+// The yaw, in TURNS, that points a part's `+y` along a compass BEARING
+// in radians.
+//
+// ⚠⚠ **A PART FACES NORTH AT YAW ZERO, AND A BEARING OF ZERO IS
+// EAST** — so the conversion is a quarter turn and not a scale.
+// `catalogue.loft`'s frame is *"`+y` forward, `+x` starboard"* and
+// `lat_to_world`'s world is `+y` NORTH, while `lat_bearing` answers
+// `atan2`'s own convention where `0` is east.  Drop the quarter turn
+// and every entity in the game is drawn 90 degrees off its heading —
+// which still tracks, still turns the right way, and looks like a
+// working renderer with the art authored sideways.
+//
+// ⚠ The sign of the quarter turn is the other half: `+yaw` turns
+// `+y` towards `-x`, so reaching east from north SUBTRACTS.
+// `tests/20_a5` asserts it as a COORDINATE — where the nose lands —
+// which is A2's canopy gate applied to the other rotation.
+//
+// Example: @DRY-057, @DRY-058
+pub fn facing_turns(bearing: float) -> float {
+    ft = (bearing / PART_TAU) ?? 0.0;
+    ft - 0.25
+}
+
+// Which way a mover standing at `here` and heading for `to` is drawn
+// facing, in turns — and the fallback when it is not going anywhere.
+//
+// ⚠ **A parked mover keeps NORTH rather than swinging east**, which is
+// the pair `lat_bearing` answers being used rather than discarded: a
+// bare `atan2(0, 0)` is `0.0`, which is a perfectly plausible bearing
+// and would spin every idle vehicle in the base to face east.
+//
+// Example: @DRY-057
+pub fn entity_yaw(here: const Hex, to: const Hex) -> float {
+    ey = lat_bearing(here, to);
+    if !ey.1 { return 0.0; }
+    facing_turns(ey.0)
+}
+
+// Which way an enemy carrying a hex DIRECTION is drawn facing.
+//
+// ⚠ It steps through `lat_neighbour`, which is the repo's one rule
+// about coordinates — the physical direction is uniform across the
+// lattice but the LABEL step is parity-dependent, so a hand-written
+// delta is right on even rows and sheared on odd ones.
+//
+// Example: @DRY-056
+pub fn entity_yaw_heading(here: const Hex, d: integer) -> float {
+    entity_yaw(here, lat_neighbour(here, d))
+}
+
+// ─── How high a thing floats ────────────────────────────────────
+
+// How far above the ground the player's hover unit is drawn.
+//
+// ⚠⚠ **IT IS THE CLIMB, AND THAT IS NOT A COINCIDENCE.**
+// `PROXY_ART.md` gives the vehicle *"~0.4 m hover clearance"* and
+// `vehicle.loft` gives it `VEHICLE_CLIMB_METRES = 0.4` — the same
+// number twice, because the reason a hover unit can cross a 0.4 m step
+// is that it floats 0.4 m off the ground.  Reading `vehicle_climb`
+// rather than restating the constant means there is no second number to
+// disagree, and it makes BOOST visible for free: a boosting vehicle
+// climbs 3.0 m, so it is DRAWN 3.0 m up, clearing the wall it is about
+// to clear.  That is `DESIGN.md` § HUD's *diegetic* rule getting
+// something for nothing, exactly as the rotors do (`@X091`).
+//
+// Example: @DRY-060
+pub fn entity_hover_metres(v: const Vehicle) -> float {
+    vehicle_climb(v)
+}
+
+// ─── One entity at a time ───────────────────────────────────────
+
+// One hover unit — the player's or a crew member's — standing at
+// `(q, r)`, heading for `(tq, tr)`, floating `hover` metres up, with
+// the cargo ledger deciding its canopy.
+//
+// ⚠⚠ **ONE FUNCTION AND TWO DOORS, WHICH IS § D8'S CLAIM MADE
+// STRUCTURAL.**  `DESIGN.md` § 9 opens the crew with *"same chassis as
+// the player"*, `vehicle.loft::salvage_at` is already one
+// implementation with two doors, and this is the same shape in the art:
+// a helper that needed its own emitter would mean the chassis claim had
+// broken, and `tests/20_a5` asserts the two emit the same triangle
+// count.
+//
+// Example: @DRY-052, @DRY-060
+fn entity_emit_hover(m: Mesh, p: Part, ws: const WaveState,
+                     here: const Hex, to: const Hex,
+                     ground: float, owner: integer, units: integer) -> integer {
+    // ⚠⚠ **THE OWNER ID DECIDES ALL THREE**, and that is why it is one
+    // parameter and not four.  `occupancy.loft`'s blocker ids are what
+    // `CargoLayer` is keyed on, so the same integer that says whose
+    // canopy this is also says whether it is the player — and the
+    // player is the only hover unit with a BOOST to derive a clearance
+    // and a rotor rate from.  Pass the clearance in beside it and there
+    // are two facts that can disagree about which unit this is.
+    eeh_hover = VEHICLE_CLIMB_METRES;
+    eeh_rate  = ROTOR_IDLE_TURNS_PER_S;
+    if owner == BLOCKER_PLAYER {
+        eeh_hover = entity_hover_metres(ws.player);
+        eeh_rate  = rotor_turns_per_second(ws.player);
+    }
+    eeh_at = lat_to_world(here, ground + eeh_hover);
+    eeh_v  = pose_hover_unit(p, canopy_turns(p, cargo_carrying(ws.cargo, owner)),
+                             rotor_phase_at(eeh_rate, units));
+    part_emit_facing(m, p, eeh_v, entity_yaw(here, to),
+                     eeh_at.x, eeh_at.y, eeh_at.z)
+}
+
+// ─── The whole roster, one class at a time ──────────────────────
+
+// Emit every entity of drawn class `cls` into `m`.  Answers the
+// triangles added.
+//
+// ⚠ **One class per call, which is `ground_chunk_mesh`'s shape and for
+// the same reason**: the shader carries one uniform colour per draw
+// (`@X074`), so a colour is a mesh.  ⚠ The cost is one sweep of the
+// roster per class rather than one in total, which is ten sweeps of a
+// vector the tick already walks several times — measured against
+// nothing, because the alternative (one pass filling ten meshes) needs
+// a `vector<Mesh>` and loft truncates a `vector<Struct>` through two
+// library calls ([loft#969]).
+//
+// Example: @DRY-050, @DRY-051, @DRY-053, @DRY-061
+pub fn entity_bake(m: Mesh, ps: PartSet, pal: vector<GroundType>, pw: PaintedWorld,
+                   mw: const MarkerWorld, ws: const WaveState,
+                   units: integer, cls: integer) -> integer {
+    if cls == KIND_VEHICLE  { return entity_bake_player(m, ps, pal, pw, ws, units); }
+    if cls == ENT_CREW      { return entity_bake_crew(m, ps, pal, pw, ws, units); }
+    if cls == ENT_TOWER_BASE || cls == ENT_TOWER_TOP {
+        return entity_bake_towers(m, ps, pal, pw, mw, ws, cls);
+    }
+    if cls < 0 || cls >= ENT_CREW { return 0; }
+    entity_bake_enemies(m, ps, pal, pw, ws, cls)
+}
+
+// The player, if there is one on the map.
+//
+// ⚠ `vehicle_present` is the door — a vehicle that has not landed is
+// `null` at its hex, and drawing one at `(0, 0)` is a hover unit
+// standing wherever the origin happens to be.
+fn entity_bake_player(m: Mesh, ps: PartSet, pal: vector<GroundType>, pw: PaintedWorld,
+                      ws: const WaveState, units: integer) -> integer {
+    if !vehicle_present(ws.player) { return 0; }
+    ebp_p = ps.ps_parts["hover_unit"]?;
+    entity_emit_hover(m, ebp_p, ws,
+                      Hex { q: ws.player.q, r: ws.player.r },
+                      Hex { q: ws.player.to_q, r: ws.player.to_r },
+                      hex_height(pal, pw, ws.heights, ws.player.q, ws.player.r),
+                      BLOCKER_PLAYER, units)
+}
+
+// Every crew member still flying.
+//
+// ⚠ A WRECKED helper is not drawn, and that is the simulation's own
+// distinction rather than a rendering rule: `helper_wrecked` is what a
+// player has to go and fetch, and `helper.loft` § the wreck already
+// puts a CARRYABLE where it fell.  Drawing a flying helper over its own
+// wreck would be two pictures of one fact.
+fn entity_bake_crew(m: Mesh, ps: PartSet, pal: vector<GroundType>, pw: PaintedWorld,
+                    ws: const WaveState, units: integer) -> integer {
+    ebc_p = ps.ps_parts["hover_unit"]?;
+    ebc_n = 0;
+    ebc_i = 0;
+    for ebc_h in ws.crew {
+        if ebc_h.alive {
+            ebc_n += entity_emit_hover(m, ebc_p, ws,
+                                       Hex { q: ebc_h.q, r: ebc_h.r },
+                                       Hex { q: ebc_h.to_q, r: ebc_h.to_r },
+                                       hex_height(pal, pw, ws.heights, ebc_h.q, ebc_h.r),
+                                       BLOCKER_CREW + ebc_i, units);
+        }
+        ebc_i += 1;
+    }
+    ebc_n
+}
+
+// Every live enemy of one class.
+//
+// ⚠ **A dead enemy is not drawn and its BODY is not this file's**: a
+// corpse is metres of rubble in `height.loft`, which the GROUND mesh
+// already draws as a pile (`ENEMY_MOVEMENT.md` § Bodies are terrain).
+// Emitting a robot for a dead one would draw the body twice, in two
+// layers, out of step.
+fn entity_bake_enemies(m: Mesh, ps: PartSet, pal: vector<GroundType>, pw: PaintedWorld,
+                       ws: const WaveState, cls: integer) -> integer {
+    ebe_p = ps.ps_parts["robot"]?;
+    ebe_n = 0;
+    for ebe_e in ws.enemies {
+        if !ebe_e.alive { continue; }
+        if (ebe_e.kind as integer) != cls { continue; }
+        ebe_h  = Hex { q: ebe_e.q, r: ebe_e.r };
+        ebe_at = lat_to_world(ebe_h, hex_height(pal, pw, ws.heights, ebe_e.q, ebe_e.r));
+        ebe_n += part_emit_facing(m, ebe_p, part_values_rest(ebe_p),
+                                  entity_yaw_heading(ebe_h, ebe_e.heading as integer),
+                                  ebe_at.x, ebe_at.y, ebe_at.z);
+    }
+    ebe_n
+}
+
+// Every tower, base or top.
+//
+// ⚠ **The towers come from the MARKER layer and their tops from the
+// SIMULATION**, which is two questions with two owners — `markers.loft`
+// says a tower is here, `tower_has_top` says whether it still has its
+// top (plan 17 T2).  A renderer that kept its own list of towers would
+// be a third.
+fn entity_bake_towers(m: Mesh, ps: PartSet, pal: vector<GroundType>, pw: PaintedWorld,
+                      mw: const MarkerWorld, ws: const WaveState, cls: integer) -> integer {
+    ebt_n = 0;
+    for ebt_e in mw.markers {
+        if ebt_e.kind != MARKER_KIND_TOWER as u8 { continue; }
+        ebt_at = lat_to_world(Hex { q: ebt_e.q, r: ebt_e.r },
+                              hex_height(pal, pw, ws.heights, ebt_e.q, ebt_e.r));
+        if cls == ENT_TOWER_BASE {
+            ebt_n += emit_tower_base(m, ps, ebt_at.x, ebt_at.y, ebt_at.z);
+        } else {
+            ebt_n += emit_tower_top(m, ps, ws.towers, ebt_e.q, ebt_e.r,
+                                    ebt_at.x, ebt_at.y, ebt_at.z);
+        }
+    }
+    ebt_n
+}

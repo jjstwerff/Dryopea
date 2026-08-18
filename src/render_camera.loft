@@ -335,13 +335,15 @@ pub fn camera_overview(ground_pos: const Vec3, cam: RenderCamera) {
 // is the zero vector — `atan2(0, 0)` would answer 0.0 and swing the
 // camera to face east every time the player lets go of the key.
 // Callers keep the azimuth they had.
+// ⚠ **The arithmetic is `lattice.loft::lat_bearing`'s** since plan 20
+// A5, and delegating rather than keeping the four lines is the repo's
+// own rule: an entity is DRAWN facing the way it is going, so the
+// renderer needs the same relation for a helper and for a robot's
+// heading.  A second copy of `atan2(north, east)` is a second place the
+// y negation can be got wrong, and the mirrored version tracks and
+// eases and looks like a working heading.
 pub fn vehicle_facing(v: const Vehicle) -> (float, boolean) {
-    vf_here = lat_to_metres(Hex { q: v.q, r: v.r });
-    vf_to   = lat_to_metres(Hex { q: v.to_q, r: v.to_r });
-    vf_east  = vf_to.0 - vf_here.0;
-    vf_north = -(vf_to.1 - vf_here.1);
-    if vf_east == 0.0 && vf_north == 0.0 { return (0.0, false); }
-    (atan2(vf_north, vf_east), true)
+    lat_bearing(Hex { q: v.q, r: v.r }, Hex { q: v.to_q, r: v.to_r })
 }
 
 // Point the camera at the vehicle: always re-target, re-orbit only

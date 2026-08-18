@@ -35,6 +35,45 @@ final art lives.
   default proxy body colour; rotate to a different
   off-palette hue per entity class if more proxies are needed.
 
+## ⚠⚠ The colours were MEASURED against the palette in 2026-08-18, and three moved
+
+Plan 20 A5 gave the entities a colour table for real (`src/entity_view.loft`),
+and the first thing written was the instrument: is every entity colour distinct
+from every other, from all twelve palette colours and from the GL gate's clear
+colour?  ⚠ It is not a cosmetic question.  `measure.loft`'s founding rule is
+that a pixel is an EXACT palette colour or a FAULT, so an entity sharing a
+palette colour is absorbed into a ground bucket tens of thousands of pixels
+wide, and two classes sharing a colour collapse into one count that goes on
+reporting a number.  Both read as *shares slightly off*.
+
+| what | this document said | what happened | why |
+|---|---|---|---|
+| tower top | `#d04848` | moved to `#ff3060` | ⚠⚠ It is `palette_color(9)` — the WALL — **to the bit**, and this document says so out loud (*"same placeholder red as the wall body"*).  A tower's top would have been counted as wall, on a defended base, where that reads as entirely plausible |
+| player body | `#f0f0f0` | moved to `#ffffc0` | **224** squared-RGB from `waterfall` `#e8f4fc` — a distance of 15, which is *the same colour* on a screen |
+| helper body | `#c0c0c0` | moved to `#a8a878` | **768** from `rock` `#b0b0b0` — a distance of 28 |
+
+⚠⚠ **This document's own CRITERION is what the last two failed, not its
+taste.**  § Conventions asks for *"a hue that does NOT appear in the 11 ground
+types"* and § Player picks its grey explicitly *"distinct from terrain greys
+(rock `#b0b0b0`, steep_rock `#555555`)"*.  `waterfall` is simply a kind it never
+checked, and a top-down 2-D proxy over a base map rarely met one.  **The rule
+beat the number**, and the intent survives: the player is still the palest thing
+in the frame and the crew is still a dimmer version of it.
+
+⚠ The floor is now **3264** (crew against `rock`, a distance of 57), pinned by
+`tests/20_a5_the_frame.loft::test_no_two_things_in_a_frame_share_a_colour`, so a
+future colour that a player could not tell from the ground fails by name.
+`entity_min_distance2` is the number, and it is `measure.loft::palette_min_distance2`'s
+sibling.  `@M040`.
+
+⚠ **The BLACK FRONT FACE retires with the sprites.**  § Conventions signals
+facing by *"a black front face on an otherwise plain body"*, which needs a
+per-face colour — and `ground_gl.loft` draws a part in ONE flat unlit colour,
+which is what keeps a frame exactly classifiable (`@X074`).  Under a part-tree
+the facing is in the SHAPE instead: the hover unit's rear rotors are 44% larger
+and its canopy sits forward, and `tests/20_a5` asserts the asymmetry is what
+tells east from west.
+
 ## Active proxies
 
 ### Wall outline — pre-construction marker

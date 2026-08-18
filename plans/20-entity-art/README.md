@@ -9,12 +9,104 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**A1-A4 SHIPPED 2026-08-18; A5 is next and is no longer blocked** — [plan 21](../21-the-renderer/README.md)
-is complete at R2 and [plan 25](../25-the-terrain-mesh/README.md) shipped the
-GL path, so the renderer A5 waited for exists.
+**COMPLETE — A1-A5 all SHIPPED 2026-08-18.**  Every entity the game runs is a
+part-tree, and the roster is DRAWN: `scripts/validate_gl.sh` photographs a base
+with a player, a crew member, four robots of three classes and two towers
+standing in it, and asserts that **every pixel of that frame is a palette
+colour, an entity colour or the clear colour, and nothing else**.
 ⚠ **Re-scoped on 2026-08-15**, before any code: the first design baked sprites
 at a fixed projection, and the project owner's answer — *the dynamic camera of
 moros, and exploration as a pillar* — replaced that with geometry.
+
+### A5 — the roster in the frame, and a defect four phases of gates could not see (2026-08-18)
+
+`src/entity_view.loft` (the roster as triangles) + `src/entity_gl.loft` (the
+roster drawn) + `tests/20_a5_the_frame.loft`, **18 tests**, plus
+`tests/gl/a-defended-base.keys` and a case in `src/gl_gate.loft`.  Gates:
+`scripts/test.sh` **1392 green** (99 files), `scripts/validate.sh` **33 scripts
+/ 654 measurements green and UNMOVED**, `scripts/validate_gl.sh` **3 fixtures /
+52 measurements** (from 2 / 26).
+
+⚠⚠ **HALF OF EVERY BOX IN THE CATALOGUE WAS WOUND INWARDS** (`@D005`, `@M040`).
+`emit_box` picked *two in-plane axes, right-handed about the outward one* and
+used **the same pair for a face and its opposite** — `y x z` is `+x` for the
+`+x` face AND for the `-x` face — so the three negative faces of every box wound
+the wrong way: **72 of 144** triangles on the hover unit.  Under the
+`GL_CULL_FACE` `ground_gl.loft` turns on for the whole frame those triangles
+draw **nothing**.  ⚠⚠ It changed **no count, no vertex, no normal and no
+`mesh_crc`** — the quad's four corners are the same rectangle walked the other
+way, so even a fold over the triangle INDICES agrees — and A2, A3 and A4 shipped
+**42 tests** over it.  ⚠ The obvious fix does not work and looks as if it does:
+scaling `u` by the outward SIGN leaves `u * us` unchanged, because `us` is
+derived from `u`.  The pair has to be SWAPPED.  ⚠ The gate was written BEFORE
+the GL wiring, which is `ground_mesh.loft`'s own habit (M0 and M1 gate winding
+as DATA three phases before a pixel exists) applied to the parts.
+
+⚠⚠ **AN ENTITY COLOUR IS OUTSIDE THE PALETTE, AND THAT MAKES THE GL GATE'S
+CLAIM TOTAL** (`@X092`).  `measure.loft`'s founding rule is that a pixel is an
+exact palette colour or a FAULT; an entity painted in a palette colour would be
+counted as GROUND and absorbed into a band tens of thousands of pixels wide.  So
+the ten drawn classes take ten colours that are none of the twelve, they land in
+`classify_canvas`'s `unknown` exactly as the background does, and the gate sums
+them **by name** — `unknown - entity pixels == 0` over a frame-filling world.
+⚠ The entity draw is wired into **all three** GL fixtures, so `the-ground`'s and
+`an-island`'s existing `other == 0` now also assert *nothing was drawn for a
+base with no roster*.
+
+⚠⚠ **AND IT MOVED THREE OF `PROXY_ART.md`'s NUMBERS, EACH FOR ITS OWN REASON**
+(`@M040`).  The tower's top is `#d04848` there and the document says so —
+*"same placeholder red as the wall body"* — which is `palette_color(9)` to the
+bit, so a tower top would have been counted as WALL on a defended base, where
+that reads as entirely plausible.  ⚠ The other two came from a number nobody had
+computed: distinctness is exact and says nothing about whether a PLAYER can tell
+two things apart, so `entity_min_distance2` was written as
+`palette_min_distance2`'s sibling — and the document's own two greys were the
+two worst pairs in the frame, **player `#f0f0f0` vs `waterfall` `#e8f4fc` at
+224** and **crew `#c0c0c0` vs `rock` `#b0b0b0` at 768**, RGB distances of 15 and
+28.  ⚠ `PROXY_ART.md` picks its greys explicitly *"distinct from terrain
+greys"*, so its own CRITERION is what the numbers fail and `waterfall` is simply
+a kind it never checked: **the rule beat the number**, and the floor is now
+**3264**.
+
+⚠⚠ **NOTHING HERE IS STATE, AND THAT IS THE INVARIANT.**  There is no drawable
+list, no per-entity render record, no spawn or despawn hook: `entity_bake` walks
+`ws.enemies`, `ws.crew`, `ws.player` and the tower MARKERS every frame.  That is
+what makes *"a thing not drawn reads as ZERO"* (§ Invariant gate) an assertion
+the phase can fail — `test_an_empty_base_draws_nothing` sweeps all ten classes,
+and the GL case asserts insects, harvesters and builders at exactly 0 in a frame
+that draws the other seven.
+
+⚠ **A drawn class IS the simulation's mover kind** (`@X093`) — `entity_colour`
+is indexed by `passable.loft`'s discriminants, unmapped, `KIND_VEHICLE` scar and
+all, with crew / tower base / tower top appended after the last one.  So a new
+robot class costs a colour and there is no art-side enumeration to drift.
+
+⚠ **A hover unit is drawn at the height it can CLIMB** (`@X094`) —
+`vehicle_climb`, not a restated 0.4, so a boosting vehicle is drawn 3.0 m up,
+clearing the wall it is about to clear.  That is the second diegetic readout
+this plan got for nothing, and unlike the rotors it survives a flat unlit colour
+because it moves the silhouette rather than turning it (`@M039`).
+
+⚠ **A yaw was the missing verb, and its gate is the one joint that cannot
+commute with it.**  `part_emit_at` translated and turned nothing (A2 said so),
+so A5 added `part_emit_facing` over a `frame_place` that rotates the basis as
+well as the origin.  ⚠⚠ At REST every bone's basis is the identity, so rotating
+the origin ALONE draws the whole catalogue correctly — the test therefore turns
+a vehicle with its **canopy open**, whose hinge axis is LATERAL, and carries its
+own control that the open and shut poses differ at all.
+
+⚠ `vehicle_facing` now delegates to a new `lattice.loft::lat_bearing`, because
+the renderer needs the same relation for a helper's destination and a robot's
+heading — a second copy of `atan2(north, east)` is a second place the y negation
+can be got wrong, and the mirrored version tracks and eases and looks like a
+working heading.
+
+⚠ **What A5 did NOT do**: `make play` still draws nothing.  This is plan 25 M3's
+shape — *the ground got a gate, not a window* — and wiring the GL path into the
+live loop is the next piece of work rather than the last of this one.  ⚠ Nor is
+there any interpolation: an entity is drawn on its hex, and `@M035` has already
+priced the fix (`play_alpha` **and** a camera following the drawn point, which
+is ONE decision).
 
 ### A4 — the pose comes from the SIMULATION, and two gates that could not fail (2026-08-18)
 
@@ -403,7 +495,7 @@ worth saying because silence reads as "gate done".
 | **A2** — the geometry emitter | MH | `tests/20_a2_the_geometry.loft` — a part poses its joints and emits triangles in world space.  ⚠ Gated on NUMBERS, not pixels: a hinge at 0.25 turns puts the canopy's far edge where trigonometry says, a box emits 12 triangles, a disc emits its fan, and every vertex is inside the declared extent | **SHIPPED** 2026-08-18 |
 | **A3** — the catalogue | M | `tests/20_a3_the_catalogue.loft` — **11 tests**; the hover unit, the robot, the tower base + top, and the helper which is the hover unit rather than a fifth entry.  ⚠ Its real gate is the footprint, and the footprint is DERIVED from the limb table so the check is not a tautology | **SHIPPED** 2026-08-18 |
 | **A4** — poses come from the SIMULATION | S | `tests/20_a4_the_joints.loft` — **13 tests**; a tower with no top emits no top triangles, the canopy follows the CARGO ledger, and the rotors' rate is `vehicle_speed`'s own ratio.  ⚠ Asked of `TowerState` / `Vehicle` / `CargoLayer`, never a second flag.  ⚠⚠ It found `socket_world` blind six metres up and a disc that cannot show it is turning (`@M039`) | **SHIPPED** 2026-08-18 |
-| **A5** — entities in the frame (was plan 19 P4) | M | `tests/20_a5_the_frame.loft` — `classify_world` shares for enemies, vehicle and crew; a `.keys` scenario with `snap` | ⚠⚠ **UNBLOCKED 2026-08-18** — [plan 21](../21-the-renderer/README.md) is COMPLETE at R2 (the camera) and [plan 25](../25-the-terrain-mesh/README.md) shipped R3-R5 (the mesh, the GL path, its cost), so what A5 needs now exists: `ground_gl.loft`'s flat-unlit shader and `gl_gate.loft`'s third gate.  ⚠ It is the LAST phase of this plan |
+| **A5** — entities in the frame (was plan 19 P4) | M | `tests/20_a5_the_frame.loft` — **18 tests**, `src/entity_view.loft` + `src/entity_gl.loft`, and a THIRD GL fixture (`tests/gl/a-defended-base.keys`).  ⚠⚠ The gate moved from `classify_world` SHARES to the GL gate's exact claim: `unknown - entity pixels == 0`, so every pixel of a base with a roster in it is a palette colour, an entity colour or the clear colour.  ⚠ It found `@D005` — half of every box wound inwards, invisible to counts, vertices, normals and `mesh_crc` alike | **SHIPPED** 2026-08-18 |
 
 ### Why the order is this order
 

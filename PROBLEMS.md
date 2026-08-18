@@ -294,6 +294,43 @@ Severity tiers:
   releases the button first, and holding it across another action is
   the whole gesture.
 
+### @D005 — half of every box in the catalogue was wound INWARDS
+
+- **Status:** **FIXED** 2026-08-18, plan 20 A5 — `part_mesh.loft::emit_box`
+  now picks a distinct in-plane pair per face, swapped for the three
+  negative faces, so `u x v` is the OUTWARD axis on all six.
+- **Severity:** was High — under the `GL_CULL_FACE` that
+  `ground_gl.loft` turns on for the whole frame, those triangles draw
+  **nothing**, so every entity in the game would have been drawn with
+  half of every box missing.  Shipped in A2 and survived A3 and A4.
+- **Found while:** plan 20 A5, writing the winding gate BEFORE wiring
+  the entities into GL — `ground_mesh.loft` gates the ground's winding
+  as DATA three phases before a pixel exists, and this is that habit
+  applied to the parts.
+- **Repro:** emit any catalogue part and cross-product each triangle's
+  `(b - a) x (c - a)` against its stored normal.  **72 of 144** on the
+  hover unit came back negative.
+- **Expected:** every triangle winds counter-clockwise seen from
+  outside, which is what `emit_quad`'s own comment claims.
+- **Observed:** `emit_box` chose *two in-plane axes, right-handed about
+  the outward one* — and used the **same pair for a face and its
+  opposite**.  `y x z` is `+x`, which is right for the `+x` face and
+  backwards for the `-x` one; likewise `z x x` for `±y` and `x x y` for
+  `±z`.
+- **⚠⚠ Why it is worth a number of its own:** it changed **no count, no
+  vertex position, no normal, and no `mesh_crc`** — the quad's four
+  corners are the same rectangle walked the other way, so even a fold
+  over the triangle INDICES agrees.  Forty-two tests across three
+  phases passed over it.  ⚠ And the obvious fix does not work and looks
+  as if it does: scaling `u` by the outward SIGN leaves `u * us`
+  unchanged, because `us` is derived from `u`.  The pair has to be
+  SWAPPED.
+- **Test:** [`tests/20_a5_the_frame.loft`](tests/20_a5_the_frame.loft)
+  `test_every_triangle_winds_with_its_normal` — swept over every
+  `catalogue_names()` entry, emitted TURNED and off the origin so a
+  placement that mirrored a part would be caught too.  It goes RED
+  against the pre-fix emitter naming 72 of 144.
+
 ## See also
 
 - [`QUESTIONS_FOR_LOFT.md`](QUESTIONS_FOR_LOFT.md) — problems

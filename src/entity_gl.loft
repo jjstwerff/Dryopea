@@ -1,0 +1,205 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// The entities, DRAWN — plan 20 phase A5.
+//
+// `entity_view.loft` turns a `WaveState` into triangles; this is the
+// half that puts them on a screen.  It is `ground_gl.loft` for the
+// roster, and deliberately the same shape: one `GroupVboSet` per drawn
+// class, the class's colour as a uniform, culling and depth turned on
+// here rather than left to the caller.
+//
+// ── ⚠⚠ ONE SHADER, COMPILED TWICE, AND NEVER A SECOND SOURCE ────
+//
+// This file uses `ground_gl.loft`'s `GROUND_GL_VERT` / `GROUND_GL_FRAG`
+// verbatim.  Flat unlit is a GATE requirement rather than a placeholder
+// (`@X074`): the fragment stage writes ONE uniform colour and reads
+// nothing, which is what keeps `classify_canvas`'s exact palette lookup
+// meaningful over a GL frame — and an entity shader that grew a light
+// would turn one colour into a range and make `unknown` stop meaning
+// *fault* for the whole picture, not just for the entities.
+//
+// ⚠ Two PROGRAMS from one SOURCE is the compromise, and it is the cheap
+// side: sharing the program object would make `EntityGl` borrow
+// something it must not delete, which is an ownership rule a future
+// reader has to know.  Sharing the TEXT costs one program object and
+// there is nothing to know.
+//
+// ── ⚠⚠ THE UPLOAD IS EVERY CLASS, EVERY FRAME ──────────────────
+//
+// `ground_gl.loft` re-uploads only the tiles an edit touched, because
+// the ground changes on a paint stroke and a tile is 4 000 hexes'
+// worth (`@M028`).  ⚠ The roster is the opposite: every enemy moves on
+// every tick and the player moves between ticks, so there is no clean
+// subset and a dirty set would be *everything* with bookkeeping on top.
+// So each class is one group, re-upserted whole — `group_vbos_upsert`
+// deletes the old VAO first, which is exactly the per-frame contract.
+//
+// ⚠ **A class with nothing in it is upserted EMPTY rather than
+// skipped.**  Skip it and the GPU goes on drawing the last frame's
+// robots after they died — a stale picture no state assertion can see,
+// which is `ground_gl.loft`'s own reason for clearing a kind a tile no
+// longer holds.
+
+use lattice;
+use palette;
+use painted;
+use height;
+use passable;
+use render;
+use render_camera;
+use ground_gl;
+use entity_view;
+use markers;
+use spawn;
+use part;
+use catalogue;
+use mesh3d;
+use graphics;
+
+// One group per class — the roster is not tiled, so a class is a single
+// buffer and the key is a constant.
+const ENTITY_GL_GROUP: integer = 0;
+
+// The GPU-side roster: the program, and one upload cache per drawn
+// class.
+pub struct EntityGl {
+    program: integer,
+    sets:    vector<GroupVboSet>,
+}
+
+// Compile the shader and open one cache per drawn class.
+//
+// ⚠ `program` is 0 when the link failed, and every draw is then a quiet
+// no-op — `entity_gl_ready` is what a caller asks instead of assuming.
+pub fn entity_gl_new() -> EntityGl {
+    egn = EntityGl {
+        program: gl_create_shader(GROUND_GL_VERT, GROUND_GL_FRAG),
+        sets:    [],
+    };
+    for _ in 0..ENT_CLASSES {
+        egn.sets += [group_vbos_new(GROUND_GL_STRIDE, GL_MODE_TRIANGLES)];
+    }
+    egn
+}
+
+// Did the shader link?  ⚠ A frame drawn through a program of 0 has no
+// entities in it, and *no entities* is what an empty base looks like —
+// so the gate asks this out loud rather than reading a zero as news.
+pub fn entity_gl_ready(eg: const EntityGl) -> boolean {
+    eg.program != 0 && len(eg.sets) > 0
+}
+
+// One drawn class, baked and flattened for `gl_upload_vertices`.
+//
+// ⚠ **The door a gate can call without a context**, which is
+// `ground_gl_bake`'s reason: a GL call inside `loft test` answers
+// *"native function not loaded"*, so without a shared door a cost or
+// content gate would have to re-implement the walk and would then be
+// measuring a second implementation.
+pub fn entity_gl_bake(ps: PartSet, pal: vector<GroundType>, pw: PaintedWorld,
+                      mw: const MarkerWorld, ws: const WaveState,
+                      units: integer, cls: integer) -> vector<single> {
+    egb_m = mesh("entities");
+    entity_bake(egb_m, ps, pal, pw, mw, ws, units, cls);
+    mesh_to_floats(egb_m)
+}
+
+// The world box a flattened buffer covers, as
+// `(min_x, min_y, max_x, max_y)`.
+//
+// ⚠ Read off the BUFFER rather than off the roster, because the roster
+// says where things stand and a part is metres wide around that — and
+// the bound is what a future frustum cull will trust.  ⚠ An EMPTY
+// buffer answers a degenerate box at the origin, which is the honest
+// answer: there is nothing to cull.
+//
+// Example: @DRY-064
+pub fn entity_gl_bounds(verts: vector<single>) -> (float, float, float, float) {
+    ego_n  = len(verts);
+    egb_lx = 0.0; egb_ly = 0.0; egb_hx = 0.0; egb_hy = 0.0;
+    egb_i  = 0;
+    while egb_i + GROUND_GL_STRIDE <= ego_n {
+        egb_x = ((verts[egb_i] ?? 0.0 as single) as float) ?? 0.0;
+        egb_y = ((verts[egb_i + 1] ?? 0.0 as single) as float) ?? 0.0;
+        if egb_i == 0 {
+            egb_lx = egb_x; egb_hx = egb_x;
+            egb_ly = egb_y; egb_hy = egb_y;
+        } else {
+            if egb_x < egb_lx { egb_lx = egb_x; }
+            if egb_x > egb_hx { egb_hx = egb_x; }
+            if egb_y < egb_ly { egb_ly = egb_y; }
+            if egb_y > egb_hy { egb_hy = egb_y; }
+        }
+        egb_i += GROUND_GL_STRIDE;
+    }
+    (egb_lx, egb_ly, egb_hx, egb_hy)
+}
+
+// Re-bake and re-upload every drawn class — one whole frame's roster.
+//
+// ⚠ See § The upload is every class, every frame: there is no dirty
+// subset here and an absent class is uploaded EMPTY rather than left
+// alone.
+pub fn entity_gl_upload(eg: EntityGl, ps: PartSet, pal: vector<GroundType>,
+                        pw: PaintedWorld, mw: const MarkerWorld,
+                        ws: const WaveState, units: integer) {
+    for egu_i in 0..len(eg.sets) {
+        egu_set = eg.sets[egu_i];
+        if egu_set == null { continue; }
+        egu_v = entity_gl_bake(ps, pal, pw, mw, ws, units, egu_i);
+        // ⚠ Nothing of this class, and nothing cached for it either —
+        // an upsert of nothing still makes a VAO, so skipping here is
+        // the same saving `ground_gl_upload_chunks` makes.
+        if len(egu_v) == 0 && egu_set.slots[ENTITY_GL_GROUP] == null { continue; }
+        egu_b = entity_gl_bounds(egu_v);
+        group_vbos_upsert(egu_set, ENTITY_GL_GROUP, egu_v,
+                          egu_b.0 as single, egu_b.1 as single,
+                          egu_b.2 as single, egu_b.3 as single);
+    }
+}
+
+// Draw every uploaded class, one colour at a time.
+//
+// ⚠ The GL state is set HERE, for `ground_gl_draw`'s reason: the
+// winding argument is a correctness argument and one nobody can forget
+// is worth a line.  ⚠⚠ And it is load-bearing for the PARTS in a way
+// it was not for the ground — plan 20 A5 found HALF of every box in the
+// catalogue wound inwards, invisible to counts, vertices, normals and
+// `mesh_crc` alike.  `tests/20_a5::test_every_triangle_winds_with_its_
+// normal` is the gate; culling is what makes a relapse loud.
+//
+// Example: @DRY-062
+pub fn entity_gl_draw(eg: const EntityGl, vp: const Mat4) {
+    if !entity_gl_ready(eg) { return; }
+
+    gl_enable(GL_CAP_DEPTH_TEST);
+    gl_enable(GL_CAP_CULL_FACE);
+    gl_cull_face(GL_CULL_BACK);
+
+    gl_use_shader(eg.program);
+    gl_set_uniform_mat4(eg.program, GROUND_GL_U_VP, vp.m);
+
+    for egd_i in 0..len(eg.sets) {
+        egd_set = eg.sets[egd_i];
+        if egd_set == null { continue; }
+        if len(egd_set.slots) == 0 { continue; }
+        egd_c = entity_colour_rgb(egd_i);
+        gl_set_uniform_vec3(eg.program, GROUND_GL_U_COLOR, egd_c.0, egd_c.1, egd_c.2);
+        group_vbos_draw_all(egd_set);
+    }
+}
+
+// Free every VAO and the program.  ⚠ The sets are emptied rather than
+// dropped, so a caller may upload into the same `EntityGl` again.
+pub fn entity_gl_destroy(eg: EntityGl) {
+    for egx_i in 0..len(eg.sets) {
+        egx_set = eg.sets[egx_i];
+        if egx_set == null { continue; }
+        group_vbos_destroy(egx_set);
+    }
+    if eg.program != 0 {
+        gl_delete_shader(eg.program);
+        eg.program = 0;
+    }
+}

@@ -106,7 +106,21 @@ pub fn rotor_turns_per_second(v: const Vehicle) -> float {
 //
 // Example: @DRY-042
 pub fn rotor_phase(v: const Vehicle, units: integer) -> float {
-  turns = rotor_turns_per_second(v) * clock_seconds_from_units(units);
+  rotor_phase_at(rotor_turns_per_second(v), units)
+}
+
+// The same reading for a rotor whose rate is not a `Vehicle`'s — the
+// crew's, which hovers on the same chassis (`PARTS.md` § D8) and has no
+// boost to derive a rate from.
+//
+// ⚠ It takes the RATE rather than the mover, which is `enemy_speed`'s
+// own shape one layer out (`@X061`): the lookup belongs at the call
+// site, so *"a damaged robot moves slower"* stays expressible without
+// this function learning what a robot is.
+//
+// Example: @DRY-042
+pub fn rotor_phase_at(rate: float, units: integer) -> float {
+  turns = rate * clock_seconds_from_units(units);
   turns - floor(turns)
 }
 
@@ -172,6 +186,22 @@ pub fn pose_vehicle(p: Part, v: const Vehicle, cl: const CargoLayer,
                   rotor_phase(v, units))
 }
 
+// The pose the simulation implies for one CREW member.
+//
+// ⚠ **The same two facts, and a rate that is not derived from a
+// boost** — a `Helper` has none (`helper.loft` gives it a bank and no
+// boost door), so its rotors turn at the idle figure.  ⚠ Reading the
+// canopy off the SAME `cargo_carrying` is what makes § D8's *"same
+// chassis"* claim structural rather than a resemblance: a laden helper
+// is legible exactly as a laden player is, through one ledger.
+//
+// Example: @DRY-052
+pub fn pose_crew(p: Part, cl: const CargoLayer, owner: integer,
+                 units: integer) -> vector<float> {
+  pose_hover_unit(p, canopy_turns(p, cargo_carrying(cl, owner)),
+                  rotor_phase_at(ROTOR_IDLE_TURNS_PER_S, units))
+}
+
 // ─── The tower, and the socket the simulation fills ─────────────
 
 // Emit the tower standing at `(q, r)`, with its origin at `(x, y, z)`.
@@ -195,27 +225,72 @@ pub fn pose_vehicle(p: Part, v: const Vehicle, cl: const CargoLayer,
 pub fn emit_tower(m: Mesh, ps: PartSet, ts: const TowerState,
                   q: integer, r: integer,
                   x: float, y: float, z: float) -> integer {
-  // ⚠ `?` rather than a null check, and the behaviour is deliberate: a
-  // name the set does not hold discharges to an EMPTY part, which has no
-  // bones and no limbs and therefore emits nothing.  A catalogue missing
-  // an entry draws a hole, and the doorstep that names it is
-  // `part_fault`, called once over the whole set rather than per frame.
-  //
-  // ⚠⚠ **AND THE INDEX IS WRITTEN OUT HERE RATHER THAN CALLING
-  // `partset_get`, WHICH IS A LOFT WORKAROUND AND NOT A STYLE**
-  // ([loft#974]): a record fetched through an ACCESSOR FUNCTION reads its
-  // `vector<Struct>` fields as EMPTY once an unrelated struct has been
-  // allocated in the caller — so the second tower a renderer draws comes
-  // back with no limbs, silently, on both backends.  Indexing the hash at
-  // the USE SITE is correct where the identical call through
-  // `partset_get` is not.  ⚠ `docs/LOFT_GOTCHAS.md` § A record fetched
-  // through an accessor carries the 40-line reproducer; when the fix
-  // ships, this goes back to `partset_get` and `tests/20_a4` is what
-  // proves it.
+  n = emit_tower_base(m, ps, x, y, z);
+  n + emit_tower_top(m, ps, ts, q, r, x, y, z)
+}
+
+// The base alone.  Answers the triangles added.
+//
+// ⚠⚠ **SPLIT FROM THE TOP BECAUSE THEY ARE DIFFERENT COLOURS** (plan
+// 20 A5): `ground_gl.loft`'s shader carries ONE uniform colour per draw
+// (`@X074`), so two colours are two meshes, and a renderer that wanted
+// the pair in one call would have to put the colour on the vertex and
+// throw the exact classification away.  ⚠ `emit_tower` still composes
+// them, so A4's gate reads the same tower it always did.
+//
+// ⚠ `?` rather than a null check, and the behaviour is deliberate: a
+// name the set does not hold discharges to an EMPTY part, which has no
+// bones and no limbs and therefore emits nothing.  A catalogue missing
+// an entry draws a hole, and the doorstep that names it is
+// `part_fault`, called once over the whole set rather than per frame.
+//
+// ⚠⚠ **AND THE INDEX IS WRITTEN OUT HERE RATHER THAN CALLING
+// `partset_get`, WHICH IS A LOFT WORKAROUND AND NOT A STYLE**
+// ([loft#974]): a record fetched through an ACCESSOR FUNCTION reads its
+// `vector<Struct>` fields as EMPTY once an unrelated struct has been
+// allocated in the caller — so the second tower a renderer draws comes
+// back with no limbs, silently, on both backends.  Indexing the hash at
+// the USE SITE is correct where the identical call through
+// `partset_get` is not.  ⚠ `docs/LOFT_GOTCHAS.md` § A record fetched
+// through an accessor carries the 40-line reproducer; when the fix
+// ships, this goes back to `partset_get` and `tests/20_a4` is what
+// proves it.
+//
+// Example: @DRY-044, @DRY-045, @DRY-054
+pub fn emit_tower_base(m: Mesh, ps: PartSet, x: float, y: float, z: float) -> integer {
+  base = ps.ps_parts["tower_base"]?;
+  part_emit_at(m, base, part_values_rest(base), x, y, z)
+}
+
+// The top alone — NOTHING when the simulation says the socket is
+// empty.  Answers the triangles added.
+//
+// ⚠⚠ **THREE FACTS, THREE OWNERS, AND THAT IS THE DESIGN.**  The
+// SOCKET says where a top can go (`part.loft`, computed and stored
+// nowhere), the BINDING says what fits it (`catalogue.loft`), and the
+// SIMULATION says whether one is there (`tower_has_top`, which plan 17
+// T2 built for the carry model and not for a picture).  A tower that
+// drew its top from a flag beside the mechanic is the defect § D3 is
+// written against — and it is one a frame gate reports as *pixel shares
+// slightly off*, which is why `tests/20_a4` emits BOTH states and
+// asserts they differ.
+//
+// ⚠ A tower the simulation has never ticked HAS its top: `tower_has_top`
+// answers on `top_removed`, whose neutral value is false.  A fresh tower
+// is a whole one.
+//
+// ⚠ It re-reads the BASE, because where the top sits is the base's
+// socket and nothing else knows it — see `emit_tower_base` for why the
+// hash is indexed here rather than fetched through `partset_get`.
+//
+// Example: @DRY-044, @DRY-045, @DRY-055
+pub fn emit_tower_top(m: Mesh, ps: PartSet, ts: const TowerState,
+                      q: integer, r: integer,
+                      x: float, y: float, z: float) -> integer {
+  if !tower_has_top(ts, q, r) { return 0; }
   base = ps.ps_parts["tower_base"]?;
   vals = part_values_rest(base);
-  n = part_emit_at(m, base, vals, x, y, z);
-  if !tower_has_top(ts, q, r) { return n; }
+  n = 0;
   for b in base.pt_binds {
     i = socket_index(base, b.bd_socket);
     if i < 0 { continue; }

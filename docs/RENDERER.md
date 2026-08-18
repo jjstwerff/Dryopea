@@ -595,6 +595,42 @@ server, which § R0 went out of its way to make unnecessary.
 
 ---
 
+### ⚠⚠ And since plan 20 A5 the gate draws the ROSTER too, which makes its claim TOTAL
+
+M3 gated the GROUND: over a frame-filling world, every pixel is an exact palette
+colour.  A5 added the entities, and the interesting part is the colour decision
+(`@X092`).  An entity colour is **deliberately none of the twelve** — put a
+robot in a palette colour and `classify_canvas` counts it as ground, absorbed
+into a band tens of thousands of pixels wide — so entity pixels land in
+`unknown` exactly as the background does, and `gl_entity_pixels` sums the ten
+drawn classes **by name**.  The claim `a-defended-base` then makes is total and
+exact:
+
+```
+unknown - entity pixels == 0
+```
+
+*every pixel is a palette colour, an entity colour, or the clear colour, and
+nothing else* — over a frame with a player, a crew member, four robots of three
+classes and two towers standing in it.
+
+⚠ **The roster is drawn for ALL THREE fixtures**, including the two with nobody
+in them, and that is what turns `the-ground`'s and `an-island`'s existing
+`other == 0` into a statement about the entities as well: a renderer that drew a
+robot where there is no robot fails them.  Draw entities only for the fixture
+that has some and the control is gone.
+
+⚠ The LANDMARK is the player, parked at the centre of the frame and predicted
+`VEHICLE_CLIMB_METRES` above the ground (a hover unit floats, and a camera 20 m
+up displaces a raised object outward everywhere except at the centre).  It reads
+**1.7 px** from where the camera says it is.
+
+⚠⚠ **And writing the gate BEFORE the wiring is what found `@D005`** — half of
+every box in the catalogue wound INWARDS, drawing nothing under the
+`GL_CULL_FACE` this pipeline turns on, and invisible to counts, vertices,
+normals and `mesh_crc` alike.  That is M0/M1's habit (gate the winding as DATA
+three phases before a pixel exists) paying a second time.
+
 ## R5 — the cost, and what actually threatens it  `@M001`
 
 The tick budget (`CLAUDE.md` § Cost) is about the SIMULATION and is unchanged by
