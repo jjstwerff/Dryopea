@@ -59,12 +59,15 @@
 //                     painted or marker layers).  Letter rather
 //                     than `Home` because graphics.loft doesn't
 //                     ship a KEY_HOME constant yet.
-//   P                 PLAY / EDIT (plan 19 P3).  Starts the game
-//                     clock: waves arrive on the wall clock, the
-//                     crew appears at the core, and WASD drives
-//                     it instead of panning the camera.  Press
-//                     again to freeze and go back to editing —
-//                     the run is kept, so it is a pause.
+//   P                 PLAY / EDIT (plan 19 P3 + P6).  Starts the
+//                     game clock: waves arrive on the wall clock,
+//                     the crew appears at the core, and WASD
+//                     drives it instead of panning the camera.
+//                     ⚠ The window switches to the GAME's picture
+//                     — the ground and every entity in 3-D,
+//                     through the eased follow camera.  Press
+//                     again to freeze and go back to the map
+//                     editor — the run is kept, so it is a pause.
 //   Esc               save + exit
 //
 // Hotkey strategy: 12 base slots (1234567890-=) cover the near-term
@@ -136,15 +139,29 @@
 // what changed.  It decides nothing, because `#cwd` makes it a file no
 // aggregator can compile and therefore a file no test can reach.
 //
-// ⚠ **Nothing of the game is DRAWN yet** — enemies, the vehicle and the
-// crew are plan 19 P4.  Until then the window is an editor with a live
-// simulation behind it and the console below is the only way to see it,
-// which is why the echo prints a line per tick rather than per event.
+// ── The game is DRAWN here now (plan 19 P6) ─────────────────────
 //
-// ⚠ **The camera does not follow the vehicle**, either: `DESIGN.md`
-// § 12 has it locked and auto-reframing, which is camera work `plans/19`
-// § What this plan does NOT build leaves to plan 05.  Pan to the base
-// before pressing P.
+// Press P and the window stops being a map editor and becomes the game:
+// the ground as triangles (plan 25 M3), the roster as part-trees
+// (plan 20 A5), through the session's own eased follow camera
+// (plan 21 R2).  Press P again and the editor's picture comes back.
+//
+// ⚠ **The composition is `src/play_view.loft`**, for
+// `render_editor_frame`'s reason one mode over: this file carries `#cwd`,
+// so no aggregator compiles it and no test can reach it — a decision
+// made here is a decision nothing gates.  What is left on this side is
+// the same two things as before, the CLOCK and the render GATE:
+//
+//     play_view_sync(watch, gg, eg, ps, s, palette);   // GPU <- session
+//     play_view_draw(gg, eg, ps, VIEW_W, VIEW_H);      // and draw it
+//
+// ⚠ **A live frame is never cached.**  The editor's picture is redrawn
+// only when something changed; a play frame moves every time, because
+// the camera eases toward the vehicle whether or not the vehicle moved.
+//
+// ⚠ **The first P press re-bakes the world**, which is a visible pause
+// on a large map — the height-layer diff cannot see a hex the player
+// painted, so entering play mode starts from cold.  The console says so.
 
 #cwd
 
@@ -235,6 +252,18 @@ fn main() {
     // The GAME (plan 19 P1 + P3).  A session opens in the editor, so
     // this sits idle — no roster, no clock — until P is pressed.
     ps = play_state_new();
+
+    // The live world's GPU side (plan 19 P6).  ⚠ THREE SIBLINGS rather
+    // than one object with the other two inside it: a struct stored in a
+    // field of another struct is a COPY in loft, and both caches carry a
+    // `vector<GroupVboSet>` of live GL handles.  `play_view.loft` takes
+    // them as parameters, which is the form that aliases.
+    watch = mesh_watch_new();
+    gg    = ground_gl_new(len(palette));
+    eg    = entity_gl_new();
+    if !ground_gl_ready(gg) || !entity_gl_ready(eg) {
+        println("dryopea: the world shader did not link — play mode will draw an empty sky");
+    }
 
     // ⚠ Seeded from the clock rather than from 0, or the first frame
     // would measure the whole of process start-up.  It is discarded
@@ -371,6 +400,40 @@ fn main() {
 
         // ── Render ──────────────────────────────────────────────
 
+        if play_mode(ps) {
+            // ── The live world (plan 19 P6) ─────────────────────
+            //
+            // ⚠ **No render gate here, and that is not an oversight**:
+            // the camera eases toward the vehicle on EVERY frame
+            // (`render_camera.loft` § The ease), so the picture moves
+            // when nothing in the simulation did.  A cached play frame
+            // would be a camera that only moves on the ticks.
+            //
+            // ⚠ The cost is reported the first time a sync re-bakes an
+            // unusual number of tiles, because a re-bake is the one
+            // thing here that can be felt (`@M028`: a tile is ~335 ms
+            // interpreted at the shipped 32x32).
+            pv_baked = play_view_sync(watch, gg, eg, ps, s, palette);
+            if pv_baked > 0 {
+                println("dryopea: re-baked {pv_baked} ground tile(s) at t{ps.ticks}");
+            }
+            play_view_draw(gg, eg, ps, VIEW_W, VIEW_H);
+            gl_swap_buffers();
+            // ⚠ The editor's cached texture is dropped, so the frame
+            // after P is drawn from scratch rather than from a picture
+            // of wherever the camera used to be.
+            if cur_tex != 0 { gl_delete_texture(cur_tex); }
+            cur_tex = 0;
+            s.render_needed = true;
+            continue;
+        }
+
+        // ⚠ Leaving play mode throws the bake away — see
+        // `play_view.loft` § The ground moves while the game is running:
+        // a paint the player is about to do is a change the height-layer
+        // diff cannot see.
+        play_view_sync(watch, gg, eg, ps, s, palette);
+
         // What the frame CONTAINS is `render_editor_frame`
         // (src/editor_view.loft), shared with the script runner's
         // `snap` so a shot is this picture and not a second one.
@@ -399,6 +462,8 @@ fn main() {
     }
 
     if cur_tex != 0 { gl_delete_texture(cur_tex); }
+    entity_gl_destroy(eg);
+    ground_gl_destroy(gg);
 
     // Save on exit so progress isn't lost when the window closes.
     save_world(s.pw, s.cam, palette, "exit", save_path);

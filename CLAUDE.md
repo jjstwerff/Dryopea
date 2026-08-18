@@ -48,23 +48,21 @@ truth** and [`plans/README.md`](plans/README.md) indexes them.
   [`docs/TOOLCHAIN.md`](docs/TOOLCHAIN.md).
 
 **Where the game is right now:** the simulation is complete enough to play a
-seven-wave base to its end, the game runs in a window (`make play`, press
-**P**), the camera follows the vehicle, and the ground AND the whole roster —
-player, crew, robots, towers — are meshed and drawn through real GL under a
-gate.  ⚠ **But the WINDOW still draws none of it**: plan 25 M3 and plan 20 A5
-each gave their half a gate rather than a window, so `make play` is unchanged
-and wiring the GL path into the live loop is the next piece of work.  And
-⚠⚠ **the player cannot BUILD** ([`plans/ROADMAP.md`](plans/ROADMAP.md)
-§ The critical path, item 3 — the biggest missing mechanic, and it gates
-three finished designs).
+seven-wave base to its end, and **the game is PLAYABLE AND VISIBLE** — `make
+play`, press **P**, and the map editor becomes the game: the ground as
+triangles, every entity as a part-tree, through an eased camera that follows
+the vehicle.  Press P again and the editor comes back.  ⚠⚠ **The player still
+cannot BUILD** ([`plans/ROADMAP.md`](plans/ROADMAP.md) § The critical path,
+item 3 — the biggest missing mechanic, and it gates three finished designs),
+and there is no HUD: the wallet, the wave and the tick are console lines.
 
 ### The three gates, and their numbers
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1392 green**, ~180 s, 99 files |
+| tests | `scripts/test.sh` | **1397 green**, ~180 s, 100 files |
 | scenarios | `scripts/validate.sh` | **33 scripts, 654 measurements**, ~14 s |
-| drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 52 measurements** (needs xvfb) |
+| drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 53 measurements** (needs xvfb) |
 
 ⚠ `scripts/test.sh` is the canonical runner — **never `loft test` directly**
 (§ Key commands says what it does that you would otherwise skip).
@@ -447,6 +445,7 @@ navigational summary of it.
 | `editor_step.loft` | **the editor's input seam** — `EditorState` + `EditorInput` + `editor_step`.  Every editor action runs through it |
 | `play.loft` | **the game's seam** (plan 19 P1) — `PlayState` + `play_ticks` / `play_advance` / `play_step`, and the ONE call to `wave_tick`.  ⚠ Also the MODE (P3): `play_mode` / `play_set_mode` / `play_begin` / `play_frame_seconds`, and since plan 21 R2 the game's CAMERA, stepped LAST and on every frame  ⚠ Since plan 26 L1 the bank is a `TickClock` and the doors come in pairs — `play_advance_units` / `play_step_units` are the exact ones, the float ones round at the boundary.  ⚠ And since L5 `play_alpha` reads where the frame falls between two ticks; nothing draws with it yet, and `@M035` says what it will cost when something does |
 | **`fixstep`** (library) | ⚠⚠ **NOT in `src/` since plan 26 L6 — it is a PACKAGE**, in `loft-libs-game` beside `input`, because *"a fixed timestep is needed by every game that is built"* (project owner, 2026-08-17) and that chunk is the ecosystem's *runtime game services* layer.  It owns `TickClock` (`clock_advance` / `clock_step` / `clock_alpha` / the L4 policies), `Bank` (`bank_gain`) and `Timer` (`timer_arm` / `timer_spend`), plus the `approach` ease.  ⚠ `loft api fixstep` is the surface and its own README is the guide — **do not re-document it here**, a second copy is the one that drifts.  ⚠⚠ The base unit is the CONSUMER's: dryopea's `TICK_STEP_UNITS` (2 000 000 thirds of a µs) lives in `spawn.loft`, and `@X079` is why it is not µs.  ⚠ Every dryopea file that needs a clock, a bank or a timer says `use fixstep;` — never a submodule name |
+| `play_view.loft` | **what a live session LOOKS LIKE** (plan 19 P6) — the composition `main.loft` calls in play mode, `render_editor_frame`'s sibling one mode over.  ⚠⚠ **The renderer works out for itself what the terrain did** (`@X095`): a live session moves the ground three ways that never go near `paint`, so `MeshWatch` keeps a SNAPSHOT of the height layer and diffs it — no dirty list on a simulation struct to leak into `state_diff` or grow for ever in 1397 headless tests.  ⚠ Exact only because **every terrain change a TICK can make moves the HEIGHT LAYER**, which `tests/19_p6` asserts against a played base rather than quoting.  ⚠⚠ **`play_view_draw` leaves the GL state as it found it**, and that is load-bearing: without the two `gl_disable` lines the editor's frame after a play frame is **691 200 black pixels of 691 200** (`@M041`).  ⚠ The roster uploads on a TICK boundary (10 ms) and the frame draws every time (5 ms), because the camera eases whether or not anything moved.  ⚠ No HUD, no interpolation, no editor in 3-D |
 | `bindings.loft` | **the ONE key table** — keys → actions → `EditorInput`.  Never add a `gl_key_pressed`.  ⚠ Since plan 19 P2 it carries the PLAY actions too, and `editor_input_from`'s `playing` argument decides whether WASD pans or drives.  ⚠ And since P3 one SHELL action (`toggle_play`, P), filled in BOTH branches — fill it in one and there is no way out of play mode |
 | `script.loft` | the `.keys` script runner and its whole vocabulary — commands name ACTIONS, never keys |
 | `validate.loft` / `validate_main.loft` | the second gate: sweep `tests/scripts/`, sum the measurements, report the FIRST failure |
@@ -635,6 +634,13 @@ By name, so you know when to go and read it:
   — `MapFile` is capped at 6 — and **ignores declared defaults**
   ([loft#876](https://github.com/loft-lang/loft/issues/876)).
 - `graphics::KEY_*` need **explicit qualification**.
+- ⚠ **A zero-argument function in a TEST FILE is COLLECTED AS A TEST** —
+  a one-line `fn m2_edge() -> integer` helper made `tests/25_m2` report 17
+  tests where it has 16, and the extra one asserted nothing.  ⚠ A green
+  suite counts it, and the count is what every plan's Status quotes; it was
+  caught only because `1392 + 5` did not reconcile with 1398.  ⚠ Not every
+  helper (`fn m2_band() -> PaintedWorld` is not collected) — the practical
+  rule is *no zero-argument helper in a test file*.
 - ⚠ `ticks()` is loft's clock builtin — **never shadow it**, not even
   as a parameter name.  A probe that did compiled clean and reported a
   tick 4x cheaper than it was.
@@ -864,6 +870,10 @@ signature.
 | Gate anything that is DRAWN by GL | `scripts/validate_gl.sh` over `src/gl_gate.loft` (BUILT, plan 25 M3) and [`docs/RENDERER.md`](docs/RENDERER.md) § R4 — `xvfb` → GL → `gl_screenshot` → `imaging::png` → **`classify_canvas` itself**, measured at **zero** colour drift for a blit (`@M002`) and for a SHADER (`@M026`).  ⚠ Render FLAT UNLIT: a shaded frame turns one palette colour into a range and `unknown` stops meaning "fault".  ⚠ Never loosen to nearest-colour — that discards the property R0 measured.  ⚠⚠ **And never gate on COUNTS alone**: a mirrored world passes every band (`@M027`), so add a LANDMARK against `camera_screen` |
 | Ask what makes the GL gate's claim TOTAL rather than a share | `src/gl_gate.loft::gl_entity_pixels` + `gl_case_a_defended_base` (plan 20 A5) — an entity colour is deliberately not a palette colour (`@X092`), so it lands in `unknown` exactly as the background does and the gate sums the ten by NAME: `unknown - entity pixels == 0` over a frame-filling world means **every pixel is a palette colour, an entity colour or the clear colour, and nothing else**.  ⚠ The roster is drawn for ALL THREE fixtures, so `the-ground`'s and `an-island`'s `other == 0` also say *nothing was drawn for a base with no roster* |
 | Add a GL fixture, or ask why `other == 0` is a legal thing to ask | `tests/gl/*.keys` + a case in `src/gl_gate.loft` — ⚠ a fixture with no case there is REFUSED by name, because `.keys` has no GL verb and must not grow one (`@X076`).  ⚠⚠ **`other == 0` is only legal for a fixture that FILLS the frame** (`@X077`): the clear colour is magenta and deliberately outside the palette, so a hole and a horizon both read as faults — a fixture that cannot fill the frame asserts `an-island`'s shape instead (`other` large, and every one of those pixels EXACTLY the clear colour).  ⚠ A LANDMARK must be a FLAT hex in flat surroundings: a column draws its sides in its own colour and they sit between the top face and the screen centre, 29 px off for a 5 m wall against 0.6 px flat |
+| Draw the game in the WINDOW, or ask what a play frame costs | `src/play_view.loft` (plan 19 P6) — `play_view_sync` then `play_view_draw`, which is all `main.loft` does in play mode.  ⚠ Measured in a real window: an idle frame is **5 ms**, the roster's per-tick upload **10 ms**, entering play mode one **218 ms** cold bake, and a one-hex terrain change **7 ms** (`@M041`).  ⚠⚠ **A play frame is never cached** — the camera eases toward the vehicle whether or not the vehicle moved |
+| Ask how the renderer knows the TERRAIN moved | `src/play_view.loft::mesh_watch_dirty` (`@X095`) — it DIFFS a snapshot of the height layer, because a live session breaks walls and drops bodies without the caller ever touching `paint`.  ⚠⚠ It is exact only because **every terrain change a tick can make moves the HEIGHT LAYER** (`break_structure` raises masonry BEFORE it repaints), and `tests/19_p6::test_the_maintained_ground_equals_a_cold_rebuild` asserts that against a played base.  ⚠ A dirty list on `HeightLayer` is the refused alternative: it is not state, and `state_diff` would have to pretend it is |
+| Ask why the ground tile is 8x8 | `@X096` + `@M041` — plan 25 M4 measured that 8x8 buys 8.6x on an edit for 12x the draw calls and changed NOTHING, naming *the phase that wires GL into `play_mode`* as its inheritor.  Plan 19 P6 measured the other half in a real window: **96 tiles draw as fast as 8**, so the draw calls are free and the edit decides.  ⚠ At 32x32 a body falling cost 54-112 ms and grew with the map; at 8x8 it is a constant 7 ms.  ⚠ Both fixtures that encoded 32 are now derived from `mesh_chunk_span()` and pass at 8, 16 and 32 |
+| Add a GL draw call, or ask why the window goes BLACK after pressing P twice | the GL STATE.  `ground_gl_draw` and `entity_gl_draw` each turn depth testing and culling ON and neither turns them off; the editor's picture is a full-screen TEXTURE BLIT and draws **nothing** under a depth test nobody cleared — 691 200 black pixels of 691 200, measured.  ⚠ `play_view_draw` restores it, and `gl_gate.loft` § The GL state a play frame leaves is the gate, which no fixture could carry (each draws one frame and exits) |
 | Draw the ROSTER, or ask why an entity is not in the frame | `src/entity_view.loft` (BUILT, plan 20 A5) — `entity_bake(m, ps, pal, pw, mw, ws, units, cls)`, one drawn class per call.  ⚠⚠ **Nothing here is state**: a robot is in the frame because `ws.enemies` has a live one, so a thing not drawn reads as ZERO and that is an assertion rather than a description.  ⚠ A new drawn thing is a row in `entity_colour` and a branch in `entity_bake` — never a list beside the roster.  ⚠ Gated pure in `tests/20_a5_the_frame.loft` and in pixels by `tests/gl/a-defended-base.keys` |
 | Pick a colour for anything that is DRAWN | `src/entity_view.loft::entity_colour` — and run `entity_colours_distinct` / `entity_min_distance2` before believing it (`@X092`, `@M040`).  ⚠⚠ **An entity colour must be none of the twelve palette colours**, or `classify_canvas` counts it as GROUND and every band absorbs it silently.  ⚠ And *distinct* is not *distinguishable*: `PROXY_ART.md`'s player white measured **224** squared-RGB from `waterfall` and its crew silver **768** from `rock`, which is the same colour on a screen.  The floor is 3264 and a test pins it |
 | Turn an entity to face somewhere | `src/part_mesh.loft::part_emit_facing` over `entity_view.loft::facing_turns` — a part is authored facing NORTH and a bearing of 0 is EAST, so the conversion is a QUARTER TURN and not a scale.  ⚠⚠ `frame_place` rotates the BASIS as well as the origin, and at rest every bone's basis is the identity — so only a joint off zero can see a wrong one, which is why `tests/20_a5` turns a vehicle with its canopy OPEN.  ⚠ The bearing itself is `lattice.loft::lat_bearing`, which `vehicle_facing` also delegates to |

@@ -80,6 +80,23 @@ const KIND_WALL:  integer = 9;
 const TILE_CX: integer = 1;
 const TILE_CY: integer = 0;
 
+// ⚠⚠ **THE FIXTURE IS BUILT ON A TILE BOUNDARY, NOT ON THE NUMBER 32.**
+// Every coordinate below is `mesh_chunk_span()` plus or minus a hex, so the band
+// straddles the boundary at ANY `MESH_CHUNK_SHIFT` — which is what plan
+// 19 P6 needed when the shipped tile went from 32x32 to 8x8, and what
+// `test_the_fixture_is_not_degenerate` fired about when it was literals.
+// ⚠ The counts do not move with the span, and that is a property rather
+// than luck: the drawn set is the paint plus a ONE-HEX RING, so what
+// tile (1, 0) holds is decided by the band's end and not by how far east
+// the tile reaches.
+//
+// ⚠⚠ **`mesh_chunk_span()` is spelled out at every site rather than
+// wrapped in a local helper**, and that is not style: `loft test`
+// COLLECTS a zero-argument function in a test file as a test, so a
+// one-line `fn mesh_chunk_span() -> integer` reported this file as 17 tests and
+// ran a helper as if it asserted something.  ⚠ A green suite counts it,
+// which is how a test file quietly grows a test that cannot fail.
+
 // ─── The fixtures ───────────────────────────────────────────────
 
 // A band of grass straddling the boundary between tile (0, 0) and tile
@@ -91,10 +108,10 @@ const TILE_CY: integer = 0;
 // would make every reach assertion below read "nothing changed" and pass.
 fn m2_band() -> PaintedWorld {
     mb_pw = painted_empty();
-    for mb_q in 30..35 {
+    for mb_q in mesh_chunk_span() - 2..mesh_chunk_span() + 3 {
         paint(mb_pw, mb_q, 1, KIND_GRASS as u8);
     }
-    paint(mb_pw, 32, 1, KIND_WALL as u8);
+    paint(mb_pw, mesh_chunk_span(), 1, KIND_WALL as u8);
     mb_pw
 }
 
@@ -104,7 +121,7 @@ fn m2_band() -> PaintedWorld {
 // *name every tile there is* — a superset of anything.
 fn m2_band_plus_island() -> PaintedWorld {
     mi_pw = m2_band();
-    paint(mi_pw, 100, 1, KIND_GRASS as u8);
+    paint(mi_pw, mesh_chunk_span() * 3 + 4, 1, KIND_GRASS as u8);
     mi_pw
 }
 
@@ -314,12 +331,12 @@ pub fn test_the_walk_visits_hexes_the_painted_set_does_not() {
            "nine hexes at six triangles each; got {len(tv_m.triangles)}");
 
     // And they really are unpainted, on both rows the band never touched.
-    assert(lookup_painted(tv_pw, 33, 0) == KIND_SEA as u8
-           && lookup_painted(tv_pw, 33, 2) == KIND_SEA as u8,
+    assert(lookup_painted(tv_pw, mesh_chunk_span() + 1, 0) == KIND_SEA as u8
+           && lookup_painted(tv_pw, mesh_chunk_span() + 1, 2) == KIND_SEA as u8,
            "the rows either side of the band are painted, so the sea count "
            + "above is not about unpainted hexes");
-    assert(mesh_hex_drawn(tv_pal, tv_pw, tv_hl, 33, 0)
-           && mesh_hex_drawn(tv_pal, tv_pw, tv_hl, 33, 2),
+    assert(mesh_hex_drawn(tv_pal, tv_pw, tv_hl, mesh_chunk_span() + 1, 0)
+           && mesh_hex_drawn(tv_pal, tv_pw, tv_hl, mesh_chunk_span() + 1, 2),
            "an unpainted hex beside the band is not drawn, so `@X075`'s "
            + "ring is gone and the ground ends at the paint");
 
@@ -356,7 +373,7 @@ pub fn test_one_tile_alone_equals_that_tile_out_of_a_rebuild_of_everything() {
            + "found {len(ta_cks)} — the comparison below is about a world "
            + "of a different shape than the fixture claims");
 
-    ta_want = mesh_chunk_of(32, 1);
+    ta_want = mesh_chunk_of(mesh_chunk_span(), 1);
     ta_from_all = m2_crc_at(ta_cks, ta_crcs, ta_want.ck);
     ta_alone    = m2_tile_crc(ta_pal, ta_pw, ta_hl, ta_want.cx, ta_want.cy);
 
@@ -383,8 +400,8 @@ pub fn test_a_shared_mesh_makes_a_tile_uncomparable() {
     ts_hl  = height_layer_empty();
     ts_pw  = m2_band();
 
-    ts_east = mesh_chunk_of(32, 1);
-    ts_west = mesh_chunk_of(31, 1);
+    ts_east = mesh_chunk_of(mesh_chunk_span(), 1);
+    ts_west = mesh_chunk_of(mesh_chunk_span() - 1, 1);
     assert(ts_east.ck != ts_west.ck,
            "the fixture's two hexes are in one tile, so this test has "
            + "nothing to share a mesh between");
@@ -424,13 +441,13 @@ pub fn test_an_edit_one_hex_outside_moves_the_tile() {
     to_hl  = height_layer_empty();
 
     to_base = m2_tile_crc(to_pal, m2_band(), to_hl, TILE_CX, TILE_CY);
-    to_next = m2_tile_crc(to_pal, m2_band_with_wall_at(31), to_hl,
+    to_next = m2_tile_crc(to_pal, m2_band_with_wall_at(mesh_chunk_span() - 1), to_hl,
                           TILE_CX, TILE_CY);
     assert(to_base != 0, "the base tile checksummed to 0");
     assert(to_base != to_next,
-           "a wall painted at (31, 1) — one hex west of the tile boundary — "
+           "a wall painted one hex WEST of the tile boundary "
            + "left tile ({TILE_CX}, {TILE_CY}) unchanged at {to_base}.  The "
-           + "wall at (32, 1) should have lost its west face, so the mesher "
+           + "wall ON the boundary should have lost its west face, so the mesher "
            + "is not reading across the tile edge at all");
 }
 
@@ -441,11 +458,11 @@ pub fn test_an_edit_two_hexes_outside_does_not() {
     tt_hl  = height_layer_empty();
 
     tt_base = m2_tile_crc(tt_pal, m2_band(), tt_hl, TILE_CX, TILE_CY);
-    tt_far  = m2_tile_crc(tt_pal, m2_band_with_wall_at(30), tt_hl,
+    tt_far  = m2_tile_crc(tt_pal, m2_band_with_wall_at(mesh_chunk_span() - 2), tt_hl,
                           TILE_CX, TILE_CY);
     assert(tt_base != 0, "the base tile checksummed to 0");
     assert(tt_base == tt_far,
-           "a wall painted at (30, 1) — TWO hexes outside the tile — moved "
+           "a wall painted TWO hexes outside the tile moved "
            + "tile ({TILE_CX}, {TILE_CY}) from {tt_base} to {tt_far}.  The "
            + "mesher reads further than `MESH_HALO_K` says, so every dirty "
            + "rebuild leaves a stale tile beside the edited one");
@@ -464,7 +481,7 @@ pub fn test_the_measured_reach_is_the_declared_halo() {
     tm_reach = 0;
     tm_seen  = 0;
     for tm_d in 1..4 {
-        tm_crc = m2_tile_crc(tm_pal, m2_band_with_wall_at(32 - tm_d), tm_hl,
+        tm_crc = m2_tile_crc(tm_pal, m2_band_with_wall_at(mesh_chunk_span() - tm_d), tm_hl,
                              TILE_CX, TILE_CY);
         if tm_crc != tm_base { tm_reach = tm_d; }
         tm_seen += 1;
@@ -499,8 +516,8 @@ pub fn test_every_tile_that_moved_is_named_dirty() {
 
     // (33, 1) is two hexes inside tile (1, 0)'s western edge, so nothing
     // in tile (0, 0) can read it.
-    td_edit = m2_band_with_wall_at(33);
-    td_touch = mesh_chunks_touched(33, 1);
+    td_edit = m2_band_with_wall_at(mesh_chunk_span() + 1);
+    td_touch = mesh_chunks_touched(mesh_chunk_span() + 1, 1);
     assert(len(td_touch) == 1,
            "the interior edit should touch exactly its own tile, and it "
            + "names {len(td_touch)} — a dirty set that is the whole world "
@@ -520,7 +537,7 @@ pub fn test_every_tile_that_moved_is_named_dirty() {
         }
         assert(td_hit,
                "tile ({td_k2.cx}, {td_k2.cy}) went from {td_was} to "
-               + "{td_now} and `mesh_chunks_touched(33, 1)` does not name "
+               + "{td_now} and `mesh_chunks_touched` on the edited hex does not name "
                + "it — a dirty rebuild would leave that tile stale");
         td_named += 1;
     }
@@ -551,19 +568,19 @@ pub fn test_a_boundary_edit_names_the_tile_across_the_edge() {
            "the fixture should hold three tiles and holds {len(tb_all)} — "
            + "the subset check below means nothing otherwise");
 
-    tb_touch = mesh_chunks_touched(31, 1);
+    tb_touch = mesh_chunks_touched(mesh_chunk_span() - 1, 1);
     assert(len(tb_touch) < len(tb_all),
-           "an edit at (31, 1) names {len(tb_touch)} of {len(tb_all)} "
+           "an edit one hex west of the boundary names {len(tb_touch)} of {len(tb_all)} "
            + "tiles — a dirty set that is the whole world cannot be shown "
            + "to be right");
 
-    tb_east = mesh_chunk_of(32, 1);
+    tb_east = mesh_chunk_of(mesh_chunk_span(), 1);
     tb_hit  = false;
     for tb_t in tb_touch {
         if tb_t.ck == tb_east.ck { tb_hit = true; }
     }
     assert(tb_hit,
-           "an edit at (31, 1) does not name tile ({tb_east.cx}, "
+           "an edit one hex west of the boundary does not name tile ({tb_east.cx}, "
            + "{tb_east.cy}), which holds the wall that reads it — the dirty "
            + "rule stops at the tile edge, so a rebuild leaves the face "
            + "beside every boundary stale");
@@ -571,7 +588,7 @@ pub fn test_a_boundary_edit_names_the_tile_across_the_edge() {
     // And the tile really does move, or the requirement above is a rule
     // about nothing.
     tb_was = m2_tile_crc(tb_pal, tb_pw, tb_hl, tb_east.cx, tb_east.cy);
-    tb_now = m2_tile_crc(tb_pal, m2_band_with_wall_at(31), tb_hl,
+    tb_now = m2_tile_crc(tb_pal, m2_band_with_wall_at(mesh_chunk_span() - 1), tb_hl,
                          tb_east.cx, tb_east.cy);
     assert(tb_was != 0, "the tile across the edge checksummed to 0");
     assert(tb_was != tb_now,
@@ -719,30 +736,34 @@ pub fn test_the_fixture_is_not_degenerate() {
 
     // The wall stands on the FIRST column of its tile, which is what
     // makes every reach assertion able to fail.
-    tf_k = mesh_chunk_of(32, 1);
+    tf_k = mesh_chunk_of(mesh_chunk_span(), 1);
     tf_o = mesh_chunk_origin(tf_k.cx, tf_k.cy);
-    assert(tf_o.q == 32,
-           "the tile holding (32, 1) starts at q {tf_o.q}, so the wall is "
+    assert(tf_o.q == mesh_chunk_span(),
+           "the tile holding the wall starts at q {tf_o.q}, so the wall is "
            + "not on its edge and no outside edit can reach it");
     assert(tf_k.cx == TILE_CX && tf_k.cy == TILE_CY,
            "the wall is in tile ({tf_k.cx}, {tf_k.cy}) and the tests read "
            + "({TILE_CX}, {TILE_CY})");
-    assert(mesh_chunk_of(31, 1).ck != tf_k.ck,
-           "(31, 1) and (32, 1) are in one tile, so the reach sweep never "
+    assert(mesh_chunk_of(mesh_chunk_span() - 1, 1).ck != tf_k.ck,
+           "the boundary hex and its west neighbour are in one tile, so the reach sweep never "
            + "crosses a boundary");
 
     // The heights DIFFER, or every side-face count is 0 for a reason that
     // is not the mesher's.
-    tf_wall = hex_height(tf_pal, tf_pw, tf_hl, 32, 1);
-    tf_gras = hex_height(tf_pal, tf_pw, tf_hl, 31, 1);
+    tf_wall = hex_height(tf_pal, tf_pw, tf_hl, mesh_chunk_span(), 1);
+    tf_gras = hex_height(tf_pal, tf_pw, tf_hl, mesh_chunk_span() - 1, 1);
     assert(abs(tf_wall - 3.0) < 1e-12, "the wall should be 3.0 m, got {tf_wall}");
     assert(abs(tf_gras - 0.0) < 1e-12, "the band should be flat, got {tf_gras}");
 
     // And the span is what the constant says, so 32 is not a number this
     // file invented.
-    assert(mesh_chunk_span() == 32,
-           "a tile is {mesh_chunk_span()} hexes across, and the fixture's "
-           + "coordinates assume 32");
+    // ⚠ The fixture no longer assumes a SIZE, only that a tile is wide
+    // enough to hold a five-hex band's eastern half and a one-hex ring —
+    // which is what makes it survive plan 19 P6's move from 32x32 to
+    // 8x8.  Below four it would stop straddling exactly two tiles.
+    assert(mesh_chunk_span() >= 4,
+           "a tile is {mesh_chunk_span()} hexes across; the band and its "
+           + "ring need at least 4 to straddle exactly two tiles");
     assert(MESH_HALO_K == 1,
            "MESH_HALO_K is {MESH_HALO_K}; the sweep in § The reach covers "
            + "1..3 and cannot measure a larger one");

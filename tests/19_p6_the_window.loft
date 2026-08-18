@@ -1,0 +1,345 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 19 phase P6 — the window draws the game.
+//
+// ── The one claim ────────────────────────────────────────────────────
+//
+// > **The ground the player is looking at is the ground the simulation
+// > is running**, and it stays that way without the simulation being
+// > told that anybody is watching.
+//
+// `ground_gl.loft` was written for an EDITOR's ground: paint a hex and
+// re-bake the tiles it reaches.  A live session moves the terrain for
+// three other reasons — a body falls, a wall breaks, a heap is cleared
+// — and none of them goes near `paint` from the caller's side.  Rather
+// than a dirty list on a simulation struct (which would leak into
+// `state_diff`, survive an `emit`, and grow for ever in the 1392
+// headless tests that have no renderer), the renderer keeps a SNAPSHOT
+// of the height layer and diffs it.
+//
+// ⚠⚠ **That is exact only if one thing is true**, and it is the
+// invariant this file exists to hold:
+//
+// > **every terrain change a TICK can make moves the HEIGHT LAYER.**
+//
+// A body raises its hex, a breach raises masonry BEFORE it repaints,
+// salvage lowers a pile.  ⚠ It is asserted against the SIMULATION and
+// not quoted: § The invariant plays a real base and compares every tile
+// the renderer maintained against a cold rebuild.  A repaint that never
+// touched the height layer shows up there as a tile whose checksum
+// drifted, which is the only reading a wrong diff cannot satisfy.
+//
+// ⚠⚠ **AN EMPTY MESH FOLDS TO 0** (`@X065`), so every equality below
+// carries a non-zero floor.  Without it a mesher stubbed to emit
+// nothing agrees with itself perfectly.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+// One tile's whole geometry, folded — every palette kind in ascending
+// order into ONE mesh, which is the order `ground_gl_draw` uploads in.
+//
+// ⚠ A COUNT cannot see a mesh with the right vertices in the wrong
+// places and a golden AGREES WITH A SHEAR, which is what `mesh_crc` is
+// for (`mesh_crc.loft`).
+fn tile_crc(p: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+            cx: integer, cy: integer) -> integer {
+    tc_m = mesh("tile");
+    for tc_k in 0..len(p) {
+        ground_chunk_mesh(tc_m, p, pw, hl, cx, cy, tc_k);
+    }
+    mesh_crc(tc_m)
+}
+
+// Every tile of the world, folded — the whole drawn ground as one
+// number.
+fn world_crc(p: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer) -> integer {
+    wc_sum = 0;
+    for wc_k in mesh_chunks_all(pw, hl) {
+        wc_sum += tile_crc(p, pw, hl, wc_k.cx, wc_k.cy);
+    }
+    wc_sum
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// What the watch sees
+// ─────────────────────────────────────────────────────────────────────
+
+// @DRY-065 — a pile appearing, changing and VANISHING are all changes
+//
+// ⚠⚠ THE EASY HALF TO FORGET IS THE THIRD ONE.  A heap the player
+// cleared has no entry left to walk, so a sweep of the CURRENT layer
+// alone would leave it drawn after the map says it is gone — which is
+// `ground_gl.loft`'s own *"clear a kind a tile no longer holds"* rule
+// one layer out, and it fails as a heap that is still there.
+fn test_the_watch_sees_a_pile_arrive_change_and_vanish() {
+    tw_w  = mesh_watch_new();
+    tw_hl = height_layer_empty();
+
+    assert(len(mesh_watch_dirty(tw_w, tw_hl)) == 0,
+           "nothing has happened, so nothing is dirty");
+
+    height_raise(tw_hl, 2, 1, 1.5, as_u8(RUBBLE_WRECKAGE));
+    tw_a = mesh_watch_dirty(tw_w, tw_hl);
+    assert(len(tw_a) == 1 && (tw_a[0] ?? Hex { }).q == 2,
+           "a body falling is one dirty hex: {len(tw_a)}");
+
+    mesh_watch_note(tw_w, tw_hl);
+    assert(len(mesh_watch_dirty(tw_w, tw_hl)) == 0,
+           "…and once baked it is clean again");
+
+    // A second body on the same hex: the entry is still there, and its
+    // HEIGHT moved.  ⚠ A watch keyed on presence alone reads this as
+    // clean, and the ramp stops growing on screen while it goes on
+    // growing in the simulation.
+    height_raise(tw_hl, 2, 1, 1.5, as_u8(RUBBLE_WRECKAGE));
+    assert(len(mesh_watch_dirty(tw_w, tw_hl)) == 1,
+           "a pile that GREW is dirty, though its hex was already piled");
+    mesh_watch_note(tw_w, tw_hl);
+
+    // And gone.
+    height_clear(tw_hl, 2, 1);
+    tw_c = mesh_watch_dirty(tw_w, tw_hl);
+    assert(len(tw_c) == 1 && (tw_c[0] ?? Hex { }).q == 2,
+           "a pile that VANISHED is dirty: {len(tw_c)}");
+    mesh_watch_note(tw_w, tw_hl);
+    assert(len(mesh_watch_dirty(tw_w, tw_hl)) == 0, "and then clean");
+}
+
+// @DRY-066 — the tiles are the EDIT rule's, deduped
+//
+// ⚠ ONE mechanism and not two (`mesh_chunks.loft` § There is no
+// ChunkField here): derive the play-mode dirty rule separately from the
+// edit-mode one and they disagree about a tile edge, which draws a seam
+// that appears only after something died near a chunk boundary.
+fn test_the_dirty_tiles_are_the_edit_rules() {
+    td_w  = mesh_watch_new();
+    td_hl = height_layer_empty();
+    height_raise(td_hl, 0, 0, 1.0, as_u8(RUBBLE_WRECKAGE));
+
+    td_t = mesh_watch_tiles(td_w, td_hl);
+    td_e = mesh_chunks_touched(0, 0);
+    assert(len(td_t) == len(td_e) && len(td_t) > 0,
+           "one hex reaches exactly the tiles an EDIT of it reaches: "
+           + "{len(td_t)} vs {len(td_e)}");
+
+    // Two hexes in the same tile collapse to one set, which is what
+    // makes a tick that kills five robots in one place cost one bake.
+    height_raise(td_hl, 1, 0, 1.0, as_u8(RUBBLE_WRECKAGE));
+    td_t2 = mesh_watch_tiles(td_w, td_hl);
+    assert(len(td_t2) >= len(td_t) && len(td_t2) < 2 * len(td_t),
+           "two neighbouring deaths do not cost two full tile sets: "
+           + "{len(td_t2)} vs {len(td_t)}");
+
+    // …and every key in it is unique, or a tile is baked twice.
+    td_seen: hash<ChunkKey[ck]> = [];
+    for td_k in td_t2 {
+        td_seen += [ChunkKey { ck: td_k.ck, cx: td_k.cx, cy: td_k.cy }];
+    }
+    assert(len(td_seen) == len(td_t2),
+           "the tile list is deduped: {len(td_seen)} of {len(td_t2)}");
+}
+
+// @DRY-067 — the roster's clock is the TICK's, not the frame's
+//
+// ⚠ Every entity position is a LATTICE position and every joint angle a
+// function of this number, so a frame cannot move one.  That is what
+// lets `play_view_sync` upload the roster on a tick boundary — measured
+// at 8 ms against 5 ms for a whole frame's draw — and it is the first
+// thing that has to go the day anything is drawn at `play_alpha`
+// (`@M035`).
+fn test_the_rosters_clock_is_the_ticks() {
+    tr_ps = play_state_new();
+    assert(play_view_units(tr_ps) == 0, "a session that has not ticked is at zero");
+    tr_ps.ticks = 7;
+    assert(play_view_units(tr_ps) == 7 * TICK_STEP_UNITS,
+           "seven ticks is seven steps: {play_view_units(tr_ps)}");
+    // ⚠ And the step is the tick's own, so changing `TICK_STEP_UNITS`
+    // moves this with it rather than leaving a second definition.
+    assert(play_view_units(tr_ps) > 0, "and it is not the zero every wrong answer is");
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// The invariant, against the simulation
+// ─────────────────────────────────────────────────────────────────────
+
+// A small walled base with a core, a spawn and eight robots walking
+// into the wall — enough that bodies fall AND the wall comes down.
+fn besieged() -> EditorState {
+    bs = editor_state_new(PALETTE);
+    for bs_q in -10..11 {
+        for bs_r in -6..7 {
+            paint(bs.pw, bs_q, bs_r, as_u8(5));
+        }
+    }
+    // ⚠ A wall across the WHOLE painted height, so there is no way
+    // round it: beyond the paint is sea, which nothing walks on.  An
+    // unsealed wall is walked past rather than chewed, and then no
+    // structure ever breaks and this fixture measures a base where
+    // nothing happened.
+    for bs_wr in -6..7 {
+        paint(bs.pw, 4, bs_wr, as_u8(9));
+    }
+    place_marker(bs.mw, 0, 0, MARKER_KIND_TARGET, as_u8(0));
+    place_marker(bs.mw, 9, 0, MARKER_KIND_SPAWN, as_u8(3));
+    // ⚠ A tower, so that ROBOTS DIE — a body is the other half of the
+    // invariant, and a breach alone would leave the `height_raise` that
+    // `wave_deaths` does untested.
+    place_marker(bs.mw, 2, 0, MARKER_KIND_TOWER, as_u8(0));
+    bs
+}
+
+// ⚠⚠ THE PHASE'S HEADLINE, and the only reading a wrong diff cannot
+// satisfy.  The renderer maintains the ground INCREMENTALLY, tick by
+// tick, from nothing but its own snapshot of the height layer.  At the
+// end every tile it maintained is compared with a COLD rebuild of the
+// same world.  A terrain change that slipped past the height layer —
+// a repaint with no rubble, a salvage that forgot to lower — shows up
+// here as a tile whose checksum drifted, and nowhere else: the counts
+// are right, the world is right, and the picture is stale.
+//
+// ⚠ This is `tests/11_f8::test_the_field_a_tick_uses_equals_a_fresh_build`'s
+// shape, which is the repo's standing answer to *is this cache exact?*
+fn test_the_maintained_ground_equals_a_cold_rebuild() {
+    tm_p  = pal();
+    tm_s  = besieged();
+    tm_ps = play_state_new();
+    play_set_mode(tm_ps, tm_s, true);
+
+    // Eight robots, walking west into the wall.
+    for tm_i in 0..8 {
+        tm_ps.wave.enemies += [Enemy { q: 9, r: tm_i - 3, kind: as_u8(ENEMY_KIND_REGULAR),
+                                       heading: 3 as u8, alive: true }];
+    }
+
+    // ⚠⚠ ONE hex of the wall starts nearly spent, so a BREACH happens
+    // within the run and the fixture exercises both halves.  Left whole,
+    // the tower kills the robots long before 100 HP of masonry gives —
+    // measured, and the assertion below is what said so: the world
+    // moved, the equality held, and the one case the diff cannot see
+    // directly (a REPAINT) had never happened.  ⚠ It authors a STARTING
+    // POSITION and simulates nothing: the wall still comes down through
+    // `damage_resolve`, at the end of a tick, like any other.
+    tm_hp = structure_max_hp(tm_p, tm_s.pw, 4, 0);
+    assert(tm_hp > 0.0, "the wall is breakable at all: {tm_hp}");
+    damage_apply(tm_ps.wave.damage, 4, 0, tm_hp - 1.0);
+
+    tm_w = mesh_watch_new();
+    // The cold bake the window pays on the first P press.
+    tm_live: hash<TileCrcRow[ck]> = [];
+    for tm_k in mesh_chunks_all(tm_s.pw, tm_ps.wave.heights) {
+        tm_live += [TileCrcRow { ck: tm_k.ck, cx: tm_k.cx, cy: tm_k.cy,
+                                 crc: tile_crc(tm_p, tm_s.pw, tm_ps.wave.heights,
+                                               tm_k.cx, tm_k.cy) }];
+    }
+    mesh_watch_note(tm_w, tm_ps.wave.heights);
+
+    tm_start = world_crc(tm_p, tm_s.pw, tm_ps.wave.heights);
+    assert(tm_start != 0, "the world folds to something — an empty mesh folds to 0");
+
+    // Play it, re-baking ONLY what the watch says moved.
+    tm_bakes = 0;
+    for _ in 0..150 {
+        play_ticks(tm_ps, tm_s, 1);
+        for tm_d in mesh_watch_tiles(tm_w, tm_ps.wave.heights) {
+            tm_live += [TileCrcRow { ck: tm_d.ck, cx: tm_d.cx, cy: tm_d.cy,
+                                     crc: tile_crc(tm_p, tm_s.pw, tm_ps.wave.heights,
+                                                   tm_d.cx, tm_d.cy) }];
+            tm_bakes += 1;
+        }
+        mesh_watch_note(tm_w, tm_ps.wave.heights);
+    }
+
+    // ⚠ The CONTROL, and it comes first: the world has to have MOVED,
+    // or the equality below is a statement about a base where nothing
+    // happened.  Bodies fell and the wall came down.
+    tm_end = world_crc(tm_p, tm_s.pw, tm_ps.wave.heights);
+    assert(tm_end != tm_start,
+           "the run changed the terrain: {tm_start} -> {tm_end}");
+    assert(tm_bakes > 0, "and the watch asked for re-bakes: {tm_bakes}");
+    assert(height_count(tm_ps.wave.heights) > 0,
+           "there are heaps on the ground: {height_count(tm_ps.wave.heights)}");
+
+    // ⚠⚠ AND BOTH KINDS OF CHANGE HAPPENED, which is what stops this
+    // fixture quietly degrading into *bodies fell* — a body moves only
+    // the height layer, and a BREACH also REPAINTS its hex
+    // (`damage.loft::break_structure`).  The repaint is the change the
+    // renderer's diff cannot see directly and infers from the masonry
+    // raised beside it; if no wall ever broke, the headline equality is
+    // untested for exactly the case it exists for.
+    tm_wall = 0;
+    for tm_r in -6..7 {
+        if (lookup_painted(tm_s.pw, 4, tm_r) as integer) == 9 { tm_wall += 1; }
+    }
+    assert(tm_wall < 13,
+           "at least one hex of the wall came down: {tm_wall} of 13 still standing");
+
+    // Now: every tile the renderer maintained agrees with a cold build.
+    tm_bad = 0;
+    tm_first = "";
+    for tm_c in mesh_chunks_all(tm_s.pw, tm_ps.wave.heights) {
+        tm_want = tile_crc(tm_p, tm_s.pw, tm_ps.wave.heights, tm_c.cx, tm_c.cy);
+        tm_got  = tm_live[tm_c.ck];
+        if tm_got == null || tm_got.crc != tm_want {
+            tm_bad += 1;
+            if tm_first == "" {
+                tm_first = "tile ({tm_c.cx}, {tm_c.cy})";
+            }
+        }
+    }
+    assert(tm_bad == 0,
+           "every maintained tile equals a cold rebuild: {tm_bad} drifted, "
+           + "first {tm_first} — a terrain change reached the world without "
+           + "moving the height layer");
+}
+
+// One tile's fold, remembered.
+struct TileCrcRow { ck: integer, cx: integer, cy: integer, crc: integer }
+
+// ⚠ THE NEGATIVE CONTROL for the test above, and it is the one that
+// says the comparison can fail at all.  A watch that never notices
+// anything must leave the maintained ground STALE — if this passes too,
+// the equality above is measuring a world that does not move.
+fn test_a_watch_that_notices_nothing_goes_stale() {
+    tn_p  = pal();
+    tn_s  = besieged();
+    tn_ps = play_state_new();
+    play_set_mode(tn_ps, tn_s, true);
+    for tn_i in 0..8 {
+        tn_ps.wave.enemies += [Enemy { q: 9, r: tn_i - 3, kind: as_u8(ENEMY_KIND_REGULAR),
+                                       heading: 3 as u8, alive: true }];
+    }
+
+    tn_cold: hash<TileCrcRow[ck]> = [];
+    for tn_k in mesh_chunks_all(tn_s.pw, tn_ps.wave.heights) {
+        tn_cold += [TileCrcRow { ck: tn_k.ck, cx: tn_k.cx, cy: tn_k.cy,
+                                 crc: tile_crc(tn_p, tn_s.pw, tn_ps.wave.heights,
+                                               tn_k.cx, tn_k.cy) }];
+    }
+
+    play_ticks(tn_ps, tn_s, 150);
+
+    // The world moved and NOTHING was re-baked — so at least one tile
+    // must now disagree.  This is the failure the real test would report
+    // if the diff missed a change.
+    tn_bad = 0;
+    for tn_c in mesh_chunks_all(tn_s.pw, tn_ps.wave.heights) {
+        tn_want = tile_crc(tn_p, tn_s.pw, tn_ps.wave.heights, tn_c.cx, tn_c.cy);
+        tn_got  = tn_cold[tn_c.ck];
+        if tn_got == null || tn_got.crc != tn_want { tn_bad += 1; }
+    }
+    assert(tn_bad > 0,
+           "a ground nobody re-baked goes stale — the equality gate can fail");
+}

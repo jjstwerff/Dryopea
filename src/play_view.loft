@@ -1,0 +1,290 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// WHAT A LIVE SESSION LOOKS LIKE — plan 19 phase P6.
+//
+// Plan 25 M3 gave the ground a GL path and plan 20 A5 gave the roster
+// one, and neither had a caller with a clock on it: both delivered a
+// GATE rather than a window.  This is the composition that puts them on
+// the player's screen — `editor_view.loft::render_editor_frame` for the
+// live half, and named the same way for the same reason.
+//
+// ⚠ **`main.loft` composes nothing.**  It opens a window, measures the
+// frame and calls three functions here, exactly as it calls
+// `render_editor_frame` for the editor.  A file with `#cwd` on it is
+// compiled by no aggregator and reachable by no test, so a decision in
+// it is a decision nothing can gate.
+//
+// ── ⚠⚠ THE GROUND MOVES WHILE THE GAME IS RUNNING ───────────────
+//
+// `ground_gl.loft` was written for an EDITOR's ground: paint a hex, and
+// `ground_gl_upload_edit` re-bakes the tiles that hex reaches.  A live
+// session changes the terrain for three other reasons — a body falls, a
+// wall breaks, the player clears a heap — and none of them goes near
+// `paint` from the caller's side.
+//
+// ⚠⚠ **So the invalidation is DERIVED rather than reported**, and the
+// claim that makes it sound is this file's one real invariant:
+//
+// > **every terrain change a TICK can make moves the HEIGHT LAYER.**
+//
+// A body raises its hex (`wave_deaths`), a breach raises masonry
+// (`damage.loft::break_structure`, which raises BEFORE it repaints), and
+// salvage lowers a pile (`vehicle.loft::salvage_at`).  The height layer
+// is a handful of entries even on a busy base, so the renderer keeps a
+// SNAPSHOT of it and diffs — no dirty list on a simulation struct, no
+// bookkeeping to leak into `state_diff`, and nothing to keep in step.
+// ⚠ `tests/19_p6_the_window.loft` asserts the invariant against the
+// simulation rather than quoting it, and asserts the incremental result
+// EQUALS a cold rebuild, which is the shape `11_f8`'s field-cache gate
+// uses.
+//
+// ⚠ The one change it cannot see is a PAINT in the editor — which is
+// why entering play mode re-bakes the world whole.  `mesh_watch_built`
+// is that flag, and `play_view_sync` clears it the moment the session
+// stops being live.
+//
+// ── ⚠ What this file does NOT do ────────────────────────────────
+//
+// **No HUD.**  The wallet, the wave and the tick are still console
+// lines.  A HUD over a 3-D frame is a second composition and a second
+// gate.
+//
+// **No interpolation.**  Entities are re-uploaded when the TICK moves,
+// not per frame, so a mover steps a whole hex at a time — and `@M035`
+// has already priced the fix at `play_alpha` plus a camera following the
+// drawn point, which is ONE decision and is not this one.  ⚠ The rotors
+// turn on the same clock for the same reason.
+//
+// **No editor in 3-D.**  Pressing P goes back to the software frame,
+// which is where the picker, the HUD, the hover preview and the whole
+// of `validate.sh`'s 654 measurements live.
+
+use lattice;
+use palette;
+use painted;
+use height;
+use passable;
+use render;
+use render_camera;
+use mesh_chunks;
+use ground_mesh;
+use ground_gl;
+use entity_view;
+use entity_gl;
+use editor_view;
+use editor_step;
+use markers;
+use spawn;
+use part;
+use catalogue;
+use play;
+use mesh3d;
+use graphics;
+use gridmesh;
+
+// The sky, behind everything the world does not cover.
+//
+// ⚠⚠ **DELIBERATELY NOT the GL gate's clear colour.**  `gl_gate.loft`
+// clears to MAGENTA because it must be outside the palette — that is
+// what makes a hole in the ground register as a fault (`@X077`).  A
+// player looking at a horizon needs a sky, and the gate's argument does
+// not apply to a frame nobody classifies.  ⚠ The consequence is worth
+// knowing: **a hole in the ground is invisible in the window and loud
+// in the gate**, so the gate is where that class of bug is found.
+pub const PLAY_SKY: integer = 0x0e1622;
+
+// One hex of the height layer, as the renderer last saw it.
+//
+// ⚠ A record of its own rather than `height.loft`'s `HexRise`: this is
+// the RENDERER's memory of the simulation, and giving it the
+// simulation's type would invite somebody to hand one to the other.
+struct MeshSeen { q: integer, r: integer, metres: float }
+
+// What the renderer has already baked into the ground.
+//
+// ⚠⚠ **It lives beside the GL caches rather than inside them**, and
+// that is a loft constraint as much as a design one: a struct STORED in
+// a field of another struct is a COPY, and `GroundGl` carries a
+// `vector<GroupVboSet>` whose handles must not be copied ([loft#969] is
+// what a truncated `vector<Struct>` field costs).  So `main.loft` holds
+// three siblings and this file's functions take them as parameters,
+// which is the form loft aliases reliably.
+pub struct MeshWatch {
+    seen:  hash<MeshSeen[q, r]>,
+    built: boolean,
+    // The tick the ROSTER was last uploaded at.  ⚠ `-1` rather than 0,
+    // because tick 0 is a real tick and a session that never advances
+    // still has to upload once.
+    roster: integer,
+}
+
+// Factory: nothing baked, nothing remembered.
+pub fn mesh_watch_new() -> MeshWatch {
+    MeshWatch { seen: [], built: false, roster: -1 }
+}
+
+// Has the ground been baked at all since the session went live?
+pub fn mesh_watch_built(w: const MeshWatch) -> boolean {
+    w.built
+}
+
+// Throw the bake away — the next sync rebuilds the world whole.
+//
+// ⚠ The door for the change the diff CANNOT see: a paint in the editor.
+pub fn mesh_watch_reset(w: MeshWatch) {
+    w.seen   = [];
+    w.built  = false;
+    w.roster = -1;
+}
+
+// Which hexes' terrain has moved since the last bake.
+//
+// ⚠ **Both directions, and the second one is the easy half to forget**:
+// a pile that VANISHED (the player cleared it, or a shrink took the
+// last of it) has no entry left to walk, so a sweep of the current
+// layer alone would leave the heap drawn after the map says it is gone
+// — which is `ground_gl.loft`'s own *"clear a kind a tile no longer
+// holds"* rule one layer out.
+//
+// Example: @DRY-065, @DRY-066
+pub fn mesh_watch_dirty(w: const MeshWatch, hl: const HeightLayer) -> vector<Hex> {
+    mwd_out: vector<Hex> = [];
+    for mwd_c in hl.cells {
+        mwd_s = w.seen[mwd_c.q, mwd_c.r];
+        if mwd_s == null || mwd_s.metres != mwd_c.metres {
+            mwd_out += [Hex { q: mwd_c.q, r: mwd_c.r }];
+        }
+    }
+    for mwd_p in w.seen {
+        if hl.cells[mwd_p.q, mwd_p.r] == null {
+            mwd_out += [Hex { q: mwd_p.q, r: mwd_p.r }];
+        }
+    }
+    mwd_out
+}
+
+// The TILES those hexes reach — deduped, and through the same
+// `mesh_chunks_touched` an edit uses.
+//
+// ⚠ **One mechanism, not two** (`mesh_chunks.loft` § There is no
+// ChunkField here): derive the play-mode dirty rule separately from the
+// edit-mode one and they disagree about a tile edge, which draws a seam
+// that appears only after something died near a chunk boundary.
+//
+// Example: @DRY-066
+pub fn mesh_watch_tiles(w: const MeshWatch, hl: const HeightLayer) -> vector<ChunkKey> {
+    mwt_seen: hash<ChunkKey[ck]> = [];
+    for mwt_h in mesh_watch_dirty(w, hl) {
+        for mwt_k in mesh_chunks_touched(mwt_h.q, mwt_h.r) {
+            mwt_seen += [ChunkKey { ck: mwt_k.ck, cx: mwt_k.cx, cy: mwt_k.cy }];
+        }
+    }
+    mwt_out: vector<ChunkKey> = [];
+    for mwt_e in mwt_seen {
+        mwt_out += [ChunkKey { ck: mwt_e.ck, cx: mwt_e.cx, cy: mwt_e.cy }];
+    }
+    mwt_out
+}
+
+// Adopt the layer as baked.
+//
+// ⚠ It REPLACES rather than merges, because a hex that vanished has to
+// stop being remembered — the same both-directions point
+// `mesh_watch_dirty` makes.
+//
+// Example: @DRY-065
+pub fn mesh_watch_note(w: MeshWatch, hl: const HeightLayer) {
+    w.seen = [];
+    for mwn_c in hl.cells {
+        w.seen += [MeshSeen { q: mwn_c.q, r: mwn_c.r, metres: mwn_c.metres }];
+    }
+    w.built = true;
+}
+
+// ─── The frame ──────────────────────────────────────────────────
+
+// Simulated time, in the clock's base units, at the tick just played.
+//
+// ⚠ **The TICK's time and not the frame's**, which is what makes the
+// roster's upload a per-tick cost rather than a per-frame one.  A rotor
+// that turned per frame would need `play_alpha` — and so would the
+// movers, which is the same decision (`@M035`).
+//
+// Example: @DRY-067
+pub fn play_view_units(ps: const PlayState) -> integer {
+    ps.ticks * TICK_STEP_UNITS
+}
+
+// Bring the GPU up to date with the session.  Answers how many ground
+// tiles were re-baked, so a caller with a clock can say what it cost.
+//
+// ⚠ **It decides everything about WHEN, so `main.loft` decides
+// nothing** — including the case that looks like a special case and is
+// the ordinary one: a session that is not live throws the bake away, so
+// the paint the player is doing right now is picked up when P is
+// pressed.
+pub fn play_view_sync(w: MeshWatch, gg: GroundGl, eg: EntityGl,
+                      ps: const PlayState, s: EditorState,
+                      pal: vector<GroundType>) -> integer {
+    if !play_mode(ps) {
+        mesh_watch_reset(w);
+        return 0;
+    }
+
+    pvs_n = 0;
+    if !mesh_watch_built(w) {
+        // Cold: the whole world, because a paint in the editor moves
+        // hexes the height layer never hears about.
+        pvs_all = mesh_chunks_all(s.pw, ps.wave.heights);
+        ground_gl_upload_chunks(gg, pal, s.pw, ps.wave.heights, pvs_all);
+        pvs_n = len(pvs_all);
+    } else {
+        pvs_t = mesh_watch_tiles(w, ps.wave.heights);
+        if len(pvs_t) > 0 {
+            ground_gl_upload_chunks(gg, pal, s.pw, ps.wave.heights, pvs_t);
+            pvs_n = len(pvs_t);
+        }
+    }
+    mesh_watch_note(w, ps.wave.heights);
+
+    // ⚠⚠ **THE ROSTER MOVES ON TICKS AND NOT ON FRAMES**, so it is
+    // uploaded on a tick boundary — measured at **11 ms** for a base
+    // with six entities in it, against **5 ms** for a whole frame's
+    // draw, so uploading it per frame would triple the cost of a frame
+    // to redraw a picture that cannot have changed.  ⚠ Every position
+    // here is a LATTICE position and every joint angle a function of
+    // `play_view_units`, which is the tick's own time — the day
+    // anything is drawn at `play_alpha` this gate is the first thing
+    // that has to go (`@M035`).
+    //
+    // ⚠ Within a class the upload is WHOLE, because every enemy moves
+    // on every tick and there is no clean subset
+    // (`entity_gl.loft` § The upload is every class, every frame).
+    if w.roster != ps.ticks {
+        entity_gl_upload(eg, catalogue(), pal, s.pw, s.mw, ps.wave,
+                         play_view_units(ps));
+        w.roster = ps.ticks;
+    }
+    pvs_n
+}
+
+// Draw the live world: the sky, the ground, the roster.
+//
+// ⚠⚠ **It leaves the GL state as it found it.**  `ground_gl_draw` and
+// `entity_gl_draw` each turn depth testing and back-face culling ON and
+// neither turns them off, which is right for them and wrong for the
+// next frame: the editor's picture is a full-screen TEXTURE BLIT, and a
+// blit under a depth test that nothing cleared, or under a cull whose
+// winding it never thought about, draws an empty window.  ⚠ A player
+// toggling P would see it and a gate never would, because the gate
+// draws one frame and exits.
+pub fn play_view_draw(gg: const GroundGl, eg: const EntityGl,
+                      ps: const PlayState, w: integer, h: integer) {
+    pvd_vp = camera_view_projection(ps.cam.cam, ((w as float) / (h as float)) ?? 1.0);
+    gl_clear(PLAY_SKY);
+    ground_gl_draw(gg, pvd_vp);
+    entity_gl_draw(eg, pvd_vp);
+    gl_disable(GL_CAP_DEPTH_TEST);
+    gl_disable(GL_CAP_CULL_FACE);
+}

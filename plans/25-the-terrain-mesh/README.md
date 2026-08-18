@@ -760,7 +760,7 @@ world (`@M028`):
 |---|---|---|---|
 | 8x8 | **38.7 ms** | 1.16 s | 192 |
 | 16x16 | 96.1 ms | 1.18 s | 48 |
-| **32x32 (shipped)** | **334.8 ms** | 1.72 s | 16 |
+| **32x32 (shipped until 2026-08-18)** | **334.8 ms** | 1.72 s | 16 |
 
 ⚠⚠ **The edit tracks tile AREA and the cold build barely moves** — the biggest
 tile is in fact the *slowest* cold build, because a 32x32 tile at the world's
@@ -778,6 +778,29 @@ which is `plans/22`'s discipline: do not optimise against an unmeasured half.
 (667 ms) for a play-mode terrain change — so at 32x32 an edit is **7x over** a
 paint stroke and half a tick.  **That is the number the phase that wires GL
 into `play_mode` inherits**, and `@M028` is where it is written down.
+
+### ⚠⚠ SETTLED 2026-08-18 by [plan 19](../19-the-interactive-loop/README.md) P6 — the tile is now **8x8**
+
+The inheritor named above measured the half this phase could not, in a real
+window under `xvfb`: **the draw cost does not move at all.**  96 tiles draw in
+the same 7 ms/frame as 8, and 24 in the same 5 ms as 4 — so *twelve times the
+draw calls costs nothing measurable*, and the tile size is decided by the EDIT
+alone, where 8x8 is **7 ms against 54 ms** (this world) and **7 ms against
+112 ms** (a world four times the area).  ⚠ At 32x32 the edit cost GROWS with
+the map; at 8x8 it is constant.  `@X096`, `@M041`.
+
+⚠ **The cold build got faster too** (218 ms against 259), which is this
+section's own finding — a big tile at the world's edge walks more hexes that
+are not drawn — confirmed rather than merely predicted.
+
+⚠⚠ **The cost was two test fixtures that encoded the number 32**, and both are
+now derived from `mesh_chunk_span()` and pass at 8, 16 and 32.  `25_m2` builds
+its band on a TILE BOUNDARY rather than at q = 32, and its own
+`test_the_fixture_is_not_degenerate` is what said so.  `25_m4`'s two thresholds
+— a literal `> 500` hexes' worth, and a `> 10x` sparse/dense ratio — were each
+a statement about the world they were measured in rather than about the mesher,
+and are now the tile's area and two exact counts.  ***A threshold that names the
+world it was measured in refuses the world it is measuring.***
 
 ### ⚠ M2's parked one-pass rewrite: measured, and NOT worth doing
 

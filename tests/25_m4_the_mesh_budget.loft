@@ -280,8 +280,15 @@ pub fn test_an_edits_cost_is_its_tiles_not_its_hex() {
     tae_hex   = floats_for(TRIS_PER_TOP);
     tae_waste = (tae_corner / tae_hex) ?? 0;
     print("m4: a one-hex edit re-bakes {tae_corner} floats = {tae_waste} hexes' worth, over {len(tae_corner_ck)} tiles ({tae_mid} for an interior edit)");
-    assert(tae_waste > 500,
-           "a one-hex edit re-bakes only {tae_waste} hexes' worth of geometry — something now meshes less than a whole tile, and `@M028`'s table is stale");
+    // ⚠⚠ **THE FLOOR IS THE TILE'S AREA, NOT A LITERAL.**  It read
+    // `> 500` — a number picked when a tile was 32x32 and 4 139 hexes'
+    // worth — and plan 19 P6 took the shipped tile to 8x8, where the
+    // same claim is true at **267**.  A threshold that names the world
+    // it was measured in refuses the world it is measuring.  ⚠ The claim
+    // itself has not moved: a ONE-hex change re-bakes more than a whole
+    // TILE's worth, which is what "its tiles, not its hex" means.
+    assert(tae_waste > tae_span * tae_span,
+           "a one-hex edit re-bakes {tae_waste} hexes' worth against a tile's {tae_span * tae_span} — something now meshes less than a whole tile, and `@M028`'s table is stale");
 }
 
 // ⚠ A tile costs what its TILE costs, not what its PAINT costs:
@@ -305,7 +312,19 @@ pub fn test_a_sparse_tile_is_still_walked_whole() {
     tas_f_thin = bake_floats(tas_pal, tas_thin, tas_hl, one_tile(tas_mid, tas_mid));
     tas_full_pw = flat_tile();
     tas_f_full = bake_floats(tas_pal, tas_full_pw, tas_hl, one_tile(tas_mid, tas_mid));
-    assert(tas_f_full > tas_f_thin * 10,
+    // ⚠⚠ **EXACT, AND IT REPLACED A RATIO THAT THE TILE SIZE COULD
+    // BREAK.**  It read `tas_f_full > tas_f_thin * 10`, which is a
+    // statement about how much BIGGER a tile is than seven hexes — true
+    // at 32x32 (1024 against 7) and false at the 8x8 plan 19 P6 shipped
+    // (64 against 7 is 9.1x).  The fixtures are different for a reason
+    // that has nothing to do with the ratio: one is a solid tile and the
+    // other is a hex and its ring, and both counts are predictable.
+    tas_hexes_full = tas_span * tas_span;
+    assert(tas_f_full == tas_hexes_full * floats_for(TRIS_PER_TOP),
+           "a solid tile bakes {tas_f_full} floats, expected {tas_hexes_full} hexes' worth");
+    assert(tas_f_thin == 7 * floats_for(TRIS_PER_TOP),
+           "one hex and its six-hex ring bake {tas_f_thin} floats, expected seven hexes' worth — the drawn region is the paint PLUS a one-hex ring (`@X075`)");
+    assert(tas_f_full > tas_f_thin,
            "the dense tile bakes {tas_f_full} floats and the sparse one {tas_f_thin} — they are not different fixtures");
 
     // …and yet it is not proportionally cheaper, because the WALK is the

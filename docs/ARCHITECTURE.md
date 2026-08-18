@@ -699,6 +699,47 @@ src/
                    frame's robots after they died.
                    ⚠ It turns culling on itself, and here that is
                    load-bearing rather than defensive — see @D005.
+  play_view.loft   WHAT A LIVE SESSION LOOKS LIKE (plan 19 P6) —
+                   the composition `main.loft` calls in play mode,
+                   `editor_view.loft::render_editor_frame`'s sibling
+                   one mode over.  PLAY_SKY, MeshWatch,
+                   mesh_watch_new / _built / _reset / _dirty / _tiles /
+                   _note, play_view_units / _sync / _draw.
+                   ⚠⚠ THE RENDERER DERIVES ITS OWN INVALIDATION
+                   (@X095).  `ground_gl.loft` was written for an
+                   EDITOR's ground; a live session moves the terrain
+                   three ways that never go near `paint` (a body
+                   falls, a wall breaks, a heap is cleared).  So
+                   `MeshWatch` keeps a SNAPSHOT of the height layer
+                   and diffs it — no dirty list on a simulation
+                   struct, which would not be state, would leak into
+                   `state_diff`, would survive an `emit` and would
+                   grow for ever in 1397 headless tests.
+                   ⚠⚠ Exact only because EVERY TERRAIN CHANGE A TICK
+                   CAN MAKE MOVES THE HEIGHT LAYER — `break_structure`
+                   raises masonry BEFORE it repaints.  Asserted
+                   against a played base (`tests/19_p6`), which is
+                   `11_f8`'s field-cache shape, not quoted.
+                   ⚠ `mesh_watch_dirty` reads BOTH directions: a pile
+                   that VANISHED has no entry left to walk, and a
+                   sweep of the current layer alone leaves the heap
+                   drawn after the map says it is gone.
+                   ⚠⚠ `play_view_draw` LEAVES THE GL STATE AS IT FOUND
+                   IT, and that is load-bearing: the two draw calls
+                   each enable depth + cull and neither disables, and
+                   the editor's picture is a full-screen TEXTURE BLIT
+                   — 691 200 black pixels of 691 200 without the two
+                   `gl_disable` lines (@M041).  Gated in `gl_gate.loft`
+                   because no fixture can carry it: each draws ONE
+                   frame and exits.
+                   ⚠ The ROSTER uploads on a tick boundary (10 ms
+                   against a 5 ms frame); the frame draws every time,
+                   because the camera eases whether or not anything
+                   moved.
+                   ⚠ Not built: a HUD, interpolation, and an editor in
+                   3-D.  Pressing P goes back to the software frame,
+                   where the picker, the hover preview and all 654 of
+                   `validate.sh`'s measurements live.
   painted.loft     PaintedHex { q, r, kind: u8 }
                    + PaintedWorld { painted: hash<PaintedHex[q, r]> }
                    + paint(), lookup_painted(), paint_line()

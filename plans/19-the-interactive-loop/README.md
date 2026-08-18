@@ -9,14 +9,98 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**P0 + P1 + P2 + P3 done** (2026-08-15).  P4 is next.  Suite **1094**
-green, gate 28 scripts / **520 measurements unchanged**.
+**P0 + P1 + P2 + P3 done** (2026-08-15); **P6 done** (2026-08-18).  P5 is
+what is left.  Suite **1397** green (100 files), gate 33 scripts /
+**654 measurements unchanged**, GL gate **3 fixtures / 53 measurements**.
 
-⚠ **dryopea can be played.**  `make play`, pan to the base, press **P**:
-the crew appears at the core, WASD drives it, and waves arrive because
-time passed.  ⚠ **Nothing of the game is DRAWN yet** — enemies, the
-vehicle and the crew are P4 — so the console is the only way to see it,
-and it prints a line per tick.
+⚠⚠ **dryopea can be played AND SEEN.**  `make play`, pan to the base,
+press **P**: the window stops being a map editor and becomes the game —
+the ground as triangles, the roster as part-trees, through the session's
+own eased follow camera.  Press P again and the editor comes back.
+
+### P6 — the window draws the game (2026-08-18)
+
+`src/play_view.loft` + `tests/19_p6_the_window.loft` (5 tests), a case in
+`src/gl_gate.loft`, and eleven lines in `main.loft`.  Plan 25 M3 gave the
+ground a GL path and plan 20 A5 gave the roster one; **neither had a
+caller with a clock on it**, and this is the composition that does.
+
+⚠⚠ **THE GROUND MOVES WHILE THE GAME IS RUNNING, AND THE RENDERER WORKS
+THAT OUT FOR ITSELF** (`@X095`).  `ground_gl.loft` was written for an
+EDITOR's ground: paint a hex and re-bake the tiles it reaches.  A live
+session changes the terrain for three other reasons — a body falls, a
+wall breaks, the player clears a heap — and none of them goes near
+`paint` from the caller's side.  ⚠ A dirty list on `HeightLayer` was the
+obvious answer and is refused three ways: it would leak into
+`state_diff` (*are two runs in the same state* — a dirty list is not
+state), survive an `emit`, and grow for ever in the 1397 headless tests
+that have no renderer.  ⚠⚠ So `MeshWatch` keeps a SNAPSHOT of the height
+layer and diffs it, which is exact only because of one invariant:
+**every terrain change a TICK can make moves the HEIGHT LAYER** — a body
+raises its hex, a breach raises masonry BEFORE it repaints, salvage
+lowers a pile.
+
+⚠ **The invariant is asserted against the simulation, not quoted.**
+`test_the_maintained_ground_equals_a_cold_rebuild` plays a real besieged
+base and compares every tile the renderer maintained with a cold
+rebuild — `11_f8`'s field-cache shape.  ⚠⚠ And the fixture's own check
+earned its keep at once: the first version passed while **no wall ever
+broke**, because the tower killed the robots first.  The equality held
+over a base where only BODIES fell — so *the one case the diff cannot
+see directly, a REPAINT, had never happened*.  One wall hex now starts
+1 HP from spent.
+
+⚠⚠ **THE TILE IS NOW 8x8, AND THAT IS PLAN 25 M4's DEFERRED DECISION
+ARRIVING** (`@X096`, `@M041`).  M4 swept `MESH_CHUNK_SHIFT`, found 8x8
+buys 8.6x on an edit for 12x the draw calls, and **changed nothing** —
+*"that half cannot be measured from `loft test`"* — naming *the phase
+that wires GL into `play_mode`* as its inheritor.  Measured in a real
+window: **the draw cost does not move at all.**
+
+| tile | tiles | one-hex terrain change | draw / frame |
+|---|---|---|---|
+| 32x32 | 4 | **54 ms** | 5 ms |
+| 16x16 | 8 | 29 ms | 5 ms |
+| **8x8** | 24 | **7 ms** | 5 ms |
+| 32x32, world 4x the area | 8 | **112 ms** | 7 ms |
+| **8x8**, world 4x the area | **96** | **7 ms** | **7 ms** |
+
+⚠ Twelve times the draw calls costs nothing measurable, and at 8x8 the
+edit cost is CONSTANT in the world's size where at 32x32 it grows with
+it.  So a body falling went from a 3-7 frame hitch to under one frame.
+⚠ **The cost was two test fixtures that encoded the number 32**, and
+both are now derived from `mesh_chunk_span()` and pass at 8, 16 and 32.
+`25_m2`'s coordinates are a TILE BOUNDARY rather than a literal;
+`25_m4`'s two thresholds (`> 500` hexes' worth, a `> 10x` sparse/dense
+ratio) were each a statement about the world they were measured in.
+
+⚠⚠ **AND A TOTAL FAILURE NO GATE IN THE REPO COULD HAVE SEEN.**
+`ground_gl_draw` and `entity_gl_draw` each turn depth testing and
+back-face culling ON and neither turns them off — right for them, and
+the editor's picture is a full-screen TEXTURE BLIT.  Measured: with the
+two `gl_disable` lines removed from `play_view_draw`, the frame after a
+play frame is **691 200 black pixels of 691 200**.  ⚠ A player toggling
+P twice would see it and the GL gate could not, because each fixture
+draws ONE frame and exits — so it is now a case of its own in
+`gl_gate.loft`, and it FIRED against the broken version.  ⚠⚠ **Its own
+first failure was its own bug**: it filled a canvas with
+`GL_GATE_CLEAR`, a constant that carries no ALPHA because everything
+that reads it masks to 24 bits, so the blend drew a transparent quad and
+the check read black for a reason that had nothing to do with depth
+testing.  ***A control that fires is not yet a control that fires for
+the right reason.***
+
+⚠ **The roster is uploaded on a TICK boundary and not per frame** — 10 ms
+against a 5 ms frame, and every entity position is a lattice position
+whose joint angles are functions of the tick's own time.  ⚠ It is the
+first thing that has to go the day anything is drawn at `play_alpha`
+(`@M035`), which is the same decision as the camera following the drawn
+point.
+
+⚠ **What P6 did NOT build**: no HUD (the wallet, the wave and the tick
+are still console lines), no interpolation, and no editor in 3-D —
+pressing P goes back to the software frame, where the picker, the hover
+preview and all 654 of `validate.sh`'s measurements live.
 
 **P1 built the seam — and FALSIFIED P0 while doing it.**  P0 said an
 accumulator reproduces `tick N` exactly, so one door taking SECONDS
@@ -489,8 +573,9 @@ is still open.
 | **P1** — the play session and its ONE door | M | `tests/19_p1_the_seam.loft` (14 fns) + the whole gate: `play.loft` owns the only `wave_tick` call, `tick` / `fall` / every scripted frame route through it, and **all 520 measurements are unchanged** | **Done** |
 | **P2** — play actions in the ONE key table | S | `tests/19_p2_the_keys.loft` (17 fns) — WASD / Shift / E are `EditorAction` rows, a script pressing the key does what the verb does, and the 520 measurements are unchanged.  ⚠ They apply in `play_step`, not `editor_step`: the editor's seam has no roster | **Done** |
 | **P3** — the loop: the game runs in the window | M | `tests/19_p3_the_clock.loft` (12 fns) — P starts the clock, a held P toggles once, the crew lands at the core, the mode decides whether WASD pans or drives, **a wave arrives on 12 s of wall clock with no `tick` in the test**, and 60 fps and 12 fps play one game.  ⚠ The headless half is what CI can hold; the window is § Open questions 4 | **Done** |
-| **P4** — drawing the game | M | ⚠ **Superseded by [plan 20](../20-entity-art/README.md) A5** — the gate is unchanged (`classify_world` shares + a `snap`), but the source of truth for what an entity looks like is now a PART-TREE rather than primitives drawn inline.  See below | **Superseded** |
+| **P4** — drawing the game | M | ⚠ **Superseded IN PART by [plan 20](../20-entity-art/README.md) A5** — that phase took *what an entity looks like and how it is gated* (a PART-TREE, and pixel counts against a GL frame).  ⚠⚠ The other half — *the WINDOW* — was always this plan's, and it is **P6** below | **Superseded** |
 | **P5** — capture from a live session | S | `tests/19_p5_capture.loft` — a key writes the situation, and the file replays to an S0-identical state ([plan 18](../18-scenario-capture/README.md)) | **Next** |
+| **P6** — the window draws the game | M | `tests/19_p6_the_window.loft` (5 fns) + `src/play_view.loft` + a case in `src/gl_gate.loft`.  ⚠⚠ Its headline gate is that the ground the renderer MAINTAINS equals a COLD rebuild after a real base is played, which is `11_f8`'s field-cache shape — and it holds because *every terrain change a tick can make moves the height layer*.  ⚠ It also settled plan 25 M4's deferred tile size on a measurement M4 could not make (`@X096`) and found a GL state leak that draws a **black window** on the second P press (`@M041`) | **Done** 2026-08-18 |
 
 ### Why the order is this order
 

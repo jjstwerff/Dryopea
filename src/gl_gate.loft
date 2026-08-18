@@ -569,6 +569,73 @@ fn gl_gate_one(rep: GlGateReport, name: text, scripts_dir: text, shots_dir: text
     gl_case_an_island(rep, ggo_cv, ggo_fc)
 }
 
+// ─── The GL state a play frame leaves behind ────────────────────
+
+// ⚠⚠ **THE ONE CLAIM IN THIS FILE THAT IS NOT ABOUT A FIXTURE**, and it
+// is here because this is the only place in the repo with a context.
+//
+// `ground_gl_draw` and `entity_gl_draw` each turn depth testing and
+// back-face culling ON and neither turns them off — right for them, and
+// wrong for the frame after.  The editor's picture is a full-screen
+// TEXTURE BLIT, and a blit under a depth test that nothing cleared draws
+// **nothing at all**: measured, 691 200 black pixels of 691 200 with the
+// two `gl_disable` lines removed from `play_view_draw`, and a full
+// editor frame with them.
+//
+// ⚠ A player toggling P twice would see it and no other gate could: the
+// fixtures above each draw ONE frame and exit, so a state leak has
+// nothing to leak into.  `@M041`.
+fn gl_gate_state_restored(rep: GlGateReport, shots_dir: text, kinds: integer) -> text {
+    // ⚠ The painter is built BEFORE the 3-D draws, which is what
+    // `main.loft` does (it opens one for the session) — and what the
+    // probe that measured this did.  Building it after them is a
+    // different experiment.
+    gsr_p  = create_painter_2d(GL_GATE_W as float, GL_GATE_H as float);
+    gsr_gg = ground_gl_new(kinds);
+    gsr_eg = entity_gl_new();
+    if !ground_gl_ready(gsr_gg) || !entity_gl_ready(gsr_eg) {
+        return "the world shaders did not link, so this check would pass for the wrong reason";
+    }
+
+    // A play-style frame: nothing uploaded, but the state the draw
+    // calls set is what this is about, not the picture.
+    gl_clear(GL_GATE_CLEAR);
+    ground_gl_draw(gsr_gg, gl_gate_vp());
+    entity_gl_draw(gsr_eg, gl_gate_vp());
+    gl_disable(GL_CAP_DEPTH_TEST);
+    gl_disable(GL_CAP_CULL_FACE);
+
+    // …then the editor's blit, in a colour the palette does not hold so
+    // a partial draw cannot hide in a bucket.
+    //
+    // ⚠⚠ **WITH AN ALPHA, and `GL_GATE_CLEAR` has none.**  That constant
+    // is only ever compared against pixels masked to 24 bits, so its top
+    // byte was free — until a canvas fill, where it is the ALPHA
+    // `create_painter_2d`'s blend reads.  Filled with the bare constant
+    // the blit is fully transparent and this check reads a black frame
+    // for a reason that has nothing to do with depth testing.  ⚠ It cost
+    // a false failure to find, which is `@M041`'s second reading:
+    // *the negative control fired for the wrong reason first.*
+    gsr_cv = canvas(GL_GATE_W, GL_GATE_H, rgb(0xff, 0x00, 0xff));
+    gsr_t  = gl_upload_canvas(gsr_cv.data, gsr_cv.width, gsr_cv.height);
+    gl_clear(rgb(0, 0, 0));
+    draw_texture_at(gsr_p, gsr_t, 0.0, 0.0, GL_GATE_W as float, GL_GATE_H as float);
+
+    gsr_shot = "{shots_dir}/gl-state-restored.png";
+    gsr_ok   = gl_screenshot(GL_GATE_W, GL_GATE_H, gsr_shot);
+    gl_swap_buffers();
+    gl_delete_texture(gsr_t);
+    entity_gl_destroy(gsr_eg);
+    ground_gl_destroy(gsr_gg);
+    if !gsr_ok { return "gl_screenshot refused to write {gsr_shot}"; }
+    rep.shots += 1;
+
+    gsr_seen = gl_png_canvas(gsr_shot);
+    gsr_n    = gl_count_colour(gsr_seen, GL_GATE_CLEAR);
+    return gl_exact(rep, "a 2-D blit after a 3-D draw still reaches the screen",
+                    gsr_n, GL_GATE_W * GL_GATE_H);
+}
+
 // ─── The sweep ──────────────────────────────────────────────────
 
 // Every fixture in `tests/gl/`, drawn and measured.
@@ -641,6 +708,17 @@ pub fn gl_gate_all(scripts_dir: text, shots_dir: text, palette_path: text,
             println("   FAILED — {gga_msg}");
             if gga.message == "" { gga.message = gga_msg; }
         }
+    }
+
+    // ⚠ Last, and outside the fixture loop: it is a claim about the
+    // CONTEXT rather than about any world.
+    println("");
+    println("── the GL state a play frame leaves ──────────────");
+    gga_sr = gl_gate_state_restored(gga, shots_dir, len(load_palette(palette_path)));
+    if gga_sr != "" {
+        gga.failed += 1;
+        println("   FAILED — {gga_sr}");
+        if gga.message == "" { gga.message = gga_sr; }
     }
 
     gl_destroy_window();

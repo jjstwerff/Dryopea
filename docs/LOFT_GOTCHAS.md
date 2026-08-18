@@ -295,3 +295,30 @@ behaviour.  Full reproducers + loft-side issue refs live in
   so it reads as urgent, and because a green suite never aborts —
   the warning is unreachable by the warning-clean gate.
 
+## ⚠ A zero-argument function in a TEST FILE is collected as a test
+
+*(found 2026-08-18, plan 19 P6)*
+
+`loft test` runs every zero-argument top-level function in a test file, not
+only the ones named `test_*`.  A one-line helper —
+
+```loft
+fn m2_edge() -> integer { mesh_chunk_span() }
+```
+
+— added to `tests/25_m2_the_rebuild.loft` made it report **17 tests** where the
+file has 16, and the seventeenth asserted nothing.
+
+⚠ **A green suite counts it**, which is how a test file quietly grows a test
+that cannot fail — and the count is the number every plan's Status quotes.  The
+`+1` was noticed only because the suite total did not reconcile
+(1392 + 5 = 1397, and it read 1398).
+
+⚠ It is not every zero-argument helper: `fn m2_band() -> PaintedWorld` in the
+same file is NOT collected.  The discriminator was not chased further; the
+practical rule is **do not add a zero-argument helper to a test file** — spell
+the library call out at each site, or give the helper a parameter.
+
+⚠⚠ **The reusable half is the habit, not the rule**: *a suite total that does
+not reconcile is a finding*.  `1392 + 5` had one obvious answer and the runner
+gave another.
