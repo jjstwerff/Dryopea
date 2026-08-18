@@ -1,0 +1,229 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// #examples
+//
+// THE POSE COMES FROM THE SIMULATION — and never from a second flag.
+//
+// Plan 20 phase A4.  `docs/PARTS.md` § D3 states the rule this file
+// exists to keep: *"the sprite follows the simulation, and never a
+// second flag.  Which pose a tower draws in is 'is its socket filled',
+// asked of `TowerState`"*.  So every number here is READ from state the
+// simulation already keeps, and nothing in this file may be stored:
+//
+//   the tower's top      `tower_has_top(ts, q, r)`   — plan 17 T2
+//   the canopy           `cargo_carrying(cl, owner)` — plan 15
+//   the rotors' rate     `vehicle_speed(v)`          — plan 13
+//
+// ⚠ **A field on `Vehicle` saying "canopy open" would be the defect**,
+// exactly as a "carried" boolean beside a `CarryObject.owner` is
+// (`carry.loft` § the whole state machine): two facts that can disagree
+// about one thing.  There is nothing to keep in sync here because
+// nothing is kept.
+//
+// ── ⚠ What is a POSE and what is PRESENTATION ───────────────────
+//
+// `pose_vehicle` answers the pose the SIMULATION implies — the canopy's
+// target, the rotors' phase at a moment of simulated time.  A canopy
+// that swings rather than snapping is the renderer easing that target,
+// with `fixstep::approach` and the camera's own `k` (plan 21 R2), and
+// `pose_hover_unit` is the door it poses through.  ⚠ That split is why
+// the canopy is a FLOAT and not two poses: `PARTS.md` § D4 retired a
+// sprite design in which *"the canopy had two poses, shut and open, and
+// anything between them was unrepresentable"*, and a binary door here
+// would have re-introduced it one layer down.
+//
+// ── ⚠ What this file does NOT do ────────────────────────────────
+//
+// **No animation clock.**  There is no accumulator and no phase stored
+// anywhere: the rotors' angle is a function of SIMULATED TIME, handed
+// in as base units by whoever is drawing.  A cycle that needed a clock
+// of its own — a walk, a death throe, a muzzle flash — is out of plan
+// 20 by name.
+//
+// **No world placement of its own.**  `emit_tower` takes the point the
+// tower's origin sits at, because a socketed child has to compose with
+// it; where that point comes from is the renderer's (plan 20 A5).
+//
+// **No colour.**  A class is a row of DATA and colour is a UNIFORM
+// (`@X074`).
+
+use mesh3d;
+use fixstep;
+use part;
+use part_mesh;
+use catalogue;
+use carry;
+use vehicle;
+use tower;
+
+// ─── The rotors ─────────────────────────────────────────────────
+
+// How fast a rotor turns when the vehicle is not boosting, in TURNS per
+// second.
+//
+// ⚠⚠ **IT IS BOUNDED BY THE FRAME RATE, NOT BY THE FICTION.**  A rotor
+// is four-fold symmetric (two crossed blades), so it repeats every
+// quarter turn and its apparent direction reverses beyond an EIGHTH of
+// a turn per frame — 3.75 turns/s at 30 fps.  A believable rotor turns
+// at fifty, which at any frame rate this game will run at is a rotor
+// that strobes backwards.  So the rate is stylised, and 1.2 leaves the
+// boosted figure at 2.4 with a 1.5x margin against the slowest frame
+// rate.  ⚠ Raise it and the thing it is FOR — a rotor that visibly
+// speeds up under boost — is the first casualty.
+pub const ROTOR_IDLE_TURNS_PER_S: float = 1.2;
+
+// What this vehicle's rotors are turning at, in turns per second.
+//
+// ⚠⚠ **THE BOOST FIGURE IS DERIVED AND NOT AUTHORED**: it is the idle
+// rate scaled by `vehicle_speed`'s own ratio, so *the rotors speed up by
+// exactly as much as the vehicle does*.  Author a second constant and
+// the two numbers can disagree about what boost IS, which is the whole
+// reason § D7 gives the readout to the rotors — `DESIGN.md` § HUD's
+// *"diegetic"* rule getting something for free.
+//
+// Example: @DRY-042
+pub fn rotor_turns_per_second(v: const Vehicle) -> float {
+  ROTOR_IDLE_TURNS_PER_S * (vehicle_speed(v) / VEHICLE_SPEED_HEX_PER_SECOND)
+}
+
+// Where a rotor is in its turn at `units` of simulated time, in `[0, 1)`.
+//
+// ⚠ **`clock_seconds_from_units` is legal HERE and in almost nowhere
+// else** — `fixstep` § the authoring and presentation doors: no mover
+// and no timer may spend float seconds, and a rotor angle is
+// presentation, which is float by nature.
+//
+// ⚠⚠ **A CHANGE OF RATE MOVES THE PHASE, and that is a real limit
+// rather than a rounding one.**  The phase is `rate x t` read fresh, so
+// the tick a boost starts, a rotor jumps to wherever the faster rate
+// puts it.  Integrating instead would need an accumulator on the
+// `Vehicle`, which is the animation state this plan refuses — and the
+// jump is invisible for the same reason the whole family is: a
+// four-fold rotor at 1.2 turns/s is a quarter of a turn from itself
+// every 0.2 s anyway.  ⚠ The day something READS a blade's position
+// (a shadow, a collision, a mount) the accumulator is the fix and it
+// belongs on the renderer, not on the simulation.
+//
+// Example: @DRY-042
+pub fn rotor_phase(v: const Vehicle, units: integer) -> float {
+  turns = rotor_turns_per_second(v) * clock_seconds_from_units(units);
+  turns - floor(turns)
+}
+
+// ─── The canopy ─────────────────────────────────────────────────
+
+// The canopy's target angle for a hover unit whose cockpit is open (or
+// not), in turns — read out of the RIG rather than restated.
+//
+// ⚠ **The catalogue owns the number** (`PARTS.md` § D7: `lo: 0.0,
+// hi: 0.30`), and this reads its joint's limits back, so a canopy that
+// opens further is one edit in one file.  ⚠ It is also why a pose can
+// never be inadmissible: the only two values this can answer are the
+// limits themselves.
+//
+// Example: @DRY-043
+pub fn canopy_turns(p: Part, open: boolean) -> float {
+  j = rig_joint(p.pt_rig, HOVER_BONE_CANOPY);
+  if open { return j.jt_hi; }
+  j.jt_lo
+}
+
+// ─── The hover unit's pose ──────────────────────────────────────
+
+// Assemble a hover unit's joint values from the two numbers that vary.
+//
+// ⚠ **The door the RENDERER poses through** — it hands its own EASED
+// canopy angle and its own phase, which is what lets a canopy swing
+// while the simulation only ever says *open* or *shut*.
+//
+// ⚠⚠ **THE ROTORS COUNTER-ROTATE IN DIAGONAL PAIRS**, and it is the
+// fiction's own physics rather than decoration: four rotors turning the
+// same way put a net torque on the airframe and the thing would spin.
+// The opposite direction is spelled `1 - phase` because the joint's
+// limits are `0..1` — the same angle, walked the other way round.
+//
+// Example: @DRY-041, @DRY-043
+pub fn pose_hover_unit(p: Part, canopy: float, phase: float) -> vector<float> {
+  vals = part_values_rest(p);
+  vals[HOVER_BONE_CANOPY] = canopy;
+  back = 1.0 - phase;
+  if back >= 1.0 { back = 0.0; }
+  for k in 0..HOVER_ROTORS {
+    // diagonals: rotor 0 (front starboard) with rotor 3 (rear port)
+    if k == 0 || k == 3 { vals[HOVER_BONE_ROTOR_0 + k] = phase; }
+    else { vals[HOVER_BONE_ROTOR_0 + k] = back; }
+  }
+  vals
+}
+
+// The pose the SIMULATION implies for one hover unit — the player's or
+// a crew member's, told apart by `owner` (`occupancy.loft`'s blocker
+// ids, which is what `CargoLayer` keys on).
+//
+// ⚠ **The canopy is open exactly while this unit is CARRYING**, which
+// is plan 20 A4's own decision (`@X090`) and the only sim fact the
+// cockpit could read: it makes a laden vehicle legible at a glance,
+// which is the one thing `carry.loft` moves and nothing draws.
+//
+// Example: @DRY-043
+pub fn pose_vehicle(p: Part, v: const Vehicle, cl: const CargoLayer,
+                    owner: integer, units: integer) -> vector<float> {
+  pose_hover_unit(p, canopy_turns(p, cargo_carrying(cl, owner)),
+                  rotor_phase(v, units))
+}
+
+// ─── The tower, and the socket the simulation fills ─────────────
+
+// Emit the tower standing at `(q, r)`, with its origin at `(x, y, z)`.
+// Answers the triangles added.
+//
+// ⚠⚠ **THREE FACTS, THREE OWNERS, AND THAT IS THE DESIGN.**  The
+// SOCKET says where a top can go (`part.loft`, computed and stored
+// nowhere), the BINDING says what fits it (`catalogue.loft`), and the
+// SIMULATION says whether one is there (`tower_has_top`, which plan 17
+// T2 built for the carry model and not for a picture).  A tower that
+// drew its top from a flag beside the mechanic is the defect § D3 is
+// written against — and it is one a frame gate reports as *pixel shares
+// slightly off*, which is why `tests/20_a4` emits BOTH states and
+// asserts they differ.
+//
+// ⚠ A tower the simulation has never ticked HAS its top: `tower_has_top`
+// answers on `top_removed`, whose neutral value is false.  A fresh tower
+// is a whole one.
+//
+// Example: @DRY-044, @DRY-045
+pub fn emit_tower(m: Mesh, ps: PartSet, ts: const TowerState,
+                  q: integer, r: integer,
+                  x: float, y: float, z: float) -> integer {
+  // ⚠ `?` rather than a null check, and the behaviour is deliberate: a
+  // name the set does not hold discharges to an EMPTY part, which has no
+  // bones and no limbs and therefore emits nothing.  A catalogue missing
+  // an entry draws a hole, and the doorstep that names it is
+  // `part_fault`, called once over the whole set rather than per frame.
+  //
+  // ⚠⚠ **AND THE INDEX IS WRITTEN OUT HERE RATHER THAN CALLING
+  // `partset_get`, WHICH IS A LOFT WORKAROUND AND NOT A STYLE**
+  // ([loft#974]): a record fetched through an ACCESSOR FUNCTION reads its
+  // `vector<Struct>` fields as EMPTY once an unrelated struct has been
+  // allocated in the caller — so the second tower a renderer draws comes
+  // back with no limbs, silently, on both backends.  Indexing the hash at
+  // the USE SITE is correct where the identical call through
+  // `partset_get` is not.  ⚠ `docs/LOFT_GOTCHAS.md` § A record fetched
+  // through an accessor carries the 40-line reproducer; when the fix
+  // ships, this goes back to `partset_get` and `tests/20_a4` is what
+  // proves it.
+  base = ps.ps_parts["tower_base"]?;
+  vals = part_values_rest(base);
+  n = part_emit_at(m, base, vals, x, y, z);
+  if !tower_has_top(ts, q, r) { return n; }
+  for b in base.pt_binds {
+    i = socket_index(base, b.bd_socket);
+    if i < 0 { continue; }
+    top = ps.ps_parts[b.bd_part]?;
+    // ⚠ WHERE the socket is comes from the posed rig every time, so a
+    // mast that grows moves its top with it and nothing else changes.
+    (sx, sy, sz) = socket_world(base, vals, i);
+    n += part_emit_at(m, top, part_values_rest(top), x + sx, y + sy, z + sz);
+  }
+  n
+}

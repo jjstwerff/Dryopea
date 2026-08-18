@@ -378,23 +378,35 @@ pub fn socket_index(p: Part, name: text) -> integer {
 }
 
 // ⚠⚠ **THE INVARIANT'S ONE SITE.**  Where socket `i` is, with the rig
-// posed at `values` — its bone's segment, read at `sk_t` along it.
+// posed at `values` — its bone's frame, read at `sk_t` along it.
 //
 // Nothing is stored: pose the same part two ways and this answers two
 // points from the same `Socket` record.  A second function answering
 // *where is the top* is the defect the whole design is arranged to make
 // impossible, so add none.
 //
+// ⚠⚠ **IT ANSWERS THREE NUMBERS SINCE PLAN 20 A4, AND THE TWO-NUMBER
+// VERSION WAS BLIND ON THE ONE SOCKET THE GAME HAS.**  A1 wrote this
+// over `rig_world_seg`, which was the whole of `hex_body` at the time;
+// A3 then mounted the tower's top on a bone 6 m UP (`rig_bone3`'s `oz`),
+// and a planar read of a spatial rig answers **(0.0, 0.0)** — the part's
+// origin, at the tower's FOOT.  Nothing went red: A1's own fixture is a
+// boom in the plane, so the one part with a socket that leaves it was
+// the one no test posed.  ⚠ The rule that would have caught it is
+// `CLAUDE.md`'s own — *a gate whose fixture cannot express the thing
+// the guard is for is not a gate* — and it is the second time this
+// plan has met it (`@M037`).
+//
 // ⚠ A socket index the part does not have answers the part's ORIGIN,
 // which is `hex_body`'s own convention rather than a shrug — every
-// index in `rig_world_seg` is `?? 0.0`, so a bone that is not there
-// answers `(0, 0, 0, 0)` and the doorstep is a separate call.  Here
+// index in `rig_world_frame3` is `?? 0.0`, so a bone that is not there
+// answers the identity frame and the doorstep is a separate call.  Here
 // that doorstep is `socket_fault`, and `socket_index` answers -1 for a
 // name that is not offered.
 //
-// Example: @DRY-016, @DRY-017, @DRY-018
-pub fn socket_world(p: Part, values: vector<float>, i: integer) -> (float, float) {
-  if i < 0 || i >= len(p.pt_socks) { return (0.0, 0.0); }
+// Example: @DRY-016, @DRY-017, @DRY-018, @DRY-040
+pub fn socket_world(p: Part, values: vector<float>, i: integer) -> (float, float, float) {
+  if i < 0 || i >= len(p.pt_socks) { return (0.0, 0.0, 0.0); }
   // ⚠ A SWEEP RATHER THAN `p.pt_socks[i]`, and it is deliberate: an
   // index read warns as possibly-null and `?? Socket { … }` would need a
   // partial literal, which loft defaults silently ([loft#914]).  A part
@@ -404,9 +416,14 @@ pub fn socket_world(p: Part, values: vector<float>, i: integer) -> (float, float
   for s in p.pt_socks {
     if s#index == i { bone = s.sk_bone; along = s.sk_t; }
   }
-  if bone < 0 || bone >= rig_count(p.pt_rig) { return (0.0, 0.0); }
-  (x0, y0, x1, y1) = rig_world_seg(p.pt_rig, values, bone);
-  (x0 + along * (x1 - x0), y0 + along * (y1 - y0))
+  if bone < 0 || bone >= rig_count(p.pt_rig) { return (0.0, 0.0, 0.0); }
+  // ⚠ `sk_t` is a fraction of the bone's LENGTH, and a bone's length
+  // runs along its own `+x` — so the socket is that far out in the
+  // bone's frame, never a lerp between two world points.  The two are
+  // the same number for a straight bone and only this one stays true
+  // when the frame is rotated.
+  f = rig_world_frame3(p.pt_rig, values, bone);
+  frame_point(f, along * (p.pt_rig.rg_len[bone] ?? 0.0), 0.0, 0.0)
 }
 
 // ─── The doorstep ───────────────────────────────────────────────

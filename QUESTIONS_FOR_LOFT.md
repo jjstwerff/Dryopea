@@ -33,6 +33,43 @@ fix / feature, move it to **Resolved**.
 
 ## Submitted
 
+### A record fetched through an ACCESSOR reads its vector field as EMPTY — [loft#974](https://github.com/loft-lang/loft/issues/974)
+
+Filed 2026-08-18 (plan 20 A4).
+
+- **Found while:** plan 20 A4 — `src/pose.loft::emit_tower` draws a tower by
+  fetching `tower_base` out of a `PartSet` (`hash<Part[pt_name]>`) and emitting
+  its limbs into a `mesh3d::Mesh` the caller allocated.  The FIRST tower draws
+  96 triangles; the SECOND reads **0 limbs** and draws nothing.
+- **Kind:** bug (`sev:high`, `area:store-lifetime`, both backends, `wa:clean`)
+- **What dryopea needs:** a hash lookup that survives being wrapped in a
+  function — which is what every `*_get` door in this repo is.
+
+⚠⚠ **It is SILENT.**  Exit code 0, no diagnostic, and it passed a **1361-test**
+suite while it was in the tree, because `emit_tower` was the only caller with
+all the ingredients.
+
+The reproducer is 40 lines with **no imports** —
+[`loft_repros/accessor_fetch_reads_empty/`](loft_repros/accessor_fetch_reads_empty/README.md)
+— and its own table records which ingredients are necessary.  The two that
+matter to a reader: **the `?` discharge is innocent** (a `== null` check reads
+empty too) and **the element type is innocent** (`vector<float>` and
+`vector<Struct>` both).  What is required is an ACCESSOR FUNCTION plus an
+unrelated struct allocated in the caller between two calls.
+
+⚠ **Not [loft#969](https://github.com/loft-lang/loft/issues/969)** (closed,
+fixed the same day): that needed two functions interleaved over one part and
+truncated `8 → 1`; this needs one function and empties the vector.
+
+⚠ **Both binaries on this box were checked before filing**, which is `@M038`'s
+lesson applied: `~/.local/bin/loft` (13:26) and a fresh `target/release/loft`
+(13:48, two commits later, one of them a heap-correctness PR) fail identically.
+
+**Workaround, shipped:** index the hash at the USE SITE —
+`ps.ps_parts["tower_base"]?` is correct where `partset_get(ps, "tower_base")?`
+is not.  `src/pose.loft` carries it with a pointer back to the repro, and
+`tests/20_a4_the_joints.loft` is what proves the revert when the fix lands.
+
 ### `use <pkg>;` resolves a package the manifest never declared — [loft#968](https://github.com/loft-lang/loft/issues/968)
 
 Filed 2026-08-18 (plan 20 A1).

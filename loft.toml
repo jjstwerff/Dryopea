@@ -131,9 +131,7 @@ fixstep = ">=0.1"
 # dryopea added `Frame` / `rig_world_frame3` / `frame_point` upstream
 # rather than re-deriving forward kinematics here (`PARTS.md` § D1).
 #
-# ⚠⚠ **Nothing in `src/` consumes it yet**: A2 is written and DEFERRED on
-# a loft heap corruption (`QUESTIONS_FOR_LOFT.md` § Open) — emitting a
-# part and measuring one in the same process makes an unrelated
-# `part_size` answer `(0,0,0)` and the suite SIGSEGV.  The pin is here
-# because the release is real and A2 resumes on it.
+# ⚠ Consumed by `src/part.loft`, `src/catalogue.loft`, `src/part_mesh.loft`
+# and `src/pose.loft` (plan 20 A1-A4).  The heap corruption that held A2
+# out was a STALE BINARY and not a bug in the tree (`@M038`).
 hex_body = ">=0.3"

@@ -225,6 +225,54 @@ pub fn part_emit(m: Mesh, p: Part, values: vector<float>) -> integer {
   n
 }
 
+// Emit every limb of `p`, posed at `values`, TRANSLATED by `(dx, dy, dz)`.
+//
+// ⚠ **The offset is a translation and not a placement**: it moves the
+// part's own frame and turns nothing, which is what a socketed child
+// needs (plan 20 A4 — `pose.loft::emit_tower` puts the tower's top 6 m
+// up the mast) and what plan 20 A5 will need again with a facing on top
+// of it.
+//
+// ⚠⚠ **A SOCKET'S ROTATION IS NOT CARRIED, AND THAT IS THE NAMED GAP.**
+// The exact composition is *the parent's socket FRAME applied to the
+// child's posed points*, and `hex_body` publishes no way to compose two
+// `Frame`s — so a child hung on a bone that TURNS would follow the
+// socket's position (`socket_world` is exact) and keep its own
+// orientation.  Every socket in `catalogue.loft` rides an unrotated bone
+// and the tower's top is a body of revolution about that bone's own
+// axis, so today the two are the same picture to the bit.  ⚠ The day a
+// socket turns — a turret, a swinging arm — the fix is
+// `frame_compose` UPSTREAM in `hex_body`, the same route `rig_bone3`
+// and `rig_world_frame3` took, and never a rotation re-derived here
+// (`PARTS.md` § D1).
+//
+// Example: @DRY-041
+pub fn part_emit_at(m: Mesh, p: Part, values: vector<float>,
+                    dx: float, dy: float, dz: float) -> integer {
+  n = 0;
+  for bi in 0..rig_count(p.pt_rig) {
+    fr = frame_shift(rig_world_frame3(p.pt_rig, values, bi), dx, dy, dz);
+    n += emit_bone_limbs(m, p, fr, bi);
+  }
+  n
+}
+
+// One `Frame`, moved — same basis, origin plus `(dx, dy, dz)`.
+//
+// ⚠ **A LITERAL rather than three assignments**, and it has to be: a
+// struct RETURNED from a function is a COPY in loft ([loft#894]), so
+// `f.fr_x = f.fr_x + dx` on `rig_world_frame3`'s answer is a silent
+// no-op that compiles and moves nothing.  ⚠ Every one of the twelve
+// fields is written out for the neighbouring reason — an omitted field
+// takes its zero silently ([loft#914]), and a zeroed basis row draws a
+// part flattened onto a plane.
+fn frame_shift(f: Frame, dx: float, dy: float, dz: float) -> Frame {
+  Frame { fr_x: f.fr_x + dx, fr_y: f.fr_y + dy, fr_z: f.fr_z + dz,
+          fr_00: f.fr_00, fr_01: f.fr_01, fr_02: f.fr_02,
+          fr_10: f.fr_10, fr_11: f.fr_11, fr_12: f.fr_12,
+          fr_20: f.fr_20, fr_21: f.fr_21, fr_22: f.fr_22 }
+}
+
 // Every limb riding one bone, through one frame.
 fn emit_bone_limbs(m: Mesh, p: Part, fr: Frame, bone: integer) -> integer {
   n = 0;

@@ -487,6 +487,14 @@ exactly this: detach the top in the sim and the top must vanish from the frame,
 measured.  ⚠ This said *A6* until 2026-08-18 and that phase has never existed —
 plan 20 runs A1–A5, and *poses come from the SIMULATION* is A4.
 
+⚠⚠ **AND THE RULE IS NOW ENFORCED BY A TEST** (plan 20 A4, 2026-08-18):
+`src/pose.loft::emit_tower` emits the base, asks `tower_has_top`, and emits the
+top only if the simulation says one is there —
+`tests/20_a4_the_joints.loft::test_a_tower_with_no_top_emits_no_top_triangles`
+detaches it in the sim and measures that exactly the top's own triangle count
+went.  ⚠ **Three facts, three owners**: the SOCKET says where a top can go, the
+BINDING says what fits it, and the SIMULATION says whether one is there.
+
 ⚠ **The socket's other half is BUILT** (plan 20 A1, 2026-08-18):
 `src/part.loft` holds the `Socket` a part offers and the `Binding` that fills
 it, over `hex_body::Rig`, refusing a socket filled twice and a part that
@@ -700,10 +708,32 @@ PROXY_ART), so a stopped rotor is a state the game does not have.
 ⚠ **Under § D4 they actually SPIN**, and that is the clearest small illustration
 of what changed: the sprite design was going to draw one blurred disc, because
 animation frames multiplied a cache and nobody would see the difference at
-25 px.  With geometry a rotor is a disc with a rotation angle, the angle is a
+25 px.  With geometry a rotor is a shape with a rotation angle, the angle is a
 float, and it costs one multiply per frame.  ⚠ Their spin rate is the one place
 BOOST becomes visible without a HUD, which is `DESIGN.md` § HUD's *"diegetic"*
 rule getting something for free.
+
+⚠⚠ **AND A ROTOR IS TWO CROSSED BLADES RATHER THAN A DISC, BECAUSE A DISC
+CANNOT SHOW THAT IT IS TURNING** (plan 20 A4, `@M039`).  The table above says
+*disc, r 0.36 / r 0.52* and that shape cannot carry the paragraph above it:
+`ground_gl.loft` draws a part in ONE FLAT UNLIT COLOUR (`@X074`, and that is
+what keeps a frame exactly classifiable), so a body of revolution turning about
+its own axis is a **still picture**.  Measured — a 12-segment disc at a TWELFTH
+of a turn is its own silhouette to the last bit, and the most its width ever
+moves is **3.4 %**; two crossed blades at the same angle move it **9.4 %**.
+⚠ **The RADII are unchanged and so is the footprint**: a blade spans the
+diameter the disc did, so the envelope is identical and `part_size` still reads
+2.28 x 2.05 x 0.93.  ⚠ Four blades rather than two, because a single blade
+reaches its radius along ONE axis and would shrink the vehicle's width to 1.33 m
+— the cross is what keeps the footprint a rotor envelope.
+
+⚠⚠ **THE SPIN RATE IS BOUNDED BY THE FRAME RATE AND NOT BY THE FICTION**
+(`@X091`).  Four-fold blades repeat every quarter turn, so the apparent
+direction reverses beyond an eighth of a turn per frame — **3.75 turns/s at
+30 fps** — while a real rotor turns at fifty.  `pose.loft` ships
+`ROTOR_IDLE_TURNS_PER_S = 1.2` with the boosted figure **derived** from
+`vehicle_speed`'s own ratio (2.4), and `tests/20_a4` pins the margin so that
+raising it is a decision rather than a typo.
 
 ---
 

@@ -173,10 +173,20 @@ fn test_the_tower_is_three_hexes_across_and_offers_one_socket() {
 
     // ⚠ And WHERE the top sits is derived, not stored — 6 m up, which is
     // the height the sight line already uses.
-    (sx, sy) = socket_world(base, [0.0, 0.0], socket_index(base, "top"));
-    (_, _, mz, _, _, _) = rig_world_seg3(base.pt_rig, [0.0, 0.0], 1);
-    assert(near3(mz, TOWER_HEIGHT_METRES),
-           "the socket's bone sits at the tower's own height: {mz}");
+    //
+    // ⚠⚠ **ALL THREE NUMBERS COME FROM `socket_world`, AND UNTIL PLAN 20
+    // A4 THE HEIGHT DID NOT.**  This block used to read `mz` out of
+    // `hex_body::rig_world_seg3` and assert only `sx` / `sy` against the
+    // socket — so it claimed *where the top sits is derived* while the
+    // derivation under test answered two numbers and the third came from
+    // somewhere else.  `socket_world` was planar and read **(0, 0)**
+    // here, which is the tower's FOOT, and this assertion passed.
+    // *A gate that asks a different instrument for the interesting half
+    // is not asking at all.*
+    (sx, sy, sz) = socket_world(base, part_values_rest(base),
+                                socket_index(base, "top"));
+    assert(near3(sz, TOWER_HEIGHT_METRES),
+           "the socket sits at the tower's own height: {sz} vs {TOWER_HEIGHT_METRES}");
     assert(near3(sx, 0.0) && near3(sy, 0.0), "on the axis: ({sx}, {sy})");
 }
 

@@ -68,7 +68,7 @@ use tower;
 // The frame is § D7's: `+y` forward, `+x` starboard, `+z` up, origin at
 // the centre of the footprint at hover height.
 //
-// Example: @DRY-028, @DRY-029
+// Example: @DRY-028, @DRY-029, @DRY-046
 pub fn cat_hover_unit() -> Part {
   r = rig_new();
   // bone 0 — the fixed chassis.  ⚠ Length 0: a bone's length is the
@@ -80,6 +80,15 @@ pub fn cat_hover_unit() -> Part {
   // ⚠ This is the joint that needed `rig_bone3` and could not be
   // expressed at all before hex_body 0.2.0.
   r = rig_bone3(r, 0, 0.0, -0.02, 0.56, 0.0, 1.0, 0.0, 0.0, 0.0, 0.30);
+  // bones 2-5 — the four rotor SPIN joints, about each rotor's own
+  // vertical axis.  ⚠ Plan 20 A4: they exist so that `pose.loft` has
+  // something to turn, and their limits are a WHOLE TURN because a spin
+  // has no rest — `rotor_phase` folds into `[0, 1)` and every value in
+  // that range is legal.
+  r = rig_bone3(r, 0,  0.52,  0.55, 0.26, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0);
+  r = rig_bone3(r, 0, -0.52,  0.55, 0.26, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0);
+  r = rig_bone3(r, 0,  0.62, -0.62, 0.30, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0);
+  r = rig_bone3(r, 0, -0.62, -0.62, 0.30, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0);
 
   p = part_new("hover_unit", "", r);
   // the chassis slab — 1.50 across, 0.80 fore-aft, 0.30 deep
@@ -87,18 +96,52 @@ pub fn cat_hover_unit() -> Part {
   // two landing skids, running fore-and-aft under the chassis
   p = part_limb(p, 0,  0.34, -0.05, -0.26, LIMB_BOX, 0.10, 1.20, 0.22);
   p = part_limb(p, 0, -0.34, -0.05, -0.26, LIMB_BOX, 0.10, 1.20, 0.22);
-  // the four rotors — ⚠ the REAR pair is 44% larger, which is the
-  // silhouette the project owner asked for ("bigger behind the cockpit
-  // rotors") and is what sets the width and the length both
-  p = part_limb(p,  0,  0.52,  0.55, 0.26, LIMB_DISC, 0.36, 0.36, 0.03);
-  p = part_limb(p,  0, -0.52,  0.55, 0.26, LIMB_DISC, 0.36, 0.36, 0.03);
-  p = part_limb(p,  0,  0.62, -0.62, 0.30, LIMB_DISC, 0.52, 0.52, 0.03);
-  p = part_limb(p,  0, -0.62, -0.62, 0.30, LIMB_DISC, 0.52, 0.52, 0.03);
+  // the four rotors, each a CROSS OF TWO BLADES on its own spin bone —
+  // ⚠ the REAR pair is 44% larger, which is the silhouette the project
+  // owner asked for ("bigger behind the cockpit rotors") and is what
+  // sets the width and the length both.  A blade spans the rotor's full
+  // diameter, so the envelope is the disc's and the footprint is
+  // unchanged to the last decimal.
+  p = cat_rotor(p, 2, 0.36);
+  p = cat_rotor(p, 3, 0.36);
+  p = cat_rotor(p, 4, 0.52);
+  p = cat_rotor(p, 5, 0.52);
   // the canopy, on the hinge — its centre is (0, +0.28, +0.36) in the
   // PART's frame, which is (0, +0.30, -0.20) in the hinge's
   p = part_limb(p, 1, 0.0, 0.30, -0.20, LIMB_BOX, 0.62, 0.60, 0.40);
   p
 }
+
+// One rotor: two blades crossed on `bone`, reaching `rad` in every
+// direction.  ⚠⚠ **A DISC WAS MEASURED AND CANNOT SHOW THAT IT IS
+// TURNING** (plan 20 A4, `@M039`).  `PARTS.md` § D7 gives the rotors a
+// spin rate and says it is *"the one place BOOST becomes visible without
+// a HUD"* — but `ground_gl.loft` draws every part in ONE FLAT UNLIT
+// COLOUR (`@X074`, and that is what keeps the frame exactly
+// classifiable), and under one colour a body of revolution turning about
+// its own axis is a still picture: measured, a 12-segment disc at a
+// TWELFTH of a turn is pixel-identical to the same disc at rest, and the
+// most its silhouette ever moves is **3.4 %** of the radius.  Two
+// crossed blades are 4-fold rather than 12-fold and the same measurement
+// reads a whole blade width.
+//
+// ⚠ The blade is `0.09` thick, which is § D7's own BOOM thickness rather
+// than a new number.
+fn cat_rotor(p: Part, bone: integer, rad: float) -> Part {
+  p = part_limb(p, bone, 0.0, 0.0, 0.0, LIMB_BOX, 2.0 * rad, 0.09, 0.03);
+  part_limb(p, bone, 0.0, 0.0, 0.0, LIMB_BOX, 0.09, 2.0 * rad, 0.03)
+}
+
+// Which bone carries what, for a caller posing a hover unit.
+//
+// ⚠ **Named rather than written as `1` at the call site**: `pose.loft`
+// is the only consumer today and a bare index there would silently pose
+// a rotor as a canopy the day a bone is inserted.  ⚠ The four rotors are
+// CONSECUTIVE from `HOVER_BONE_ROTOR_0`, which is the one fact
+// `pose_vehicle`'s loop rests on.
+pub const HOVER_BONE_CANOPY:  integer = 1;
+pub const HOVER_BONE_ROTOR_0: integer = 2;
+pub const HOVER_ROTORS:       integer = 4;
 
 // ⚠ **The crew is the SAME part** (§ D8: *"same chassis as the player"*,
 // and the code already means it — `drive_along` is the shared chassis).

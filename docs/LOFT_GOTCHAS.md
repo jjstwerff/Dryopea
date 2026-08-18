@@ -43,6 +43,25 @@ it answers the fallback on the interpreter and PANICS on native
 where the fallback is a sane default, because a function that returns
 only its default still looks like a working function.
 
+⚠⚠ **AND A RECORD FETCHED THROUGH AN ACCESSOR READS ITS VECTOR FIELD AS
+EMPTY** once an unrelated struct has been allocated in the caller
+([loft#974](https://github.com/loft-lang/loft/issues/974), filed
+2026-08-18, both backends).  `it = bag_get(b, "one")?` then `len(it.limbs)`
+answers **2, then 0, then 0** across three identical calls with one
+`Sink { vals: [] }` between the first and the second; exit code 0 and no
+diagnostic.  ⚠ Reading `b.items["one"]?` **inline at the use site** is
+correct, which is the workaround `src/pose.loft::emit_tower` ships.  ⚠⚠ Two
+plausible culprits are BOTH innocent and a reader who assumes either will
+change nothing: a `== null` check instead of the `?` reads empty too, and
+`vector<float>` behaves exactly as `vector<Struct>`.  ⚠ It is the same
+FAMILY as the row above and not the same bug — that one is a lost WRITE
+through a returned copy, this one is a lost READ through a live
+reference.  ⚠ With a `mesh3d::Mesh` as the allocation it sometimes ABORTS
+instead (*"the reference is corrupt"*), and which of the two you get
+depends on the allocation history rather than on the source — so a green
+suite is not evidence.  Reproducer:
+[`loft_repros/accessor_fetch_reads_empty/`](../loft_repros/accessor_fetch_reads_empty/README.md).
+
 ## The parser
 
 ⚠ **But bind it ABOVE the callee's definition and the parser PANICS**

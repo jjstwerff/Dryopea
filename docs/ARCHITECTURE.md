@@ -858,6 +858,42 @@ src/
                    with one of them while the other is a crew member
                    deleted with no fault raised.  A vector with stable
                    slots, never compacted — `WaveState.crew`'s shape.
+                   ⚠ **Conservation is STRUCTURAL, not maintained**: ONE
+                   record with an `owner` field, where "on the ground"
+                   is a VALUE of that field rather than a different
+                   place to be.  A pickup is a single assignment, so
+                   duplication is unrepresentable — the move
+                   `damage.loft` makes with *damage TAKEN* and
+                   `wallet.loft` with *points SPENT*.  A slot on the
+                   carrier PLUS a ground layer makes a pickup two
+                   writes, and every path doing one of them duplicates
+                   or destroys.
+                   ⚠ Owner ids are `occupancy.loft`'s BLOCKER
+                   vocabulary — `BLOCKER_NONE` (-1) IS the ground — and
+                   never a second numbering, which is the door H3
+                   deleted `vehicle_on` for.
+                   ⚠ **A KIND is data, not a code path** (the enemy
+                   rule): what varies per kind is only what a valid
+                   destination is and what arriving there does.  A
+                   tower-top or a beacon that needs new CARRYING code
+                   has broken the contract in `plans/15` § C0.4.
+                   ⚠ `cargo_consume` is the ONE way out of the world;
+                   a carrier that DIES calls `cargo_spill` instead, or
+                   dying becomes a free retrieval.
+                   C2 added the destination half: CARGO_REACH_HEXES,
+                   `cargo_destination_ok` (a wreck goes to the CORE and
+                   nowhere else) and `cargo_deliver`.
+                   ⚠ ONE reach for both halves, because § 11's key is
+                   ONE key — two reaches would make it mean two
+                   distances depending on what the vehicle happens to
+                   hold.
+                   ⚠ An unknown kind has NO destination rather than
+                   every destination, or a kind added without a rule
+                   would be depositable anywhere and consumed silently.
+                   ⚠ `cargo_deliver` does NOT apply the effect: what
+                   arriving DOES needs the roster, and a carry model
+                   that knew about helpers could not serve tower-tops.
+                   `spawn.loft::wave_arrived` is the other half
   part.loft        what an entity IS, structurally (plan 20 A1) — Socket +
                    Binding + Part + PartSet over `hex_body::Rig`, with
                    part_new / part_socket / part_bind / partset_new /
@@ -908,42 +944,57 @@ src/
                    ⚠ The constructors are `cat_*` because loft's
                    namespace is FLAT and a bare `robot` collided with a
                    local in a dozen test files.
-                   ⚠ **Conservation is STRUCTURAL, not maintained**: ONE
-                   record with an `owner` field, where "on the ground"
-                   is a VALUE of that field rather than a different
-                   place to be.  A pickup is a single assignment, so
-                   duplication is unrepresentable — the move
-                   `damage.loft` makes with *damage TAKEN* and
-                   `wallet.loft` with *points SPENT*.  A slot on the
-                   carrier PLUS a ground layer makes a pickup two
-                   writes, and every path doing one of them duplicates
-                   or destroys.
-                   ⚠ Owner ids are `occupancy.loft`'s BLOCKER
-                   vocabulary — `BLOCKER_NONE` (-1) IS the ground — and
-                   never a second numbering, which is the door H3
-                   deleted `vehicle_on` for.
-                   ⚠ **A KIND is data, not a code path** (the enemy
-                   rule): what varies per kind is only what a valid
-                   destination is and what arriving there does.  A
-                   tower-top or a beacon that needs new CARRYING code
-                   has broken the contract in `plans/15` § C0.4.
-                   ⚠ `cargo_consume` is the ONE way out of the world;
-                   a carrier that DIES calls `cargo_spill` instead, or
-                   dying becomes a free retrieval.
-                   C2 added the destination half: CARGO_REACH_HEXES,
-                   `cargo_destination_ok` (a wreck goes to the CORE and
-                   nowhere else) and `cargo_deliver`.
-                   ⚠ ONE reach for both halves, because § 11's key is
-                   ONE key — two reaches would make it mean two
-                   distances depending on what the vehicle happens to
-                   hold.
-                   ⚠ An unknown kind has NO destination rather than
-                   every destination, or a kind added without a rule
-                   would be depositable anywhere and consumed silently.
-                   ⚠ `cargo_deliver` does NOT apply the effect: what
-                   arriving DOES needs the roster, and a carry model
-                   that knew about helpers could not serve tower-tops.
-                   `spawn.loft::wave_arrived` is the other half
+  part_mesh.loft   A PART, AS TRIANGLES (plan 20 A2) — PART_ROUND_
+                   SEGMENTS, emit_box / emit_disc / emit_cone,
+                   part_emit / part_emit_at / part_values_rest.
+                   ⚠⚠ **No forward kinematics**: every vertex goes
+                   through `hex_body::frame_point` over ONE
+                   `rig_world_frame3` per bone, held across that bone's
+                   limbs.  `rig_world_frame3` was added UPSTREAM
+                   (hex_body 0.3.0) rather than re-derived here.
+                   ⚠ A NORMAL is a DIRECTION — posing one as a point
+                   adds the bone's translation and still normalises to
+                   something plausible.
+                   ⚠ A box gives each face its own four corners (24
+                   vertices, not 8) so the normals stay flat.
+                   ⚠ `part_emit_at` TRANSLATES and does not turn: a
+                   socketed child follows the socket's POSITION and not
+                   its orientation, because `hex_body` publishes no
+                   way to compose two `Frame`s.  Every socket in the
+                   catalogue rides an unrotated bone, so today the two
+                   are the same picture to the bit; the fix, when a
+                   socket turns, is `frame_compose` upstream.
+                   ⚠ `frame_shift` builds a Frame LITERAL with all
+                   twelve fields, because a returned struct is a COPY
+                   ([loft#894]) and an omitted field takes its zero
+                   ([loft#914]).
+  pose.loft        THE POSE COMES FROM THE SIMULATION (plan 20 A4) —
+                   ROTOR_IDLE_TURNS_PER_S, rotor_turns_per_second /
+                   rotor_phase / canopy_turns / pose_hover_unit /
+                   pose_vehicle / emit_tower.
+                   ⚠⚠ **Three claims, three owners, and none of them is
+                   new state**: the tower's top is `tower_has_top`
+                   (plan 17 T2), the canopy is `cargo_carrying` (plan
+                   15), the rotors' rate is `vehicle_speed` (plan 13).
+                   A field on `Vehicle` saying *canopy open* is the
+                   defect PARTS.md § D3 is written against.
+                   ⚠ The simulation answers a TARGET and the SWING is
+                   presentation: `pose_hover_unit` takes the angle as a
+                   FLOAT so a renderer can ease it, because a binary
+                   door would re-introduce the two-pose canopy § D4
+                   retired.
+                   ⚠ The boost rate is DERIVED from `vehicle_speed`'s
+                   own ratio (`@X091`), and the IDLE rate is bounded by
+                   the FRAME RATE: four-fold blades reverse beyond an
+                   eighth of a turn per frame, 3.75 turns/s at 30 fps.
+                   ⚠ The rotor PHASE is `rate x t` read fresh, so a
+                   change of rate moves it — integrating needs an
+                   accumulator on the Vehicle, which plan 20 refuses.
+                   ⚠⚠ `emit_tower` indexes `ps.ps_parts[...]` rather
+                   than calling `partset_get`, and that is a WORKAROUND
+                   ([loft#974]): a record fetched through an accessor
+                   reads its vector fields EMPTY after an unrelated
+                   allocation, so the SECOND tower drawn has no limbs.
   wallet.loft      the run's budget, and the only END STATE dryopea
                    has (plan 12 B6) — WALLET_STARTING_POINTS (200),
                    NIBBLE_POINTS_PER_SECOND, NIBBLE_REACH_HEXES,

@@ -9,10 +9,80 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**A1 SHIPPED 2026-08-18; A2 next.**  ⚠ **Re-scoped on 2026-08-15**, before any
-code: the first design baked sprites at a fixed projection, and the project
-owner's answer — *the dynamic camera of moros, and exploration as a pillar* —
-replaced that with geometry.
+**A1-A4 SHIPPED 2026-08-18; A5 is blocked on [plan 21](../21-the-renderer/README.md).**
+⚠ **Re-scoped on 2026-08-15**, before any code: the first design baked sprites
+at a fixed projection, and the project owner's answer — *the dynamic camera of
+moros, and exploration as a pillar* — replaced that with geometry.
+
+### A4 — the pose comes from the SIMULATION, and two gates that could not fail (2026-08-18)
+
+`src/pose.loft` + `tests/20_a4_the_joints.loft`, **13 tests**.  Three claims,
+three owners, and none of them is new state: the tower's top is `tower_has_top`
+(plan 17 T2), the canopy is `cargo_carrying` (plan 15), the rotors' rate is
+`vehicle_speed` (plan 13).  Gates: `scripts/test.sh` **1374 green** (98 files),
+`scripts/validate.sh` **654 measurements green and UNMOVED**.
+
+⚠⚠ **`socket_world` WAS PLANAR, AND THE ONE SOCKET THE GAME HAS IS 6 m UP.**
+A1 wrote *the invariant's one site* over `hex_body`'s `rig_world_seg`, which was
+the whole library at the time; A3 then mounted the tower's top on a `rig_bone3`
+with `oz: 6.0`, and a planar read of a spatial rig answers **(0.0, 0.0)** — the
+tower's FOOT.  Nothing went red.  ⚠ And the gate that should have caught it is
+worth reading twice: `tests/20_a3` asserted *"WHERE the top sits is derived"*
+while taking the **height from `rig_world_seg3` directly** and asking
+`socket_world` only for `x` and `y`.  ***A gate that asks a different instrument
+for the interesting half is not asking at all*** — the second such finding in
+this plan (`@M037` was the first).  `socket_world` now answers three numbers off
+one `rig_world_frame3`, and `20_a3` reads all three from it.
+
+⚠⚠ **A DISC CANNOT SHOW THAT IT IS TURNING** (`@M039`), which changed the ART.
+§ D7 gives the rotors a spin rate and calls it *"the one place BOOST becomes
+visible without a HUD"* — and `ground_gl.loft` draws a part in ONE FLAT UNLIT
+COLOUR (`@X074`, which is what keeps a frame exactly classifiable), so a body of
+revolution turning about its own axis is a **still picture**.  Measured: a
+12-segment disc at a TWELFTH of a turn is its own silhouette to the last bit,
+and the most it ever moves is **3.4 %** of its width.  So a rotor is now **two
+crossed blades** — 4-fold rather than 12-fold, the same measurement reading
+**9.4 %** — and ⚠ the footprint is unchanged **to the last decimal** (2.28 x
+2.05 x 0.93), because a blade spans the diameter the disc did.
+⚠ `mesh_crc` **does** see the disc turn, because the vertices are permuted:
+*a checksum that moves while the picture does not is the wrong instrument*, and
+the silhouette is the right one.
+
+⚠⚠ **AND THE RATE IS BOUNDED BY THE FRAME RATE RATHER THAN BY THE FICTION.**
+Two crossed blades repeat every quarter turn, so the apparent direction reverses
+beyond an eighth of a turn per frame — **3.75 turns/s at 30 fps**.  A believable
+rotor turns at fifty.  So `ROTOR_IDLE_TURNS_PER_S` is **1.2** with the boosted
+figure at 2.4, a 1.5x margin, and the test pins it so raising it is a decision.
+⚠ The boost figure is **derived** from `vehicle_speed`'s own ratio (`@X091`):
+the rotors speed up by exactly as much as the vehicle does, so there is no
+second number that can disagree about what boost is.
+
+⚠ **The canopy reads the CARGO LEDGER** (`@X090`) — open exactly while this
+hover unit is carrying.  It is the one thing `carry.loft` moves that nothing
+draws, and it makes a laden vehicle legible at a glance.  ⚠ The simulation
+answers a TARGET and the swing is the renderer easing it (`fixstep::approach`,
+the camera's own `k`), which is why `pose_hover_unit` takes the angle as a
+FLOAT: a binary door here would have re-introduced the two-pose canopy § D4
+retired one layer down.
+
+⚠⚠ **A LOFT DEFECT SITS BETWEEN THE CATALOGUE AND THE RENDERER**
+([loft#974](https://github.com/loft-lang/loft/issues/974), filed): a record
+fetched from a `hash<Part[pt_name]>` **through an accessor function** reads its
+vector fields as EMPTY once an unrelated struct is allocated in the caller — so
+the SECOND tower a renderer draws comes back with no limbs, silently, on both
+backends.  ⚠ Indexing the hash at the USE SITE is correct, which is what
+`emit_tower` ships.  ⚠ **Both binaries on this box were checked before filing**
+— 13:26 and a fresh 13:48 build fail identically — which is `@M038`'s lesson
+applied rather than repeated.  ⚠ The 40-line reproducer needs no imports at all:
+[`loft_repros/accessor_fetch_reads_empty/`](../../loft_repros/accessor_fetch_reads_empty/README.md).
+
+⚠ **Still open, and named rather than discovered later**: a socket carries a
+POSITION and not an ORIENTATION.  `part_emit_at` translates a socketed child and
+does not turn it, because `hex_body` publishes no way to compose two `Frame`s;
+every socket in the catalogue rides an unrotated bone and the tower's top is a
+body of revolution about that bone's own axis, so today the two are the same
+picture to the bit.  `test_a_child_follows_the_sockets_position_but_not_its_turn`
+pins it, and the fix — when a socket turns — is `frame_compose` **upstream**.
 
 ### A2 — the geometry emitter, and a blocker that was the TOOLCHAIN (2026-08-18)
 
@@ -330,7 +400,7 @@ worth saying because silence reads as "gate done".
 | **A1** — adopt `hex_body`, and build the SOCKET | S | `tests/20_a1_the_part.loft` — **18 tests**, `src/part.loft`, and dryopea re-implements none of the rig: `Rig`, `Joint`, `rig_world_seg`, `rig_count` and `rig_admissible` all arrive as a dependency, and `part_fault` asks the LIBRARY's doorstep before any question of its own.  ⚠⚠ The 3-D axis is NOT here — it is `rig_bone3` in `loft-libs-world` (§ Cross-repo coordination), and A2 is what needs it | **SHIPPED** 2026-08-18 |
 | **A2** — the geometry emitter | MH | `tests/20_a2_the_geometry.loft` — a part poses its joints and emits triangles in world space.  ⚠ Gated on NUMBERS, not pixels: a hinge at 0.25 turns puts the canopy's far edge where trigonometry says, a box emits 12 triangles, a disc emits its fan, and every vertex is inside the declared extent | **SHIPPED** 2026-08-18 |
 | **A3** — the catalogue | M | `tests/20_a3_the_catalogue.loft` — **11 tests**; the hover unit, the robot, the tower base + top, and the helper which is the hover unit rather than a fifth entry.  ⚠ Its real gate is the footprint, and the footprint is DERIVED from the limb table so the check is not a tautology | **SHIPPED** 2026-08-18 |
-| **A4** — poses come from the SIMULATION | S | `tests/20_a4_the_joints.loft` — a tower with no top emits no top triangles; the canopy angle follows the sim; rotor spin follows boost.  ⚠ Asked of `TowerState` / `Vehicle`, never a second flag | Blocked on A2, A3 |
+| **A4** — poses come from the SIMULATION | S | `tests/20_a4_the_joints.loft` — **13 tests**; a tower with no top emits no top triangles, the canopy follows the CARGO ledger, and the rotors' rate is `vehicle_speed`'s own ratio.  ⚠ Asked of `TowerState` / `Vehicle` / `CargoLayer`, never a second flag.  ⚠⚠ It found `socket_world` blind six metres up and a disc that cannot show it is turning (`@M039`) | **SHIPPED** 2026-08-18 |
 | **A5** — entities in the frame (was plan 19 P4) | M | `tests/20_a5_the_frame.loft` — `classify_world` shares for enemies, vehicle and crew; a `.keys` scenario with `snap` | ⚠ Blocked on **[plan 21](../21-the-renderer/README.md)** |
 
 ### Why the order is this order

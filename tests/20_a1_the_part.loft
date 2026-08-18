@@ -123,9 +123,9 @@ fn test_a_socket_rides_the_bone_it_names() {
 
     // At rest the mast runs along +x, so its tip — and the socket at
     // `t = 1.0` — is 3 m out, which is the mast's own length.
-    (x, y) = socket_world(p, [0.0], i);
-    assert(near(x, 3.0) && near(y, 0.0),
-           "'top' sits at the mast's tip (3.0, 0.0), got ({x}, {y})");
+    (x, y, z) = socket_world(p, [0.0], i);
+    assert(near(x, 3.0) && near(y, 0.0) && near(z, 0.0),
+           "'top' sits at the mast's tip (3.0, 0.0, 0.0), got ({x}, {y}, {z})");
 }
 
 // @DRY-017 — ONE socket record, TWO poses, TWO answers
@@ -137,8 +137,8 @@ fn test_one_socket_answers_two_points_at_two_poses() {
     p = boom_part();
     i = socket_index(p, "tip");
 
-    (x0, y0) = socket_world(p, [0.0], i);
-    (x1, y1) = socket_world(p, [0.25], i);
+    (x0, y0, _) = socket_world(p, [0.0], i);
+    (x1, y1, _) = socket_world(p, [0.25], i);
 
     assert(near(x0, 2.0) && near(y0, 0.0),
            "at rest the tip is 2 m along +x, got ({x0}, {y0})");
@@ -167,8 +167,8 @@ fn test_a_socket_at_half_a_bone_is_its_midpoint_at_every_pose() {
     tip = socket_index(p, "tip");
 
     for v in [0.0, 0.125, 0.25, -0.3, 0.5] {
-        (mx, my) = socket_world(p, [v], mid);
-        (tx, ty) = socket_world(p, [v], tip);
+        (mx, my, _) = socket_world(p, [v], mid);
+        (tx, ty, _) = socket_world(p, [v], tip);
         // The bone's base is the rig's root, so the tip's midpoint is
         // simply half of it.
         assert(near(mx, tx / 2.0) && near(my, ty / 2.0),
@@ -185,12 +185,12 @@ fn test_a_socket_at_half_a_bone_is_its_midpoint_at_every_pose() {
 // doorstep is a separate call.
 fn test_a_socket_that_is_not_there_answers_the_origin() {
     p = tower_part();
-    (x, y) = socket_world(p, [0.0], 7);
-    assert(near(x, 0.0) && near(y, 0.0),
-           "an index past the offer answers the origin, got ({x}, {y})");
-    (bx, by) = socket_world(p, [0.0], -1);
-    assert(near(bx, 0.0) && near(by, 0.0),
-           "and so does a negative one, got ({bx}, {by})");
+    (x, y, z) = socket_world(p, [0.0], 7);
+    assert(near(x, 0.0) && near(y, 0.0) && near(z, 0.0),
+           "an index past the offer answers the origin, got ({x}, {y}, {z})");
+    (bx, by, bz) = socket_world(p, [0.0], -1);
+    assert(near(bx, 0.0) && near(by, 0.0) && near(bz, 0.0),
+           "and so does a negative one, got ({bx}, {by}, {bz})");
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -216,9 +216,9 @@ fn test_the_tower_of_section_d3() {
     // ⚠ The invariant, restated where a reader will look for it: the
     // binding names a socket and a part, and NOTHING ELSE.  Where the
     // top is comes from `socket_world`.
-    (x, y) = socket_world(t, [0.0], socket_index(t, "top"));
-    assert(near(x, 3.0) && near(y, 0.0),
-           "and where it sits is derived: ({x}, {y})");
+    (x, y, z) = socket_world(t, [0.0], socket_index(t, "top"));
+    assert(near(x, 3.0) && near(y, 0.0) && near(z, 0.0),
+           "and where it sits is derived: ({x}, {y}, {z})");
 
     assert(part_fault(ps, "gantry") == "part 'gantry' is not defined",
            "a name nobody defined is refused by name: {part_fault(ps, \"gantry\")}");

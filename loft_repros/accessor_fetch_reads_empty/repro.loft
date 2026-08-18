@@ -1,0 +1,41 @@
+// A record fetched through an ACCESSOR reads its vector field as EMPTY
+// after an unrelated struct is allocated in the caller.
+
+struct Item {
+  name:  text,
+  limbs: vector<float>,
+}
+
+struct Bag {
+  items: hash<Item[name]>,
+}
+
+struct Sink {
+  vals: vector<float>,
+}
+
+// the accessor — inline `b.items[name]` at the use site does NOT reproduce
+fn bag_get(b: Bag, name: text) -> Item? {
+  b.items[name]
+}
+
+fn read(b: Bag, tag: text) -> integer {
+  it = bag_get(b, "one")?;
+  n = len(it.limbs);
+  print("{tag}: limbs {n}");
+  n
+}
+
+fn main() {
+  b = Bag { items: [] };
+  one = Item { name: "one", limbs: [] };
+  one.limbs += [1.0];
+  one.limbs += [2.0];
+  b.items += [one];
+
+  read(b, "a");                       // 2 — correct
+  s = Sink { vals: [] };              // <-- an unrelated allocation
+  s.vals += [0.0];
+  read(b, "b");                       // 0 — WRONG, and silent
+  read(b, "c");                       // 0
+}

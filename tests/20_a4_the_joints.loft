@@ -1,0 +1,533 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 20 phase A4 — the pose comes from the SIMULATION.
+//
+// ── The one claim ────────────────────────────────────────────────────
+//
+// > **What is DRAWN is read from the state the simulation already
+// > keeps, and there is no second flag to disagree with it.**
+//
+// `docs/PARTS.md` § D3: *"the sprite follows the simulation, and never a
+// second flag.  Which pose a tower draws in is 'is its socket filled',
+// asked of `TowerState`"*.  `plans/20` § Invariant gate turns that into
+// the control this file is built on: **emit BOTH states and assert they
+// DIFFER** — a pose looked up under the wrong key silently serves both,
+// and *"it rendered"* cannot see it.
+//
+// ⚠ Three claims, three owners, and none of them is new state:
+//
+//   the tower's top   `tower_has_top`      plan 17 T2 — the carry model
+//   the canopy        `cargo_carrying`     plan 15    — the owner field
+//   the rotors        `vehicle_speed`      plan 13    — boost
+//
+// ⚠⚠ **AND ONE MEASUREMENT THAT CHANGED THE ART** (`@M039`): a disc
+// turning about its own axis is a still picture under the flat-unlit
+// colour every gate in this repo rests on, so `PARTS.md` § D7's *"the
+// spin rate is the one place BOOST becomes visible without a HUD"* was
+// false for the shape it specified.  `test_a_disc_cannot_show_that_it_
+// is_turning` is that number, and it is why a rotor is two crossed
+// blades.
+
+#cwd
+
+use dryopea;
+
+fn near4(a: float, b: float) -> boolean {
+    d = a - b;
+    if d < 0.0 { d = -d; }
+    d < 0.000001
+}
+
+// The mesh's extent, as `(minx, maxx, miny, maxy, minz, maxz)`.
+//
+// ⚠ It reads the EMITTED vertices rather than `part_box`, which is the
+// whole point of asking it here: `part_box` answers the NEUTRAL pose
+// from the limb table, and every claim below is about what a pose did.
+fn span_of(m: const Mesh) -> (float, float, float, float, float, float) {
+    lox = 0.0; hix = 0.0; loy = 0.0; hiy = 0.0; loz = 0.0; hiz = 0.0;
+    for v in m.vertices {
+        if v#first {
+            lox = v.pos.x; hix = v.pos.x;
+            loy = v.pos.y; hiy = v.pos.y;
+            loz = v.pos.z; hiz = v.pos.z;
+        } else {
+            if v.pos.x < lox { lox = v.pos.x; }
+            if v.pos.x > hix { hix = v.pos.x; }
+            if v.pos.y < loy { loy = v.pos.y; }
+            if v.pos.y > hiy { hiy = v.pos.y; }
+            if v.pos.z < loz { loz = v.pos.z; }
+            if v.pos.z > hiz { hiz = v.pos.z; }
+        }
+    }
+    (lox, hix, loy, hiy, loz, hiz)
+}
+
+// A hover unit parked at the origin, healthy and not boosting.
+fn parked_vehicle() -> Vehicle {
+    v = vehicle_empty();
+    vehicle_place(v, 0, 0);
+    v
+}
+
+// The same, with a boost burning.
+fn boosting_vehicle() -> Vehicle {
+    v = parked_vehicle();
+    vehicle_boost(v);
+    v
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// The tower's socket — the simulation says WHETHER
+// ─────────────────────────────────────────────────────────────────────
+
+// @DRY-044 — a tower whose top the SIM removed emits no top triangles
+//
+// ⚠⚠ THE PHASE'S HEADLINE, and the control `plans/20` asks for: both
+// states are emitted and compared.  A `mesh_crc` equality alone would
+// pass over an empty mesh (`@X065`), so the whole-tower count is
+// asserted non-zero first.
+fn test_a_tower_with_no_top_emits_no_top_triangles() {
+    ps = catalogue();
+    ts = tower_state_empty();
+
+    whole = mesh("whole");
+    n_whole = emit_tower(whole, ps, ts, 0, 0, 0.0, 0.0, 0.0);
+    assert(n_whole > 0, "a tower emits triangles at all: {n_whole}");
+
+    // the simulation takes the top off — plan 17 T2's own verb
+    assert(tower_detach_top(ts, 0, 0) == 0, "the top comes off with a full magazine");
+    assert(!tower_has_top(ts, 0, 0), "and the simulation says so");
+
+    topless = mesh("topless");
+    n_topless = emit_tower(topless, ps, ts, 0, 0, 0.0, 0.0, 0.0);
+    assert(n_topless > 0, "the base is still drawn: {n_topless}");
+    assert(n_topless < n_whole,
+           "a topless tower is fewer triangles: {n_topless} vs {n_whole}");
+
+    // and it is EXACTLY the top's own count that went
+    top = partset_get(ps, "tower_top")?;
+    alone = mesh("alone");
+    n_top = part_emit(alone, top, part_values_rest(top));
+    assert(n_whole - n_topless == n_top,
+           "the difference is the top itself: {n_whole} - {n_topless} vs {n_top}");
+
+    // ⚠ The counts could agree while the geometry moved, so the frames
+    // are compared as GEOMETRY too.
+    assert(mesh_crc(whole) != mesh_crc(topless),
+           "and the two frames differ: {mesh_crc(whole)}");
+}
+
+// @DRY-045 — the top is emitted AT THE SOCKET, six metres up
+//
+// ⚠⚠ THE REGRESSION FOR A GATE THAT COULD NOT FAIL.  `socket_world` was
+// written over `hex_body`'s PLANAR walk in A1, when that was the whole
+// library; A3 then put the tower's socket on a bone 6 m up, and a planar
+// read of a spatial rig answers (0, 0) — the tower's FOOT.  Nothing went
+// red, because A1's fixture is a boom in the plane and A3 asked a
+// DIFFERENT function for the height it cared about.  This asserts the
+// height off the emitted geometry, which is the only reading a wrong
+// socket cannot satisfy.
+fn test_the_top_is_emitted_at_the_socket_and_not_at_the_foot() {
+    ps = catalogue();
+    ts = tower_state_empty();
+
+    whole = mesh("whole");
+    emit_tower(whole, ps, ts, 0, 0, 0.0, 0.0, 0.0);
+    (_, _, _, _, _, hi_whole) = span_of(whole);
+
+    ts2 = tower_state_empty();
+    tower_detach_top(ts2, 0, 0);
+    base_only = mesh("base");
+    emit_tower(base_only, ps, ts2, 0, 0, 0.0, 0.0, 0.0);
+    (_, _, _, _, _, hi_base) = span_of(base_only);
+
+    // the base is exactly the tower's height; the top rides ON it
+    assert(near4(hi_base, TOWER_HEIGHT_METRES),
+           "the base reaches {TOWER_HEIGHT_METRES} m: {hi_base}");
+    assert(hi_whole > hi_base,
+           "and the top sits above it: {hi_whole} vs {hi_base}");
+
+    // ⚠ The number, not merely the direction: the top is a 0.50 m disc
+    // centred on the socket, so it reaches half of that above it.
+    assert(near4(hi_whole, TOWER_HEIGHT_METRES + 0.25),
+           "half the top's thickness above the socket: {hi_whole}");
+}
+
+// A top put back is the frame that came off — the round trip the
+// simulation already gates (plan 17 T2) seen in the geometry.
+fn test_mounting_the_top_back_restores_the_frame() {
+    ps = catalogue();
+    ts = tower_state_empty();
+    before = mesh("before");
+    emit_tower(before, ps, ts, 0, 0, 0.0, 0.0, 0.0);
+
+    shots = tower_detach_top(ts, 0, 0);
+    assert(tower_mount_top(ts, 0, 0, shots), "the top goes back on");
+
+    after = mesh("after");
+    emit_tower(after, ps, ts, 0, 0, 0.0, 0.0, 0.0);
+    assert(mesh_crc(before) == mesh_crc(after),
+           "the frame is the one that came off: {mesh_crc(before)} vs {mesh_crc(after)}");
+    assert(mesh_crc(before) != 0, "and it is not the empty mesh");
+}
+
+// ⚠ A tower is placed where the CALLER says, top included — the socket
+// composes with the placement rather than replacing it.
+fn test_the_placement_carries_the_socketed_top_with_it() {
+    ps = catalogue();
+    ts = tower_state_empty();
+
+    here = mesh("here");
+    emit_tower(here, ps, ts, 0, 0, 0.0, 0.0, 0.0);
+    (_, _, _, _, _, hi_here) = span_of(here);
+
+    over = mesh("over");
+    emit_tower(over, ps, ts, 0, 0, 10.0, -4.0, 2.0);
+    (lo_x, _, _, _, _, hi_over) = span_of(over);
+
+    assert(near4(hi_over, hi_here + 2.0),
+           "the whole tower moved up 2 m: {hi_over} vs {hi_here}");
+    assert(near4(lo_x, 10.0 - TOWER_FOOTPRINT_M / 2.0),
+           "and 10 m east: {lo_x}");
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// The canopy — the simulation says LOADED
+// ─────────────────────────────────────────────────────────────────────
+
+// @DRY-043 — the canopy follows the CARGO LEDGER and nothing else
+//
+// ⚠ The pair is the gate: a canopy that read a flag on the vehicle
+// would satisfy either half alone.
+fn test_the_canopy_follows_the_cargo_ledger() {
+    p = cat_hover_unit();
+    v = parked_vehicle();
+
+    empty = cargo_empty();
+    shut = pose_vehicle(p, v, empty, BLOCKER_PLAYER, 0);
+
+    laden = cargo_empty();
+    cargo_spawn(laden, CARGO_WRECK, 0, 0, 0);
+    cargo_take(laden, BLOCKER_PLAYER, Hex { q: 0, r: 0 }, CARGO_REACH_HEXES);
+    assert(cargo_carrying(laden, BLOCKER_PLAYER), "the player has it aboard");
+    open = pose_vehicle(p, v, laden, BLOCKER_PLAYER, 0);
+
+    assert(near4(shut[HOVER_BONE_CANOPY] ?? -1.0, 0.0),
+           "empty-handed the canopy is shut: {shut[HOVER_BONE_CANOPY]}");
+    assert(near4(open[HOVER_BONE_CANOPY] ?? -1.0, 0.30),
+           "carrying, it stands at the hinge's limit: {open[HOVER_BONE_CANOPY]}");
+
+    // ⚠ The LIMIT is the catalogue's, read back rather than restated —
+    // so a canopy that opens further is one edit in one file.
+    j = rig_joint(p.pt_rig, HOVER_BONE_CANOPY);
+    assert(near4(open[HOVER_BONE_CANOPY] ?? -1.0, j.jt_hi),
+           "and it is the joint's own limit: {j.jt_hi}");
+}
+
+// ⚠⚠ The pose has to MOVE the picture, and a coordinate is the only
+// reading that says so — the same argument A2 makes about turns versus
+// degrees.  An open canopy leaves the part's neutral box, which is what
+// makes a footprint a NOMINAL figure (`PARTS.md` § D6).
+fn test_an_open_canopy_moves_the_geometry_out_of_the_neutral_box() {
+    p = cat_hover_unit();
+
+    shut = mesh("shut");
+    part_emit(shut, p, pose_hover_unit(p, 0.0, 0.0));
+    (_, _, _, _, _, hi_shut) = span_of(shut);
+
+    open = mesh("open");
+    part_emit(open, p, pose_hover_unit(p, 0.30, 0.0));
+    (_, _, _, _, _, hi_open) = span_of(open);
+
+    assert(mesh_crc(shut) != mesh_crc(open),
+           "the two states are two frames: {mesh_crc(shut)}");
+    assert(hi_open > hi_shut + 0.1,
+           "an open canopy stands higher: {hi_open} vs {hi_shut}");
+
+    // ⚠⚠ THE COORDINATE, AND IT IS WHAT TELLS TURNS FROM DEGREES — the
+    // same assertion A2 makes one layer down, now driven by a pose the
+    // simulation produced.  The canopy's far edge is 0.60 m from a hinge
+    // 0.56 m up, about a LATERAL axis: at a QUARTER turn that edge is
+    // straight overhead, so the part reaches exactly 0.56 + 0.60.  Read
+    // the joint as degrees and it moves a ninetieth of that.
+    quarter = mesh("quarter");
+    part_emit(quarter, p, pose_hover_unit(p, 0.25, 0.0));
+    (_, _, _, _, _, hi_quarter) = span_of(quarter);
+    assert(near4(hi_quarter, 0.56 + 0.60),
+           "a quarter turn stands the lid on end: {hi_quarter} vs 1.16");
+
+    // and at the hinge's own limit, 0.30 turns = 108 deg, past vertical
+    assert(near4(hi_open, 0.56 + 0.60 * sin(0.30 * 6.283185307179586)
+                        + 0.40 * (0.0 - cos(0.30 * 6.283185307179586))),
+           "at the limit it leans back past vertical: {hi_open}");
+    assert(hi_open > hi_quarter,
+           "which is HIGHER than upright, because the lid is 0.40 deep: "
+           + "{hi_open} vs {hi_quarter}");
+
+    // the neutral box is the SIMULATION's figure and the pose leaves it
+    (_, _, lo_z, _, _, hi_z) = part_box(p);
+    assert(near4(hi_z - lo_z, VEHICLE_HEIGHT_M),
+           "the neutral box is the simulation's height: {hi_z - lo_z}");
+    assert(hi_open > hi_z,
+           "and a posed part is allowed out of it: {hi_open} vs {hi_z}");
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// The rotors — the simulation says BOOST
+// ─────────────────────────────────────────────────────────────────────
+
+// @DRY-042 — the rotors turn faster under boost, by the vehicle's own ratio
+//
+// ⚠ The control is at `units == 0`: both phases are 0 there, so the
+// difference below is the RATE and not two arbitrary states.
+fn test_the_rotors_follow_boost() {
+    cruise = parked_vehicle();
+    fast   = boosting_vehicle();
+    assert(!vehicle_boosting(cruise) && vehicle_boosting(fast),
+           "the two vehicles differ in exactly one thing");
+
+    assert(near4(rotor_phase(cruise, 0), rotor_phase(fast, 0)),
+           "at t = 0 nothing has turned either way");
+
+    // one second of simulated time
+    sec = clock_units_from_seconds(1.0);
+    assert(!near4(rotor_phase(cruise, sec), rotor_phase(fast, sec)),
+           "a second later they are not in the same place: "
+           + "{rotor_phase(cruise, sec)} vs {rotor_phase(fast, sec)}");
+
+    // ⚠⚠ The ratio is DERIVED: the rotors speed up by exactly as much
+    // as the vehicle does, so there is no second number to disagree.
+    ratio = rotor_turns_per_second(fast) / rotor_turns_per_second(cruise) ?? 0.0;
+    assert(near4(ratio, VEHICLE_BOOST_HEX_PER_SECOND / VEHICLE_SPEED_HEX_PER_SECOND),
+           "the rotor ratio is the speed ratio: "
+           + "{rotor_turns_per_second(fast)} / {rotor_turns_per_second(cruise)}");
+    assert(near4(rotor_turns_per_second(cruise), ROTOR_IDLE_TURNS_PER_S),
+           "and the idle rate is the authored one: {rotor_turns_per_second(cruise)}");
+}
+
+// ⚠ The rate is bounded by the FRAME RATE and not by the fiction: a
+// four-fold rotor reverses apparent direction beyond an eighth of a turn
+// per frame, which is 3.75 turns/s at 30 fps.  This pins the margin so
+// that raising the constant is a decision rather than a typo.
+fn test_the_rotor_rate_stays_under_the_alias_limit() {
+    fast = boosting_vehicle();
+    limit = 0.125 * 30.0;
+    assert(rotor_turns_per_second(fast) < limit,
+           "boosted rotors at {rotor_turns_per_second(fast)} turns/s must stay "
+           + "under {limit} — beyond it a rotor strobes backwards at 30 fps");
+}
+
+// @DRY-041 — the four rotors counter-rotate in diagonal pairs
+//
+// ⚠ Four rotors turning the same way would put a net torque on the
+// airframe.  The diagonals share a direction; adjacent rotors do not.
+fn test_the_rotors_counter_rotate_in_diagonal_pairs() {
+    p = cat_hover_unit();
+    vals = pose_hover_unit(p, 0.0, 0.3);
+
+    fs = vals[HOVER_BONE_ROTOR_0 + 0] ?? -1.0;   // front starboard
+    fp = vals[HOVER_BONE_ROTOR_0 + 1] ?? -1.0;   // front port
+    rs = vals[HOVER_BONE_ROTOR_0 + 2] ?? -1.0;   // rear  starboard
+    rp = vals[HOVER_BONE_ROTOR_0 + 3] ?? -1.0;   // rear  port
+
+    assert(near4(fs, rp), "the diagonals agree: {fs} vs {rp}");
+    assert(near4(fp, rs), "and so does the other pair: {fp} vs {rs}");
+    assert(!near4(fs, fp),
+           "while neighbours turn opposite ways: {fs} vs {fp}");
+    assert(near4(fs + fp, 1.0),
+           "which is the same angle walked the other way round: {fs} + {fp}");
+}
+
+// ⚠ Every pose the simulation can produce is one the RIG admits — the
+// library's own doorstep, asked of the values rather than of the rig.
+fn test_every_pose_the_simulation_produces_is_admissible() {
+    p = cat_hover_unit();
+    laden = cargo_empty();
+    cargo_spawn(laden, CARGO_WRECK, 0, 0, 0);
+    cargo_take(laden, BLOCKER_PLAYER, Hex { q: 0, r: 0 }, CARGO_REACH_HEXES);
+
+    checked = 0;
+    for tu in [0, 1, 500000, 2000000, 7000001, 123456789] {
+        for boost in [false, true] {
+            v = parked_vehicle();
+            if boost { vehicle_boost(v); }
+            for held in [false, true] {
+                cl = cargo_empty();
+                if held { cl = laden; }
+                vals = pose_vehicle(p, v, cl, BLOCKER_PLAYER, tu);
+                for bi in 0..rig_count(p.pt_rig) {
+                    jj = rig_joint(p.pt_rig, bi);
+                    assert(joint_fits(jj, vals[bi] ?? -1.0),
+                           "bone {bi} posed at {vals[bi]}, outside "
+                           + "[{jj.jt_lo}, {jj.jt_hi}] at t={tu} boost={boost} held={held}");
+                    checked += 1;
+                }
+            }
+        }
+    }
+    assert(checked == 6 * 2 * 2 * 6,
+           "the sweep covered every bone of every case: {checked}");
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// ⚠⚠ The measurement that changed the art — `@M039`
+// ─────────────────────────────────────────────────────────────────────
+
+// One rotor alone, on a spin bone, as a disc or as crossed blades.
+fn probe_rotor(blades: boolean, rad: float) -> Part {
+    r = rig_new();
+    r = rig_bone3(r, -1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0);
+    r = rig_bone3(r, 0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0);
+    p = part_new("probe_rotor", "", r);
+    if !blades {
+        return part_limb(p, 1, 0.0, 0.0, 0.0, LIMB_DISC, rad, rad, 0.03);
+    }
+    p = part_limb(p, 1, 0.0, 0.0, 0.0, LIMB_BOX, 2.0 * rad, 0.09, 0.03);
+    part_limb(p, 1, 0.0, 0.0, 0.0, LIMB_BOX, 0.09, 2.0 * rad, 0.03)
+}
+
+// How wide the rotor reads, posed at `turns`.
+fn probe_width(blades: boolean, turns: float) -> float {
+    p = probe_rotor(blades, 0.52);
+    m = mesh("probe");
+    part_emit(m, p, [0.0, turns]);
+    (lox, hix, _, _, _, _) = span_of(m);
+    hix - lox
+}
+
+// @DRY-046 — ⚠⚠ A DISC CANNOT SHOW THAT IT IS TURNING, AND THE GATE
+// COULD NOT HAVE SEEN IT
+//
+// ⚠⚠ `PARTS.md` § D7 gave the rotors a spin rate and called it *"the one
+// place BOOST becomes visible without a HUD"*.  It is not, for the shape
+// § D7 specified: `ground_gl.loft` draws a part in ONE FLAT UNLIT COLOUR
+// (`@X074`, and that is what keeps a frame exactly classifiable), so a
+// body of revolution turning about its own axis is a still picture.  The
+// numbers below are the whole argument — a twelve-segment disc at a
+// TWELFTH of a turn is its own silhouette to the last bit, and the most
+// it ever moves is 3.4 % of its width.
+//
+// ⚠ And the second half is why `mesh_crc` cannot be the instrument here:
+// it DOES see the rotation, because the vertices are permuted.  A
+// checksum that changes while the picture does not is exactly the gate
+// `CLAUDE.md` warns about — *the reading can be perfect for a reason
+// that is not the one you meant*.
+fn test_a_disc_cannot_show_that_it_is_turning() {
+    rest = probe_width(false, 0.0);
+    twelfth = probe_width(false, 1.0 / 12.0);
+    assert(near4(rest, twelfth),
+           "a 12-gon at a twelfth of a turn is the SAME silhouette: "
+           + "{rest} vs {twelfth}");
+
+    // the worst case: half a segment, where the flats face the widest
+    worst = probe_width(false, 1.0 / 24.0);
+    change = (rest - worst) / rest ?? 0.0;
+    assert(change > 0.0, "and half a segment does move it: {worst}");
+    assert(change < 0.04,
+           "but by 3.4 % of the width and no more: {100.0 * change} %");
+
+    // ⚠ the control that the instrument works at all: crossed blades,
+    // measured the same way, move an order of magnitude more
+    b_rest = probe_width(true, 0.0);
+    b_twelfth = probe_width(true, 1.0 / 12.0);
+    b_change = (b_rest - b_twelfth) / b_rest ?? 0.0;
+    assert(b_change > 0.09,
+           "blades at the same angle change by {100.0 * b_change} %, "
+           + "against the disc's {100.0 * change} %");
+    assert(near4(b_rest, rest),
+           "and the two shapes read the same width at rest, so the "
+           + "comparison is about turning: {b_rest} vs {rest}");
+
+    // ⚠⚠ the second reading: the checksum SEES what the eye cannot
+    d0 = mesh("d0"); part_emit(d0, probe_rotor(false, 0.52), [0.0, 0.0]);
+    d1 = mesh("d1"); part_emit(d1, probe_rotor(false, 0.52), [0.0, 1.0 / 12.0]);
+    assert(mesh_crc(d0) != mesh_crc(d1),
+           "the disc's vertices are permuted, so the crc moves — which is "
+           + "why the silhouette is the instrument and the crc is not");
+}
+
+// ⚠ The art change must not have moved the footprint the SIMULATION
+// carries — A3's gate, re-asserted here because A4 is what edited the
+// limb table.
+fn test_the_spin_joints_did_not_move_the_footprint() {
+    p = cat_hover_unit();
+    (w, l, h) = part_size(p);
+    assert(near4(w, VEHICLE_WIDTH_M) && near4(l, VEHICLE_LENGTH_M)
+           && near4(h, VEHICLE_HEIGHT_M),
+           "the blades reach exactly as far as the discs did: "
+           + "({w}, {l}, {h}) vs ({VEHICLE_WIDTH_M}, {VEHICLE_LENGTH_M}, "
+           + "{VEHICLE_HEIGHT_M})");
+    assert(rig_count(p.pt_rig) == 2 + HOVER_ROTORS,
+           "the chassis, the canopy and one bone per rotor: {rig_count(p.pt_rig)}");
+    assert(rig_admissible(p.pt_rig), "and the rig is still admissible");
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// ⚠ The named gap: a socket carries a POSITION and not an ORIENTATION
+// ─────────────────────────────────────────────────────────────────────
+
+// A mast whose socket rides a bone that TURNS, with a long thin thing in
+// it — the fixture A1's boom could not be, because it needed a child.
+fn turret_set() -> PartSet {
+    r = rig_new();
+    r = rig_bone3(r, -1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0);
+    // a 2 m arm that swings about the vertical
+    r = rig_bone3(r, 0, 0.0, 0.0, 1.0, 2.0, 0.0, 0.0, 1.0, 0.0, 0.5);
+    base = part_new("turret", "", r);
+    base = part_socket(base, "muzzle", "barrel", 1, 1.0);
+    base = part_bind(base, "muzzle", "barrel");
+
+    rb = rig_new();
+    rb = rig_bone3(rb, -1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0);
+    barrel = part_new("barrel", "barrel", rb);
+    barrel = part_limb(barrel, 0, 0.0, 0.0, 0.0, LIMB_BOX, 1.0, 0.2, 0.2);
+
+    ps = partset_new();
+    partset_add(ps, base);
+    partset_add(ps, barrel);
+    ps
+}
+
+// @DRY-040 — a child follows the socket's POSITION at every pose, and
+// ⚠⚠ NOT its orientation — the gap, pinned so that closing it is
+// deliberate.
+//
+// ⚠ The exact composition is the socket's FRAME applied to the child's
+// posed points, and `hex_body` publishes no way to compose two `Frame`s.
+// Every socket in `catalogue.loft` rides an unrotated bone and the
+// tower's top is a body of revolution about that bone's own axis, so
+// today the two are the same picture to the bit.  The fix, when a socket
+// turns, is `frame_compose` UPSTREAM — the route `rig_bone3` and
+// `rig_world_frame3` both took (`PARTS.md` § D1).
+fn test_a_child_follows_the_sockets_position_but_not_its_turn() {
+    ps = turret_set();
+    base = partset_get(ps, "turret")?;
+    barrel = partset_get(ps, "barrel")?;
+    i = socket_index(base, "muzzle");
+
+    // at rest the arm runs along +x, so the muzzle is 2 m out
+    (x0, y0, z0) = socket_world(base, [0.0, 0.0], i);
+    assert(near4(x0, 2.0) && near4(y0, 0.0) && near4(z0, 1.0),
+           "at rest the muzzle is 2 m out and 1 m up: ({x0}, {y0}, {z0})");
+
+    // a quarter turn swings it to +y — the position DOES follow
+    (x1, y1, z1) = socket_world(base, [0.0, 0.25], i);
+    assert(near4(x1, 0.0) && near4(y1, 2.0) && near4(z1, 1.0),
+           "a quarter turn puts it 2 m along +y: ({x1}, {y1}, {z1})");
+
+    turned = mesh("turned");
+    (sx, sy, sz) = socket_world(base, [0.0, 0.25], i);
+    part_emit_at(turned, barrel, part_values_rest(barrel), sx, sy, sz);
+    (lox, hix, loy, hiy, _, _) = span_of(turned);
+    assert(near4((lox + hix) / 2.0, 0.0) && near4((loy + hiy) / 2.0, 2.0),
+           "the barrel is centred on the swung muzzle: "
+           + "({(lox + hix) / 2.0}, {(loy + hiy) / 2.0})");
+
+    // ⚠⚠ THE GAP, ASSERTED: a 1.0 x 0.2 barrel at a quarter-turned
+    // socket still lies along +x.  Fix the composition and this line
+    // fails, which is exactly when it should.
+    assert(near4(hix - lox, 1.0) && near4(hiy - loy, 0.2),
+           "and it is NOT turned with the socket — 1.0 across x, 0.2 "
+           + "across y: {hix - lox} x {hiy - loy}");
+}
