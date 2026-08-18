@@ -1,0 +1,291 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 20 phase A2 — a part, as triangles.
+//
+// ── The one claim ────────────────────────────────────────────────────
+//
+// > **A pose is a TRANSFORM: the emitter puts every vertex where
+// > trigonometry says, and the joint value is the only thing that moves
+// > it.**
+//
+// `plans/20` § Invariant gate states it as three properties — emitting
+// at angle 0 equals the unposed part, two 0.125-turn steps equal one
+// 0.25 step, and a hinge in DEGREES is indistinguishable from one in
+// TURNS until something swings a quarter of the way round.  All three
+// are here, asserted as COORDINATES rather than as stored angles.
+//
+// ⚠ **No pixel appears in this file**, which is `PARTS.md` § D4's whole
+// point: nothing above the rasteriser depends on one.  The counts and
+// the coordinates are the gate; `plans/20` A5 is where anything is
+// drawn.
+
+#cwd
+
+use dryopea;
+
+fn near2(a: float, b: float) -> boolean {
+    d = a - b;
+    if d < 0.0 { d = -d; }
+    d < 0.000001
+}
+
+// A one-bone part carrying a single limb, for the shape tests.
+fn one_limb(kind: integer, sx: float, sy: float, sz: float) -> Part {
+    r = rig_new();
+    r = rig_bone3(r, -1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0);
+    p = part_new("probe", "", r);
+    part_limb(p, 0, 0.0, 0.0, 0.0, kind, sx, sy, sz)
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// The counts — what each shape emits
+// ─────────────────────────────────────────────────────────────────────
+
+// @DRY-034 — a box is twelve triangles, and each face has its own corners
+fn test_a_box_emits_twelve_triangles() {
+    m = mesh("box");
+    p = one_limb(LIMB_BOX, 2.0, 2.0, 2.0);
+    n = part_emit(m, p, part_values_rest(p));
+    assert(n == 12, "six faces, two triangles each: got {n}");
+
+    // ⚠ 24 vertices, not 8: each face carries its OWN four, so its normal
+    // is flat.  Sharing the eight corners would average the normals and
+    // every face of every box would read as curved.
+    assert(len(m.vertices) == 24,
+           "each face has its own corners, so 24 vertices: got {len(m.vertices)}");
+    assert(len(m.triangles) == 12, "and the mesh agrees: {len(m.triangles)}");
+}
+
+// @DRY-036 — a disc is four triangles per segment
+fn test_a_disc_emits_its_fan() {
+    m = mesh("disc");
+    p = one_limb(LIMB_DISC, 0.5, 0.5, 0.1);
+    n = part_emit(m, p, part_values_rest(p));
+    // per segment: two rim triangles, one bottom fan, one top fan
+    assert(n == 4 * PART_ROUND_SEGMENTS,
+           "four triangles per segment over {PART_ROUND_SEGMENTS} segments: got {n}");
+}
+
+// @DRY-037 — a cone emits the same fan, and its two radii differ
+fn test_a_cone_emits_its_fan_and_tapers() {
+    m = mesh("cone");
+    p = one_limb(LIMB_CONE, 2.0, 0.5, 4.0);
+    n = part_emit(m, p, part_values_rest(p));
+    assert(n == 4 * PART_ROUND_SEGMENTS, "same count as a disc: got {n}");
+
+    // ⚠ The TAPER, read off the vertices: the widest point must be the
+    // bottom radius and the narrowest the top one.  A cone emitted as a
+    // cylinder has exactly this triangle count and would pass above.
+    lo_r = 0.0; hi_r = 0.0;
+    for v in m.vertices {
+        rr = sqrt(v.pos.x * v.pos.x + v.pos.y * v.pos.y) ?? 0.0;
+        if v.pos.z < 0.0 { if rr > lo_r { lo_r = rr; } }
+        else { if rr > hi_r { hi_r = rr; } }
+    }
+    assert(near2(lo_r, 2.0), "the bottom ring is the bottom radius: {lo_r}");
+    assert(near2(hi_r, 0.5), "and the top ring the top one: {hi_r}");
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// The pose — the phase's actual claim
+// ─────────────────────────────────────────────────────────────────────
+
+// A part with a lateral hinge and a limb 1 m forward of it — the canopy,
+// reduced to the thing that can be measured.
+fn hinged_probe() -> Part {
+    r = rig_new();
+    r = rig_bone3(r, -1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0);
+    r = rig_bone3(r, 0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.5);
+    p = part_new("lid", "", r);
+    part_limb(p, 1, 0.0, 1.0, 0.0, LIMB_BOX, 0.2, 0.2, 0.2)
+}
+
+// The limb's greatest `y`, tracked through the pose as a coordinate.
+fn far_edge_y(p: Part, values: vector<float>) -> float {
+    m = mesh("probe");
+    part_emit(m, p, values);
+    best = -1000.0;
+    for v in m.vertices { if v.pos.y > best { best = v.pos.y; } }
+    best
+}
+
+fn far_edge_z(p: Part, values: vector<float>) -> float {
+    m = mesh("probe");
+    part_emit(m, p, values);
+    best = -1000.0;
+    for v in m.vertices { if v.pos.z > best { best = v.pos.z; } }
+    best
+}
+
+// @DRY-038 — emitting at angle ZERO equals the unposed part
+//
+// ⚠ The identity half of *the pose is a transform*.  Without it every
+// assertion below could be measuring a constant offset rather than a
+// rotation.
+fn test_emitting_at_zero_is_the_unposed_part() {
+    p = hinged_probe();
+    rest = part_values_rest(p);
+    assert(near2(far_edge_y(p, rest), 1.1),
+           "at rest the far edge is 1 m out plus half the box: {far_edge_y(p, rest)}");
+    assert(near2(far_edge_z(p, rest), 0.1),
+           "and only half a box high: {far_edge_z(p, rest)}");
+
+    // ⚠ The EXTENT is the box's own 0.2, not its 1.1 reach from the
+    // origin — a footprint is a size, not a distance.
+    (w, l, h) = part_size(p);
+    assert(near2(l, 0.2) && near2(w, 0.2) && near2(h, 0.2),
+           "part_size agrees: ({w}, {l}, {h})");
+}
+
+// @DRY-039 — a QUARTER TURN puts the far edge where trigonometry says
+//
+// ⚠⚠ THE ASSERTION THAT TELLS TURNS FROM DEGREES.  A hinge whose unit
+// was degrees would move this edge by a fraction of a millimetre; here it
+// must travel a quarter of the way round, landing its `y` at ~0 and its
+// `z` at ~1.1.  Nothing else in this file can see the difference.
+fn test_a_quarter_turn_lands_where_trigonometry_says() {
+    p = hinged_probe();
+    open = [0.0, 0.25];
+    // +y swung about +x by a quarter turn becomes +z
+    assert(near2(far_edge_z(p, open), 1.1),
+           "a quarter turn stands the far edge up at z 1.1: {far_edge_z(p, open)}");
+    assert(far_edge_y(p, open) < 0.11,
+           "and empties its y: {far_edge_y(p, open)}");
+
+    // ⚠ THE CONTROL: the same reading at rest is 1.1 in y and 0.1 in z,
+    // so the instrument moves by a metre and not by a rounding.
+    rest = part_values_rest(p);
+    assert(far_edge_z(p, open) - far_edge_z(p, rest) > 0.9,
+           "the edge travelled {far_edge_z(p, open) - far_edge_z(p, rest)} m, "
+           + "which no degree reading of 0.25 could produce");
+}
+
+// ⚠ TWO 0.125-TURN STEPS EQUAL ONE 0.25 STEP — the composition half.
+// A pose that accumulated, or that read its value as anything but an
+// absolute angle, fails here while passing both tests above.
+fn test_the_pose_composes() {
+    p = hinged_probe();
+    half = far_edge_z(p, [0.0, 0.125]);
+    full = far_edge_z(p, [0.0, 0.25]);
+    // ⚠ The prediction is for the CORNER that ends up highest, not for
+    // the face centre: at an eighth turn the corner at (y 1.1, z 0.1)
+    // lifts to (1.1 + 0.1) sin(45°).  A box has extent on every axis and
+    // the far edge is a corner of it.
+    want = 1.2 * 0.7071067811865476;
+    assert(near2(half, want), "an eighth turn lifts it to {want}, got {half}");
+    assert(near2(full, 1.1), "and a quarter turn to 1.1, got {full}");
+    assert(half < full, "the two are different poses, so this is not vacuous");
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// The emitted mesh against the simulation
+// ─────────────────────────────────────────────────────────────────────
+
+// ⚠⚠ THE GATE THAT BINDS A2 TO THE SIMULATION: the emitter places every
+// vertex from the limb table, and the mesh it produces must span exactly
+// the numbers `src/vehicle.loft` and friends carry.  A3 binds the same
+// table to the same constants through `part_size`, so the two paths meet
+// on the simulation's own figures without either trusting the other.
+fn emitted_span(name: text, axis: integer) -> float {
+    ps = catalogue();
+    p = partset_get(ps, name)?;
+    m = mesh(name);
+    n = part_emit(m, p, part_values_rest(p));
+    if n == 0 { return 0.0; }
+    lo = 1000.0; hi = -1000.0;
+    for v in m.vertices {
+        c = v.pos.x;
+        if axis == 1 { c = v.pos.y; }
+        if axis == 2 { c = v.pos.z; }
+        if c < lo { lo = c; }
+        if c > hi { hi = c; }
+    }
+    hi - lo
+}
+
+fn test_the_emitted_mesh_spans_the_simulations_numbers() {
+    assert(near2(emitted_span("hover_unit", 0), VEHICLE_WIDTH_M),
+           "hover_unit emitted {emitted_span(\"hover_unit\", 0)} m wide vs "
+           + "VEHICLE_WIDTH_M {VEHICLE_WIDTH_M}");
+    assert(near2(emitted_span("hover_unit", 1), VEHICLE_LENGTH_M),
+           "hover_unit emitted {emitted_span(\"hover_unit\", 1)} m long vs "
+           + "VEHICLE_LENGTH_M {VEHICLE_LENGTH_M}");
+    assert(near2(emitted_span("hover_unit", 2), VEHICLE_HEIGHT_M),
+           "hover_unit emitted {emitted_span(\"hover_unit\", 2)} m tall vs "
+           + "VEHICLE_HEIGHT_M {VEHICLE_HEIGHT_M}");
+
+    assert(near2(emitted_span("robot", 0), ENEMY_WIDTH_M),
+           "robot emitted {emitted_span(\"robot\", 0)} m wide vs ENEMY_WIDTH_M");
+    assert(near2(emitted_span("robot", 1), ENEMY_LENGTH_M),
+           "robot emitted {emitted_span(\"robot\", 1)} m long vs ENEMY_LENGTH_M");
+
+    assert(near2(emitted_span("tower_base", 0), TOWER_FOOTPRINT_M),
+           "tower emitted {emitted_span(\"tower_base\", 0)} m across vs "
+           + "TOWER_FOOTPRINT_M {TOWER_FOOTPRINT_M}");
+    assert(near2(emitted_span("tower_base", 2), TOWER_HEIGHT_METRES),
+           "tower emitted {emitted_span(\"tower_base\", 2)} m tall vs "
+           + "TOWER_HEIGHT_METRES {TOWER_HEIGHT_METRES}");
+}
+
+// ⚠ Every entry emits SOMETHING — a part whose limbs the emitter skipped
+// would span 0 and satisfy nothing above, but would also never be
+// noticed if only the gated three were checked.
+fn test_every_catalogue_entry_emits_triangles() {
+    for name in catalogue_names() {
+        ps = catalogue();
+        p = partset_get(ps, name)?;
+        m = mesh(name);
+        n = part_emit(m, p, part_values_rest(p));
+        assert(n > 0, "'{name}' emitted no triangles at all");
+        assert(len(m.vertices) > 0, "and no vertices");
+    }
+}
+
+// ⚠ A NORMAL IS A DIRECTION, not a point.  Posing one as a point adds
+// the bone's translation to it, which still normalises to something
+// plausible — so the only thing that catches it is a limb on a bone that
+// is NOT at the origin, with its normals still unit length.
+fn test_normals_are_directions_and_stay_unit_length() {
+    r = rig_new();
+    r = rig_bone3(r, -1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0);
+    // a bone deliberately far from the origin
+    r = rig_bone3(r, 0, 5.0, 7.0, 9.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0);
+    p = part_new("far", "", r);
+    p = part_limb(p, 1, 0.0, 0.0, 0.0, LIMB_BOX, 1.0, 1.0, 1.0);
+    m = mesh("far");
+    part_emit(m, p, part_values_rest(p));
+    worst = 0.0;
+    for v in m.vertices {
+        ln = sqrt(v.normal.x * v.normal.x + v.normal.y * v.normal.y
+                  + v.normal.z * v.normal.z) ?? 0.0;
+        d = ln - 1.0;
+        if d < 0.0 { d = 0.0 - d; }
+        if d > worst { worst = d; }
+    }
+    assert(worst < 0.000001,
+           "every normal is unit length even 13 m from the origin: worst {worst}");
+}
+
+// ⚠ The emitter is a PURE function of the part and its joint values —
+// `hex_body`'s `I6` reaching the geometry.  Two identical calls must
+// produce byte-identical meshes, which is what makes a mesh comparison a
+// usable regression gate at all.
+fn test_emitting_twice_gives_the_same_mesh() {
+    ps = catalogue();
+    p = partset_get(ps, "hover_unit")?;
+    a = mesh("a");
+    b = mesh("b");
+    part_emit(a, p, part_values_rest(p));
+    part_emit(b, p, part_values_rest(p));
+    assert(mesh_crc(a) == mesh_crc(b),
+           "two identical emissions agree: {mesh_crc(a)} vs {mesh_crc(b)}");
+    // ⚠ and a non-zero floor, because an EMPTY mesh folds to 0 and would
+    // satisfy the equality above vacuously
+    assert(mesh_crc(a) != 0, "and the mesh is not empty");
+
+    // the control: a DIFFERENT pose folds differently
+    c = mesh("c");
+    part_emit(c, p, [0.0, 0.30]);
+    assert(mesh_crc(c) != mesh_crc(a), "an opened canopy is a different mesh");
+}

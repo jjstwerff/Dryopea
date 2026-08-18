@@ -14,55 +14,48 @@ code: the first design baked sprites at a fixed projection, and the project
 owner's answer — *the dynamic camera of moros, and exploration as a pillar* —
 replaced that with geometry.
 
-### ⚠⚠ A2 — written, gated, and BLOCKED on a loft heap corruption (2026-08-18)
+### A2 — the geometry emitter, and a blocker that was the TOOLCHAIN (2026-08-18)
 
-The emitter exists and its ten tests pass **on their own**: a box emits 12
-triangles with 24 vertices (each face its own, so the normals are flat), a disc
-and a cone emit `4 x PART_ROUND_SEGMENTS`, a cone's two rings measure its two
-radii, the pose composes, normals stay unit length 13 m from the origin, two
-emissions fold to the same `mesh_crc`, and **a quarter turn moves the canopy's
-far edge 1.0 m — the one assertion that tells TURNS from DEGREES**.
+`src/part_mesh.loft` + `tests/20_a2_the_geometry.loft`, **10 tests**.  A box is
+12 triangles with per-face corners (so the normals stay flat), a disc and a cone
+are `4 x PART_ROUND_SEGMENTS`, a cone's two rings measure its two radii, the
+pose composes, normals stay unit length 13 m from the origin, two emissions fold
+to the same `mesh_crc`, and the emitted mesh spans the SIMULATION's own numbers.
+Gates: `scripts/test.sh` **1361 green** (97 files), `scripts/validate.sh`
+**654 measurements green and UNMOVED**.
 
-⚠ **It is not in the tree.**  `part_emit` and `part_box` cannot coexist in one
-process:
+⚠⚠ **A QUARTER TURN MOVES THE CANOPY'S FAR EDGE 1.0 m**, which is the one
+assertion that tells TURNS from DEGREES — `plans/20` § Invariant gate asked for
+exactly it, and it is a COORDINATE rather than a stored angle.
 
-```
-1 baseline part_emit   -> zmin 0        correct
-2 after one part_box   -> zmin -3       WRONG
-3 part_emit again      -> zmin 1000     NO VERTICES AT ALL
-4 part_size afterwards -> (0, 0, 0)     the part has no size
-```
+⚠ **There is no forward kinematics in this file.**  Every vertex is placed by
+`hex_body::frame_point` over one `rig_world_frame3` per BONE, held across that
+bone's limbs.  `rig_world_frame3` exists BECAUSE of this phase: `rig_world_seg3`
+answers a bone's base and tip, both ON its axis, and a limb is a cloud of points
+that are not — so the basis it computed and threw away became **`hex_body`
+0.3.0**, published and signed.
 
-and under `scripts/test.sh` the suite SIGSEGVs in `OpLengthVector` in whichever
-file runs next.  A3 needs `part_box`, so the emitter is held out rather than
-landing a suite that crashes.  ⚠ `part_box`'s own answers stay correct
-throughout — it is everything AFTER it that decays, which is why A3 has been
-green all along.
+⚠⚠ **AND THE PHASE WAS DECLARED BLOCKED ON A BUG THAT WAS ALREADY FIXED.**  A
+measured part came back with **1 limb instead of 8** and the suite SIGSEGVed in
+`OpLengthVector`; it was real, deterministic, narrowed to ten lines and three
+calls, and filed as [loft#969](https://github.com/loft-lang/loft/issues/969).
+Re-tested at the project owner's prompt against the binary actually on `PATH`:
 
-⚠⚠ **AND THE FAULT IS NOT WHAT IT LOOKED LIKE.**  Narrowed to ten lines and
-three calls: a tiny emitter walking `p.pt_limbs` and appending to a `Mesh`,
-then `part_box`, then the emitter again — which answers **1 limb where the part
-has 8**, and a later `part_size` reads `(0,0,0)`.  ***`part_box` TRUNCATES the
-vector it walked***, and the damage spreads to other parts in the same set.  ⚠
-Each function alone repeats correctly for ever; only the interleaving corrupts,
-which is why A3 has been green throughout.  ⚠ Six narrowings of `part_box`
-itself found nothing: binding the rig to a local; splitting it into three small
-passes; precomputing the bone bases; avoiding `Vec3` locals reused across
-`add_vertex`; iterating the limb vector alone; a 6-tuple return alone.  ⚠ The byte-identical body in a program ENTRY is
-correct every time — the one constant, and the same axis as [loft#962]'s family.
-Filed as [loft#969](https://github.com/loft-lang/loft/issues/969), with the eight standalone ingredients that do NOT trigger it kept as a negative control in `loft_repros/emit_then_measure_corrupts/`.
+| binary | built | runs | result |
+|---|---|---|---|
+| `/usr/local/bin/loft` | 2026-08-16 | 10 | **0 clean, 10 corrupt** |
+| `~/.local/bin/loft` | 2026-08-18 11:45 | 25 | **25 clean** |
 
-⚠ **What A2 did land is upstream**: `hex_body` **0.3.0** — `Frame` /
-`rig_world_frame3` / `frame_point` / `rig_world_point3`, published and signed.
-`rig_world_seg3` answers a bone's base and tip, both ON its axis, and a limb is
-a cloud of points that are not; the basis was computed and thrown away.  ⚠ It
-also made `rig_world_seg3` two points of the frame rather than a second walk,
-with its numbers bit-identical (gated).
+***Both report `loft 2026.8.0`.***  A rebuild during the session fixed it, the
+version string could not say so, and the evidence had been gathered against the
+older binary.  ⚠ `docs/TOOLCHAIN.md` § The BINARY moves under you carries the
+rule: check `which loft` and its **mtime** before believing a toolchain symptom.
+⚠ The eight standalone ingredients that do NOT trigger it are kept as a negative
+control in `loft_repros/emit_then_measure_corrupts/`.
 
-⚠ **Still open for A2 when it resumes**: § D7's four BOOMS run diagonally and
-nothing carries a rest orientation, so they are absent from the catalogue.  A
-`LIMB_STRUT` defined by two endpoints and a thickness needs no rotation concept
-and is the shape to reach for.
+⚠ **Still open**: § D7's four BOOMS run diagonally and nothing carries a rest
+orientation, so they are absent.  A `LIMB_STRUT` taking two endpoints and a
+thickness needs no rotation concept and is the shape to reach for.
 
 ### A3 — the catalogue, and a footprint that is DERIVED (2026-08-18)
 
@@ -335,7 +328,7 @@ worth saying because silence reads as "gate done".
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
 | **A1** — adopt `hex_body`, and build the SOCKET | S | `tests/20_a1_the_part.loft` — **18 tests**, `src/part.loft`, and dryopea re-implements none of the rig: `Rig`, `Joint`, `rig_world_seg`, `rig_count` and `rig_admissible` all arrive as a dependency, and `part_fault` asks the LIBRARY's doorstep before any question of its own.  ⚠⚠ The 3-D axis is NOT here — it is `rig_bone3` in `loft-libs-world` (§ Cross-repo coordination), and A2 is what needs it | **SHIPPED** 2026-08-18 |
-| **A2** — the geometry emitter | MH | `tests/20_a2_the_geometry.loft` — a part poses its joints and emits triangles in world space.  ⚠ Gated on NUMBERS, not pixels: a hinge at 0.25 turns puts the canopy's far edge where trigonometry says, a box emits 12 triangles, a disc emits its fan, and every vertex is inside the declared extent | ⚠⚠ **WRITTEN, TEN TESTS GREEN ON THEIR OWN, AND HELD OUT OF THE TREE** — see § A2 |
+| **A2** — the geometry emitter | MH | `tests/20_a2_the_geometry.loft` — a part poses its joints and emits triangles in world space.  ⚠ Gated on NUMBERS, not pixels: a hinge at 0.25 turns puts the canopy's far edge where trigonometry says, a box emits 12 triangles, a disc emits its fan, and every vertex is inside the declared extent | **SHIPPED** 2026-08-18 |
 | **A3** — the catalogue | M | `tests/20_a3_the_catalogue.loft` — **11 tests**; the hover unit, the robot, the tower base + top, and the helper which is the hover unit rather than a fifth entry.  ⚠ Its real gate is the footprint, and the footprint is DERIVED from the limb table so the check is not a tautology | **SHIPPED** 2026-08-18 |
 | **A4** — poses come from the SIMULATION | S | `tests/20_a4_the_joints.loft` — a tower with no top emits no top triangles; the canopy angle follows the sim; rotor spin follows boost.  ⚠ Asked of `TowerState` / `Vehicle`, never a second flag | Blocked on A2, A3 |
 | **A5** — entities in the frame (was plan 19 P4) | M | `tests/20_a5_the_frame.loft` — `classify_world` shares for enemies, vehicle and crew; a `.keys` scenario with `snap` | ⚠ Blocked on **[plan 21](../21-the-renderer/README.md)** |

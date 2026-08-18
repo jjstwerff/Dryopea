@@ -33,87 +33,6 @@ fix / feature, move it to **Resolved**.
 
 ## Submitted
 
-### Interleaving two library functions over one `vector<Struct>` field truncates it — [loft#969](https://github.com/loft-lang/loft/issues/969)
-
-Filed 2026-08-18 (plan 20 A2).
-
-- **Found while:** plan 20 A3, deriving a part's extent from its limbs.
-- **Kind:** bug (interpreter crash)
-- **What dryopea needs:** either a fix, or a rule saying which shapes are unsafe
-  in an aggregated library.
-
-`src/part.loft::part_box` iterated a struct's `vector<Limb>` field and called
-`hex_body::rig_world_seg3(p.pt_rig, zeros, l.lb_bone)` per limb.  Under
-`loft test` and under a plain program run it dies:
-
-```
-=== loft crash (loft) SIGSEGV caught ===
-  last op:  OpGetVectorNullable (op=207)
-  at:      ~/.loft/registry/hex_body-0.2.0/src/hex_body.loft:424:11
-```
-
-— which is `p = r.rg_parent[k] ?? -1;`, a line 0.1.0 has carried unchanged since
-July.
-
-⚠⚠ **The byte-identical function body in a program ENTRY answers correctly.**
-Pasted into the `fn main` file with only its name changed, it returns
-`(-1.14, -1.14, -0.37) .. (1.14, 0.91, 0.56)` — the right answer — and exits 0.
-Moving it back into `src/part.loft` (reached through `use dryopea;`) crashes.
-
-⚠ **Narrowed, and each of these is NOT sufficient on its own** — every one of
-them ran clean from the library:
-
-- calling `rig_world_seg3` once and returning a float;
-- calling it in a loop over the struct's limb vector;
-- taking the `Part` as a parameter rather than a local;
-- reading the module's own file-scope consts;
-- returning a 6-tuple;
-- `#first` on the loop, and the min/max walk.
-
-So it is the whole function together, which is the shape of [loft#935]'s
-*"the function's SIZE is an ingredient"* rather than any one construct.
-
-⚠ **Workaround in dryopea**: `part_box` walks the parent chain itself.  At the
-neutral pose every rotation is the identity, so a bone's base is the sum of its
-ancestors' offsets — which is what `rig_world_seg3` reduces to there anyway,
-needs no per-call `zeros` vector and is cheaper.  Recorded in the function.
-
-⚠⚠ **AND IT IS WORSE THAN A CRASH — plan 20 A2, 2026-08-18.**  The workaround
-above stopped the SIGSEGV and did not stop the corruption.  With `part_box`
-(measure) and `part_emit` (emit triangles) both in the tree, one program reads:
-
-```
-1 baseline part_emit   -> zmin 0        correct
-2 after one part_box   -> zmin -3       WRONG
-3 part_emit again      -> zmin 1000     NO VERTICES AT ALL
-4 part_size afterwards -> (0, 0, 0)     the part has no size
-```
-
-`part_box`'s own answer stays correct throughout; it is everything AFTER it
-that decays.  Under `loft test` the suite SIGSEGVs in `OpLengthVector` inside
-the stdlib, in the file that runs next.
-
-⚠ **Six narrowings, each measured, none of them the trigger**: binding the rig
-to a local; splitting the function into three small passes; precomputing the
-bone bases so the container is never passed on from inside its own limb loop;
-avoiding `Vec3` locals reused across `add_vertex` calls; iterating the limb
-vector alone (harmless); a 6-tuple return alone (harmless).  ⚠ The
-byte-identical function body in a program ENTRY is correct and harmless every
-time, which is the one constant.
-
-⚠ **Impact**: plan 20 A2 is written, its ten tests pass ON THEIR OWN, and it
-**cannot land** — `part_emit` and `part_box` cannot coexist in one process, and
-A3 needs the second.  A2's emitter is held out of the tree rather than landing
-a suite that segfaults.
-
-⚠⚠ **FILED WITHOUT A SELF-CONTAINED REPRO, KNOWINGLY.**  Eight ingredients were
-added to a fresh two-module package and NONE reproduced — the failed attempt is
-kept as a NEGATIVE CONTROL at
-[`loft_repros/emit_then_measure_corrupts/`](loft_repros/emit_then_measure_corrupts/README.md)
-with the full list, so nobody repeats it.  ⚠ The recipe that DOES reproduce is
-ten lines and three calls, and it is inline in the issue; the alternative was to
-leave silent heap corruption unreported while a consumer worked around it.
-
 ### `use <pkg>;` resolves a package the manifest never declared — [loft#968](https://github.com/loft-lang/loft/issues/968)
 
 Filed 2026-08-18 (plan 20 A1).
@@ -343,6 +262,101 @@ producing a green test suite while every assertion was running
 against a 0-length palette.  Both fixed in loft commit `42f8228`.
 
 ## Resolved
+
+### Interleaving two library functions over one `vector<Struct>` field truncates it — [loft#969](https://github.com/loft-lang/loft/issues/969)
+
+Filed 2026-08-18 (plan 20 A2), **and it no longer reproduces on the current
+loft build** — verified the same day, symmetrically:
+
+| binary | built | runs | result |
+|---|---|---|---|
+| `/usr/local/bin/loft` | 2026-08-16 | 10 | **0 clean, 10 corrupt** |
+| `~/.local/bin/loft` (the PATH one) | 2026-08-18 11:45 | 25 | **25 clean** |
+
+⚠⚠ **Both report `loft 2026.8.0`**, so the version string does not separate
+them — only the mtime does.  ⚠ No commit in `git log --since=2026-08-16` on the
+loft checkout looks store- or vector-related, so the fix is unattributed; the
+issue asks which change did it, in case it was incidental.
+
+⚠ **A2 is unblocked and shipped**: 1361 tests / 97 files green on the same tree
+that SIGSEGVed in `OpLengthVector` on the older binary.
+
+- **Found while:** plan 20 A3, deriving a part's extent from its limbs.
+- **Kind:** bug (interpreter crash)
+- **What dryopea needs:** either a fix, or a rule saying which shapes are unsafe
+  in an aggregated library.
+
+`src/part.loft::part_box` iterated a struct's `vector<Limb>` field and called
+`hex_body::rig_world_seg3(p.pt_rig, zeros, l.lb_bone)` per limb.  Under
+`loft test` and under a plain program run it dies:
+
+```
+=== loft crash (loft) SIGSEGV caught ===
+  last op:  OpGetVectorNullable (op=207)
+  at:      ~/.loft/registry/hex_body-0.2.0/src/hex_body.loft:424:11
+```
+
+— which is `p = r.rg_parent[k] ?? -1;`, a line 0.1.0 has carried unchanged since
+July.
+
+⚠⚠ **The byte-identical function body in a program ENTRY answers correctly.**
+Pasted into the `fn main` file with only its name changed, it returns
+`(-1.14, -1.14, -0.37) .. (1.14, 0.91, 0.56)` — the right answer — and exits 0.
+Moving it back into `src/part.loft` (reached through `use dryopea;`) crashes.
+
+⚠ **Narrowed, and each of these is NOT sufficient on its own** — every one of
+them ran clean from the library:
+
+- calling `rig_world_seg3` once and returning a float;
+- calling it in a loop over the struct's limb vector;
+- taking the `Part` as a parameter rather than a local;
+- reading the module's own file-scope consts;
+- returning a 6-tuple;
+- `#first` on the loop, and the min/max walk.
+
+So it is the whole function together, which is the shape of [loft#935]'s
+*"the function's SIZE is an ingredient"* rather than any one construct.
+
+⚠ **Workaround in dryopea**: `part_box` walks the parent chain itself.  At the
+neutral pose every rotation is the identity, so a bone's base is the sum of its
+ancestors' offsets — which is what `rig_world_seg3` reduces to there anyway,
+needs no per-call `zeros` vector and is cheaper.  Recorded in the function.
+
+⚠⚠ **AND IT IS WORSE THAN A CRASH — plan 20 A2, 2026-08-18.**  The workaround
+above stopped the SIGSEGV and did not stop the corruption.  With `part_box`
+(measure) and `part_emit` (emit triangles) both in the tree, one program reads:
+
+```
+1 baseline part_emit   -> zmin 0        correct
+2 after one part_box   -> zmin -3       WRONG
+3 part_emit again      -> zmin 1000     NO VERTICES AT ALL
+4 part_size afterwards -> (0, 0, 0)     the part has no size
+```
+
+`part_box`'s own answer stays correct throughout; it is everything AFTER it
+that decays.  Under `loft test` the suite SIGSEGVs in `OpLengthVector` inside
+the stdlib, in the file that runs next.
+
+⚠ **Six narrowings, each measured, none of them the trigger**: binding the rig
+to a local; splitting the function into three small passes; precomputing the
+bone bases so the container is never passed on from inside its own limb loop;
+avoiding `Vec3` locals reused across `add_vertex` calls; iterating the limb
+vector alone (harmless); a 6-tuple return alone (harmless).  ⚠ The
+byte-identical function body in a program ENTRY is correct and harmless every
+time, which is the one constant.
+
+⚠ **Impact**: plan 20 A2 is written, its ten tests pass ON THEIR OWN, and it
+**cannot land** — `part_emit` and `part_box` cannot coexist in one process, and
+A3 needs the second.  A2's emitter is held out of the tree rather than landing
+a suite that segfaults.
+
+⚠⚠ **FILED WITHOUT A SELF-CONTAINED REPRO, KNOWINGLY.**  Eight ingredients were
+added to a fresh two-module package and NONE reproduced — the failed attempt is
+kept as a NEGATIVE CONTROL at
+[`loft_repros/emit_then_measure_corrupts/`](loft_repros/emit_then_measure_corrupts/README.md)
+with the full list, so nobody repeats it.  ⚠ The recipe that DOES reproduce is
+ten lines and three calls, and it is inline in the issue; the alternative was to
+leave silent heap corruption unreported while a consumer worked around it.
 
 ### Verified fixed on 2026-08-17 — the two store-lifetime bugs plan 23 filed
 

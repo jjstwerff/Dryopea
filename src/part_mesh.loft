@@ -1,0 +1,249 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// #examples
+//
+// A PART, AS TRIANGLES — the geometry emitter.
+//
+// Plan 20 phase A2.  `docs/PARTS.md` § D4 is the decision this serves:
+// *"a part emits TRIANGLES, and pixels appear only at the final
+// rasterisation"*, with the table of layers that says nothing above the
+// rasteriser depends on a pixel.  This file is the row marked *the
+// geometry emitter*, and it mentions no pixel at all.
+//
+// ── ⚠ The pose comes from the LIBRARY, and this file has no FK ──
+//
+// Every vertex is placed by `hex_body::frame_point` over a
+// `rig_world_frame3` — one tree walk per BONE, reused for every vertex
+// hung on it.  ⚠⚠ **There is no forward kinematics here**, and that is
+// the same rule `PARTS.md` § D1 states for the rig itself: a second
+// implementation of a pose is the one a future reader would reach for,
+// and it would drift from the one the sockets use.
+//
+// ⚠ `rig_world_frame3` exists BECAUSE of this file: `rig_world_seg3`
+// answers a bone's base and tip, both ON its axis, and a limb is a
+// cloud of points that are not.  It was added upstream in `hex_body`
+// 0.3.0 rather than worked around here.
+//
+// ── ⚠ What this file does NOT do ────────────────────────────────
+//
+// **No colour.**  A mesh carries geometry; `PARTS.md` § D8 makes a class
+// *a row of data*, and `ground_gl.loft` already proves the pattern —
+// colour is a UNIFORM per draw, never a vertex attribute (`@X074`), and
+// putting one on a vertex would throw away the exact classification the
+// gates read.
+//
+// **No placement in the world.**  A part emits in its OWN frame, origin
+// at the footprint centre.  Where the vehicle IS belongs to the renderer
+// (plan 20 A5), which is also the only thing that knows `play_alpha`.
+//
+// **No booms.**  ⚠ § D7's four run DIAGONALLY, and neither `Limb` nor
+// `hex_body::Rig` carries a REST ORIENTATION.  They sit strictly inside
+// the rotor envelope so nothing here or in A3 changes; a `LIMB_STRUT`
+// taking two endpoints and a thickness needs no rotation concept and is
+// the shape to reach for when they are wanted.
+
+use mesh3d;
+use part;
+
+// How many segments a round limb is drawn with.
+//
+// ⚠ TWELVE, and it is the hex's own number rather than a smoothness
+// knob: dryopea's world is a hex lattice, a rotor read against it wants
+// no more resolution than the ground has, and 12 divides the 6 corners
+// evenly so a disc's silhouette lines up with the lattice it hovers
+// over.  ⚠ It is a CONSTANT rather than a parameter because two callers
+// drawing one rotor at two resolutions would make `mesh_crc` disagree
+// about identical geometry.
+pub const PART_ROUND_SEGMENTS: integer = 12;
+
+const PART_TAU: float = 6.283185307179586;
+
+// ─── One limb at a time ─────────────────────────────────────────
+
+// A DIRECTION through a frame — the point transform without its
+// translation.  ⚠ A normal is a direction and must not be translated;
+// posing one as a point puts every normal at the bone's base plus the
+// normal, which still normalises to something plausible and is wrong
+// everywhere the bone is not at the origin.
+//
+// ⚠ It is declared ABOVE its callers deliberately: loft cannot type a
+// tuple destructure from a callee declared lower in the file
+// ([loft#918]'s shape), and the diagnostic names the destructured
+// variables rather than the ordering.
+fn frame_dir(f: Frame, dx: float, dy: float, dz: float) -> (float, float, float) {
+  (ox, oy, oz) = frame_point(f, 0.0, 0.0, 0.0);
+  (px, py, pz) = frame_point(f, dx, dy, dz);
+  (px - ox, py - oy, pz - oz)
+}
+
+// A box: eight corners, six faces, **12 triangles**.
+//
+// ⚠ Each face gets its OWN four vertices, so the normals are flat.  A
+// box sharing eight corners would have to average its normals and every
+// face would read as curved — which is the same argument
+// `ground_mesh.loft` makes about not blending a flat plane.
+//
+// Example: @DRY-034
+pub fn emit_box(m: Mesh, f: Frame, l: Limb) -> integer {
+  hx = l.lb_sx / 2.0 ?? 0.0;
+  hy = l.lb_sy / 2.0 ?? 0.0;
+  hz = l.lb_sz / 2.0 ?? 0.0;
+  n = 0;
+  for fc in 0..6 {
+    // the face's outward axis: 0,1 = ±x   2,3 = ±y   4,5 = ±z
+    ax = 0.0; ay = 0.0; az = 0.0;
+    if fc == 0 { ax = 1.0; } else if fc == 1 { ax = -1.0; }
+    else if fc == 2 { ay = 1.0; } else if fc == 3 { ay = -1.0; }
+    else if fc == 4 { az = 1.0; } else { az = -1.0; }
+    // two in-plane axes, right-handed about the outward one
+    ux = 0.0; uy = 0.0; uz = 0.0;
+    vx = 0.0; vy = 0.0; vz = 0.0;
+    if ax != 0.0 { uy = 1.0; vz = 1.0; }
+    else if ay != 0.0 { uz = 1.0; vx = 1.0; }
+    else { ux = 1.0; vy = 1.0; }
+    n += emit_quad(m, f, l, ax * hx, ay * hy, az * hz,
+                   ux * hx + uy * hy + uz * hz, ux, uy, uz,
+                   vx * hx + vy * hy + vz * hz, vx, vy, vz, ax, ay, az);
+  }
+  n
+}
+
+// One face of a box: a centre, two half-edge vectors, and its normal.
+// ⚠ Its winding is counter-clockwise seen from OUTSIDE, which is what
+// `ground_gl.loft` turns `GL_CULL_FACE` on to make a mistake loud.
+fn emit_quad(m: Mesh, f: Frame, l: Limb,
+             cx: float, cy: float, cz: float,
+             us: float, ux: float, uy: float, uz: float,
+             vs: float, vx: float, vy: float, vz: float,
+             nx: float, ny: float, nz: float) -> integer {
+  ox = l.lb_cx + cx; oy = l.lb_cy + cy; oz = l.lb_cz + cz;
+  (ax, ay, az) = frame_point(f, ox - ux * us - vx * vs,
+                                oy - uy * us - vy * vs,
+                                oz - uz * us - vz * vs);
+  (bx, by, bz) = frame_point(f, ox + ux * us - vx * vs,
+                                oy + uy * us - vy * vs,
+                                oz + uz * us - vz * vs);
+  (cx2, cy2, cz2) = frame_point(f, ox + ux * us + vx * vs,
+                                   oy + uy * us + vy * vs,
+                                   oz + uz * us + vz * vs);
+  (dx, dy, dz) = frame_point(f, ox - ux * us + vx * vs,
+                                oy - uy * us + vy * vs,
+                                oz - uz * us + vz * vs);
+  (gx, gy, gz) = frame_dir(f, nx, ny, nz);
+  i0 = add_vertex(m, vertex(vec3(ax, ay, az), vec3(gx, gy, gz), vec2(0.0, 0.0)));
+  i1 = add_vertex(m, vertex(vec3(bx, by, bz), vec3(gx, gy, gz), vec2(1.0, 0.0)));
+  i2 = add_vertex(m, vertex(vec3(cx2, cy2, cz2), vec3(gx, gy, gz), vec2(1.0, 1.0)));
+  i3 = add_vertex(m, vertex(vec3(dx, dy, dz), vec3(gx, gy, gz), vec2(0.0, 1.0)));
+  add_triangle(m, i0, i1, i2);
+  add_triangle(m, i0, i2, i3);
+  2
+}
+
+// A disc about the limb's own `+z`: a top fan, a bottom fan and a rim.
+// **`4 * PART_ROUND_SEGMENTS` triangles.**
+//
+// Example: @DRY-036
+pub fn emit_disc(m: Mesh, f: Frame, l: Limb) -> integer {
+  emit_round(m, f, l, l.lb_sx, l.lb_sx, l.lb_sz / 2.0 ?? 0.0)
+}
+
+// A truncated cone about the limb's own `+z`, standing on its centre's
+// z: bottom radius, top radius, height.  Same triangle count as a disc.
+//
+// Example: @DRY-037
+pub fn emit_cone(m: Mesh, f: Frame, l: Limb) -> integer {
+  emit_round(m, f, l, l.lb_sx, l.lb_sy, l.lb_sz / 2.0 ?? 0.0)
+}
+
+// The one round emitter: a bottom ring of radius `r0` and a top ring of
+// `r1`, `h` either side of the limb's centre.  A disc is the case
+// `r0 == r1`, which is why there is one of these and not two.
+fn emit_round(m: Mesh, f: Frame, l: Limb, r0: float, r1: float, h: float) -> integer {
+  segs = PART_ROUND_SEGMENTS;
+  (bcx, bcy, bcz) = frame_point(f, l.lb_cx, l.lb_cy, l.lb_cz - h);
+  (tcx, tcy, tcz) = frame_point(f, l.lb_cx, l.lb_cy, l.lb_cz + h);
+  (ux, uy, uz) = frame_dir(f, 0.0, 0.0, 1.0);
+  bmid = add_vertex(m, vertex(vec3(bcx, bcy, bcz),
+                              vec3(0.0 - ux, 0.0 - uy, 0.0 - uz), vec2(0.5, 0.5)));
+  tmid = add_vertex(m, vertex(vec3(tcx, tcy, tcz), vec3(ux, uy, uz), vec2(0.5, 0.5)));
+  n = 0;
+  for si in 0..segs {
+    a0 = (si as float) * PART_TAU / (segs as float) ?? 0.0;
+    a1 = ((si + 1) as float) * PART_TAU / (segs as float) ?? 0.0;
+    n += emit_round_seg(m, f, l, r0, r1, h, a0, a1, bmid, tmid, ux, uy, uz);
+  }
+  n
+}
+
+// One wedge of a round limb: two rim triangles and the two fan triangles
+// that close the ends.  **Four triangles per segment.**
+fn emit_round_seg(m: Mesh, f: Frame, l: Limb, r0: float, r1: float, h: float,
+                  a0: float, a1: float, bmid: integer, tmid: integer,
+                  ux: float, uy: float, uz: float) -> integer {
+  c0 = cos(a0); s0 = sin(a0);
+  c1 = cos(a1); s1 = sin(a1);
+  (b0x, b0y, b0z) = frame_point(f, l.lb_cx + r0 * c0, l.lb_cy + r0 * s0, l.lb_cz - h);
+  (b1x, b1y, b1z) = frame_point(f, l.lb_cx + r0 * c1, l.lb_cy + r0 * s1, l.lb_cz - h);
+  (t0x, t0y, t0z) = frame_point(f, l.lb_cx + r1 * c0, l.lb_cy + r1 * s0, l.lb_cz + h);
+  (t1x, t1y, t1z) = frame_point(f, l.lb_cx + r1 * c1, l.lb_cy + r1 * s1, l.lb_cz + h);
+  // the rim's outward normal, midway across the wedge
+  (nx, ny, nz) = frame_dir(f, (c0 + c1) / 2.0 ?? 0.0, (s0 + s1) / 2.0 ?? 0.0, 0.0);
+  rb0 = add_vertex(m, vertex(vec3(b0x, b0y, b0z), vec3(nx, ny, nz), vec2(0.0, 0.0)));
+  rb1 = add_vertex(m, vertex(vec3(b1x, b1y, b1z), vec3(nx, ny, nz), vec2(1.0, 0.0)));
+  rt1 = add_vertex(m, vertex(vec3(t1x, t1y, t1z), vec3(nx, ny, nz), vec2(1.0, 1.0)));
+  rt0 = add_vertex(m, vertex(vec3(t0x, t0y, t0z), vec3(nx, ny, nz), vec2(0.0, 1.0)));
+  add_triangle(m, rb0, rb1, rt1);
+  add_triangle(m, rb0, rt1, rt0);
+  // the two caps, each sharing its centre vertex
+  fb0 = add_vertex(m, vertex(vec3(b0x, b0y, b0z),
+                             vec3(0.0 - ux, 0.0 - uy, 0.0 - uz), vec2(0.0, 0.0)));
+  fb1 = add_vertex(m, vertex(vec3(b1x, b1y, b1z),
+                             vec3(0.0 - ux, 0.0 - uy, 0.0 - uz), vec2(1.0, 0.0)));
+  add_triangle(m, bmid, fb1, fb0);
+  ft0 = add_vertex(m, vertex(vec3(t0x, t0y, t0z), vec3(ux, uy, uz), vec2(0.0, 0.0)));
+  ft1 = add_vertex(m, vertex(vec3(t1x, t1y, t1z), vec3(ux, uy, uz), vec2(1.0, 0.0)));
+  add_triangle(m, tmid, ft0, ft1);
+  4
+}
+
+// ─── The whole part ─────────────────────────────────────────────
+
+// Emit every limb of `p`, posed at `values`.  Answers the number of
+// triangles added.
+//
+// ⚠ ONE FRAME PER BONE, held across that bone's limbs — the hover unit
+// hangs seven limbs on its chassis, and walking the rig seven times to
+// place them would be seven identical answers.
+//
+// Example: @DRY-034, @DRY-038, @DRY-039
+pub fn part_emit(m: Mesh, p: Part, values: vector<float>) -> integer {
+  n = 0;
+  for bi in 0..rig_count(p.pt_rig) {
+    fr = rig_world_frame3(p.pt_rig, values, bi);
+    n += emit_bone_limbs(m, p, fr, bi);
+  }
+  n
+}
+
+// Every limb riding one bone, through one frame.
+fn emit_bone_limbs(m: Mesh, p: Part, fr: Frame, bone: integer) -> integer {
+  n = 0;
+  for l in p.pt_limbs {
+    if l.lb_bone == bone {
+      if l.lb_kind == LIMB_BOX { n += emit_box(m, fr, l); }
+      else if l.lb_kind == LIMB_DISC { n += emit_disc(m, fr, l); }
+      else if l.lb_kind == LIMB_CONE { n += emit_cone(m, fr, l); }
+    }
+  }
+  n
+}
+
+// The neutral pose — every joint at zero, which is the pose `part_size`
+// measures and the one a catalogue entry is authored in.
+//
+// Example: @DRY-038
+pub fn part_values_rest(p: Part) -> vector<float> {
+  vs: vector<float> = [];
+  for bi in 0..rig_count(p.pt_rig) { vs += [0.0 * (bi as float)]; }
+  vs
+}

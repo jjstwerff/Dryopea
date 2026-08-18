@@ -59,7 +59,7 @@ three finished designs).
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1351 green**, ~180 s, 96 files |
+| tests | `scripts/test.sh` | **1361 green**, ~180 s, 97 files |
 | scenarios | `scripts/validate.sh` | **33 scripts, 654 measurements**, ~14 s |
 | drawn pixels | `scripts/validate_gl.sh` | **2 fixtures, 26 measurements** (needs xvfb) |
 
@@ -335,8 +335,15 @@ has its own contribution flow.  Internal-to-dryopea bugs go in
 
 ## Key commands
 
-dryopea uses the **installed** `loft` binary (`loft` on PATH —
-`/usr/local/bin/loft`).  There is no local loft build step: the
+dryopea uses the **installed** `loft` binary — **`loft` on PATH, which is
+`~/.local/bin/loft`**.  ⚠⚠ This said `/usr/local/bin/loft` until 2026-08-18 and
+that path is a DIFFERENT, OLDER binary on this box: both report
+`loft 2026.8.0`, so **the version string cannot tell them apart and only the
+mtime can**.  ⚠ It matters — plan 20 A2 spent a session blocked on a heap
+corruption that the PATH binary had while `/usr/local/bin`'s predecessor also
+had it, and a rebuild during the session fixed it silently
+([loft#969](https://github.com/loft-lang/loft/issues/969)).  **Check
+`which loft` and its mtime before believing any toolchain symptom.**  There is no local loft build step: the
 libraries it depends on resolve from the loft package registry
 via `loft.toml` + `loft.lock`, so no `--lib` path is passed
 anywhere.
@@ -473,7 +480,7 @@ navigational summary of it.
 | `vehicle.loft` | the PLAYER — drive, boost, salvage.  `salvage_at` is the shared chassis.  ⚠ Since plan 26 L2 it carries a `Bank`, which is what closed `@D003`; `vehicle_bank` releases and `vehicle_hexes_per_tick` is the CEILING that spends nothing (`@X081`) |
 | `helper.loft` | the NPC crew — banked movement, wrecking, and the 60 s recovery |
 | `carry.loft` | one record per carryable thing, with an `owner` — conservation is STRUCTURAL |
-| `part.loft` | **what an entity IS** (plan 20 A1) — the `Socket` a part offers and the `Binding` that fills it, over `hex_body::Rig`.  ⚠⚠ It holds **no rig, joint, limit, pose or hitbox**: every one of those is the published library, and `part_fault` asks `rig_admissible` first.  ⚠ **A socket's position is COMPUTED and stored nowhere** — `socket_world` is the ONE site, and a `Binding` carries neither a coordinate nor a POSE (which pose a tower draws in is `TowerState`'s answer).  ⚠ The cycle check walks a PATH, never a visited set || `catalogue.loft` | **what each entity is MADE of** (plan 20 A3) — the hover unit, the robot, the tower base + top, as `Limb` tables over a rig.  ⚠⚠ **It declares no footprint**: `part_size` DERIVES the extent from the limbs, which is the only reason § D6's check against `VEHICLE_WIDTH_M` is not a tautology.  ⚠ The helper is the hover unit and never a fifth entry (§ D8); a class is a row of DATA, so no colour lives here.  ⚠ § D7's four BOOMS are absent — they run diagonally and nothing carries a rest orientation, which is A2's to solve |
+| `part.loft` | **what an entity IS** (plan 20 A1) — the `Socket` a part offers and the `Binding` that fills it, over `hex_body::Rig`.  ⚠⚠ It holds **no rig, joint, limit, pose or hitbox**: every one of those is the published library, and `part_fault` asks `rig_admissible` first.  ⚠ **A socket's position is COMPUTED and stored nowhere** — `socket_world` is the ONE site, and a `Binding` carries neither a coordinate nor a POSE (which pose a tower draws in is `TowerState`'s answer).  ⚠ The cycle check walks a PATH, never a visited set || `catalogue.loft` | **what each entity is MADE of** (plan 20 A3) — the hover unit, the robot, the tower base + top, as `Limb` tables over a rig.  ⚠⚠ **It declares no footprint**: `part_size` DERIVES the extent from the limbs, which is the only reason § D6's check against `VEHICLE_WIDTH_M` is not a tautology.  ⚠ The helper is the hover unit and never a fifth entry (§ D8); a class is a row of DATA, so no colour lives here.  ⚠ § D7's four BOOMS are absent — they run diagonally and nothing carries a rest orientation, which is A2's to solve || `part_mesh.loft` | **a part, as TRIANGLES** (plan 20 A2) — a box is 12 triangles with per-face corners, a disc and a cone are `4 x PART_ROUND_SEGMENTS`.  ⚠⚠ **It contains no forward kinematics**: every vertex is placed by `hex_body::frame_point` over one `rig_world_frame3` per BONE, held across that bone's limbs.  ⚠ A NORMAL is a direction, not a point — posing one as a point still normalises to something plausible and is wrong everywhere the bone is not at the origin.  ⚠ No colour (that is a UNIFORM, `@X074`) and no world placement (that is A5) |
 
 ## Important conventions
 

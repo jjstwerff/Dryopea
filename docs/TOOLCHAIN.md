@@ -64,6 +64,35 @@ way to prove the readback needs no display.  A machine with no xvfb
 still runs the 654.  ⚠ `make validate-gl`, or
 `make validate-gl FIXTURE=the-ground`.
 
+## ⚠⚠ The BINARY moves under you, and its version string will not say so
+
+(2026-08-18, plan 20 A2.)
+
+`which loft` on this box is **`~/.local/bin/loft`**, and `/usr/local/bin/loft`
+is a **different, older** binary.  Both report `loft 2026.8.0`.
+
+A2 spent a session blocked on a heap corruption that made a measured part come
+back with **1 limb instead of 8** and then SIGSEGV in `OpLengthVector`.  It was
+real, it was deterministic, and it was **fixed by a rebuild that happened during
+the session** — the phase was re-tested against a binary two hours newer than the
+one that produced the evidence, and every reading changed:
+
+| binary | built | runs | result |
+|---|---|---|---|
+| `/usr/local/bin/loft` | 2026-08-16 | 10 | **0 clean, 10 corrupt** |
+| `~/.local/bin/loft` | 2026-08-18 11:45 | 25 | **25 clean** |
+
+⚠ **So `loft --version` is not an instrument.**  Before believing any toolchain
+symptom — and especially before filing one — check `which loft` and its **mtime**,
+and re-run against every binary on the box.  ⚠ The cost of not doing it here was
+a phase declared blocked and an issue filed against a fixed build
+([loft#969](https://github.com/loft-lang/loft/issues/969)); the cost of doing it
+is two commands.
+
+⚠ **And the same care applies to a measurement that "stopped reproducing"** —
+`loft_repros/README.md`'s rule is that such a repro is deleted, but that rule
+assumes you know WHICH build it stopped reproducing on.
+
 ## `18_s3` is a DETECTOR, not a test to fix
 
 ⚠ **[loft#939](https://github.com/loft-lang/loft/issues/939) is FIXED

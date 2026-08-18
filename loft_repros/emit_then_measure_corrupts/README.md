@@ -5,6 +5,13 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # Iterating one struct's `vector<Struct>` field in two library functions truncates it
 
+⚠⚠ **THE BUG THIS RECORDS WAS FIXED IN LOFT ON 2026-08-18**, the same day it was
+filed ([loft#969](https://github.com/loft-lang/loft/issues/969)) — the binary
+built at 11:45 is clean over 25 runs where the 2026-08-16 one corrupts 10 of 10.
+⚠ Both report `loft 2026.8.0`, so **the version string does not separate them**.
+This directory is kept anyway, because what it holds is the EXCLUSION LIST
+below, and that is what anyone would need if the shape recurs.
+
 ⚠⚠ **THIS DIRECTORY IS A NEGATIVE CONTROL.**  It does **not** reproduce the bug.
 It is kept because it records which ingredients are **not** sufficient, which is
 most of the value anyone chasing this needs — seven of them were tested and
