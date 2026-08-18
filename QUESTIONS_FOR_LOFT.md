@@ -31,7 +31,7 @@ fix / feature, move it to **Resolved**.
 
 ## Open
 
-### A library function calling `rig_world_seg3` SIGSEGVs; the identical body in an ENTRY does not
+### Measuring a part and EMITTING one in the same process corrupts the interpreter heap
 
 - **Found while:** plan 20 A3, deriving a part's extent from its limbs.
 - **Kind:** bug (interpreter crash)
@@ -74,11 +74,38 @@ neutral pose every rotation is the identity, so a bone's base is the sum of its
 ancestors' offsets — which is what `rig_world_seg3` reduces to there anyway,
 needs no per-call `zeros` vector and is cheaper.  Recorded in the function.
 
+⚠⚠ **AND IT IS WORSE THAN A CRASH — plan 20 A2, 2026-08-18.**  The workaround
+above stopped the SIGSEGV and did not stop the corruption.  With `part_box`
+(measure) and `part_emit` (emit triangles) both in the tree, one program reads:
+
+```
+1 baseline part_emit   -> zmin 0        correct
+2 after one part_box   -> zmin -3       WRONG
+3 part_emit again      -> zmin 1000     NO VERTICES AT ALL
+4 part_size afterwards -> (0, 0, 0)     the part has no size
+```
+
+`part_box`'s own answer stays correct throughout; it is everything AFTER it
+that decays.  Under `loft test` the suite SIGSEGVs in `OpLengthVector` inside
+the stdlib, in the file that runs next.
+
+⚠ **Six narrowings, each measured, none of them the trigger**: binding the rig
+to a local; splitting the function into three small passes; precomputing the
+bone bases so the container is never passed on from inside its own limb loop;
+avoiding `Vec3` locals reused across `add_vertex` calls; iterating the limb
+vector alone (harmless); a 6-tuple return alone (harmless).  ⚠ The
+byte-identical function body in a program ENTRY is correct and harmless every
+time, which is the one constant.
+
+⚠ **Impact**: plan 20 A2 is written, its ten tests pass ON THEIR OWN, and it
+**cannot land** — `part_emit` and `part_box` cannot coexist in one process, and
+A3 needs the second.  A2's emitter is held out of the tree rather than landing
+a suite that segfaults.
+
 ⚠ **No minimal reproducer yet**, which is why this is Open rather than
-Submitted: the trigger needs an aggregated library plus a registry dependency
-plus a function large enough, and cutting it standalone is real work.  The crash
-report is `.loft/loft-crash-1383923.txt` and the pre-workaround source is in
-this repo's history.
+Submitted: the trigger needs an aggregated library plus a registry dependency,
+and every attempt to shrink it so far has made it disappear.  The crash report
+is `.loft/loft-crash-1383923.txt`.
 
 ## Submitted
 

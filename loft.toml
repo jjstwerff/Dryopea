@@ -125,4 +125,15 @@ fixstep = ">=0.1"
 # an absent axis reads as (0,0,0).  dryopea is unaffected because `part.loft`
 # builds through `rig_new` + `rig_bone`, never a literal — which is what the
 # library's README and USAGE both show.
-hex_body = ">=0.2"
+# ⚠ `>=0.3` for the world FRAME.  A2's emitter poses a limb's vertices,
+# which needs a bone's BASIS — `rig_world_seg3` answers a base and a tip,
+# both ON the bone's axis, and a limb is a cloud of points that are not.
+# dryopea added `Frame` / `rig_world_frame3` / `frame_point` upstream
+# rather than re-deriving forward kinematics here (`PARTS.md` § D1).
+#
+# ⚠⚠ **Nothing in `src/` consumes it yet**: A2 is written and DEFERRED on
+# a loft heap corruption (`QUESTIONS_FOR_LOFT.md` § Open) — emitting a
+# part and measuring one in the same process makes an unrelated
+# `part_size` answer `(0,0,0)` and the suite SIGSEGV.  The pin is here
+# because the release is real and A2 resumes on it.
+hex_body = ">=0.3"

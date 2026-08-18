@@ -14,6 +14,51 @@ code: the first design baked sprites at a fixed projection, and the project
 owner's answer — *the dynamic camera of moros, and exploration as a pillar* —
 replaced that with geometry.
 
+### ⚠⚠ A2 — written, gated, and BLOCKED on a loft heap corruption (2026-08-18)
+
+The emitter exists and its ten tests pass **on their own**: a box emits 12
+triangles with 24 vertices (each face its own, so the normals are flat), a disc
+and a cone emit `4 x PART_ROUND_SEGMENTS`, a cone's two rings measure its two
+radii, the pose composes, normals stay unit length 13 m from the origin, two
+emissions fold to the same `mesh_crc`, and **a quarter turn moves the canopy's
+far edge 1.0 m — the one assertion that tells TURNS from DEGREES**.
+
+⚠ **It is not in the tree.**  `part_emit` and `part_box` cannot coexist in one
+process:
+
+```
+1 baseline part_emit   -> zmin 0        correct
+2 after one part_box   -> zmin -3       WRONG
+3 part_emit again      -> zmin 1000     NO VERTICES AT ALL
+4 part_size afterwards -> (0, 0, 0)     the part has no size
+```
+
+and under `scripts/test.sh` the suite SIGSEGVs in `OpLengthVector` in whichever
+file runs next.  A3 needs `part_box`, so the emitter is held out rather than
+landing a suite that crashes.  ⚠ `part_box`'s own answers stay correct
+throughout — it is everything AFTER it that decays, which is why A3 has been
+green all along.
+
+⚠ **Six narrowings, each measured, none of them the trigger**: binding the rig
+to a local; splitting `part_box` into three small passes; precomputing the bone
+bases so the container is never passed on from inside its own limb loop;
+avoiding `Vec3` locals reused across `add_vertex`; iterating the limb vector
+alone; a 6-tuple return alone.  ⚠ The byte-identical body in a program ENTRY is
+correct every time — the one constant, and the same axis as [loft#962]'s family.
+`QUESTIONS_FOR_LOFT.md` § Open carries it.
+
+⚠ **What A2 did land is upstream**: `hex_body` **0.3.0** — `Frame` /
+`rig_world_frame3` / `frame_point` / `rig_world_point3`, published and signed.
+`rig_world_seg3` answers a bone's base and tip, both ON its axis, and a limb is
+a cloud of points that are not; the basis was computed and thrown away.  ⚠ It
+also made `rig_world_seg3` two points of the frame rather than a second walk,
+with its numbers bit-identical (gated).
+
+⚠ **Still open for A2 when it resumes**: § D7's four BOOMS run diagonally and
+nothing carries a rest orientation, so they are absent from the catalogue.  A
+`LIMB_STRUT` defined by two endpoints and a thickness needs no rotation concept
+and is the shape to reach for.
+
 ### A3 — the catalogue, and a footprint that is DERIVED (2026-08-18)
 
 `src/catalogue.loft` + `tests/20_a3_the_catalogue.loft`, **11 tests**.  Four
@@ -285,7 +330,7 @@ worth saying because silence reads as "gate done".
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
 | **A1** — adopt `hex_body`, and build the SOCKET | S | `tests/20_a1_the_part.loft` — **18 tests**, `src/part.loft`, and dryopea re-implements none of the rig: `Rig`, `Joint`, `rig_world_seg`, `rig_count` and `rig_admissible` all arrive as a dependency, and `part_fault` asks the LIBRARY's doorstep before any question of its own.  ⚠⚠ The 3-D axis is NOT here — it is `rig_bone3` in `loft-libs-world` (§ Cross-repo coordination), and A2 is what needs it | **SHIPPED** 2026-08-18 |
-| **A2** — the geometry emitter | MH | `tests/20_a2_the_geometry.loft` — a part poses its joints and emits triangles in world space.  ⚠ Gated on NUMBERS, not pixels: a hinge at 0.25 turns puts the canopy's far edge where trigonometry says, a box emits 12 triangles, a disc emits its fan, and every vertex is inside the declared extent | **Next** — `hex_body` **0.2.0** ships `rig_bone3` and closes [#14](https://github.com/loft-lang/loft-libs-world/issues/14) (§ A1b).  ⚠ `hex_body` **0.2.0 is published** and dryopea is repinned to `>=0.2`; A1's 18 tests pass against it unchanged |
+| **A2** — the geometry emitter | MH | `tests/20_a2_the_geometry.loft` — a part poses its joints and emits triangles in world space.  ⚠ Gated on NUMBERS, not pixels: a hinge at 0.25 turns puts the canopy's far edge where trigonometry says, a box emits 12 triangles, a disc emits its fan, and every vertex is inside the declared extent | ⚠⚠ **WRITTEN, TEN TESTS GREEN ON THEIR OWN, AND HELD OUT OF THE TREE** — see § A2 |
 | **A3** — the catalogue | M | `tests/20_a3_the_catalogue.loft` — **11 tests**; the hover unit, the robot, the tower base + top, and the helper which is the hover unit rather than a fifth entry.  ⚠ Its real gate is the footprint, and the footprint is DERIVED from the limb table so the check is not a tautology | **SHIPPED** 2026-08-18 |
 | **A4** — poses come from the SIMULATION | S | `tests/20_a4_the_joints.loft` — a tower with no top emits no top triangles; the canopy angle follows the sim; rotor spin follows boost.  ⚠ Asked of `TowerState` / `Vehicle`, never a second flag | Blocked on A2, A3 |
 | **A5** — entities in the frame (was plan 19 P4) | M | `tests/20_a5_the_frame.loft` — `classify_world` shares for enemies, vehicle and crew; a `.keys` scenario with `snap` | ⚠ Blocked on **[plan 21](../21-the-renderer/README.md)** |
