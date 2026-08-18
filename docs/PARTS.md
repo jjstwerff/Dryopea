@@ -146,6 +146,19 @@ move when dryopea needs something adjacent to what a library already does."*
 proposed upstream, gated by that suite, and consumed as a release.  Plan 20's
 § Cross-repo coordination is where it is tracked.
 
+⚠⚠ **SHIPPED 2026-08-18 as `hex_body` v0.2.0**, written by dryopea in
+`loft-libs-world` and closing
+[#14](https://github.com/loft-lang/loft-libs-world/issues/14) — so this section's
+*"where it stops"* now stops one dimension further out.  ⚠ Two of the three
+things it proposed were answered DIFFERENTLY, both on a measurement, and
+[`plans/20`](../plans/20-entity-art/README.md) § A1b carries them: a spatial bone
+gets its own record tag `bone3` rather than extra words on the `bone` line
+(measured — 0.1.0's parser never checks the word count, so appended fields read
+back as the bone's PLANAR PROJECTION and report success), and the rotation is
+carried as a MATRIX rather than a quaternion (measured — Rodrigues at `(0,0,1)`
+keeps a single planar bone bit-identical where a quaternion's half-angle does
+not).
+
 ⚠⚠ **CORRECTED 2026-08-18 — this paragraph named the wrong repo.**  It said
 `hex_body` *"belongs to hexbody/lavition … so the enhancement is proposed there"*.
 The `hexbody` repo contains **no `hex_body` source**: its own log records

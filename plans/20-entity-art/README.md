@@ -16,9 +16,11 @@ replaced that with geometry.
 
 ### ⚠⚠ Before A2 and A3 — two probes, and each moved a phase (2026-08-18)
 
-**A2 is BLOCKED and the block is upstream.**  `rig_bone3` is
+**A2 was BLOCKED upstream, and dryopea unblocked it by shipping the
+enhancement.**  `rig_bone3` is
 [loft-libs-world#14](https://github.com/loft-lang/loft-libs-world/issues/14),
-filed 2026-08-17 and **open with no comment**.  ⚠ A2 is where the 2-D limit
+filed 2026-08-17, and **hex_body v0.2.0 closes it** (2026-08-18) — see
+§ A1b below.  The paragraph that follows is the state it was found in.  ⚠ A2 is where the 2-D limit
 becomes load-bearing rather than cosmetic: § D7 puts the four rotors at four
 different heights (`z` +0.26 front, +0.30 rear), the skids at −0.26 and the
 canopy hinge on a **lateral** axis (`ax: 1.0`), and `hex_body` has not one `z`
@@ -28,6 +30,51 @@ a small job rather than a fork — but the issue deliberately offers the opposit
 answer as a real option (*the planar rig stays planar and 3-D belongs to
 `hex_part` once published*), and implementing it before that is answered
 pre-empts a decision left open on purpose.
+
+### A1b — the 3-D axis, shipped UPSTREAM as `hex_body` 0.2.0 (2026-08-18)
+
+⚠ **dryopea wrote this one in another repo**, which is `CLAUDE.md`
+§ Loft consumer relationship working as designed: *"dryopea may ADD to them
+under their existing contract"*.  `loft-libs-world/hex_body` gains
+`rig_bone3(r, parent, ox, oy, oz, len, ax, ay, az, lo, hi)` — the eight numbers
+`hex_part::Hinge` already carries — with `rig_bone` re-expressed as the planar
+special case and its signature unchanged, plus `rig_world_seg3`, `bone_planar` /
+`rig_planar`, and a zero-length axis refused by `rig_admissible`.
+
+⚠⚠ **Three probes ran before a line was written and two changed the shape.**
+
+1. **A quaternion is the wrong carrier.**  The claim the whole extension rests
+   on is *a planar rig is unchanged*, so it was measured over a five-bone planar
+   chain rather than assumed: the quaternion form agrees with `rig_world_seg` on
+   **0 of 5** bones (worst 6.7e-16 m), the matrix form on the **root exactly**
+   (worst 2.2e-16 m).  ⚠ The quaternion's ROOT failing is the half composition
+   cannot explain — it stores `cos(θ/2)` and rebuilds the rotation through
+   double-angle arithmetic, where Rodrigues at `(0,0,1)` collapses to
+   `[[c,-s,0],[s,c,0],[0,0,1]]` with `c` and `s` untouched.  ⚠ A planar CHAIN
+   cannot be bit-identical in either form, because `rig_world_seg` adds ANGLES
+   and any 3-D form composes ROTATIONS.
+2. **Appending fields would have silently flattened every old reader.**  0.1.0's
+   parser checks the keywords it knows and never the word COUNT, so a longer
+   `bone` line reads back as the bone's PLANAR PROJECTION and reports success.
+   Measured: appended words → 0.1.0 reads **1** bone; the tag `bone3` → 0.1.0
+   reads **0**.  So a spatial bone gets its own record and an old reader refuses
+   the rig rather than dropping a dimension.
+3. **`rig_world_seg` is not re-expressed** through the 3-D path — it would move
+   every existing consumer's numbers by an ulp to buy nothing.
+
+⚠ **And the falsification found a defect in the GATE, not the code**: of eleven
+deliberate breaks ten fired, and dropping `rig_eq`'s axis comparison changed
+**nothing** — the control compared `(0,1,0)` against `(1,0,0)`, which differ in
+TWO components, so the surviving comparison caught it.  ***A negative control
+has to be MINIMAL or it tests the whole set at once and can see none of it.***
+Rewritten as four one-field-apart rigs, all four now fire separately.
+
+Gates: `--interpret` and `--native` both **17 passed** under
+`LOFT_DENY_WARNINGS=1`, and CI's *Compatibility with published releases* step
+green against 0.1.0.  ⚠ The repo's aggregate CI run is RED for an unrelated
+reason — `hex_roof/src/hex_roof.loft:106` has an unused loop variable that a
+newer loft now diagnoses, and `hex_draw` / `hex_fit` fail on it transitively.
+Not dryopea's to fix; the one-character fix is `i` → `_`.
 
 **A3's PREMISE needs correcting, and the correction is measured.**  § D6 says
 dryopea's sizes are *"already written down and already load-bearing in the
@@ -160,7 +207,7 @@ worth saying because silence reads as "gate done".
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
 | **A1** — adopt `hex_body`, and build the SOCKET | S | `tests/20_a1_the_part.loft` — **18 tests**, `src/part.loft`, and dryopea re-implements none of the rig: `Rig`, `Joint`, `rig_world_seg`, `rig_count` and `rig_admissible` all arrive as a dependency, and `part_fault` asks the LIBRARY's doorstep before any question of its own.  ⚠⚠ The 3-D axis is NOT here — it is `rig_bone3` in `loft-libs-world` (§ Cross-repo coordination), and A2 is what needs it | **SHIPPED** 2026-08-18 |
-| **A2** — the geometry emitter | MH | `tests/20_a2_the_geometry.loft` — a part poses its joints and emits triangles in world space.  ⚠ Gated on NUMBERS, not pixels: a hinge at 0.25 turns puts the canopy's far edge where trigonometry says, a box emits 12 triangles, a disc emits its fan, and every vertex is inside the declared extent | ⚠⚠ **BLOCKED on [loft-libs-world#14](https://github.com/loft-lang/loft-libs-world/issues/14)** — § D7's rotors sit at four heights and its canopy hinges about a LATERAL axis, and `hex_body` is strictly 2-D.  See § Before A2 and A3 |
+| **A2** — the geometry emitter | MH | `tests/20_a2_the_geometry.loft` — a part poses its joints and emits triangles in world space.  ⚠ Gated on NUMBERS, not pixels: a hinge at 0.25 turns puts the canopy's far edge where trigonometry says, a box emits 12 triangles, a disc emits its fan, and every vertex is inside the declared extent | **Next** — `hex_body` **0.2.0** ships `rig_bone3` and closes [#14](https://github.com/loft-lang/loft-libs-world/issues/14) (§ A1b).  ⚠ Waiting only on the registry signature, after which dryopea repins to `>=0.2` |
 | **A3** — the catalogue | M | `tests/20_a3_the_catalogue.loft` — the hover unit, the robot, the helper livery, the tower base + top.  ⚠ Its real gate is the FOOTPRINT check against the simulation's constants | ⚠⚠ **A1 unblocked it and a PROBE re-blocked it**: every plan dimension the gate would bind to is read by nothing, and § D7's hover unit is 2.07x the width `numbers.json` gives.  Needs § Open questions 3 decided first — see § Before A2 and A3 |
 | **A4** — poses come from the SIMULATION | S | `tests/20_a4_the_joints.loft` — a tower with no top emits no top triangles; the canopy angle follows the sim; rotor spin follows boost.  ⚠ Asked of `TowerState` / `Vehicle`, never a second flag | Blocked on A2, A3 |
 | **A5** — entities in the frame (was plan 19 P4) | M | `tests/20_a5_the_frame.loft` — `classify_world` shares for enemies, vehicle and crew; a `.keys` scenario with `snap` | ⚠ Blocked on **[plan 21](../21-the-renderer/README.md)** |
