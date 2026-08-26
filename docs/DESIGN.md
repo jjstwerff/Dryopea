@@ -2398,6 +2398,68 @@ to have ended up.
 | **Q — wall-paint toggle** | ⚠⚠ **the sharpest one in the design.**  § The handful of keys already calls it *"acknowledged exception to the spatial principle"*, and **building is the biggest missing mechanic** ([`plans/ROADMAP.md`](../plans/ROADMAP.md)) — so a player who never presses Q never builds, and never plays the actual game | the vehicle **tints red** while paint mode is on, so it is obvious *once found*.  ⚠ The problem is purely finding it, and a crew remark is the intended answer |
 | **Shift — boost** | [`plans/13`](../plans/13-the-vehicle/README.md) § V4 measured that **boost is the only way out of a sealed base** — so a player who never finds it can wall themselves in permanently | ⚠ the hazard is **ordered**: sealing yourself in requires having built a wall, which requires having found Q.  So Q is the gate on both |
 
+#### ⚠⚠ THE MECHANISM: A FINE DEFAULT, AND OPTIONS THAT SURFACE WHEN REACHED FOR  `@X261`
+
+Owner, 2026-08-26:
+
+> *"this is the way I prevent having to make a tutorial: the game starts
+> with a fine default, and the moment a player wants to tune the
+> situation, the options are presented to them naturally."*
+
+⚠⚠ **This names the principle the rest of this design has been applying
+without stating it**, and it is what makes § There is NO TUTORIAL
+achievable rather than merely declared.
+
+> ⚠⚠ **Every system has a working default, and its controls surface only
+> when the player reaches for them.**
+
+⚠ **Both halves are load-bearing:**
+
+| **a FINE default** | ⚠ not a degraded mode and not a strawman — **the system genuinely works with no input** |
+| **surfaced NATURALLY** | ⚠⚠ the depth appears **in the world**, through channels that already exist — never a popup, an unlock notification or a settings screen |
+
+#### ⚠⚠ Which is why it replaces a tutorial rather than hiding one
+
+| a tutorial | ⚠ this |
+|---|---|
+| exists because the system **does not work until configured** | ⚠⚠ **there is nothing to teach up front, because the default works** |
+| teaches **everything at once**, to somebody who needs none of it yet | teaches **one thing, at the moment it becomes relevant**, to somebody who just discovered they want it |
+| is **skipped** by the experienced | is **never encountered** by the coping (`@X120`) |
+
+#### ⚠ It is already the house rule — nine places, and now one name
+
+| the default | the depth, when reached for |
+|---|---|
+| **helpers are semi-automatic** (`@X252`) | go to one and give them tasks |
+| **the first two crew are given** (`@X258`) | recruit others, once you know what to want |
+| ⚠⚠ **walls are unconditional** (`@X247`) | towers, and the landing spend |
+| **the crew handle the base** | § 9's assignment (`@X254`) |
+| **most actions have no key** (§ Position triggers) | the handful that do |
+| **the crew are silent while you cope** (`@X135`) | they speak when you stall |
+| **the politics is optional** (`@X244`) | the trader role, standing, investment |
+| **the planet is the primary tap** (`@X211`) | the station, the market |
+| **the debrief is skippable** (`@X144`) | ask, and hear what they thought |
+
+⚠ **Nine decisions, one shape** — which is worth a name, because a future
+contributor applying it deliberately will produce a tenth that fits.
+
+#### ⚠⚠ The test, and its three failure modes  `@X262`
+
+> ⚠⚠ **Does this system work with NO input, and does its depth surface
+> WHEN THE PLAYER REACHES FOR IT?**
+>
+> ⚠ If it must be configured before it works, **it needs a tutorial — and
+> there is none, so it needs redesigning.**
+
+| failure | what it looks like |
+|---|---|
+| ⚠⚠ **a bad default** | a strawman meant to push the player into configuring.  **They are then punished for not reading**, which is a tutorial with the teaching removed |
+| ⚠⚠ **surfaced too eagerly** | depth offered **before it is wanted** — a tutorial wearing a different hat.  ⚠ The trigger must be **the player reaching**, never elapsed time or a counter |
+| ⚠ **invisible even when wanted** | a player reaches and finds nothing.  ⚠⚠ This is why `@X255`'s underuse remark exists: **the reach has to have something to meet** |
+
+⚠ It is the generalisation of § The key table's own test — *can a player
+find this by playing around?* — moved from **mechanics** to **systems**.
+
 #### ⚠⚠ And it adds a TEST for every future mechanic
 
 Alongside § What kind of game this is and the genre test:
