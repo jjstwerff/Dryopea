@@ -3388,6 +3388,126 @@ vision (recorded so the core design doesn't foreclose it):
   solve.  The persistent planet map above is what makes them
   a sequence rather than a menu.
 
+### ⚠⚠ WORLD EVENTS — a TRIGGER SYSTEM, not a schedule  `@X216`
+
+Owner, 2026-08-26:
+
+> *"eventually there will be world events that are triggered by
+> conditions of the players & the state of the world.  See
+> `../crew_punk` for details about the technical side of it.  They should
+> not be common, but they add a lot of flavour for players that get
+> invested into the game."*
+
+⚠ **The technical model is `../crew_punk/BLOCKS.md` § The campaign is a
+trigger system, not a plot**, and it transfers whole.  Its thesis:
+
+> **Nothing is scheduled.  Everything is *eligible*.**  A piece of
+> content does not happen at time T — it happens **when its conditions
+> are true**.  *"Nobody decides what happens next.  The system evaluates
+> what has become possible."*
+
+#### ⚠⚠ dryopea has spent this whole design building the TRIGGER INPUTS
+
+**World events are not new content — they are the firing mechanism for
+consequences the docs have already promised.**  Every ledger added in
+[`../docs/PROGRESSION.md`](PROGRESSION.md) and
+[`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) is a condition waiting to be
+read:
+
+| already-promised consequence | the state that would fire it |
+|---|---|
+| the cordon changes posture | ⚠ **the *robots are steered* information was sold** (`@X214`) |
+| *"the armada, when somehow forced to"* | denied throughput (`ROBOT_ECONOMY.md` § Open questions 4) |
+| elementals stir | sustained deep-crust extraction (§ What wakes an old one) |
+| a crystal site opens that was not there | ⚠ a tree **withered between missions** (`ROBOT_ECONOMY.md` § The vertical dimension) |
+| competitors move into a region | abandoned bases accumulate there (§ 20 above) |
+| ⚠⚠ **a second station** | station centrality and investment (`@X213`) |
+| the natives notice you | stranded crew, caches and homesteads in one region (`@X171`) |
+
+⚠⚠ **So the feature is cheap because the conditions already exist**, and
+*"flavour for players who get invested"* is exact: **only an invested
+player has accumulated enough state for the interesting conditions to be
+true.**
+
+#### ⚠⚠ Triggers test WHAT HAPPENED — never a statistic, never a rating  `@X217`
+
+`BLOCKS.md`: *"a gate that tests capability is a locked door wearing a
+skill check."*
+
+⚠ **dryopea already refuses the same thing** — `@X131`'s ledger over an
+affinity bar, `@X207`'s no standings screen, `@X118`'s friction-not-
+answers.  ⚠⚠ **So a trigger reads the ledgers this design already
+keeps**: who you left behind, who you came back for, which trader you
+dealt straight with, what you sold, where you built.
+
+⚠ **And every condition must be MACHINE-CHECKABLE.**  *"A trigger that
+requires somebody's judgement is not a trigger."*  ⚠ Cheap here — it is
+all simulation state.
+
+#### ⚠⚠ NEVER SHOW THE JOIN — and this is what makes open source safe  `@X218`
+
+**This is the strongest rule in `BLOCKS.md` and it answers a requirement
+this project already set.**
+
+`ROBOT_ECONOMY.md` § The spreadsheet test demands the game resist
+optimisation **even by somebody reading the source**.  ⚠⚠ `BLOCKS.md`
+supplies the mechanism, and it is elegant:
+
+> **The state stores the past and never the future.  Content carries
+> conditions and never a schedule.  The engine joins them at play time
+> — and discards the join.**
+
+| the player always has | ⚠ and never has |
+|---|---|
+| **what they did** — visible, in the save | **what it enabled** |
+| **what just arrived** | **why it arrived** |
+
+⚠⚠ ***"Reading the content tells you what exists.  Reading your save
+tells you what you did.  Neither tells you what you have already
+qualified for."***
+
+⚠ **The prohibition is absolute**: no *unlocked because*, no requirements
+display, no notification that a condition was met, and **no
+retrospective**.  ⚠⚠ To farm an outcome you would need **both halves at
+once**, and the design never presents the pair.
+
+⚠ It is `@X137`'s no-tutorial discipline applied to the machinery instead
+of the world: **everything the player learns about why something
+happened, they infer.**
+
+#### ⚠ Two failure modes, and STARVING is the dangerous one  `@X219`
+
+| | |
+|---|---|
+| **flooding** | too much becomes eligible at once.  ⚠ *Eligible is not due* — offer one, the rest stay eligible |
+| ⚠⚠ **starving** | the player does something nobody anticipated and **nothing qualifies**.  ⚠⚠ **The answer is structural: some content must be unconditionally available, for ever** — and dryopea already has it, because **the next base always starts** (§ 14) and a sortie needs no counterparty, no standing and no history |
+
+#### ⚠⚠ *Not common* has a rate, and it decides what may be written  `@X220`
+
+⚠ The owner's *"they should not be common"* is a budget, and `BLOCKS.md`
+prices it:
+
+| | cheap to write | expensive to write |
+|---|---|---|
+| **likely to fire** | ideal — write lots | fine; set pieces go here |
+| **unlikely to fire** | ⚠ **good — depth at almost no cost** | ⚠⚠ **the waste case.  Do not** |
+
+> ⚠⚠ **Rare content must be CHEAP content.**
+
+⚠ **And the gate should be the player's own progression** — earned
+rather than withheld, so a player who never sees an event **was never
+denied anything**; they did other things.  ⚠ *Never got there* is not
+*cannot*.
+
+⚠ **It also makes the design extensible for free**: a trigger system has
+no plot to interrupt, so new events arrive as **more conditions to
+evaluate** and nothing has to be spliced into anything.
+
+⚠⚠ **And it stays inside `@X208`'s fence**: a trigger system is
+**reactive, never strategic** — it evaluates thresholds and plans
+nothing, which is the same line `ROBOT_ECONOMY.md` already draws against
+AI strategy.
+
 Architectural notes (so the core build leaves room): keep
 base state self-contained (already true: terrain + structure
 + run state); the per-base game is the **unit** the planet

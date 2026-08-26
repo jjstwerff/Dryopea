@@ -838,6 +838,14 @@ and the payoff is still **incommensurable** (§ What actually defends it,
 point 1) — so a perfect price model still does not tell you whether to
 take the crystal.
 
+⚠⚠ **AND THE STRONGEST MECHANISM IS ELSEWHERE**: `DESIGN.md` § 20
+§ WORLD EVENTS (`@X218`) — ***the state stores the past and never the
+future, content carries conditions and never a schedule, and the engine
+discards the join.***  So *reading the content tells you what exists,
+reading your save tells you what you did, and **neither tells you what
+you have already qualified for***.  ⚠ That is the open-source-safe answer
+this section was reaching for, taken from `../crew_punk/BLOCKS.md`.
+
 ⚠ **State it that way rather than overclaiming.**  The goal is *the
 spreadsheet is not worth writing*, which is achievable; *the spreadsheet
 is impossible* is not, and a design that claimed it would be wrong the
