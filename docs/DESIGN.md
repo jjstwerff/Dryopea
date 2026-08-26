@@ -2967,6 +2967,84 @@ vision (recorded so the core design doesn't foreclose it):
   base whose towers just turned is in a kill zone — and that
   is what makes the trust worth something.
 
+  #### ⚠⚠ TOWER HACKING, and why it is scoped to TEAM MATCHES  `@X179`
+
+  Owner, 2026-08-26: *"eventually I want to allow hacking of
+  other players' towers too, but that is more for a 2 vs 2 or
+  3 vs 3 scenario where whole bases can eventually be taken
+  over."*
+
+  ⚠⚠ **Hacking a tower is the one thing that would break
+  `@X175`.**  A base is impregnable because towers beat
+  people — so turning a tower makes the base's own strength
+  the attacker, and *being killed by your own perimeter* is
+  not a wave anybody can answer with towers and walls.  ⚠ It
+  would break `@X176`'s *the attack arrives as content* at the
+  same time.
+
+  ⚠⚠ **The team scoping is what makes it safe, and the reason
+  is CONSENT plus a COUNTER:**
+
+  | | open-world PvP | ⚠⚠ a 2v2 / 3v3 MATCH |
+  |---|---|---|
+  | what is at stake | **a campaign base** — being robbed of it is catastrophic and nobody agreed to it | **the board**, and both teams signed up |
+  | who can answer a hacked tower | possibly nobody | ⚠ **a teammate**, who can drive to it |
+  | how long it lasts | for ever | the match |
+
+  ⚠ **So the rules may differ because the CONSENT differs**,
+  and that is the distinction to hold: *open-world PvP is
+  something that happens to you; a match is something you
+  entered.*
+
+  #### ⚠⚠ Taking a base is a contest of PRESENCE — which is this game already
+
+  ⚠ A hacked tower must be recoverable, and § 7 already says
+  how: **20 s of standing within one hex.**  ⚠⚠ **So hacking
+  and repairing are the same verb pointed in opposite
+  directions** — both are a position held over time — and a
+  base takeover becomes **a fight over who is standing where**,
+  never a fight over who shoots better.
+
+  ⚠⚠ **§ 8's noncombatant player survives intact**: you still
+  never shoot anybody.  You take somebody's base by *being at
+  their towers*, which is the same thing you do to your own.
+  ⚠ A hacked tower is **visibly** hacked — tower state is a
+  colour (§ HUD), so the whole contest is legible from across
+  the base with no UI.
+
+  #### ⚠ What it costs, and it is the design's first SYNCHRONOUS feature  `@X180`
+
+  ⚠⚠ Everything else in multiplayer is asynchronous — the
+  market, the crew rescue, caches, even an attack on an
+  offline player.  **A base takeover needs both sides
+  present**, so this is the first feature that wants **real
+  netcode rather than a shared store**, plus a match
+  lifecycle, teams and a win condition.
+
+  ⚠ It still fits § 14's **bounded one-sitting** shape — a
+  match is exactly that — but it does not fit its *solo*
+  structure, and small teams (2v2, 3v3) are what keep both the
+  netcode and the base scale legible.
+
+  #### ⚠⚠ It must not leak into the campaign world  `@X181`
+
+  ⚠ If a match could be played over a campaign base, then
+  `@X175`'s impregnability is gone in the persistent world
+  too, by the back door.
+
+  ⚠⚠ *Recommendation: **matches are their own container.***
+  You bring a crew and a loadout; you do not risk the base you
+  have been building, and **match casualties do not carry** —
+  otherwise a lost match costs a crew member with a campaign's
+  practice and history on them
+  ([`PROGRESSION.md`](PROGRESSION.md) § P2e), which is a stake
+  nobody consented to when they queued.
+
+  ⚠ **Hacking a tower stays a MATCH verb** until somebody
+  makes a deliberate case for it in the persistent world —
+  and that case has to answer what a solo player does when
+  their perimeter turns on them with no teammate to send.
+
   #### ⚠ It stays asynchronous-capable
 
   ⚠ An attack on somebody who is not online is the **abandoned
