@@ -3045,6 +3045,67 @@ vision (recorded so the core design doesn't foreclose it):
   and that case has to answer what a solo player does when
   their perimeter turns on them with no teammate to send.
 
+  #### ⚠⚠ NETCODE IS GATED ON DEMAND, and the competitive mode is SEPARATE  `@X182`
+
+  Owner, 2026-08-26: *"eventually we need net-code but that is
+  only when enough players express interest in a more
+  non-cooperative game mode.  Probably separate from the main
+  story/campaign."*
+
+  ⚠⚠ **This puts a clean line through everything above, and
+  the line is ASYNCHRONOUS vs SYNCHRONOUS:**
+
+  | ships on **persistence alone** | needs **netcode** |
+  |---|---|
+  | the station **market** (`@X163`) | ⚠ team **matches** and base takeover (`@X179`) |
+  | **crew rescue** and defection (`@X168`) | |
+  | **caches** and cracking them (`@X173`) | |
+  | **homesteads** other players find (`@X172`) | |
+  | an attack on an **offline** player's base (`@X176`) | |
+
+  ⚠⚠ **So netcode is not on the critical path at all.**
+  Everything in the left column needs a **shared store** and
+  nothing more — which is why [`plans/ROADMAP.md`](../plans/ROADMAP.md)
+  can carry five multiplayer features without a networking
+  phase in front of them.
+
+  #### ⚠⚠ And the deferral PROTECTS the campaign design
+
+  ⚠ Building netcode early would bias every decision toward
+  synchronicity — bases designed for matches, waves balanced
+  for teams, a session shape built around lobbies.  ⚠⚠
+  **Deferring it keeps the campaign primary and makes the
+  match mode INHERIT from it**, never the reverse, which is
+  also why `@X181` puts matches in their own container.
+
+  ⚠ *"Probably separate from the main story/campaign"* is that
+  same instinct stated directly, and it is the safer default:
+  a competitive mode that shares a codebase and shares no
+  stakes.
+
+  #### ⚠ What the trigger actually is, and the honest caveat  `@X183`
+
+  ⚠ **The trigger: a shipped game with players who ask for
+  COMPETITIVE play specifically** — not for co-op, and not for
+  "multiplayer" in general, because the left column above is
+  already multiplayer.
+
+  ⚠⚠ **And the caveat is that the trigger may never fire.**
+  Trading through a station, racing somebody for a mine,
+  cracking their cache and stealing their abandoned crew are
+  **already non-cooperative** — so the asynchronous features
+  may simply absorb the demand.  ⚠ That is a good outcome
+  rather than a disappointing one: it would mean the cheap
+  version was enough.
+
+  ⚠ **One thing not to be fooled by**: § Future expansion's
+  note that loft ships netcode (`lib/server` + `lib/web`)
+  makes the *transport* cheap.  ⚠⚠ **The expensive part is the
+  DESIGN** — match lifecycle, teams, matchmaking, win
+  conditions, balance and anti-grief — none of which the
+  campaign needs and all of which would have to be maintained
+  for ever.
+
   #### ⚠ It stays asynchronous-capable
 
   ⚠ An attack on somebody who is not online is the **abandoned
