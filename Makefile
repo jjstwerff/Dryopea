@@ -16,6 +16,19 @@
 #                   instead of the default single-slot save.  The maps/
 #                   directory is auto-created on first save.
 #
+#   make play SCRIPT=a-defended-base
+#                   Open a `.keys` scenario as a playable STARTING
+#                   POSITION (BACKLOG A1) — the base it authors, with
+#                   its ground, walls, towers, crew and armed wave
+#                   list, and the clock stopped.  Press P and play it.
+#                   The name is looked up in tests/scripts/ then
+#                   tests/gl/; a path ending in .keys is used as given
+#                   (SCRIPT=tests/gl/an-island.keys).
+#                   Edits save to maps/<name>.json, and SCRIPT wins
+#                   over MAP if both are set.
+#                   ⚠ The scenario is cut at its first `tick`/`fall`:
+#                   you get its question, not its answer.
+#
 #   make test       Run the dryopea test suite via scripts/test.sh.
 #                   Refreshes tests/actual/ first so stale artefacts
 #                   can't masquerade as current.  ~15-20 seconds —
@@ -104,7 +117,7 @@ play:
 	@command -v $(LOFT_BIN) >/dev/null 2>&1 || { \
 	  echo "ERROR: loft binary not found: $(LOFT_BIN)"; \
 	  echo "Install loft, or set LOFT_BIN."; exit 2; }
-	$(LOFT_BIN) --interpret src/main.loft $(MAP)
+	$(LOFT_BIN) --interpret src/main.loft $(if $(SCRIPT),script=$(SCRIPT),$(MAP))
 
 # Native-compile play target — currently useless (empty palette,
 # see #866 above), though it no longer crashes.  Kept for testing
@@ -113,7 +126,7 @@ play-native:
 	@command -v $(LOFT_BIN) >/dev/null 2>&1 || { \
 	  echo "ERROR: loft binary not found: $(LOFT_BIN)"; \
 	  echo "Install loft, or set LOFT_BIN."; exit 2; }
-	$(LOFT_BIN) src/main.loft $(MAP)
+	$(LOFT_BIN) src/main.loft $(if $(SCRIPT),script=$(SCRIPT),$(MAP))
 
 # Full test suite.  Delegates to scripts/test.sh (single source of
 # truth for the invocation — that script also cleans tests/actual/

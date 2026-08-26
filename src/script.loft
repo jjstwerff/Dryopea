@@ -308,9 +308,15 @@ pub fn script_run_new(shots_dir: text) -> ScriptRun {
 }
 
 // A one-line verdict, for a transcript or a shell gate.
+//
+// ⚠ Line 0 means the run never reached a line — the file was not
+// there, or the caller refused it before playing anything — so it
+// says so rather than pointing at a line that does not exist.
 pub fn script_describe(r: const ScriptRun) -> text {
     if r.ok {
         "ok — {r.commands} commands, {r.frames} frames, {r.snaps} shots, {r.checks} checks"
+    } else if r.line == 0 {
+        "FAILED: {r.message}"
     } else {
         "FAILED at line {r.line}: {r.message}"
     }

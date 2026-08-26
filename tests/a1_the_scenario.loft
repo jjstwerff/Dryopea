@@ -1,0 +1,353 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// BACKLOG A1 — a `.keys` scenario, opened as a live starting
+// position.
+//
+// ── What can go wrong here, and what sees it ────────────────────
+//
+// The feature is a truncation and a lookup, and both fail QUIETLY.
+//
+//   * **The truncation could be the identity.**  Playing the whole
+//     file would look like a working feature — a window opens, a
+//     base is in it — and would hand the player the state the
+//     scenario ENDS in: a fallen base, an exhausted wave list, a
+//     wall already broken.  What sees it is the CORPUS SWEEP below:
+//     every `.keys` file in the tree, opened as a position, must
+//     leave the clock at **t0**.
+//
+//   * **The advancing set could be incomplete.**  `scenario_advances`
+//     names `tick` and `fall`, and a `.keys` verb that grew a tick
+//     tomorrow would silently start being played.  The same sweep is
+//     what sees that too, which is why it is written over the whole
+//     directory rather than over three chosen files — and it names
+//     the scenario that reached the tick.
+//
+//   * ⚠⚠ **And the sweep alone would be VACUOUS if the truncation
+//     cut everything**, because an empty position also reads t0.  So
+//     it is paired with the opposite assertion: the corpus must
+//     still author a real base — hexes painted, markers placed — and
+//     the cut must be a REAL cut on the scenarios that tick, with a
+//     `tick` in the part that went.
+//
+// ⚠ Shots land in `tests/actual/`, which the suite already cleans up.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SHOTS:   text = "tests/actual";
+
+// A scenario in miniature: it authors, it ticks, and it measures
+// AFTER the tick.  Every claim about the cut can be made against
+// this without playing a real file.
+const TOY: text = "# a toy\n"
+                + "palette 5\n"
+                + "drag -2 -2 2 2\n"
+                + "count painted 13 13\n"
+                + "tick 3\n"
+                + "count painted 13 13\n"
+                + "ticks 3 3\n";
+
+// A fresh session, attached to a disposable save slot.  Every
+// script is attached even when it never saves: the seam REFUSES
+// disk without one.
+fn a1_session(tag: text) -> EditorState {
+    a1s = editor_state_new(PALETTE);
+    editor_state_attach(a1s,
+                        "{SHOTS}/a1_{tag}.save.json",
+                        "{SHOTS}/a1_{tag}.save_markers.json");
+    a1s
+}
+
+// ─── The cut, on text alone ─────────────────────────────────────
+
+// @DRY-079 — a scenario is cut at its first `tick`
+fn test_a_position_is_the_prefix_before_the_first_tick() {
+    tap = scenario_position(TOY);
+    assert(tap == "# a toy\npalette 5\ndrag -2 -2 2 2\ncount painted 13 13",
+           "the position is every line before `tick`, and no more — got [{tap}]");
+
+    // ⚠ The control: the cut has to CUT.  A `scenario_position` that
+    // answered its argument would satisfy nothing above and
+    // everything below it, so both halves are stated.
+    assert(tap.size() < TOY.size(),
+           "the position must be SHORTER than the source it came from "
+           + "({tap.size()} vs {TOY.size()})");
+}
+
+fn test_a_script_with_no_tick_comes_back_whole() {
+    twn_src = "palette 5\nclick 0 0\ncount painted 1 1\n";
+    // `split('\n')` on a trailing newline yields a final empty line,
+    // so the round trip is the source without it.
+    assert(scenario_position(twn_src) == "palette 5\nclick 0 0\ncount painted 1 1\n",
+           "a script that never advances the simulation is its own position");
+}
+
+// @DRY-080 — the two verbs that advance the simulation, and the near misses
+fn test_the_two_advancing_verbs_and_no_others() {
+    assert(scenario_advances("tick"), "`tick` advances the simulation");
+    assert(scenario_advances("fall"), "`fall` advances the simulation");
+    // The near misses: `ticks` is a MEASUREMENT of the clock, and
+    // the three movement verbs only set a destination or a flag.
+    assert(!scenario_advances("ticks"), "`ticks` READS the clock");
+    assert(!scenario_advances("drive"), "`drive` sets a destination");
+    assert(!scenario_advances("send"),  "`send` sets a destination");
+    assert(!scenario_advances("boost"), "`boost` sets a flag");
+    assert(!scenario_advances("park"),  "`park` is authoring");
+    assert(!scenario_advances(""),      "a blank or comment line is not a command");
+}
+
+fn test_a_comment_that_says_tick_is_still_a_comment() {
+    tct = scenario_position("palette 5\n# tick 500 would go here\nclick 0 0\ntick 1\n");
+    assert(tct == "palette 5\n# tick 500 would go here\nclick 0 0",
+           "a `#` line is read as a comment, not as its first word — got [{tct}]");
+}
+
+// ─── The command line ───────────────────────────────────────────
+
+// ⚠⚠ The trap this form exists to dodge: `loft src/main.loft
+// --script x` reaches `arguments()` as `["x"]`, because the runtime
+// strips a leading `--` argument as one of its own — so the flag
+// form opens a MAP called `x` and looks like a working launch while
+// doing it.  These assertions are what pin the form that survives.
+// @DRY-081 — `script=<name>` names a scenario; a bare word names a map
+fn test_a_command_line_names_a_scenario_or_a_map_and_never_both_ways() {
+    tac_none: vector<text> = [];
+    assert(scenario_arg(tac_none) == "", "no arguments asks for no scenario");
+    assert(scenario_map_arg(tac_none) == "", "and for no map");
+
+    tac_map = ["starter_01"];
+    assert(scenario_arg(tac_map) == "", "a bare name is not a scenario");
+    assert(scenario_map_arg(tac_map) == "starter_01", "it is a map");
+
+    tac_scn = ["script=a-defended-base"];
+    assert(scenario_arg(tac_scn) == "a-defended-base", "`script=` names a scenario");
+    assert(scenario_map_arg(tac_scn) == "", "and is not read as a map");
+
+    // A path with slashes and an extension survives the prefix strip
+    // whole — this is what `SCRIPT=tests/gl/an-island.keys` becomes.
+    tac_path = ["script=tests/gl/an-island.keys"];
+    assert(scenario_arg(tac_path) == "tests/gl/an-island.keys",
+           "a path passes through intact, got [{scenario_arg(tac_path)}]");
+
+    // ⚠ The bare word with nothing after it is NOT a scenario named
+    // "" — that would open an empty world instead of saying so.
+    tac_bare = ["script="];
+    assert(scenario_arg(tac_bare) == "", "`script=` with no name asks for nothing");
+    assert(scenario_map_arg(tac_bare) == "",
+           "and is still not a map called `script=`");
+}
+
+// ─── The lookup ─────────────────────────────────────────────────
+
+// @DRY-082 — a bare name is looked up; a `.keys` path is used as given
+fn test_a_bare_name_and_its_path_find_the_same_file() {
+    assert(scenario_path("a-base-that-plays-its-list")
+           == "tests/scripts/a-base-that-plays-its-list.keys",
+           "a bare name resolves in tests/scripts/ first");
+    assert(scenario_path("tests/gl/an-island.keys") == "tests/gl/an-island.keys",
+           "a name carrying the extension is a path, used as given");
+    assert(scenario_path("no-such-scenario-anywhere") == "",
+           "an unknown name resolves to nothing");
+    assert(scenario_path("tests/scripts/not-a-real-file.keys") == "",
+           "a path that is not there resolves to nothing");
+}
+
+// @DRY-083 — the stem a scenario's map slot is named after
+fn test_a_stem_is_what_a_map_slot_is_named_after() {
+    assert(scenario_stem("an-island") == "an-island", "a bare name is its own stem");
+    assert(scenario_stem("tests/gl/an-island.keys") == "an-island",
+           "a path loses its directory and its extension");
+    assert(scenario_stem("tests/scripts/a-wall-breaks.keys") == "a-wall-breaks",
+           "and a hyphenated name survives both");
+}
+
+// ⚠⚠ The failure that matters most: a launcher that could not find
+// its scenario and quietly opened an empty world.  `validate.loft`
+// § The gate checks itself first, one layer out.
+// @DRY-084 — a scenario that is not there is a NAMED failure
+fn test_a_missing_scenario_is_a_named_failure_not_an_empty_world() {
+    tam_s   = a1_session("missing");
+    tam_run = scenario_open(tam_s, "no-such-scenario-anywhere", SHOTS);
+    assert(!tam_run.ok, "a scenario that does not exist is a FAILURE");
+    assert(tam_run.message.find("no-such-scenario-anywhere") != null,
+           "and the message names what was asked for — got [{tam_run.message}]");
+    assert(tam_run.message.find("tests/scripts") != null,
+           "and where it looked — got [{tam_run.message}]");
+    assert(painted_count(tam_s.pw) == 0, "nothing was authored into the session");
+}
+
+fn test_no_scenario_at_all_is_a_green_empty_run() {
+    tns_s   = a1_session("none");
+    tns_run = scenario_open(tns_s, "", SHOTS);
+    assert(tns_run.ok, "an empty name is not an error — the shell was given no scenario");
+    assert(tns_run.commands == 0, "and it ran nothing");
+    assert(tns_run.play.ticks == 0, "and its game is a fresh one at t0");
+    assert(painted_count(tns_s.pw) == 0, "and it authored nothing");
+}
+
+// ─── A real scenario, opened ────────────────────────────────────
+
+// The load-bearing one: `a-base-that-plays-its-list` is the scenario
+// whose whole point is that it runs on its own once poked, so its
+// position is the base BEFORE the poke — armed, crewed, and still.
+// @DRY-078 — a scenario opens as a position, not as an end
+fn test_a_real_scenario_opens_as_its_base_with_the_clock_stopped() {
+    tar_s   = a1_session("real");
+    tar_run = scenario_open(tar_s, "a-base-that-plays-its-list", SHOTS);
+    assert(tar_run.ok, "the scenario plays green as a position: {tar_run.message}");
+
+    // The EDITOR's half — the ground and the markers the player sees.
+    assert(painted_count(tar_s.pw) == 120,
+           "the base's 120 painted hexes are there, got {painted_count(tar_s.pw)}");
+    assert(marker_count(tar_s.mw) == 5,
+           "and its 5 markers (core, two towers, a spawn), got {marker_count(tar_s.mw)}");
+
+    // The GAME's half — carried on `run.play`, which is the whole
+    // point of taking `ps` from the run rather than building one.
+    assert(len(tar_run.play.wave.crew) == 1,
+           "the crew member is on the roster, got {len(tar_run.play.wave.crew)}");
+    assert(vehicle_present(tar_run.play.wave.player),
+           "the player's chassis is parked where the scenario put it");
+    assert(wave_schedule_count(tar_run.play.wave.schedule) == 4,
+           "the four-wave list is ARMED, got {wave_schedule_count(tar_run.play.wave.schedule)}");
+    assert(wave_schedule_sent(tar_run.play.wave.schedule) == 0,
+           "and nothing has been poked yet");
+
+    // And the clock has not moved: this is the QUESTION, not the
+    // answer.  The file's own ending is 4 waves sent and 0 alive.
+    assert(tar_run.play.ticks == 0, "the clock reads t0, got t{tar_run.play.ticks}");
+    assert(alive_count(tar_run.play.wave) == 0, "with nothing on the ground yet");
+}
+
+fn test_the_end_state_is_the_thing_a_position_is_not() {
+    // The control for the decision itself (`@X263`): the same file
+    // played WHOLE is a different world, so "position" and "end
+    // state" are two answers rather than one.
+    tte_s   = a1_session("whole");
+    tte_run = script_run_file(tte_s, "tests/scripts/a-base-that-plays-its-list.keys",
+                              SHOTS);
+    assert(tte_run.ok, "the scenario plays green in full: {tte_run.message}");
+    assert(tte_run.play.ticks > 0,
+           "played whole, the clock has run — got t{tte_run.play.ticks}");
+    assert(wave_schedule_sent(tte_run.play.wave.schedule) == 4,
+           "and the wave list is spent, got {wave_schedule_sent(tte_run.play.wave.schedule)}");
+}
+
+// ─── What the window does with it ───────────────────────────────
+
+// ⚠⚠ **`main.loft` is compiled by nothing**, so the one line in it
+// that could silently be wrong is reproduced here: it takes the game
+// off the run with `ps = srun.play` and plays THAT.  A struct read
+// out of a FIELD aliases in loft where a struct RETURNED from a
+// function is a copy ([loft#894]) — get that backwards and the window
+// would tick a game nobody can see, showing a base frozen at t0 for
+// ever.
+fn test_the_game_taken_off_the_run_is_the_game_that_plays() {
+    ttg_s   = a1_session("adopt");
+    ttg_run = scenario_open(ttg_s, "a-base-that-plays-its-list", SHOTS);
+    assert(ttg_run.ok, "the scenario opens: {ttg_run.message}");
+
+    // ↓ `src/main.loft`, verbatim.
+    ttg_ps = ttg_run.play;
+
+    play_ticks(ttg_ps, ttg_s, 5);
+    assert(ttg_ps.ticks == 5, "the adopted game ticks, got t{ttg_ps.ticks}");
+    assert(ttg_run.play.ticks == 5,
+           "and the run's game moved WITH it — the read aliased, got "
+           + "t{ttg_run.play.ticks}");
+}
+
+// The end-to-end claim BACKLOG A1 is written against: an opened
+// scenario is a base a player can go on to PLAY, not a picture of
+// one.  This is the scenario's own poke, replayed through the
+// adopted game — drive out to the spawn marker eighteen hexes from
+// home, and the list starts.
+fn test_an_opened_scenario_can_be_played_on_from_where_it_stopped() {
+    tao_s   = a1_session("playon");
+    tao_run = scenario_open(tao_s, "a-base-that-plays-its-list", SHOTS);
+    assert(tao_run.ok, "the scenario opens: {tao_run.message}");
+    tao_ps = tao_run.play;
+
+    assert(wave_schedule_sent(tao_ps.wave.schedule) == 0, "nothing is poked yet");
+
+    vehicle_drive(tao_ps.wave.player, 18, 0);
+    play_ticks(tao_ps, tao_s, 20);
+
+    assert(tao_ps.wave.player.q == 18 && tao_ps.wave.player.r == 0,
+           "the player drove to the marker, got ({tao_ps.wave.player.q}, "
+           + "{tao_ps.wave.player.r})");
+    assert(wave_schedule_sent(tao_ps.wave.schedule) == 1,
+           "and poking it sent wave 1, got {wave_schedule_sent(tao_ps.wave.schedule)}");
+    assert(alive_count(tao_ps.wave) == 12,
+           "twelve robots are on the ground, got {alive_count(tao_ps.wave)}");
+}
+
+// ─── The corpus, swept ──────────────────────────────────────────
+
+// ⚠⚠ **The claim that `tick` and `fall` are the WHOLE advancing set**,
+// stated over every scenario in the tree rather than over three
+// chosen ones.  A verb that grew a tick goes red here, naming the
+// file that reached it.
+//
+// ⚠ Paired with its own vacuity control: an empty position reads t0
+// too, so the sweep also counts what the positions AUTHORED.
+fn test_every_scenario_in_the_tree_opens_at_t0() {
+    tes_dirs  = ["tests/scripts", "tests/gl"];
+    tes_files = 0;
+    tes_paint = 0;
+    tes_marks = 0;
+    for tes_d in tes_dirs {
+        for tes_n in validate_script_names(tes_d) {
+            tes_files += 1;
+            tes_s   = a1_session("sweep");
+            tes_run = scenario_open(tes_s, "{tes_d}/{tes_n}.keys", SHOTS);
+            assert(tes_run.ok,
+                   "{tes_d}/{tes_n}.keys must open as a position: {tes_run.message}");
+            assert(tes_run.play.ticks == 0,
+                   "{tes_d}/{tes_n}.keys advanced the simulation to "
+                   + "t{tes_run.play.ticks} — a `.keys` verb ticks the game and "
+                   + "`scenario_advances` does not know about it");
+            tes_paint += painted_count(tes_s.pw);
+            tes_marks += marker_count(tes_s.mw);
+        }
+    }
+    // The corpus is 33 scenarios plus 3 GL fixtures today; the floor
+    // is what stops a sweep over an empty directory reading green.
+    assert(tes_files >= 30, "the sweep found {tes_files} scenarios, which is too few to mean anything");
+    assert(tes_paint > 1000,
+           "the positions painted {tes_paint} hexes between them — a truncation that "
+           + "cut everything would also read t0 everywhere");
+    assert(tes_marks >= 30,
+           "and placed {tes_marks} markers between them");
+}
+
+// The other half of the same control: the cut has to REMOVE
+// something, and what it removed has to be the simulation.
+fn test_the_cut_removes_a_tick_from_the_scenarios_that_have_one() {
+    tcr_cut  = 0;
+    tcr_kept = 0;
+    for tcr_n in validate_script_names("tests/scripts") {
+        tcr_src = file("tests/scripts/{tcr_n}.keys").content() ?? "";
+        tcr_pos = scenario_position(tcr_src);
+        if tcr_pos.size() == tcr_src.size() {
+            tcr_kept += 1;
+            assert(tcr_src.find("\ntick ") == null && !tcr_src.starts_with("tick "),
+                   "{tcr_n}.keys was kept whole but contains a `tick` line");
+        } else {
+            tcr_cut += 1;
+            assert(tcr_src.find("tick ") != null || tcr_src.find("fall ") != null,
+                   "{tcr_n}.keys was cut but has neither a `tick` nor a `fall` in it");
+            assert(tcr_pos.find("\ntick ") == null,
+                   "{tcr_n}.keys kept a `tick` line in its position");
+        }
+    }
+    assert(tcr_cut >= 25,
+           "only {tcr_cut} scenarios were cut — the corpus has 27 that tick, so a "
+           + "truncation doing nothing would show up here");
+    assert(tcr_kept >= 3,
+           "and {tcr_kept} were kept whole — a truncation cutting EVERY file would "
+           + "show up here");
+}

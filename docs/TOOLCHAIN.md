@@ -93,6 +93,30 @@ is two commands.
 `loft_repros/README.md`'s rule is that such a repro is deleted, but that rule
 assumes you know WHICH build it stopped reproducing on.
 
+### ⚠⚠ It moves the SUITE TOTAL too, and nothing goes red when it does
+
+(2026-08-26, BACKLOG A1, `@M044`.)
+
+`CLAUDE.md` § The three gates said **1407 green / 101 files**, measured
+2026-08-18 (`@M043`).  On the same tree with the `loft` on PATH dated
+**2026-08-25**, `scripts/test.sh` measures **1395 green / 101 files** —
+**twelve fewer tests, no test file changed, and a green run either way.**
+
+The cause is the collection rule.  `loft test` collects *zero-argument
+functions in a test file* as tests, helpers included (`CLAUDE.md`
+§ Loft language gotchas — a one-line `fn m2_edge() -> integer` once made
+`25_m2` report 17 tests where it has 16).  The tree holds **213** zero-argument
+non-`test_` functions in `tests/`, and how many of them count is the runtime's
+decision, not the repo's.
+
+⚠⚠ **So a suite total is a reading about a BINARY, not only about a tree**, and
+the number in a doc ages the moment the binary is rebuilt.  ⚠ The practical
+rule when a delta does not reconcile: **measure the baseline on the binary in
+front of you** — hold the new test file out, run, put it back — rather than
+subtracting from a documented figure.  *A suite total that does not reconcile
+is a finding* (`@M041`), and this is what one looks like when the finding is
+the toolchain rather than the code.
+
 ## `18_s3` is a DETECTOR, not a test to fix
 
 ⚠ **[loft#939](https://github.com/loft-lang/loft/issues/939) is FIXED

@@ -10,8 +10,25 @@
 //   loft src/main.loft starter_01
 //   ↑ named map — edits maps/starter_01.json + maps/starter_01_markers.json
 //
-// Same via `make play` / `make play MAP=starter_01`.  The `maps/`
-// directory is auto-created on first save.
+//   loft src/main.loft script=a-defended-base
+//   ↑ a `.keys` scenario, opened as a STARTING POSITION (BACKLOG A1)
+//   ⚠ `script=`, never `--script` — loft strips a `--` argument as one
+//     of its own, and the entry would silently open a MAP of that name
+//
+// Same via `make play` / `make play MAP=starter_01` /
+// `make play SCRIPT=a-defended-base`.  The `maps/` directory is
+// auto-created on first save.
+//
+// ⚠ **`script=` loads from the SCENARIO every launch** and saves to
+// `maps/{stem}.json`, so an opened scenario that you edit and save
+// becomes a map — but re-launching with `script=` serves the
+// scenario again, not your edits.  Re-open the map by name to get
+// those back.  ⚠ A map keeps the GROUND and the MARKERS; the crew,
+// the wave list and the wallet live on the run and are not saved.
+//
+// ⚠⚠ **A scenario is TRUNCATED at its first `tick` / `fall`** — you
+// get the base it authors, not the state it ends in.  The reasoning
+// is `src/scenario.loft` § A POSITION is the PREFIX (`@X263`).
 //
 // Controls:
 //   WASD              pan camera (held → debounced ~8 hexes/sec)
@@ -191,20 +208,79 @@ const PAINT_DEBOUNCE_US: integer = 50000;    // ~20 hexes/sec
 // is not an editor action but the loop's own exit.
 
 fn main() {
-    // Resolve save paths from CLI args.  No args → default single-
-    // slot save at the cwd-relative path.  One arg (a map name) →
-    // `maps/{name}.json` + `maps/{name}_markers.json`; mkdir_all the
-    // directory so the first save works on a fresh checkout.
-    args = arguments();
+    // Resolve what to open from the CLI args.  No args → the default
+    // single-slot save at the cwd-relative path.  A bare name (a map)
+    // → `maps/{name}.json` + `maps/{name}_markers.json`.
+    // `script=<name>` → a `.keys` scenario, opened as a starting
+    // position (BACKLOG A1).
+    //
+    // ⚠ The reading lives in `src/scenario.loft`, not here — an entry
+    // point is compiled by nothing, and *which argument means what* is
+    // exactly the kind of decision that must be somewhere a test can
+    // reach.  ⚠⚠ And `script=` rather than `--script` is loft's rule:
+    // see `scenario.loft` § SCENARIO_ARG.
+    args     = arguments();
+    scenario = scenario_arg(args);
+    map_name = scenario_map_arg(args);
+
+    // ⚠ A scenario names a map SLOT it is not loaded from.  The
+    // scenario is the source of truth every launch — `script=` means
+    // *give me that base again* — and `maps/{stem}.json` is where the
+    // session's own edits go, so a scenario tweaked in the window and
+    // saved becomes a map (BACKLOG A2/A3's direction, for free).
+    // Loading the slot back would silently serve last session's edits
+    // to a player who asked for the scenario.
+    if scenario != "" { map_name = scenario_stem(scenario); }
+
     save_path:        text = DEFAULT_SAVE_PATH;
     marker_save_path: text = DEFAULT_MARKER_SAVE_PATH;
     map_label:        text = "<default>";
-    if len(args) > 0 && args[0] != "" {
-        map_name = args[0];
+    if map_name != "" {
         save_path        = "maps/{map_name}.json";
         marker_save_path = "maps/{map_name}_markers.json";
         map_label        = map_name;
         mkdir_all("maps");
+    }
+
+    // Where the session STARTS.  Same as the save slot, except for a
+    // scenario — see above.
+    load_path:        text = save_path;
+    marker_load_path: text = marker_save_path;
+    if scenario != "" {
+        load_path        = "";
+        marker_load_path = "";
+    }
+
+    palette = load_palette(PALETTE_PATH);
+
+    // The whole editor session in one state object: painted + marker
+    // layers, camera, picker, mode, undo history, chunk dirty set.
+    // `editor_state_from` adopts the layers loaded off disk.
+    loaded = load_map_or_empty(load_path, palette);
+    s = editor_state_from(
+        loaded.0,
+        load_markers_or_empty(marker_load_path),
+        loaded.1,
+        picker_default(PALETTE_PATH),
+    );
+    editor_state_attach(s, save_path, marker_save_path);
+
+    // ── The scenario (BACKLOG A1) ───────────────────────────────
+    //
+    // ⚠ **Before the window**, for `gl_gate.loft`'s reason one layer
+    // out: a launch that cannot find its scenario must say so on the
+    // console rather than flash a window and open an empty world.
+    // Nothing a position does needs GL — `editor_step` paints into a
+    // software `PaintedWorld` and a scripted frame is worth 0.0
+    // seconds of game time.
+    srun = scenario_open(s, scenario);
+    if !srun.ok {
+        println("dryopea: {script_describe(srun)}");
+        return;
+    }
+    if scenario != "" {
+        println("dryopea: scenario [{scenario}] → {scenario_path(scenario)}");
+        println("         {script_describe(srun)}");
     }
 
     if !gl_create_window(VIEW_W, VIEW_H, "dryopea editor — {map_label}") {
@@ -213,19 +289,6 @@ fn main() {
     }
     painter = create_painter_2d(VIEW_W as float, VIEW_H as float);
 
-    palette = load_palette(PALETTE_PATH);
-
-    // The whole editor session in one state object: painted + marker
-    // layers, camera, picker, mode, undo history, chunk dirty set.
-    // `editor_state_from` adopts the layers loaded off disk.
-    loaded = load_map_or_empty(save_path, palette);
-    s = editor_state_from(
-        loaded.0,
-        load_markers_or_empty(marker_save_path),
-        loaded.1,
-        picker_default(PALETTE_PATH),
-    );
-    editor_state_attach(s, save_path, marker_save_path);
     println("dryopea: editor open map=[{map_label}] ({painted_count(s.pw)} hexes, {marker_count(s.mw)} markers loaded)");
     println("         paths: {save_path} + {marker_save_path}");
 
@@ -251,7 +314,15 @@ fn main() {
 
     // The GAME (plan 19 P1 + P3).  A session opens in the editor, so
     // this sits idle — no roster, no clock — until P is pressed.
-    ps = play_state_new();
+    //
+    // ⚠⚠ **Taken from the run rather than built here**, which is what
+    // carries a scenario's crew, wave list, towers and wallet into the
+    // window (BACKLOG A1).  With no scenario `scenario_open` answers a
+    // fresh empty run, so the two launches take one path.  Reading a
+    // struct out of a FIELD is the direction that ALIASES in loft
+    // ([loft#894]) — the returned `ScriptRun` is itself a copy, and
+    // `srun` is not read again after this.
+    ps = srun.play;
 
     // The live world's GPU side (plan 19 P6).  ⚠ THREE SIBLINGS rather
     // than one object with the other two inside it: a struct stored in a

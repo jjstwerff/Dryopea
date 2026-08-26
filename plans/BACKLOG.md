@@ -24,10 +24,10 @@ runs and a game you can sit down with.**
 
 | # | What | Size | Why |
 |---|---|---|---|
-| **A1** | ⚠⚠ **Load a `.keys` scenario into a live session** — `make play SCRIPT=a-defended-base` | **S** | ⚠⚠ **The single biggest blocker on playing today.**  `maps/` is **empty**, `.keys` has **no `save` verb**, and there is no path from the 33 built scenarios into a window — so a player who runs `make play` gets **an empty world and a paint brush**.  ⚠ `main.loft` already parses an argument and `script.loft::script_run_file` already plays a file; this joins them, and **turns 33 hand-built bases into 33 playable starting positions** |
-| **A2** | Ship **authored maps** in `maps/` | S | `make play MAP=starter_01` is documented in `main.loft`'s own header and **there is no `maps/` content**, so the option does nothing.  ⚠ A2 is the durable version of A1's shortcut |
+| **A1** | ✅ **DONE 2026-08-26** — load a `.keys` scenario into a live session: `make play SCRIPT=a-defended-base` | **S** | ⚠⚠ Was *the single biggest blocker on playing today*.  `src/scenario.loft` joins `script_run_on` to `main.loft`, and the **36 `.keys` files in `tests/scripts/` + `tests/gl/` are now 36 playable starting positions**.  ⚠⚠ **A scenario opens as its PREFIX, cut at the first `tick` / `fall`** (`@X263`) — its question, not its answer.  ⚠ The launcher's flag is `script=<name>`; `--script` never reaches `arguments()` (`@X264`).  ⚠ Measured in `@M044`; gated by `tests/a1_the_scenario.loft` |
+| **A2** | Ship **authored maps** in `maps/` | S | `make play MAP=starter_01` is documented in `main.loft`'s own header and **there is no `maps/` content**, so the option does nothing.  ⚠ A2 is the durable version of A1's shortcut — ⚠⚠ and A1 half-built it: a scenario saves to `maps/<stem>.json` on exit, so *opening one and pressing Esc writes a map*.  What is still missing is that a map keeps only the GROUND and the MARKERS — the crew, the wave list and the wallet live on the run and are not saved |
 | **A3** | A **`save` verb** for `.keys`, or a scenario→map exporter | S | ⚠ Would let a scenario become a map once, rather than being replayed every launch.  ⚠ Note `emit.loft` already writes a situation *as `.keys`* — this is the other direction |
-| **A4** | A short **"how to play what exists"** note | XS | ⚠ `CLAUDE.md`'s own row says *"pan to the base"*, and there is no base.  What the keys do, what you will see, and what is not there yet |
+| **A4** | A short **"how to play what exists"** note | XS | ⚠ There is a base now (A1), so the note can be written against something real: `make play SCRIPT=a-base-that-plays-its-list`, what the keys do, what you will see, and what is not there yet |
 
 ## B. Unblocks a LOT of other work
 
@@ -49,7 +49,7 @@ runs and a game you can sit down with.**
 | **C5** | **A moat** (`@X173`'s neighbour) | S | ⚠ `GROUND_TYPES.md` already carries water's **DROP** and nothing reads it; `plans/25` § M2 names that as plan 02's call |
 | **C6** | **Rock kind decides wall strength** | S | ⚠ Granite sturdy / sand rock brittle — over a palette and a `structure_max_hp` that both exist.  The cheapest material rule available |
 | **C7** | ⚠ **`@D002` — `cam.zoom` changes no pixel** | XS | An open defect in `PROBLEMS.md` |
-| **C8** | ⚠ **`CLAUDE.md`'s architecture table has a stray double-pipe** | XS | The `part.loft` row merges with `catalogue.loft`, so the table renders one row short.  ⚠ Pipes break a cell even inside a code span — the same bug this row describes |
+| **C8** | ✅ **DONE 2026-08-26** — `CLAUDE.md`'s architecture table had a stray double-pipe | XS | The `part.loft` row merged with `catalogue.loft` **and** `part_mesh.loft`, so the table rendered **two** rows short rather than one.  Fixed while adding the `scenario.loft` row (A1).  ⚠ Pipes break a cell even inside a code span |
 
 ## D. Needs a DECISION before it can be built
 
@@ -84,7 +84,8 @@ is a consequence rather than a queue.
 ⚠⚠ **Two things are worth knowing before choosing**, and neither forces
 an order:
 
-- **A1 is small and it is what lets the game be played at all today.**
+- ~~**A1 is small and it is what lets the game be played at all today.**~~
+  **Done 2026-08-26** — `make play SCRIPT=<name>` is the way in.
 - **B1 has the widest blast radius of anything on the list.**
 
 ⚠ **Most of this is not a plan** (`README.md` § Pick the lightest

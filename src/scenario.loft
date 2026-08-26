@@ -1,0 +1,246 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// #examples
+//
+// A `.keys` scenario, opened as a live STARTING POSITION —
+// BACKLOG A1.
+//
+// `maps/` is empty and `.keys` has no `save` verb, so until this
+// file existed there was no path from the 33 hand-built scenarios
+// into a window: `make play` opened an empty world and a paint
+// brush.  The two halves it joins were both already here —
+// `script.loft::script_run_on` plays a script into an
+// `EditorState` + a `PlayState`, and `main.loft` parses an
+// argument.  This is the seam between them.
+//
+// ── A POSITION is the PREFIX, not the end state (@X263) ─────────
+//
+// ⚠⚠ **A scenario is truncated at its first simulation-advancing
+// command**, and everything after it is dropped.  Playing the whole
+// file would hand the player the state the file ENDS in — which for
+// `an-undefended-base` is a fallen base, for
+// `a-base-that-plays-its-list` is an exhausted wave list with
+// nothing alive, and for `a-wall-breaks` is a wall that has already
+// broken.  Those are the scenario's ANSWERS.  What a player wants
+// is its QUESTION: the ground, the wall, the towers, the crew and
+// the armed schedule, with the first wave still un-poked.
+//
+// ⚠ It is also the repo's existing definition of the word.
+// `emit.loft::emit_keys` writes a situation down as *"an authored
+// STARTING POSITION with no `tick` in it"* — so a position that
+// contained ticks would be the one inconsistent use of the term.
+//
+// ⚠ **It TRUNCATES, it does not FILTER.**  A filter would run the
+// measurements that come after a tick, and those are written about
+// a simulation that has advanced — `count alive 0 0` after a wave
+// was fought is a true statement about the end and a false one
+// about the beginning.  Cutting at the first advance leaves every
+// surviving line still saying what it said.
+//
+// ── Two verbs advance the simulation, and that is gated ─────────
+//
+// ⚠⚠ `tick` and `fall` are the WHOLE set — `drive`, `send`,
+// `boost` and `park` only set a destination or a flag, and a
+// scripted frame hands `play_step` 0.0 seconds precisely so that
+// painting a map takes no game time (`script.loft::script_frame`).
+// The claim is not left to this comment: `tests/a1_the_scenario`
+// opens every `.keys` file in the corpus as a position and asserts
+// the clock reads **t0** for all of them, so a verb that grew a
+// tick would go red naming the file that reached it.
+
+use editor_step;
+use script;
+
+// The extension a scenario is written in.  One definition, because
+// `scenario_path` and `scenario_stem` have to agree about it.
+pub const SCENARIO_EXT: text = ".keys";
+
+// How a command line asks for one: `script=<name>`.
+//
+// ⚠⚠ **NOT `--script <name>`, and that is loft's rule rather than a
+// style.**  `loft src/main.loft --script a-defended-base` never
+// reaches `arguments()` with the flag — the runtime takes a leading
+// `--` argument as one of its OWN and strips it, so the entry sees
+// `["a-defended-base"]` and opens a MAP of that name.  Silently, and
+// looking exactly like a working launch.  ⚠ `loft … -- --script x`
+// does pass it through, but a separator you can forget is a footgun
+// with the same silent failure behind it.  `script=` survives on its
+// own and cannot be read as anything else.
+pub const SCENARIO_ARG: text = "script=";
+
+// The scenario a command line asks for, or "" if it does not.
+// Example: @DRY-081
+pub fn scenario_arg(args: vector<text>) -> text {
+    sa_n = SCENARIO_ARG.size();
+    for sa_a in args {
+        if sa_a.size() > sa_n && sa_a.starts_with(SCENARIO_ARG) {
+            return sa_a[sa_n..sa_a.size()];
+        }
+    }
+    ""
+}
+
+// The MAP a command line asks for: the first argument that is not a
+// `script=` and not empty.  "" for the default single-slot save.
+// Example: @DRY-081
+pub fn scenario_map_arg(args: vector<text>) -> text {
+    for sm_a in args {
+        if sm_a == "" { continue; }
+        if sm_a.starts_with(SCENARIO_ARG) { continue; }
+        return sm_a;
+    }
+    ""
+}
+
+// Where a bare scenario name is looked up, in order.
+//
+// ⚠ `tests/scripts/` comes first because it holds the 33 gated
+// scenarios — the bases a player actually wants — and `tests/gl/`
+// holds three fixtures painted to fill a frame.  The two share the
+// name `a-defended-base`, so the order is a decision rather than a
+// list.
+//
+// ⚠ A LOCAL rather than a file-scope `const vector<text>`: dryopea
+// has no other file-scope vector const and [loft#955] empties one
+// silently for a related reason, which is not a bet worth taking
+// for three strings.
+fn scenario_dirs() -> vector<text> {
+    ["tests/scripts", "tests/gl"]
+}
+
+// Does this command word advance the SIMULATION?
+//
+// ⚠ The complete set, and small on purpose — see the header.  A new
+// `.keys` verb that ticks the game belongs here the day it lands,
+// and `tests/a1_the_scenario` is what notices if it does not.
+// Example: @DRY-080
+pub fn scenario_advances(cmd: text) -> boolean {
+    cmd == "tick" || cmd == "fall"
+}
+
+// The command word of one script line — "" for a blank or a comment.
+//
+// The same reading `script_run_on` does: tabs count as spaces, the
+// line is trimmed, and a whole-line `#` is a comment.
+fn scenario_command(line: text) -> text {
+    sc_t = line.replace("\t", " ").trim();
+    if sc_t == "" { return ""; }
+    if sc_t.starts_with("#") { return ""; }
+    sc_sp = sc_t.find(" ");
+    if sc_sp == null { return sc_t; }
+    sc_t[0..(sc_sp ?? 0)]
+}
+
+// The part of a script that AUTHORS a position: every line up to,
+// but not including, the first that advances the simulation.
+//
+// A script with no such line comes back whole, which is what makes
+// `cold-start` and the three GL fixtures load as themselves.
+// Example: @DRY-079
+pub fn scenario_position(source: text) -> text {
+    sp_out   = "";
+    sp_first = true;
+    for sp_line in source.split('\n') {
+        if scenario_advances(scenario_command(sp_line)) { return sp_out; }
+        if sp_first {
+            sp_out = sp_line;
+            sp_first = false;
+        } else {
+            sp_out = sp_out + "\n" + sp_line;
+        }
+    }
+    sp_out
+}
+
+// Strip a scenario name down to the stem a save file is named
+// after: no directory, no `.keys`.  `tests/gl/an-island.keys` and
+// `an-island` both answer `an-island`.
+// Example: @DRY-083
+pub fn scenario_stem(name: text) -> text {
+    // The last path segment, found by walking rather than by
+    // `rfind` — nothing else in the tree uses one, so it is not a
+    // call worth being the first to rely on.
+    ss_s = name;
+    for ss_p in name.split('/') { ss_s = ss_p; }
+    ss_n = SCENARIO_EXT.size();
+    if ss_s.size() > ss_n && ss_s.starts_with_at(ss_s.size() - ss_n, SCENARIO_EXT) {
+        ss_s = ss_s[0..ss_s.size() - ss_n];
+    }
+    ss_s
+}
+
+// The file a scenario name refers to, or "" if there is none.
+//
+// A name carrying the extension is taken as a PATH and used as
+// given; a bare name is looked up in `scenario_dirs()` in order.
+// Both answer "" when the file is not there, so the caller reports
+// one missing-scenario failure rather than two.
+// Example: @DRY-082
+pub fn scenario_path(name: text) -> text {
+    if name == "" { return ""; }
+    sh_n = SCENARIO_EXT.size();
+    if name.size() > sh_n && name.starts_with_at(name.size() - sh_n, SCENARIO_EXT) {
+        if file(name).exists() { return name; }
+        return "";
+    }
+    for sh_d in scenario_dirs() {
+        sh_try = "{sh_d}/{name}{SCENARIO_EXT}";
+        if file(sh_try).exists() { return sh_try; }
+    }
+    ""
+}
+
+// What a caller should tell the player it looked at.  Kept beside
+// the search so the message cannot describe a different order from
+// the one `scenario_path` walks.
+// Example: @DRY-084
+pub fn scenario_searched(name: text) -> text {
+    sw_out   = "";
+    sw_first = true;
+    for sw_d in scenario_dirs() {
+        sw_one = "{sw_d}/{name}{SCENARIO_EXT}";
+        if sw_first { sw_out = sw_one; sw_first = false; }
+        else        { sw_out = sw_out + ", " + sw_one; }
+    }
+    sw_out
+}
+
+// ─── The door, LAST ─────────────────────────────────────────────
+//
+// ⚠ Every helper above its caller — [loft#918] panics the parser on
+// a local bound to a call whose callee sits lower in the file.  The
+// same scar `reduce.loft`, `compare.loft` and `emit.loft` carry.
+
+// Open a scenario into `s`, and answer the run that did it — whose
+// `play` is the game the caller keeps.
+//
+// An EMPTY name answers a fresh, green, empty run, so a shell that
+// was given no scenario takes the same path as one that was.  A
+// name that resolves to nothing is a FAILURE that says what it
+// looked for: a launcher that quietly opened an empty world because
+// it could not find the file is the shape of lie `validate.loft`
+// § The gate checks itself first was written against, one layer out.
+//
+// ⚠ The caller reads `run.play` into a local to get the game — a
+// struct read out of a FIELD aliases, where the returned `ScriptRun`
+// is itself a copy ([loft#894]).
+//
+// Example: @DRY-078
+pub fn scenario_open(s: EditorState, name: text,
+                     shots_dir: text = SHOTS_DIR) -> ScriptRun {
+    so_run = script_run_new(shots_dir);
+    if name == "" { return so_run; }
+
+    so_path = scenario_path(name);
+    if so_path == "" {
+        so_run.ok      = false;
+        so_run.message = "no scenario '{name}' — looked for {scenario_searched(name)}";
+        return so_run;
+    }
+
+    // `content()` is UTF-8-only and answers "" on a binary file; an
+    // empty position then authors nothing, which `ok` reports
+    // honestly as a run that did nothing.
+    so_src = scenario_position(file(so_path).content() ?? "");
+    script_run_on(s, so_run, so_src)
+}

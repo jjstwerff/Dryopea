@@ -312,6 +312,48 @@ src/
                    `tests/09_c5a_converter.loft` § The schema is
                    complete is the gate, and it only fires if its
                    vocabulary list is updated too
+  scenario.loft    a `.keys` scenario, opened as a live STARTING
+                   POSITION (BACKLOG A1) — scenario_open(s, name) ->
+                   ScriptRun, whose `.play` is the game the window
+                   keeps.  The seam between `script_run_on` and
+                   `main.loft`, which until it existed had no path
+                   between them: `maps/` is empty, `.keys` has no
+                   `save` verb, and `make play` opened a paint brush.
+                   ⚠⚠ **It TRUNCATES the file at its first `tick` /
+                   `fall`** (`@X263`).  A scenario's tail is its
+                   ANSWER — a fallen base, an exhausted wave list, a
+                   wall already broken — and a player wants its
+                   QUESTION: the ground, the wall, the towers, the
+                   crew and the armed schedule, first wave un-poked.
+                   It is also the repo's existing use of the word,
+                   since `emit.loft` writes a situation as "an
+                   authored STARTING POSITION with no `tick` in it".
+                   ⚠ It TRUNCATES rather than FILTERS: a measurement
+                   written after a tick is true about the end and
+                   false about the beginning, so cutting leaves every
+                   surviving line still saying what it said.
+                   ⚠⚠ `tick` and `fall` are the WHOLE advancing set —
+                   `drive` / `send` / `boost` / `park` only set a
+                   destination or a flag, and a scripted frame is
+                   worth 0.0 seconds of game time — and that claim is
+                   not left to a comment: `tests/a1_the_scenario`
+                   opens EVERY `.keys` file in the tree and asserts
+                   the clock reads t0, so a verb that grew a tick goes
+                   red naming the file that reached it.  ⚠ Paired with
+                   its own vacuity control, because an EMPTY position
+                   also reads t0.
+                   ⚠⚠ It also owns the COMMAND LINE's reading —
+                   `script=<name>`, never `--script <name>`, because
+                   loft takes a leading `--` argument as one of its
+                   OWN and strips it, so the flag form would open a
+                   MAP of that name, silently (`@X264`).  It lives
+                   here rather than in `main.loft` for the reason
+                   every decision does: an entry point is compiled by
+                   nothing.
+                   ⚠ A bare name resolves `tests/scripts/` then
+                   `tests/gl/`; a name ending in `.keys` is a path,
+                   used as given.  A name that resolves to nothing is
+                   a named FAILURE, never a quietly empty world
   lattice.loft     THE lattice (plan 09) — pointy-top odd-r offset, the
                    convention every hex_* library and moros speak.
                    Owns `Hex { q, r }` (q is a COLUMN, r a ROW),
