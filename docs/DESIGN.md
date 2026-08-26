@@ -1722,8 +1722,11 @@ before force-launch, not only a headcount.
 **their own account** of the base just played, and they may disagree —
 ⚠⚠ they are **unreliable narrators** (`@X147`), coloured by where they
 stood and what they know rather than by any dishonesty, which is what
-stops the debrief becoming an oracle.  ⚠ Facts stay reliable; **causes
-and blame** are the part that is angled.
+stops the debrief becoming an oracle.  ⚠⚠ **Nothing they say is
+false** — the skew is *selection, emphasis and omission*, so the player
+can trust every sentence and still not have the picture.  ⚠ And they
+**report, never prescribe**: what to do differently next run is the
+player's to piece together.
 ⚠⚠ **A helper left behind at force-launch is not there to be
 debriefed** — § 14's *"cost of haste"* reaching into the station.
 ⚠ Never a scoring screen: § 14 has no fail screen, and a grade would

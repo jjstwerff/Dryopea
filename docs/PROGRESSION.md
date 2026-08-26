@@ -33,7 +33,7 @@ stats* is the part that is superseded.
 Codes: `@X016`, `@X017` **superseded**; `@X103` **reversed**; `@X018`,
 `@X019` stand with a wider reading; `@X111`–`@X136` are the design
 below, and `@X137`–`@X141` (no tutorial) are `DESIGN.md` § 11's;
-`@X142`–`@X143` are the speaker rule and `@X144`–`@X148` the debrief.  Index: [`DECISIONS.md`](DECISIONS.md).
+`@X142`–`@X143` are the speaker rule and `@X144`–`@X149` the debrief.  Index: [`DECISIONS.md`](DECISIONS.md).
 
 ## P0 — ⚠⚠ the model is BLUE PRINCE: information dominates, and friction is what upgrades buy
 
@@ -887,11 +887,24 @@ left for an answer to short-circuit:
 | *"soft ground on that ridge"* — points, does not conclude | ⚠ *"the wall came down where the ground was soft.  I'd not build there again"* — **concludes freely** |
 | naming the incoming wave would be `@X118`'s failing row | ⚠ naming what the wave **was** costs nothing; it is over |
 
-⚠⚠ **And what the player carries away is RULES-knowledge** (`@X122`) —
-the transferable kind — rather than instance-knowledge about a map they
-will never see again.  **That is exactly the axis that is supposed to
-accumulate**, arriving through the one channel that can hand it over
-without solving anything.
+⚠⚠ **REFINED 2026-08-26 — the fence relaxes on the INSTANCE and NOT on
+the RULES**, which is `@X122`'s own distinction one layer up:
+
+| may be said freely | ⚠⚠ stays the player's to derive |
+|---|---|
+| **what happened on this base** — it is spent, and no live decision hangs on it | **what to do differently next time** — that is the transferable axis, and it is the thing that must be earned |
+| *"the tower was black from the third wave and nobody came"* | *"you should build tighter perimeters"* |
+| *"they came from the marker nobody went out to"* | *"hire another scout"* |
+
+⚠⚠ **So the debrief's version of *points, never concludes* is: they
+report, they do not PRESCRIBE.**  The owner's own statement of the goal
+is the test — *"the player need their own judgement to piece together
+what should be done/enhanced the next run."*  ⚠ A crew member who
+recommends the fix has done the piecing together, and the player's
+progression is what was spent to pay for it.
+
+⚠ What the player therefore carries away **is** rules-knowledge — but
+they **derived** it, which is the only way it counts on `@X117`.
 
 #### ⚠ Four partial accounts of one sortie, and assembling them is still the player's job
 
@@ -957,11 +970,42 @@ thing `@X118` exists to prevent.
 | **stake** | they were *in* it.  Somebody left outside the wall remembers that base differently |
 | **salience** | the thing that nearly killed them looms larger than the thing that actually decided the base |
 
-⚠⚠ **The events are not random and nobody lies.**  What happened,
-happened; the *telling* is angled.  That is why it composes with
-`@X132`'s ledger rather than needing a fiction layer: the sortie's real
-events are the material, and each helper narrates the subset **they were
-actually present for**.
+#### ⚠⚠ NOTHING THEY SAY IS FALSE — the skew is SELECTION, EMPHASIS and OMISSION
+
+Owner, 2026-08-26:
+
+> *"They will not state a wrong thing, they will just skew to their own
+> perspective enough that the player need their own judgement to piece
+> together what should be done/enhanced the next run."*
+
+⚠⚠ **This is stricter than *unreliable* normally implies, and it is the
+version to build.**  Every sentence a crew member says is **true**.  The
+unreliability lives entirely in three places, and none of them is the
+content of a statement:
+
+| ✅ fixed | ⚠ skewed |
+|---|---|
+| **every statement is true** | **selection** — which true things they mention |
+| | **emphasis** — how much weight each one gets |
+| | **omission** — what goes unsaid, because they were elsewhere, it is not their domain, or it did not feel important |
+
+⚠ **Worked example.**  *"Nobody came for that tower"* is **true** —
+nobody did.  The skew is that the handyman offers it as **the** reason
+the base fell, when the wall was also mis-sited fifteen hexes away where
+he never went.  ⚠⚠ Two true accounts, different weights, and **the
+player is the only one who hears both.**
+
+⚠⚠ **Which makes the player able to trust every sentence and still not
+have the picture** — the good kind of hard.  A debrief can never push
+somebody toward a worse decision by asserting something false; the worst
+case is an **incomplete** picture, which is the intended difficulty.
+
+⚠ **And it makes the implementation trivially safe**: this is a
+**filter over a true event list**, weighted by the speaker's domain and
+by where they were.  There is no fiction generator and nothing that
+invents a claim — which is exactly why it composes with `@X132`'s ledger
+rather than needing a layer of its own.  Each helper narrates the subset
+**they were actually present for**.
 
 ⚠ **Mechanically it is free**: a helper's account is limited to the
 hexes they occupied and the events they were near, and *where a helper
@@ -985,7 +1029,7 @@ side effect of the crew being people.
 
 | rule | why |
 |---|---|
-| ⚠⚠ **Facts are reliable; causes and blame are not** | *"the tower went black on the third wave"* is a fact and must be true.  *"…because nobody came for it"* is an opinion and may be unfair.  ⚠ Get this backwards and the debrief stops being usable at all |
+| ⚠⚠ **Every statement is TRUE; only selection, emphasis and omission skew** | ⚠ *"the tower went black on the third wave and nobody came"* must be true in **both** halves.  What is unfair is that he offers it as **the** reason.  ⚠⚠ An opinion is allowed **when it is built out of true things the speaker witnessed** — never a false claim, and never a fact they were not there for |
 | ⚠⚠ **Bias misleads in DEGREE, never in DIRECTION** | the security officer over-weights the perimeter; they never send you to the wrong wall.  ⚠ If acting on crew advice is worse than ignoring it, players learn to ignore them — and `@X137`'s onboarding role collapses with it |
 | ⚠ **Bias is CONSISTENT per character** | a bias that varies run to run is indistinguishable from lying, and it is unlearnable.  ⚠ Consistency is what turns it from a dice roll into a person |
 
