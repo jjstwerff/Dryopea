@@ -128,6 +128,69 @@ and it does four jobs at once:
 elsewhere* is an **assembly constraint** a generator can hold, and one an author
 can hold too.
 
+### ⚠⚠ THE BRIEFING — the military tell you when to be gone  `@X248`
+
+Owner, 2026-08-26:
+
+> *"the player has got a short in-world briefing from the military about when
+> they should be gone there, with the possibility to ask the military one or two
+> questions (in the same way the helpers can be asked)."*
+
+⚠⚠ **This is how the PERMIT arrives**, and § X2d already makes the permit the
+run's clock.  ⚠ It is delivered **by the people who enforce it** —
+[`SETTING.md`](SETTING.md) § The quarantine: *"permit on file = pass; permit
+missing = destroyed"* — which is the most legible possible source.
+
+⚠ **A briefing is not a tutorial** (`@X137`): it is a character stating a fact
+about a contract, and it explains nothing about how to play.
+
+#### ⚠⚠ And it is the FIRST *ask*, which teaches the mechanic by being one
+
+⚠ `@X156` makes **presence the interaction** — you go to somebody and they say
+their piece, with no topic list anywhere in the design.
+
+⚠⚠ **The briefing is the player's first instance of that**, before anything is
+at stake, with real content rather than an example.  ⚠ *"One or two questions"*
+is a **budget, not a menu**: the player learns immediately that **speech is
+scarce and worth spending**, which is exactly the expectation `@X154` needs for
+the crew's remarks to read as signal later.
+
+⚠ It is also `@X247`'s landing choice in miniature — **a limited, irreversible
+spend at the moment the player knows least.**
+
+#### ⚠⚠ The military are a NARROW source, and deliberately so
+
+⚠ `@X150` makes the crew novices about Dryopea and natives of the setting.
+⚠⚠ **The military are the sharpest version of that split:**
+
+| they know | they do not |
+|---|---|
+| ⚠ **the cordon, the permit, the rules, the exit** — in authoritative detail | ⚠⚠ **the planet.**  They watch from orbit and *"barely intervene on the surface"* |
+| `SETTING.md`'s truth **2** — the naval-blockade reality — as their own job | ⚠⚠ truth **3**, which they would **deny** if asked (`@X155`) |
+
+⚠⚠ **So they are a source who knows a great deal about one thing and nothing
+about what will actually matter** — which is characterful, useful, and quietly
+tells the player that the people in charge do not understand this place.
+
+#### ⚠ OPEN — how does the player TRACK the permit afterwards?
+
+⚠⚠ `DESIGN.md` § HUD says the **wallet is the only number**, and refuses a
+countdown.  So the briefing tells you *when*, and then there is **no clock on
+the screen** to watch.
+
+⚠⚠ **The proposal, and it is already written down for another reason:**
+[`SETTING.md`](SETTING.md) § The quarantine puts **two battleships in the sky**
+as ambient atmosphere — *"the sky just has them, slowly traversing the upper
+view."*
+
+> ⚠⚠ **The cordon tells you when to be gone, and the cordon is VISIBLE
+> OVERHEAD.  The clock and its enforcer are the same object.**
+
+⚠ A traversal is a period; where they are is how long you have.  ⚠⚠ **Diegetic,
+no second number, and it makes an existing piece of atmosphere load-bearing** —
+which is the same move `@X098` made when the wallet's colour became the warning.
+*Recorded as a proposal; the owner's to rule on.*
+
 ### ⚠⚠ THE LANDING LOADOUT — the scrambler OR two towers, and walls always  `@X247`
 
 Owner, 2026-08-26:
