@@ -1732,6 +1732,14 @@ debriefed** — § 14's *"cost of haste"* reaching into the station.
 ⚠ Never a scoring screen: § 14 has no fail screen, and a grade would
 announce what that section says must be felt across the sequence.
 
+⚠⚠ **And they know no more than the player does** (`@X150`) — § 16's
+crew are on this planet for the first time too, which is already what
+[`SETTING.md`](SETTING.md) § The recruitment says of a company that
+does **automated asteroid mining**.  A past job gives them trained
+**attention**, never world knowledge; so they point at things and cannot
+explain them, and the *never concludes* rule above holds **by fiction
+rather than by discipline**.
+
 ⚠⚠ **An IDLE helper is the one who speaks** (`@X142`,
 [`PROGRESSION.md`](PROGRESSION.md) § P2c).  Helpers take their jobs from
 the player, so *"nobody has given me a task"* is a fact the roster

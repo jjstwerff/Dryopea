@@ -33,7 +33,8 @@ stats* is the part that is superseded.
 Codes: `@X016`, `@X017` **superseded**; `@X103` **reversed**; `@X018`,
 `@X019` stand with a wider reading; `@X111`–`@X136` are the design
 below, and `@X137`–`@X141` (no tutorial) are `DESIGN.md` § 11's;
-`@X142`–`@X143` are the speaker rule and `@X144`–`@X149` the debrief.  Index: [`DECISIONS.md`](DECISIONS.md).
+`@X142`–`@X143` are the speaker rule and `@X144`–`@X149` the debrief and `@X150`–`@X151` what the crew
+can know at all.  Index: [`DECISIONS.md`](DECISIONS.md).
 
 ## P0 — ⚠⚠ the model is BLUE PRINCE: information dominates, and friction is what upgrades buy
 
@@ -548,20 +549,90 @@ have got by scouting, handed over **cheaper**, which is exactly what
 the drive would be the failure; one who tells you which drive is worth
 making is the design.
 
+#### ⚠⚠ THE CREW DO NOT KNOW MORE THAN THE PLAYER — they are on this planet for the first time too  `@X150`
+
+Owner, 2026-08-26:
+
+> *"the helpers do not know more than the player, but they observe things
+> and comment on it.  They are on this planet for the first time too."*
+
+⚠⚠ **This is the load-bearing constraint on everything in § P2c and
+§ P2f, and it is already the fiction.**
+[`SETTING.md`](SETTING.md) § The recruitment has Centaur Mining
+specialising in **automated asteroid mining**, talked into a contract
+they have no experience of — *"we do not involve ourselves with
+conflicts"*.  **Nobody in the vehicle has been anywhere like Dryopea.**
+
+⚠ **So the distinction that governs every line they say is NOTICING vs
+KNOWING:**
+
+| ✅ what a past job gives them | ❌ what it does not |
+|---|---|
+| **trained ATTENTION** — a miner's eye goes to the ground, a security officer's to the sight lines | **world knowledge** — what Dryopea's ground actually does, where its robots come from, what its trees are |
+| *"that rock is fractured — on an asteroid I'd not cut near it"* | *"this is bad rock, don't build here"* |
+| noticing a thing the player would have driven past | explaining what the thing means |
+
+⚠⚠ **And this is why `@X129`'s fence needs no discipline to hold: they
+do not conclude because they CANNOT.**  A rule enforced by the world
+costs nothing to maintain, where a rule enforced by restraint erodes the
+first time somebody writes a helpful line.  ⚠ Their honest register is
+**uncertainty** — *"that ground looks soft to me, but I've only ever
+worked vacuum"*.
+
+#### ⚠⚠ Which means they ONBOARD by drawing attention, never by explaining
+
+The obvious objection is that a crew who know nothing cannot be
+`@X137`'s onboarding.  ⚠ They can, because **a lost player does not need
+an explanation — they need somewhere to look.**
+
+*"There's something over that ridge."*  *"That's not right."*  *"I'd
+want a look at that before we commit."*  ⚠⚠ Every one of those moves a
+stalled player without telling them anything, which is the nudge the
+owner described from the start — and it is **the same sentence a
+first-timer would actually say.**
+
+#### ⚠⚠ And the crew LEARN ALONGSIDE the player — which is audible progression  `@X151`
+
+If they arrive knowing nothing, then **over a campaign they come to know
+what the player knows**, and their remarks should say so:
+
+| sortie 1 | sortie 10 |
+|---|---|
+| *"that ground looks soft to me"* | *"that's like the third base — the ground gave way there too"* |
+| *"something's moving out past the ridge"* | *"that's the same as the ones that came at us through the gully"* |
+
+⚠⚠ **That is the crew's version of `@X117`**, and it is the one form of
+progression the player can *hear*.  ⚠ It composes exactly with `@X131`'s
+ledger — a crew member can only refer to a base they were **on** — and
+with `@X102`'s knowledge tree, which is the run's record of the same
+learning.
+
+⚠ **It also keeps them from ever overtaking the player**: they learn
+from the sorties the player ran, so their knowledge is a **subset** of
+what the player had access to.  ⚠⚠ A crew member who knew something the
+player could not have learned would be the failure this section exists
+to prevent.
+
 #### ⚠⚠ The crew are PARTIAL SENSORS, and assembling them is the player's job
 
 **This is what makes the whole idea earn its place rather than being
-flavour.**  Each crew member is right about their own domain and naive
-about everything else:
+flavour.**  Each crew member's *attention* is trained somewhere
+different — so they notice different things, and none of them is looking
+everywhere:
 
-| the ex- | notices | ⚠ and is blind to |
+| the ex- | their eye goes to | ⚠ and they do not look at |
 |---|---|---|
-| **asteroid miner** | what is in the ground, and what is worth cutting | whether anything can be defended there |
-| **security** | approach lanes, sight lines, where a perimeter wants to be | whether the ground yields anything |
-| **repair handyman** | what will break, what the pollen is already eating ([`SETTING.md`](SETTING.md) § The pollen) | where the enemy is coming from |
+| **asteroid miner** | the ground, and what it would take to cut it | whether anything could be defended there |
+| **security** | approach lanes and sight lines | whether the ground is worth anything |
+| **repair handyman** | wear, damage, what is already being eaten ([`SETTING.md`](SETTING.md) § The pollen) | where any of it is coming from |
 | **scout** | distance, routes, what is out past the haze | everything close in |
 
-⚠⚠ **So no single crew member's advice is a plan, and following one
+⚠ **None of those columns is expertise about Dryopea.**  They are
+*habits of attention* carried from another job — which is exactly what a
+real specialist brings to an unfamiliar place, and it is why the
+observations are worth having without being answers.
+
+⚠⚠ **So no single crew member's account is a plan, and following one
 exclusively is how a base goes wrong.**  Every remark is *true*; the
 error is never a lie, it is **incompleteness** — which keeps the
 synthesis in the player's hands, where § P1a needs it.
@@ -913,9 +984,16 @@ they **derived** it, which is the only way it counts on `@X117`.
 | the ex- | their account of the same base |
 |---|---|
 | **security** | *"perimeter was too spread.  I could not cover the north face and the east one."* |
-| **miner** | *"there was ore two hexes outside the wall you never cut."* |
+| **miner** | *"there was something worth cutting two hexes outside the wall.  Nobody went for it."* |
 | **scout** | *"they came from the marker nobody went out to."* |
 | **handyman** | *"that tower was black from the third wave on and nobody came."* |
+
+⚠ **Every one of those is something they SAW** (`@X150`) — no line
+requires knowing anything about Dryopea that the player could not have
+learned on the same sortie.  ⚠⚠ *"Miners at a wall mean a mine upwind"*
+would be **world knowledge they do not have**, and it stays the player's
+to derive — unless the crew learned it over the campaign the player ran
+(`@X151`), which is the one way it may ever be said aloud.
 
 ⚠⚠ **They may disagree, and that is free and true** — two people who were
 in different places saw different things.  ⚠ The synthesis stays the
