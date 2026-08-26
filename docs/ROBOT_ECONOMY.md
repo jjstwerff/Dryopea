@@ -540,6 +540,15 @@ built to fight.
 
 ### ⚠ What this deliberately does NOT design
 
+⚠⚠ **CHALLENGED 2026-08-26, and the refusal HOLDS for the campaign**
+(`@X184`).  `DESIGN.md` § 20 records an owner idea for a **territorial
+competitive mode** built on hackable underground installations — and it
+is allowed to want a second movement model **precisely because it is
+separate from the campaign** (`@X181`, `@X182`).  ⚠ The refusal below is
+unchanged *here*; the cheaper version worth trying first is
+installations with **entrances on the surface map**, which is
+territorial without descending.
+
 **No underground level.**  A shaft is a *place on the surface map* that
 material and creatures come out of.  ⚠ **Caverns do not change this**:
 [`DESIGN.md`](DESIGN.md) § Trees as terrain treats a cavern as a HOLE

@@ -3106,6 +3106,94 @@ vision (recorded so the core design doesn't foreclose it):
   campaign needs and all of which would have to be maintained
   for ever.
 
+  #### ⚠⚠ AND IT GROWS INTO A TERRITORIAL MODE: hackable installations, contested  `@X184`
+
+  Owner, 2026-08-26: *"that can gradually grow into another
+  old game idea I had about underground mining installations
+  that can be hacked by players.  Where they both take over
+  neutral structures and build their own defences."*
+
+  ⚠⚠ **The mode is a REARRANGEMENT, not a new game**, which is
+  why it is worth recording now rather than later — every part
+  of it is designed already:
+
+  | the mode needs | it already exists as |
+  |---|---|
+  | **neutral structures worth taking** | ⚠ [`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md)'s **six installation types** — mines, factories, routes, military bases, repair points, carbon plants |
+  | **a way to take them** | `@X176`'s hacking — AI cores, the `hack` skill's levels — pointed at a **structure** instead of a robot |
+  | **defences to build** | ⚠ towers and walls.  **The core game, unchanged** |
+  | **something to defend against** | the swarm that already lives on that map, plus the other player |
+
+  ⚠⚠ **And it inhabits the container `@X181` and `@X182` just
+  built**: a competitive mode, separate from the campaign,
+  behind the same demand trigger.
+
+  #### ⚠⚠ It collides with a standing refusal, and the container is the resolution
+
+  ⚠ [`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) § What this
+  deliberately does NOT design is explicit: **no underground
+  level.**  *"Whether the player can descend is a different
+  game — a second movement model, a second lighting model, a
+  second everything."*  ⚠ § The biomes says the same of caves.
+
+  ⚠⚠ **That refusal was made for the CAMPAIGN, and it still
+  stands there.**  A separate mode may afford a second
+  movement model precisely because it does not have to serve
+  the campaign — which is the first real payoff of keeping the
+  competitive mode apart.  ⚠ The cheaper version, worth trying
+  first: installations with **entrances on the surface map**,
+  so the mode is territorial without ever descending.
+
+  #### ⚠⚠ THE BALANCE RULE: a big area is harder to guard, so the leader is more exposed  `@X185`
+
+  *"here it is vital that guarding a big area is much harder
+  than a compact one, so players that are ahead are also
+  automatically more vulnerable to precise attacks."*
+
+  ⚠⚠ **This is a catch-up mechanic with no rubber band in it**
+  — nobody is *given* anything.  The leader's advantage
+  (territory) **is** their weakness (perimeter), and that is
+  geometry rather than a designer's thumb.
+
+  ⚠⚠ **And dryopea has already MEASURED it**, which is the
+  reason to trust it:
+
+  | measured | where |
+  |---|---|
+  | ⚠ **the siege front is the WALL'S WIDTH** — 4 hexes on a five-row wall, 6 on a seven-row one | [`plans/24`](../plans/24-the-siege-front/README.md), `@M020` |
+  | a **sealed** wall nearly doubles the fall clock; a **gate buys nothing** | [`plans/12`](../plans/12-combat-resolution/README.md) § B7 |
+  | **upkeep is a POSITIONING problem** — two *shuttling* helpers clear 205 robots where the same two *parked* lose the base | [`plans/17`](../plans/17-tower-hot-swap/README.md) § T3 |
+  | ⚠⚠ compact concentrates the approach fan; spread braces more wall and **costs travel time on a 20 s repair clock** | [`PROGRESSION.md`](PROGRESSION.md) § P7 |
+
+  ⚠ **So the rule is not aspirational — it is this repo's own
+  numbers, pointed at a second player.**
+
+  #### ⚠⚠ The geometry enforces it, because installations CANNOT BE MOVED
+
+  ⚠ The obvious way a leader escapes the rule is to
+  **consolidate** — hold a compact blob and be safe.  ⚠⚠ **The
+  map forbids it**: a mine is where the ore is
+  ([`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) § 1), so **holdings
+  are inherently spread** and there is no compacting move
+  available.
+
+  ⚠ **What a leader must do instead is CHOOSE** — defend some,
+  accept losses elsewhere — which is a positional decision
+  under pressure, and § What kind of game this is in its
+  purest form.
+
+  ⚠⚠ And *"precise"* is the load-bearing word for the trailing
+  player: **they do not need more force, they need better
+  targeting.**  That is `@X117`'s dominant axis — knowing
+  where the leader is thin — deciding a competitive match.
+
+  #### ⚠ Two things to tune rather than assume
+
+  | | |
+  |---|---|
+  | ⚠ **expansion must be worth the exposure** | if defending at scale is simply impossible, nobody expands and the mode has no equilibrium.  There has to be a real reason to hold more than you can comfortably guard |
+  | ⚠ **precision must cost too** | or the trailing player harasses for ever.  `@X176`'s rule applies: **hacking is slow and expensive**, so a precise attack is a spent investment rather than a free poke |
+
   #### ⚠ It stays asynchronous-capable
 
   ⚠ An attack on somebody who is not online is the **abandoned
