@@ -31,7 +31,7 @@ and it still stands as § P1.  Reading it as *therefore there are no
 stats* is the part that is superseded.
 
 Codes: `@X016`, `@X017` **superseded**; `@X103` **reversed**; `@X018`,
-`@X019` stand with a wider reading; `@X111`–`@X128` are the design
+`@X019` stand with a wider reading; `@X111`–`@X130` are the design
 below.  Index: [`DECISIONS.md`](DECISIONS.md).
 
 ## P0 — ⚠⚠ the model is BLUE PRINCE: information dominates, and friction is what upgrades buy
@@ -501,6 +501,128 @@ and here it is what makes the whole layer cheap:
 constant dryopea either ships or has already named, which means the
 layer can land incrementally — one skill at a time, each with a gate
 that reads a number that is already measured.
+
+### ⚠⚠ P2c — the crew REMARK on the world, and each one sees only their own half  `@X129`
+
+Owner, 2026-08-26:
+
+> *"there can be helpers/companions that had different jobs in the past
+> (asteroid miner, security, repair handyman, scout) and that determines
+> their starting skills.  And they will remark on the player when they
+> land on a planet (not intrusively) about what they think should be
+> done based on their skills."*
+
+⚠ **The past job is the template** (§ P2b), and all four are already in
+the 2023 class list: *astro-miner*, *enforcer* (**"was employed by one
+of the security Agencies"**), *engineer* (**"repairing and constructing
+the machines humans need"**), *ranger* (**"roaming around to find
+valuables"**).  So the catalogue this needs is authored except for its
+numbers.
+
+#### ⚠⚠ Why it passes § P6a, and the rule that keeps it passing
+
+This is the closest thing in the whole design to the forbidden side of
+the fence — *an upgrade must not supply what the player does not know* —
+so the boundary has to be exact:
+
+> ⚠⚠ **A remark POINTS; it never CONCLUDES.**  It says *what is there*,
+> in the speaker's own domain.  It never says *what to build*, and it is
+> never a substitute for going and looking.
+
+| ✅ a remark | ❌ not a remark |
+|---|---|
+| *"That ridge east — soft ground.  Anything heavy bogs down."* | *"Build your wall on the east ridge."* |
+| *"Tracks in the mud here.  Wide ones."* | *"Wave 3: eight miners, four scouts."* |
+| *"That tree's dead.  Something came up out of it."* | a marker appearing on a map the game draws for you |
+
+⚠ **The second column is § P6a's own failing row** — *a layout the game
+recommends*, and *a readout that NAMES the incoming composition instead
+of showing it*.  The first column is instance-knowledge the player would
+have got by scouting, handed over **cheaper**, which is exactly what
+`scout` is licensed to buy.
+
+⚠⚠ **And it preserves the trip**, which is this project's deepest rule
+(`@X104`, `@X105`): a remark is **a reason to go and look**, so it
+*creates* trips rather than removing them.  A crew member who saved you
+the drive would be the failure; one who tells you which drive is worth
+making is the design.
+
+#### ⚠⚠ The crew are PARTIAL SENSORS, and assembling them is the player's job
+
+**This is what makes the whole idea earn its place rather than being
+flavour.**  Each crew member is right about their own domain and naive
+about everything else:
+
+| the ex- | notices | ⚠ and is blind to |
+|---|---|---|
+| **asteroid miner** | what is in the ground, and what is worth cutting | whether anything can be defended there |
+| **security** | approach lanes, sight lines, where a perimeter wants to be | whether the ground yields anything |
+| **repair handyman** | what will break, what the pollen is already eating ([`SETTING.md`](SETTING.md) § The pollen) | where the enemy is coming from |
+| **scout** | distance, routes, what is out past the haze | everything close in |
+
+⚠⚠ **So no single crew member's advice is a plan, and following one
+exclusively is how a base goes wrong.**  Every remark is *true*; the
+error is never a lie, it is **incompleteness** — which keeps the
+synthesis in the player's hands, where § P1a needs it.
+
+⚠ **That also rules out the tempting version**: a crew member who is
+occasionally *wrong* to keep the player honest.  Being lied to by your
+own people is frustrating rather than interesting; **true-but-partial
+does the same work and respects the character.**
+
+#### ⚠ It is the SKILL SHEET made diegetic — which is how a roster stays legible with no UI
+
+⚠⚠ **The player learns what their crew are good at by noticing who
+speaks up about what.**  You do not read that somebody has `scout` 7;
+you notice they are the one who mentions the ridge.
+
+That answers a question § P2 would otherwise have had to answer with a
+character screen, and it answers it the way `DESIGN.md` § HUD wants
+everything answered — **in the world**.  ⚠ And it is where § P2b's
+template choice pays off *immediately*: you hired an ex-security
+officer, and on landing they talk about approach lanes.
+
+⚠ **It is also the detection radius made audible.**  `scout` scales how
+far intel resolves (§ P2's table); a better scout therefore says **more,
+and earlier** — a skill the player perceives without a bar or a number.
+
+#### ⚠ "Not intrusively" is a hard constraint, not a tone note
+
+- **No pop-up, no modal, no forced camera, no pause.**  Ambient — on
+  landing, and on arriving somewhere notable.
+- ⚠ **A player who ignores every remark must lose nothing they could
+  not get themselves.**  The remark is a shortcut to looking, and
+  looking remains available.
+- ⚠ **It must not become a quest log.**  A remark is said once and is
+  gone; a list of outstanding crew suggestions is a task UI, and
+  `DESIGN.md` § HUD refuses it.
+
+#### ⚠⚠ BLOCKED: dryopea cannot draw text at all  `@X130`
+
+**This is the first designed feature that genuinely requires text**, and
+it turns a non-issue into a prerequisite.
+
+`DESIGN.md` § HUD and `@X097`: `graphics::draw_text` rasterises through
+a `#native` call unavailable under `loft test`, **and needs a font file
+this repo does not have.**  That is why the wallet is seven-segment
+rectangles.  ⚠ Everything else in the design was able to route around it
+— the HUD is one number, and every other signal is a colour, a shape or
+a pulse.  **A spoken line cannot be.**
+
+⚠ So this feature carries a real dependency, and it is worth stating so
+nobody designs three more text features on top of it:
+
+1. a font file in the repo, and
+2. `draw_text` reachable under `loft test`, or the remark is a thing
+   **no test and no `snap` can see** — which is the exact standard
+   `@X097` used to refuse a text HUD.
+
+⚠ **The cheap interim is worth considering**: a remark needs a *speaker*
+and a *subject*, and both can be drawn without text — the crew member's
+own vehicle indicating, and the thing they are remarking on lit or
+outlined.  ⚠ That is strictly weaker (it points without saying what),
+but it is buildable today and it is gateable by pixels, which the
+sentence is not.
 
 ### P2d — pools, rest, and losing people  `@X113`
 

@@ -1713,8 +1713,18 @@ Data model carries the per-helper id today so future skills
 hang off existing characters without re-engineering.
 
 ⚠ **And with skills, the roster stops being interchangeable** —
-`DESIGN.md` § 14's cargo manifest becomes a question about *which
-skills* boarded before force-launch, not only a headcount.
+§ 14's cargo manifest becomes a question about *which skills* boarded
+before force-launch, not only a headcount.
+
+⚠⚠ **A helper's past job is their template, and it is AUDIBLE**
+(`@X129`, [`PROGRESSION.md`](PROGRESSION.md) § P2c).  An ex-asteroid
+miner, an ex-security officer, an ex-repair handyman and an ex-scout
+start with different skills — and **remark on the world when they land**,
+each about their own domain.  ⚠ That is how the player reads a roster
+with no character screen: you notice who speaks up about what.  ⚠ Each
+one is right about their half and blind to the rest, so **following one
+crew member exclusively is how a base goes wrong** — the synthesis stays
+the player's.
 
 ### Damage → wreck → retrieve → recover
 
@@ -2156,6 +2166,20 @@ what it refuses**.  ⚠ The digits are RECTANGLES rather than text —
 one no test and no `snap` could see.  ⚠ The *active palette entry* half is the
 editor's `picker.loft`, built since plan 01; **paint mode is not built at all**,
 and its *vehicle tint is the primary signal* rule is waiting on building.
+
+⚠⚠ **A SECOND ADDITION BEYOND THIS SECTION** (project owner, 2026-08-26,
+`@X129`): **the crew REMARK on the world when they land**, coloured by
+their past job — see [`PROGRESSION.md`](PROGRESSION.md) § P2c.  ⚠ It is
+not a HUD element and that is the point: this section's refusals are all
+about **numbers and overlays that abstract the world**, and a person
+speaking *is* the world — the diegetic side this section prefers.
+⚠⚠ **But it is the first designed feature that needs TEXT**, which
+`@X097` says dryopea cannot draw at all, so it carries a real
+prerequisite (a font file, and `draw_text` reachable under `loft test`)
+rather than being merely unbuilt.  ⚠ The rule that keeps it out of the
+refused column: **a remark POINTS, it never CONCLUDES** — *"soft ground
+on that ridge"*, never *"build here"*, and never a readout that names
+the incoming wave.
 
 ⚠⚠ **ONE ADDITION BEYOND THIS SECTION** (project owner, 2026-08-18, `@X098`):
 the number **ramps amber to red as the wallet drains**.  It adds no HUD
