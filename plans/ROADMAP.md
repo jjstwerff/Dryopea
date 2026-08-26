@@ -353,6 +353,17 @@ unchanged, and **BUILDING is still the biggest missing mechanic**.
 well** — nothing here needs anything built for it, and a mechanic bent
 early to suit a mode that has no players yet is the way to lose both.
 
+⚠⚠ **And that is not a consolation — the campaign builds the PIECES**
+(`@X188`).  **Per-planet persistence** (this tier) is the *sole*
+prerequisite of five of the rows below; the **robot economy** (Tier E) is
+the territorial mode's neutral structures; **hacking** (Tier C) is the
+whole aggressive route; the **crew layer** is cross-player rescue entire.
+⚠ So the distance shrinks as a **side effect**, and the only rule for
+today is: **do not gold-plate a campaign piece for multiplayer, and do
+not design one that forecloses it** — persistence per-planet-per-player
+rather than per-session, and code that asks *which* player rather than
+assuming *the* player.
+
 | Feature | Status | Slot | Brief |
 |---|---|---|---|
 | **Co-operative multiplayer — friendly towers** | sketch | [DESIGN § 20](../docs/DESIGN.md) | ⚠⚠ **Co-op is nearly FREE** (`@X178`) — every action is position-triggered and none asks who you are, so a guest can repair towers, clear bodies and deliver salvage the moment the owner sets the towers friendly.  ⚠ Permission is a **TOWER COLOUR** (§ HUD already speaks that language), revocable — so **betrayal is possible**, which makes trust worth something |

@@ -2885,6 +2885,51 @@ vision (recorded so the core design doesn't foreclose it):
   § The critical path is unchanged and **BUILDING is still the
   biggest missing mechanic**.
 
+  #### ⚠⚠ And BUILDING OUT THE CAMPAIGN BRINGS IT MUCH CLOSER  `@X188`
+
+  Owner, 2026-08-26: *"it is not impossible but not too
+  relevant for our short term designs.  But with building out
+  the campaign it gets a lot closer."*
+
+  ⚠⚠ **Not merely by attracting players — the campaign builds
+  the PIECES**, each for its own reasons.  Every mode below is
+  downstream of work
+  [`../plans/ROADMAP.md`](../plans/ROADMAP.md) already plans:
+
+  | the campaign builds | for its own reason | ⚠ and it hands multiplayer |
+  |---|---|---|
+  | ⚠⚠ **per-planet persistence** | Tier D — persistent inventory, mission chaining, the station hub | ⚠⚠ **the sole prerequisite of five features** — market, crew rescue, caches, homesteads, offline attacks |
+  | **the robot economy** (six installation types) | Tier E — natural wave patterns, retiring `plans/16` | the territorial mode's **neutral structures** |
+  | **hacking** | Tier C — helper skill, subverting robots | `@X176`'s entire aggressive route |
+  | **the crew layer** ([`PROGRESSION.md`](PROGRESSION.md) § P2) | characters, skills, the ledger | cross-player rescue and defection, **whole** |
+  | **the station office** | Tier D — loadout, roster | the market, and the trader role |
+
+  ⚠⚠ **So the distance shrinks as a SIDE EFFECT.**  Almost
+  nothing here needs anything built specially — the co-op
+  permission (a tower colour) is close to the only new part,
+  because § 11's position triggers already make every action
+  ownership-agnostic.
+
+  #### ⚠ Which gives one actionable rule for today
+
+  > ⚠⚠ **Do not gold-plate a campaign piece for multiplayer.
+  > Do not design one in a way that FORECLOSES it either.**
+
+  ⚠ Two places it bites, both cheap to respect:
+
+  - **persistence shape** — per-*planet-per-player* state keeps
+    the left column open; per-*session* state forecloses all of
+    it.  ⚠ The architectural note below already leans this way
+    (*keep base state self-contained… abandoned-base derivation
+    is cheap*).
+  - **ownership** — code that assumes *the* player forecloses
+    co-op; code that asks *which* one does not.  ⚠ Today's is
+    healthy by accident: `salvage_at` takes a **hex**, and
+    `occupancy.loft::blocker_at` answers **which vehicle**.
+
+  ⚠ Nothing else is worth doing for multiplayer today, and
+  respecting those two costs nothing.
+
   ⚠⚠ **Eventually full CO-OPERATIVE and COMBATIVE** (owner,
   2026-08-26, `@X175`) — *"but it should also be about the
   bases and the environment around."*  The whole shape falls
