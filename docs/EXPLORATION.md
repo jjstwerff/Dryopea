@@ -64,6 +64,143 @@ decision before the clock runs out.
 
 ---
 
+## ⚠⚠ X0b — THE FIRST FIFTEEN MINUTES ARE SCOUTING, and the world must be ALIVE  `@X245`
+
+Owner, 2026-08-26, asked what a new player's opening actually consists of:
+
+> *"they are squarely in the scouting phase of their first mission.  There is a
+> world around them with trees, sometimes with visible insects on them, perhaps
+> movement of an elemental in it, and you encounter robots in their normal work
+> flow.  They can be busy with whatever project they happen to be in around the
+> place.  **The landing zone is neutral** — no big mining operations, factories or
+> shipping routes are there, but they are everywhere on the planet, so small-scale
+> operations are happening."*
+
+⚠⚠ **This settles the opening, and it matters because `@X238` makes the early
+game the product**: most players will see nothing else.
+
+⚠ **The opening is LOOKING, not building.**  Building comes after — it remains
+[`../plans/ROADMAP.md`](../plans/ROADMAP.md)'s biggest missing mechanic — but the
+first thing a new player does is **read a living world.**
+
+### ⚠⚠ Which means the opening needs THREE things, and only one of them exists
+
+| the opening needs | ⚠ status today |
+|---|---|
+| **a world to look at** — robots at work, insects on trees, an elemental moving | ⚠⚠ **the gap.**  Entities *draw* ([`plans/20`](../plans/20-entity-art/README.md) A5), but **every robot in the code is a WAVE**: `spawn.loft` produces them at markers when provoked, and there is **no mover for a robot going about its business** |
+| **somebody to point at it** — the crew's remarks | ⚠⚠ blocked on TEXT (`@X130`) — and this answer is what promotes that from a deferred chore to **the gate on the opening** |
+| **somewhere to go** — the gradient | ⚠ **exists**: § X1's four rings, plus authored markers |
+
+⚠⚠ **So the single most valuable unbuilt thing for a new player is AMBIENT
+LIFE**, and it is not on the critical path today.
+
+### ⚠⚠ *"Robots in their normal work flow"* is `ROBOT_ECONOMY.md` arriving early
+
+⚠ The fiction has said this from the start —
+[`SETTING.md`](SETTING.md) § They were on an ERRAND, and § Nobody is attacking
+anybody — yet.  ⚠⚠ **What is new is that it must be VISIBLE in the first fifteen
+minutes**, which makes a small piece of
+[`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) an **opening** requirement rather than a
+Tier E one.
+
+⚠ It is also the cheapest possible version of that document: **not the six
+installation types and their routes, but a handful of robots doing small work
+near the landing zone.**  ⚠⚠ *"Busy with whatever project they happen to be in"*
+— the readout (`ROBOT_ECONOMY.md` § How the player ever learns any of this) can
+come later; **the sight of them cannot.**
+
+### ⚠⚠ THE LANDING ZONE IS NEUTRAL — and that is a load-bearing rule  `@X246`
+
+*"No big mining operations, factories or shipping routes are there, but they are
+everywhere on the planet, so small-scale operations are happening."*
+
+⚠⚠ **This is a difficulty and legibility gradient built into the GEOGRAPHY**,
+and it does four jobs at once:
+
+| it gives | |
+|---|---|
+| ⚠⚠ **a safe place to learn** | which is what makes `@X137`'s no-tutorial ruling affordable — § X2b's recon window is unbounded *because nothing near you wants anything* |
+| **small things first** | a lone robot at a small job is **legible**; a factory's traffic is not.  ⚠ The player learns to read robots on easy examples |
+| ⚠ **a reason to LEAVE** | the interesting things are elsewhere by construction, so the sortie outward is the geography's own suggestion rather than a prompt |
+| **a mechanical reason the run starts when it does** | `wave_provoke_step` needs a vehicle **12+ hexes out**, and a neutral landing zone is why that is a journey rather than an accident |
+
+⚠ **It also fits `@X225`'s generation rule**: *neutral landing zone, installations
+elsewhere* is an **assembly constraint** a generator can hold, and one an author
+can hold too.
+
+### ⚠⚠ THE LANDING LOADOUT — the scrambler OR two towers, and walls always  `@X247`
+
+Owner, 2026-08-26:
+
+> *"with the landing the player has the opportunity to activate the scrambler or
+> build two towers.  **The helpers are always able to build walls.**"*
+
+#### ⚠⚠ Walls are UNCONDITIONAL, and that is what makes every other choice survivable
+
+⚠ `DESIGN.md` § 13 already prices walls at **free in points — helper-seconds is
+the bottleneck**.  This makes it absolute: **the crew can always dig, from the
+first minute, whatever else went wrong.**
+
+⚠⚠ **So walls are the base's FLOOR**, and it is the same shape as `@X211`'s *the
+planet is the primary tap* one scale in:
+
+| the always-available thing | what it guarantees |
+|---|---|
+| ⚠⚠ **the planet** (`@X211`) | a player peripheral at the station still has the whole game |
+| ⚠⚠ **walls** (this) | a player who spent badly at landing **still has a defence** |
+
+⚠ **Which is why the landing choice can be sharp without being punishing**: spend
+wrong and you are worse off, never defenceless.  ⚠⚠ And `@X238` makes that
+matter — the early game is what **most players will ever see**, so its floor has
+to hold.
+
+#### ⚠⚠ And it sharpens `@X140` rather than removing it
+
+⚠ The wall **capability** is never gated; the wall **expression** still is —
+paint mode is a key (`Q`), and `@X140` names it the design's worst
+discoverability risk.
+
+> ⚠⚠ **So the risk was never that the player cannot build.  It is that they
+> never learn they can.**
+
+⚠ Which is precisely what a scouting opening plus an idle crew member exists to
+solve (§ above) — and it means the fix is **a remark, not a mechanic.**
+
+#### ⚠ The opening choice itself — *scrambler or two towers*
+
+⚠ The scrambler **is** the core (`@X099`, `DESIGN.md` § 4), so activating it is
+what makes robots converge — **income and pressure at once** — while two towers
+are **defence with no income yet.**
+
+⚠⚠ **Read that way it is the design's own test at minute one**: *something in
+the player's hands at a moment when using it costs them something*, and the cost
+is the other option.  ⚠ It also gives the seed notes' *"it is possible to turn
+off the jammer, with an impact on attack waves"*
+([`../plans/ROADMAP.md`](../plans/ROADMAP.md) Tier B) its first and most
+important use — **the switch matters most before it has ever been on.**
+
+⚠ **OPEN — is *or* exclusive?**  A landing rocket carries limited weight and
+volume ([`SETTING.md`](SETTING.md) § Mission), which would make it a genuine
+either/or; it could equally be a list of what the initial budget affords.
+*Recorded as read, not decided* — but ⚠⚠ **the exclusive version is the better
+game**, because it puts an irreversible decision before the player has seen the
+ground, which is the one moment they know least and the recon window is what
+they spend to fix it.
+
+### ⚠ And it resolves `@X140`'s sharpest hazard without a tutorial
+
+⚠⚠ `@X140` names **Q** — the wall-paint toggle — as the worst discoverability
+risk in the design, because a player who never presses it never builds and never
+plays the actual game.
+
+⚠ **A scouting opening is the answer**: the player has *time*, nothing is
+attacking them, and the crew have every opportunity to point at the ground before
+anything is at stake.  ⚠⚠ **The hazard is mitigated by the SHAPE of the opening
+rather than by anything being explained** — which is exactly what `@X137`
+requires.
+
+---
+
 ## X1 — the four rings already ARE the exploration gradient
 
 dryopea already has four concentric radii, each designed for its own reason, and
