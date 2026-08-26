@@ -36,7 +36,7 @@ below, and `@X137`–`@X141` (no tutorial) are `DESIGN.md` § 11's;
 `@X142`–`@X143` are the speaker rule and `@X144`–`@X149` the debrief and `@X150`–`@X151` what the crew
 can know at all, `@X152`–`@X156` the window into the
 universe, `@X157`–`@X158` personality,
-`@X159`–`@X167` the office, `@X189`–`@X190` the rate,
+`@X159`–`@X167` the office, `@X189`–`@X192` the rate,
 and `@X168`–`@X172` the crew section.  Index: [`DECISIONS.md`](DECISIONS.md).
 
 ## P0 — ⚠⚠ the model is BLUE PRINCE: information dominates, and friction is what upgrades buy
@@ -452,36 +452,86 @@ This adds the curve **within** each layer.
 the helper boarded before force-launch, so a session's gain is **bounded
 AND conditional** — nothing at all if you left them.
 
-#### ⚠⚠ THE COLLISION: diminishing returns and the anti-churn defence pull opposite ways  `@X190`
+#### ⚠⚠ RESOLVED: the curve is on the EFFECT, not on the growth  `@X191`
 
-**This is the part that needs deciding rather than tuning.**
+Owner, 2026-08-26:
 
-§ P2i § The CHURN hazard is defended *structurally* — fire-the-mediocre,
-hire-fresh is bad play because **twenty sorties of practice beat any
-fresh template**.  ⚠⚠ **Diminishing returns weakens exactly that
-defence**, because it makes a fresh hire climb fast and a veteran crawl:
+> *"there is no hard ceiling (at least not numerical) but there are
+> diminishing returns in that increased skill, for example longer
+> detection ranges do not matter too much when they are already high.
+> And building things a point faster when you already have a lot of
+> points is also not that helpful."*
 
-| | a fresh hire | a veteran |
+⚠⚠ **This is a different mechanism from the one the collision assumed,
+and it dissolves it.**
+
+| ❌ what a depth curve on GROWTH would do | ✅ what a curve on EFFECT does |
+|---|---|
+| the number crawls | ⚠ **the number keeps moving** — no ceiling |
+| a veteran and a hire **converge** | they do not: the veteran is far ahead in the number |
+| feels like hitting a wall | ⚠⚠ feels like **this stopped mattering** |
+
+⚠ **So `@X160`'s anti-churn defence survives intact**: twenty sorties of
+practice really do leave somebody far above a fresh template.  ⚠ And a
+fresh hire's fast early gains land on **the steepest part of the utility
+curve**, so they feel genuinely useful straight away — while still
+climbing from a long way behind.
+
+#### ⚠⚠ And the excess is NOT wasted — it SPILLS, which is what makes the lattice matter
+
+The obvious objection: if `scout` saturates, is a veteran scout not just
+*a hire with wasted points*?
+
+⚠⚠ **No — because § P2a's loop means practice never lands on one skill.**
+Practising `scout` raises **observe** and **stamina**, and those two lift
+*combat, drive, scrounge, mine, social*.  So a veteran who has saturated
+their own specialism has spent the surplus **becoming broadly capable**.
+
+| | a fresh hire | ⚠⚠ a veteran |
 |---|---|---|
-| early practice | ⚠ **fast** — the steep part of the curve | — |
-| late practice | — | ⚠ **slow** — *"only after multiple sessions"* |
-| ⚠⚠ **so over time** | catches up | is caught |
+| in their specialism | rising fast, felt every session | saturated — the number moves, the effect does not |
+| everywhere else | ⚠ **narrow** | ⚠⚠ **wide**, from years of spill |
 
-⚠ **If the curve is steep enough, a replacement reaches "good enough" in a
-few sessions and churning is viable again** — which is `@X125`'s reroll
-trap arriving through the maths rather than through a button.
+⚠⚠ **So the difference between a veteran and a newcomer stops being LEVEL
+and becomes BREADTH** — which is a much better answer than a numerical
+gap, and it was already in the design rather than invented for this.
 
-⚠⚠ **The discriminator is whether there is a CEILING, and how close
-ordinary play gets to it:**
+⚠ **And it turns the saturation into the REASON the lattice exists**:
+without it a player would specialise for ever; with it, over-investment
+converts itself into range.  **Saturation is what drives
+generalisation.**
 
-- **asymptotic to a high value, rarely approached** → the gap stays wide,
-  growth still slows, **both rules hold**;
-- **convergent to a reachable ceiling** → everybody arrives eventually,
-  the veteran's edge is temporary, **and churn reopens**.
+#### ⚠⚠ Where saturation BEGINS is measurable, not a feel judgement  `@X192`
 
-⚠ **Open — owner's call.**  It is the same number § Open questions 6
-already flags as needing a measurement rather than an argument, now with
-a second constraint on it.
+Both of the owner's examples are the same shape — *the job is already
+fully served*:
+
+| skill | saturates when |
+|---|---|
+| **scout** → detection range | you already see what you need **before you need it** |
+| **build** → build speed | ⚠ helper-seconds stop being the bottleneck — and `DESIGN.md` § 13 says helper-seconds **is** the wall bottleneck, so this is the point where **something else becomes the constraint** |
+
+> ⚠⚠ **Saturation begins where the skill stops being the BOTTLENECK.**
+
+⚠ That is a test rather than a taste, and it is the rule for authoring
+each skill's curve: find what the skill is competing against, and taper
+it where the other thing takes over.
+
+#### ⚠ It gives the ALLOCATION problem a second dimension
+
+⚠⚠ If a skill saturates, **keeping a saturated specialist on the same job
+is waste** — so the player should rotate people onto work they are *not*
+already deep in.
+
+⚠ § P2i's *who goes down, who stays up* was about capability; this adds
+**who learns from it**.  ⚠⚠ And it sharpens § P2c's idle-helper channel:
+an idle person is one to assign, and **which** job now matters for more
+than this sortie.
+
+⚠ **The tension is the design's own shape**: giving somebody a job they
+are worse at costs you **now** and pays **later** — which is *something
+put in the player's hands at a moment when using it costs them
+something*, one layer out from the base.
 
 #### ⚠ A shape worth considering: let the POOLS do the per-session bounding
 
