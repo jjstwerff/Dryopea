@@ -2867,6 +2867,24 @@ vision (recorded so the core design doesn't foreclose it):
   rescue + shared-territory missions.  Reuses loft's shipped
   netcode (`lib/server` + `lib/web`).
 
+  ⚠⚠ **READ THIS BLOCK AS A DESTINATION, NOT A QUEUE**
+  (owner, 2026-08-26, `@X187`): *"that should not bother us
+  too much in the short term.  It is an old idea that I would
+  love to see come to fruition, but **it needs an active
+  community of people that only the base game can provide**.
+  Where we reuse a lot of the assets and game mechanics in a
+  new format."*
+  ⚠⚠ **The dependency is an AUDIENCE, not a technology** —
+  and every mode below is cheap *because* it reuses this
+  game's assets and mechanics, which only works if the base
+  game is finished and coherent first.  ⚠ **The length of
+  what follows is not a signal of its priority**; it
+  accumulated in one sitting because the ideas compose.
+  ⚠⚠ **What serves these modes today is building the base
+  game well** — [`../plans/ROADMAP.md`](../plans/ROADMAP.md)
+  § The critical path is unchanged and **BUILDING is still the
+  biggest missing mechanic**.
+
   ⚠⚠ **Eventually full CO-OPERATIVE and COMBATIVE** (owner,
   2026-08-26, `@X175`) — *"but it should also be about the
   bases and the environment around."*  The whole shape falls
