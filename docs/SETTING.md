@@ -1857,6 +1857,13 @@ the *run* recorded, so a mechanic can be gated on it.  ⚠ Its own rule
 follows from § P6a — knowledge **is** the answer, so it must be
 **found** and never sold.
 
+⚠⚠ **And the factions are the ECOSYSTEM's nodes** (`@X207`,
+[`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) § The capstone): what is missing
+today is not the factions but the **relations between them**, inside the
+station and outside it — which is what turns a system the player solves
+into a world they live in.  ⚠ No standings screen: you learn where you
+stand by **how people treat you**.
+
 ⚠ And the arcs are **per-FACTION** in the source — `Faction.knowledge[]`
 — across nine factions: **spacers, economy, natives, shaman, robots,
 world, oceanic, ancients, aliens**.  ⚠ Six of those are already canon

@@ -843,6 +843,84 @@ spreadsheet is not worth writing*, which is achievable; *the spreadsheet
 is impossible* is not, and a design that claimed it would be wrong the
 first time somebody tried.
 
+### ⚠⚠ AND THE CAPSTONE: FACTIONS, and the relations BETWEEN them  `@X207`
+
+Owner, 2026-08-26:
+
+> *"that should be enough to get the players out of their calculations
+> and into the game.  Add to that the factions and relations between
+> those inside and outside the station and you have a **living ecosystem
+> instead**."*
+
+⚠⚠ **The word doing the work is *instead*.**  A **system** is something a
+player solves; an **ecosystem** is something they live in — and that is
+the thesis every rule above has been serving.
+
+#### ⚠⚠ What it adds: a WEB, where today there is a HUB
+
+⚠ Everything so far is **player ↔ X**: the player's trust with a trader
+(`@X205`), their standing after returning somebody's crew (`@X169`),
+their pressure on the robot economy.  ⚠⚠ **Factions add X ↔ Y** — and
+the player becomes **one node among many rather than the centre.**
+
+| | ⚠ **inside the station** | ⚠ **outside, on the planet** |
+|---|---|---|
+| who | traders, officials of the cordon, competitors' agents, the co-op, other players | the several **AIs** (rivalrous, personality-shaped), the natives, the insects, the elementals, other operators' bases |
+| the source | [`SETTING.md`](SETTING.md) § The quarantine, § The competitors, § The recruitment | § History, § The settlers today, § The other enemy, § The third enemy |
+| ⚠ already named | the 2023 data's nine: **spacers, economy, natives, shaman, robots, world, oceanic, ancients, aliens** | — |
+
+⚠⚠ **Nothing here needs inventing.**  The factions exist, their tensions
+exist, and what is missing is only that **they do not yet have relations
+with each other.**
+
+#### ⚠⚠ Why it finishes the spreadsheet argument
+
+⚠ Trust (`@X205`) made a price depend on **who you deal with**.  Factions
+make that choice have **second-order consequences the player cannot
+enumerate**: dealing with one trader does not only raise that trader —
+it moves you with their rival, and with their rival's ally.
+
+⚠⚠ **A spreadsheet would now need the whole web AND its dynamics**, and
+the same three defences still apply to it: the relations **move**, the
+payoffs stay **incommensurable**, and the state is only visible through
+**partial reports**.
+
+#### ⚠⚠ So there is NO FACTION STANDINGS SCREEN
+
+⚠ That would be `@X131`'s affinity bar at ecosystem scale, and `@X156`
+refuses the UI besides.
+
+⚠⚠ **You learn where you stand by how people TREAT you** — a price that
+moved, a trader who is cool, a crew member who mentions what they heard.
+⚠ That is the **partial-sensor pattern for the third time** (the crew for
+the world, traders for the market, factions for the ecosystem), and by
+now it is a house pattern rather than a coincidence: **learn a system
+through honest, individual, incomplete reports.**
+
+#### ⚠ Two constraints, and the first keeps a standing refusal intact  `@X208`
+
+| | |
+|---|---|
+| ⚠⚠ **reactive, never STRATEGIC** | § What this design does NOT do refuses *AI strategy*: *"nothing in the graph reacts intelligently — the escalation ladder is a threshold, and rerouting is a shortest-path recompute."*  ⚠ Faction relations must respond the same way: **to what the player did**, by threshold and tally, **never by planning against them.**  Reactive is not strategic, and the distinction is this document's own |
+| ⚠ **sparse and AUTHORED, never a matrix** | nine factions is 36 pairs, and most of them never touch.  ⚠⚠ Author **a handful of live tensions**, the way § Open questions 3 already prefers *two or three named alternates per route* over a computed detour — because the player needs the web to be **learnable**, and a full matrix is not |
+
+#### ⚠⚠ And it is what makes the whole thread cohere  `@X209`
+
+⚠ Read together, every rule in this thread is the same instruction from a
+different angle:
+
+| the rule | the angle |
+|---|---|
+| `@X198` four incommensurable axes | **no objective function** |
+| `@X202` every reward has its pressure | **no free gain** |
+| `@X204` traders you visit, not distributions | **positional, not statistical** |
+| `@X205` trust makes switching a commitment | **relationship, not search** |
+| `@X207` factions relate to each other | ⚠⚠ **the player is not the centre** |
+
+> ⚠⚠ **Each one removes a way to compute, and puts a way to LIVE in its
+> place.**  That is the sentence to keep when judging anything added to
+> the economy later.
+
 ### ⚠⚠ Honest check: *"a static graph plus a rate per edge"* is spreadsheet-shaped
 
 ⚠ § What this design does NOT do commits to exactly that — and **a static
