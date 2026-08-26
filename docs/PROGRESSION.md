@@ -37,7 +37,7 @@ below, and `@X137`–`@X141` (no tutorial) are `DESIGN.md` § 11's;
 can know at all, `@X152`–`@X156` the window into the
 universe, `@X157`–`@X158` personality,
 `@X159`–`@X167` the office,
-and `@X168`–`@X170` the crew section.  Index: [`DECISIONS.md`](DECISIONS.md).
+and `@X168`–`@X172` the crew section.  Index: [`DECISIONS.md`](DECISIONS.md).
 
 ## P0 — ⚠⚠ the model is BLUE PRINCE: information dominates, and friction is what upgrades buy
 
@@ -1826,6 +1826,88 @@ deliver to the core, **60 s of recovery**, they rejoin the roster.
 record.**  The work is real — land near them, reach them, get them out —
 so the rescuer pays in the currency this game charges in, and nothing has
 to be invented for it.
+
+#### ⚠⚠ AND BEING LEFT BEHIND IS NOT NECESSARILY GRIM — they may build a life  `@X171`
+
+Owner, 2026-08-26:
+
+> *"a helper can actually have a nice time on the planet instead of a bad
+> one.  Where they wait out the robots/insects and build their own
+> shelter and vegetable garden from the things that are left behind.  Yes
+> they cannot breathe the air without filters but that doesn't make their
+> lives miserable all the time especially when they have skills that
+> match a survivor.  So a player can even come back to them and see the
+> 'home' they build for themselves."*
+
+⚠⚠ **This inverts the tone of everything above without touching the
+mechanics**, and the fiction has been ready for it the whole time:
+
+| it needs | already in the docs |
+|---|---|
+| **the world to leave them alone** | [`SETTING.md`](SETTING.md) § Nobody is attacking anybody — the planet is safe until you interfere.  ⚠⚠ **A lone human with no jammer and no base is not a target**: the waves come for the scrambler, and they left with the rocket |
+| **air** | § History — the natives *"were able to clean huge volumes of polluted air"*, and the 2023 tree makes **Native filters** a knowledge item.  Filters are established technology |
+| **materials** | ⚠ `@X100`'s pollen litters the map with **machines the wildlife killed that nobody is coming for**, and [`MATERIALS.md`](MATERIALS.md) has wood, stone and sap |
+| **a proof of concept** | ⚠⚠ § The settlers today have done **exactly this for generations** — caves and trees, special suits, animal skins and meat.  A stranded helper is running the natives' own playbook |
+
+#### ⚠⚠ How well they do is a READOUT OF THE CREW YOU BUILT
+
+⚠ *"especially when they have skills that match a survivor"* — so the
+outcome is not a coin toss.  **`scrounge`, `build`, `mine` and `stamina`
+are what decide it**, and every one of them was raised by the work the
+player gave them (`@X124`).
+
+⚠⚠ **So the homestead is the practice loop's own verdict**, delivered
+back to the player as a place: the crew member you kept busy in the field
+is the one who is fine out there.
+
+#### ⚠ It changes the tone and NOT the cost — say so, because it reads the other way
+
+⚠⚠ **The scramble's teeth are unchanged.**  Leaving somebody behind still
+costs the player their **labour**, their **account at the debrief**
+(`@X146`), their **practice for that stretch**, and a seat on the next
+sortie.  ⚠ What changes is the *guilt*, and that is worth doing on
+purpose:
+
+- ⚠ **duty makes a dull errand**; going back because you *want to see
+  what they made* is a better reason to spend a sortie on it;
+- ⚠⚠ and it keeps [`SETTING.md`](SETTING.md) § Tone honest — this world
+  is not a grimdark one, and a design where every consequence is
+  punishment would drift away from it.
+
+#### ⚠⚠ A THIRD outcome: they may not want to leave
+
+§ The crew section has two endings — they come home, or they go to their
+rescuer.  ⚠⚠ **A helper who built something good has a third: they stay.**
+
+⚠ And the fiction already contains the sentiment — the 2023 campaign
+notes end with *"most settlers don't want to leave"*.  ⚠⚠ **It is a
+quiet, earned ending for a character**, and it is the only one the player
+cannot reverse: not a punishment, not a defection, just somebody who
+found a life and kept it.
+
+⚠ It also opens the obvious contact route: a stranded helper living the
+natives' own way is **the most plausible first contact in the whole
+design** (§ Future contact's no-shortcut rule, satisfied by somebody who
+earned it the hard way).
+
+#### ⚠⚠ And other players hunting them is CONTENT, not economy  `@X172`
+
+> *"left behind helpers can also be fun missions for other players to
+> hunt for and let them see what is possible in that scenario"*
+
+⚠ A **third asynchronous channel** after § P2i's market and § The crew
+section's rescue — and the first one that is *content* rather than trade.
+
+⚠⚠ **The best part is the last clause: *let them see what is
+possible*.**  Somebody else's abandoned crew member has built a shelter
+out of parts, in a place the finder would not have thought survivable —
+so **the homestead TEACHES**, and it teaches the one way this design
+permits: `@X137` has no tutorial, so a thing another player's history
+built is exactly the kind of lesson the game is allowed to give.
+
+⚠ **It is authored by play rather than by hand**, which makes it the
+cheapest content in the design and the only content that could not have
+been written in advance.
 
 #### ⚠⚠ The default must be RETURN, or multiplayer becomes a punishment  `@X169`
 

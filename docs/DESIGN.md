@@ -2817,6 +2817,45 @@ vision (recorded so the core design doesn't foreclose it):
   heartland.  The escalating difficulty has an in-world
   cause.  The rotating planet UI (§ Meta-game hub) is the
   surface form.
+- ⚠⚠ **Player-built CACHES — abandonment as a PLAN**
+  (owner, 2026-08-26, `@X173`).  A rocket has limited weight
+  and volume ([`SETTING.md`](SETTING.md) § Mission), so there
+  is always more on the ground than will lift.  **Bury the
+  overflow**: a cache the player builds before launch, to be
+  dug up as a **kickstart for a later mission near the same
+  place**.
+  ⚠ It sharpens the scramble decision rather than easing it —
+  § 14's manifest becomes *what do I take, what do I hide,
+  and can I get back to it* — and the third question is a bet
+  on the persistent planet map above.
+  ⚠⚠ **And other players can find one and crack it open —
+  "not easy".**  That is PvP with no combat and no netcode:
+  asynchronous, and the finder pays in a sortie's time.
+  ⚠ Three rules keep it from being griefing: **hard to
+  find**, **hard to crack**, and ⚠⚠ **cracking should be
+  LOUD** — a lockpick that draws the planet's attention is
+  the tower-defence version of the mechanic, and it makes
+  robbing somebody a decision rather than a chore.
+  ⚠ Whose cache it was should be legible, because that feeds
+  the reputation layer ([`PROGRESSION.md`](PROGRESSION.md)
+  § P2e, `@X169`).
+
+- ⚠⚠ **What unifies the last three bullets: THE PLANET
+  ACCUMULATES OTHER PEOPLE'S PLAY** (`@X174`).  An abandoned
+  base, a cache, and a stranded helper's homestead
+  ([`PROGRESSION.md`](PROGRESSION.md) § P2e, `@X171`) are the
+  same shape — **things a player leaves behind that persist,
+  that another player can find, and that nobody authored.**
+  ⚠ Each is a *consequence made physical*, and together they
+  are the cheapest content this design has: it is generated
+  by people playing, it is impossible to write in advance,
+  and ⚠⚠ **it teaches** — a homestead in a place you thought
+  unsurvivable shows you what is possible, which is the only
+  kind of lesson § There is NO TUTORIAL permits.
+  ⚠ All three want the same prerequisite (per-planet
+  persistence) and none of them wants netcode beyond a shared
+  store.
+
 - **Persistent abandoned bases.**  Scramble-and-leave bases
   *persist* on the planet with whatever wasn't evacuated.
   Mobs encroach over time.  Revisiting (same player or
