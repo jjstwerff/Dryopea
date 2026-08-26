@@ -55,6 +55,17 @@
 #   make validate-gl FIXTURE=the-ground
 #                   Just that one fixture.
 #
+#   make maps       Rebuild every authored map in maps/ from its `.keys`
+#                   source (BACKLOG A2).  ⚠ This WRITES repo content —
+#                   maps/<name>.json + <name>_markers.json are committed
+#                   because `make play MAP=<name>` loads them and a fresh
+#                   checkout has no builder run in it.  It is not a gate;
+#                   `tests/a2_the_maps.loft` is, and it goes red when a
+#                   shipped map has drifted from its source.
+#
+#   make maps MAP=starter_01
+#                   Just that one map.
+#
 #   make help       Print this overview again.
 #
 # If you are working on dryopea itself:
@@ -87,7 +98,7 @@
 # package registry via loft.toml + loft.lock, so no --lib path is passed.
 LOFT_BIN  ?= loft
 
-.PHONY: help play play-native test validate validate-gl check clean
+.PHONY: help play play-native test validate validate-gl maps check clean
 
 # ── Help ─────────────────────────────────────────────────────────
 
@@ -147,6 +158,13 @@ validate:
 # purpose, so a machine with no xvfb still runs 654 measurements.
 validate-gl:
 	@LOFT_BIN=$(LOFT_BIN) scripts/validate_gl.sh $(FIXTURE)
+
+# Rebuild the authored maps (BACKLOG A2).  ⚠ NOT a gate — it writes
+# maps/*.json, which are committed repo content.  Run it after editing
+# a map source and commit both halves; `tests/a2_the_maps.loft` is what
+# notices if you commit only one.
+maps:
+	@LOFT_BIN=$(LOFT_BIN) scripts/build_maps.sh $(MAP)
 
 # ── Development helpers ──────────────────────────────────────────
 

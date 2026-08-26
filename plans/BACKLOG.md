@@ -25,9 +25,9 @@ runs and a game you can sit down with.**
 | # | What | Size | Why |
 |---|---|---|---|
 | **A1** | ✅ **DONE 2026-08-26** — load a `.keys` scenario into a live session: `make play SCRIPT=a-defended-base` | **S** | ⚠⚠ Was *the single biggest blocker on playing today*.  `src/scenario.loft` joins `script_run_on` to `main.loft`, and the **36 `.keys` files in `tests/scripts/` + `tests/gl/` are now 36 playable starting positions**.  ⚠⚠ **A scenario opens as its PREFIX, cut at the first `tick` / `fall`** (`@X263`) — its question, not its answer.  ⚠ The launcher's flag is `script=<name>`; `--script` never reaches `arguments()` (`@X264`).  ⚠ Measured in `@M044`; gated by `tests/a1_the_scenario.loft` |
-| **A2** | Ship **authored maps** in `maps/` | S | `make play MAP=starter_01` is documented in `main.loft`'s own header and **there is no `maps/` content**, so the option does nothing.  ⚠ A2 is the durable version of A1's shortcut — ⚠⚠ and A1 half-built it: a scenario saves to `maps/<stem>.json` on exit, so *opening one and pressing Esc writes a map*.  What is still missing is that a map keeps only the GROUND and the MARKERS — the crew, the wave list and the wallet live on the run and are not saved |
-| **A3** | A **`save` verb** for `.keys`, or a scenario→map exporter | S | ⚠ Would let a scenario become a map once, rather than being replayed every launch.  ⚠ Note `emit.loft` already writes a situation *as `.keys`* — this is the other direction |
-| **A4** | A short **"how to play what exists"** note | XS | ⚠ There is a base now (A1), so the note can be written against something real: `make play SCRIPT=a-base-that-plays-its-list`, what the keys do, what you will see, and what is not there yet |
+| **A2** | ✅ **DONE 2026-08-27** — three authored maps in `maps/`: `starter_01`, `crossroads_02`, `the_gap_03` | S | `make play MAP=starter_01` now opens a base.  ⚠⚠ **The `.keys` beside each `.json` is the SOURCE and both are committed** (`@X265`); `make maps` rebuilds and **refuses a map nobody could play** (`@X266`).  ⚠ Each teaches one MEASURED thing (`@M045`) — where to stand (+61 ticks), that parking is the wrong answer, terrain instead of masonry (wave 5).  ⚠ A map still holds only the GROUND and the MARKERS: no crew, no wave list, so every one is played solo.  Gated by `tests/a2_the_maps.loft` |
+| **A3** | ✅ **DONE 2026-08-27, both halves, and neither was new work** | S | ⚠⚠ **The `save` verb already existed**: `do save` is an ACTION in the key table, so a `.keys` script has been able to write a map since plan 09 (`tests/scripts/round-trip.keys` is the proof).  ⚠ **The exporter is `scripts/build_maps.sh`** (A2) — it plays a `.keys` source and writes the map pair, which is *scenario → map* exactly.  ⚠ What is left is the OTHER direction for a live session: `emit.loft` writes a situation as `.keys`, but nothing wires a key to it — that is `plans/18` § S5 |
+| **A4** | A short **"how to play what exists"** note | XS | ⚠ There are bases now (A1, A2), so the note can be written against something real: `make play MAP=starter_01`, what the keys do, what you will see, and what is not there yet.  ⚠ [`maps/README.md`](../maps/README.md) covers the maps half already; what is missing is the CONTROLS half |
 
 ## B. Unblocks a LOT of other work
 
@@ -85,7 +85,9 @@ is a consequence rather than a queue.
 an order:
 
 - ~~**A1 is small and it is what lets the game be played at all today.**~~
-  **Done 2026-08-26** — `make play SCRIPT=<name>` is the way in.
+  **Group A is done** (A1 2026-08-26, A2 + A3 2026-08-27) — `make play
+  MAP=starter_01` opens an authored base, `SCRIPT=<name>` opens any of
+  the 36 scenarios.  Only A4, the controls note, is left.
 - **B1 has the widest blast radius of anything on the list.**
 
 ⚠ **Most of this is not a plan** (`README.md` § Pick the lightest

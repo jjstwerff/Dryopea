@@ -1,0 +1,294 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// #examples
+//
+// A MAP, as repo content — BACKLOG A2.
+//
+// `make play MAP=starter_01` was documented in `main.loft`'s own
+// header for twenty-five plans with **nothing in `maps/`**, so the
+// option did nothing.  This file is what a map IS: where its two
+// files live, how one is BUILT from a source you can read, and —
+// the durable half — **what makes one playable at all**.
+//
+// ── A map's source is a `.keys` file ────────────────────────────
+//
+// ⚠⚠ **`maps/<name>.json` is a BUILT artefact and `maps/<name>.keys`
+// is the source.**  A map is ~400 ground entries of JSON; a diff over
+// one says nothing a reviewer can act on, and nobody can author one
+// by hand.  The `.keys` file is the same authoring the editor does —
+// `palette` / `drag` / `click` are the player's own gestures — so a
+// map arrives in a pull request as *a wall moved two hexes east*
+// rather than as four hundred changed lines.
+//
+// ⚠ The build SAVES; the source does not.  A `do save` line in the
+// source would be a piece of ceremony that can be forgotten, and a
+// map source that forgot it would report a green build having
+// written nothing.  ⚠ It also keeps the source PURE authoring, which
+// is what lets the same file be played directly:
+// `make play SCRIPT=maps/starter_01.keys` (BACKLOG A1).
+//
+// ── What makes a map PLAYABLE is the durable claim ──────────────
+//
+// ⚠⚠ **`map_fault` is the point of this file**, and it is a pure
+// function of the two layers — so it does not care whether a map was
+// built from a source, painted in the editor, or written by hand.
+// The failure it exists to catch is the quiet one: **a map you can
+// open, drive around, and never start a run on**, because no spawn
+// marker is far enough out to poke or none of them can reach the
+// core.  Nothing else in the tree would notice; `MAP=` would load it,
+// P would place the crew, and the waves would simply never come.
+//
+// ⚠ The builder asks it too and REFUSES to write a map that fails —
+// which is what stops an unplayable map from being committed in the
+// first place.  The gate over the shipped `maps/` is the second
+// reading, and it is not the same reading: a map edited in the
+// EDITOR and saved never went past the builder.
+
+use palette;
+use painted;
+use markers;
+use lattice;
+use editor_step;
+use script;
+use scenario;
+use validate;
+use save;
+use height;
+use passable;
+use flow;
+use spawn;
+use play;
+
+// Where maps live, and the extension their source is written in.
+pub const MAPS_DIR: text = "maps";
+pub const MAP_EXT:  text = ".keys";
+
+// The two files one map is stored in.
+//
+// ⚠ ONE definition, because `main.loft` composes the same two strings
+// to open a map and the builder composes them to write one — and a
+// launcher looking at a different pair from the builder's is a map
+// that builds and cannot be opened.
+//
+// Example: @DRY-085
+pub fn map_slot_path(dir: text, name: text) -> text {
+    "{dir}/{name}.json"
+}
+
+// Example: @DRY-085
+pub fn map_marker_slot_path(dir: text, name: text) -> text {
+    "{dir}/{name}_markers.json"
+}
+
+// The map SOURCES in `dir`, sorted, without their extension.
+//
+// ⚠ It is `validate_script_names` — the same listing the second gate
+// sweeps its scenarios with, because "the `.keys` files in a
+// directory" is one question and two implementations of it would
+// disagree about a name with a dot in it.
+//
+// Example: @DRY-085
+pub fn map_names(dir: text) -> vector<text> {
+    validate_script_names(dir)
+}
+
+// What one build sweep produced.  `message` is the verdict: empty
+// means green, anything else is the FIRST reason it went red.
+pub struct MapBuildReport {
+    maps:    integer,   // sources found
+    built:   integer,
+    checks:  integer,   // measurements the sources made, summed
+    message: text,      // "" when green
+}
+
+// Example: @DRY-089
+pub fn map_build_report_empty() -> MapBuildReport {
+    MapBuildReport { maps: 0, built: 0, checks: 0, message: "" }
+}
+
+// A one-line verdict, for a transcript or a shell gate.
+// Example: @DRY-089
+pub fn map_build_verdict(rep: const MapBuildReport) -> text {
+    if rep.message == "" {
+        "maps: {rep.built} of {rep.maps} built, {rep.checks} checks"
+    } else {
+        "maps: FAILED — {rep.message} ({rep.built} of {rep.maps} built)"
+    }
+}
+
+// Why this map cannot be played, or "" if it can.
+//
+// ⚠⚠ **The third check is the one that earns the file.**  A run starts
+// when a live vehicle stands on a spawn marker at least
+// `WAVE_1_PROVOCATION_HEXES` from the core (`wave_provoke_step`), so a
+// map whose every spawn sits inside that radius **opens, drives and
+// never sends a wave** — and there is no other symptom.  ⚠ The fourth
+// is its twin from the other end: a spawn that cannot REACH the core
+// sends robots that mill about for ever.
+//
+// ⚠ It reads the layers and nothing else — no run, no clock, no
+// `WaveState` — because a map IS its two layers and a check that
+// needed a game could not be asked of a file on disk.
+//
+// Example: @DRY-086
+pub fn map_fault(pal: vector<GroundType>, pw: PaintedWorld,
+                 mw: const MarkerWorld) -> text {
+    if painted_count(pw) == 0 { return "the ground is empty — nothing to stand on"; }
+
+    mf_core = play_core(mw);
+    if mf_core.0 != 1 {
+        return "a map needs exactly ONE target marker for the core, found {mf_core.0}";
+    }
+    // ⚠ Sea is palette index 0 and an UNPAINTED hex IS sea
+    // (`painted.loft` § paint) — so this is *the author never painted
+    // under the core*, which is how a base ends up unreachable while
+    // the marker looks fine in the editor.
+    if lookup_painted(pw, mf_core.1, mf_core.2) == 0 as u8 {
+        return "the core at ({mf_core.1}, {mf_core.2}) stands on unpainted sea";
+    }
+
+    // ⚠ The field is built for the REGULAR robot: it is what every
+    // authored wave list is made of, and it climbs 2.0 m where the
+    // insect climbs 3.0.  A map only an insect could cross is a map,
+    // and not one this check is for.
+    mf_hl    = height_layer_empty();
+    mf_kind  = ENEMY_KIND_REGULAR as u8;
+    mf_field = flow_build(pal, pw, mf_hl, mf_kind,
+                          Hex { q: mf_core.1, r: mf_core.2 });
+
+    mf_pokeable = 0;
+    mf_spawns   = 0;
+    for mf_m in mw.markers {
+        if mf_m.kind != MARKER_KIND_SPAWN as u8 { continue; }
+        mf_spawns += 1;
+        // ⚠ `stand_fault` rather than a sea test, because it NAMES the
+        // reason — a spawn on a `steep_rock` shelf is standable by the
+        // vehicle and not by a robot, and "unpainted sea" would be a
+        // true-looking lie about it.
+        mf_sf = stand_fault(pal, pw, mf_hl, mf_kind, mf_m.q, mf_m.r);
+        if mf_sf != "" {
+            return "no robot can stand on the spawn at ({mf_m.q}, {mf_m.r}): {mf_sf}";
+        }
+        if !flow_reachable(mf_field, mf_m.q, mf_m.r) {
+            return "the spawn at ({mf_m.q}, {mf_m.r}) cannot reach the core — "
+                 + "a robot leaving it has nowhere to walk";
+        }
+        if lat_distance(Hex { q: mf_m.q, r: mf_m.r },
+                        Hex { q: mf_core.1, r: mf_core.2 }) >= WAVE_1_PROVOCATION_HEXES {
+            mf_pokeable += 1;
+        }
+    }
+    if mf_spawns == 0 { return "a map needs at least one spawn marker"; }
+    if mf_pokeable == 0 {
+        return "no spawn marker is {WAVE_1_PROVOCATION_HEXES}+ hexes from the core, "
+             + "so the player can never provoke wave 1 — {mf_spawns} spawn(s), all too close";
+    }
+    ""
+}
+
+// Play a map SOURCE into `s`, without saving.
+//
+// ⚠ The builder and the gate both go through here, so the gate cannot
+// certify a different reading of the source from the one that shipped.
+//
+// ⚠⚠ **Through `scenario_position`, so a map is a POSITION** — the same
+// truncation `SCRIPT=` makes (`@X263`), and for the same reason one
+// layer on: a map is a starting position, and a source that ticked
+// would bake the state its ticks reached into the ground.  It is a
+// no-op for a source authored as a map (there is no `tick` to cut),
+// and it is what makes **copy a scenario into `maps/` and run
+// `make maps`** a working scenario→map export rather than a trap —
+// `tests/scripts/a-base-that-plays-its-list.keys` would otherwise be
+// saved as the world 500 ticks of siege left behind.
+//
+// Example: @DRY-087
+pub fn map_play_source(s: EditorState, dir: text, name: text,
+                       shots_dir: text = SHOTS_DIR) -> ScriptRun {
+    mps_run  = script_run_new(shots_dir);
+    mps_path = "{dir}/{name}{MAP_EXT}";
+    if !file(mps_path).exists() {
+        mps_run.ok      = false;
+        mps_run.message = "map source not found: {mps_path}";
+        return mps_run;
+    }
+    mps_src = scenario_position(file(mps_path).content() ?? "");
+    script_run_on(s, mps_run, mps_src)
+}
+
+// ─── The doors, LAST ────────────────────────────────────────────
+//
+// ⚠ Every helper above its caller — [loft#918] panics the parser on a
+// local bound to a call whose callee sits lower in the file.
+
+// Build one map: play its source, check it is playable, write the pair.
+//
+// ⚠⚠ **It refuses to write an unplayable map**, which is what keeps
+// `map_fault`'s failure out of the repo rather than merely reported
+// about it once it is in.
+//
+// Example: @DRY-088
+pub fn map_build_one(dir: text, name: text, palette_path: text,
+                     shots_dir: text = SHOTS_DIR) -> ScriptRun {
+    mbo_s = editor_state_new(palette_path);
+    editor_state_attach(mbo_s, map_slot_path(dir, name),
+                                map_marker_slot_path(dir, name));
+    mbo_run = map_play_source(mbo_s, dir, name, shots_dir);
+    if !mbo_run.ok { return mbo_run; }
+
+    mbo_fault = map_fault(mbo_s.picker.palette, mbo_s.pw, mbo_s.mw);
+    if mbo_fault != "" {
+        mbo_run.ok      = false;
+        mbo_run.message = "{name} is not playable: {mbo_fault}";
+        return mbo_run;
+    }
+
+    save_world(mbo_s.pw, mbo_s.cam, mbo_s.picker.palette, name,
+               map_slot_path(dir, name));
+    save_markers(mbo_s.mw, name, map_marker_slot_path(dir, name));
+    mbo_run
+}
+
+// Build every source in `dir`.  `only` names one ("" = all of them).
+//
+// ⚠ It refuses to be green over NOTHING, the way `validate_all` does:
+// a builder that found no sources and reported success is the exact
+// confident meaningless number the second gate was written against.
+// Example: @DRY-089
+pub fn map_build_all(dir: text, palette_path: text,
+                     shots_dir: text = SHOTS_DIR,
+                     only: text = "") -> MapBuildReport {
+    mba_rep = map_build_report_empty();
+
+    mba_pal = load_palette(palette_path);
+    if len(mba_pal) == 0 {
+        mba_rep.message = "the palette at {palette_path} loaded no entries";
+        return mba_rep;
+    }
+    if list_dir(dir) == null {
+        mba_rep.message = "no map directory at {dir}";
+        return mba_rep;
+    }
+
+    for mba_n in map_names(dir) {
+        if only != "" && mba_n != only { continue; }
+        mba_rep.maps += 1;
+        mba_run = map_build_one(dir, mba_n, palette_path, shots_dir);
+        mba_rep.checks += mba_run.checks;
+        if !mba_run.ok {
+            if mba_rep.message == "" {
+                mba_rep.message = "{mba_n}: {script_describe(mba_run)}";
+            }
+            continue;
+        }
+        mba_rep.built += 1;
+    }
+
+    if mba_rep.maps == 0 && mba_rep.message == "" {
+        if only != "" {
+            mba_rep.message = "no map source called '{only}' in {dir}";
+        } else {
+            mba_rep.message = "no map sources in {dir} — nothing was built";
+        }
+    }
+    mba_rep
+}

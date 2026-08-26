@@ -312,6 +312,47 @@ src/
                    `tests/09_c5a_converter.loft` § The schema is
                    complete is the gate, and it only fires if its
                    vocabulary list is updated too
+  maps.loft        a MAP, as repo content (BACKLOG A2) — map_slot_path /
+                   map_marker_slot_path (the two files one map is stored
+                   in, defined ONCE because the launcher and the builder
+                   both compose them), map_names, map_play_source,
+                   map_build_one / map_build_all, and map_fault.
+                   ⚠⚠ **`map_fault` is the point of the file.**  The
+                   failure it exists to catch is silent: a map you can
+                   OPEN, drive around, and never start a run on, because
+                   no spawn marker is `WAVE_1_PROVOCATION_HEXES` from the
+                   core to poke or none of them can walk to it.  `MAP=`
+                   loads it, P lands the crew, and the waves simply never
+                   come — nothing else in the tree notices.
+                   ⚠ It is a PURE function of the two layers: no run, no
+                   clock, no `WaveState`.  A map IS its ground and its
+                   markers, and a check that needed a running game could
+                   not be asked of a file on disk — so it reads the same
+                   whether a map was built from a source, painted in the
+                   editor, or written by hand.
+                   ⚠ The BUILDER asks it and REFUSES to write a map that
+                   fails, which keeps the failure out of the repo rather
+                   than merely reporting it once it is in;
+                   `tests/a2_the_maps.loft` over the shipped `maps/` is a
+                   SECOND reading, because a map edited in the editor
+                   never went past the builder.
+                   ⚠⚠ `maps/<n>.keys` is the SOURCE and `maps/<n>.json` +
+                   `<n>_markers.json` are BUILT — and all three are
+                   committed, because `make play MAP=` loads the JSON and
+                   a fresh checkout has no builder run in it (`@X265`).
+                   The build SAVES and the source does not: a `do save`
+                   line is ceremony that can be forgotten, and it keeps
+                   the source pure authoring, which is what lets the same
+                   file be played directly through `SCRIPT=`.
+                   ⚠ A map holds the GROUND and the MARKERS and NOTHING
+                   ELSE.  A `crew` or `schedule` line in a source is
+                   authored, played, and then silently dropped by the
+                   save, so every shipped map is played solo
+  mapbuild_main.loft  the builder's entry point — `fn main()`, NOT in the
+                   aggregator (runs via `scripts/build_maps.sh`).  Holds
+                   no decision, for `validate_main.loft`'s reason.
+                   ⚠ It WRITES repo content, which is why it is not part
+                   of `scripts/test.sh`
   scenario.loft    a `.keys` scenario, opened as a live STARTING
                    POSITION (BACKLOG A1) — scenario_open(s, name) ->
                    ScriptRun, whose `.play` is the game the window

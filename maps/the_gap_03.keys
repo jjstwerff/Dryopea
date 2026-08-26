@@ -1,0 +1,143 @@
+# the_gap_03 — TERRAIN, NOT MASONRY
+#
+# BACKLOG A2.  ⚠ This is the SOURCE; `maps/the_gap_03.json` +
+# `maps/the_gap_03_markers.json` beside it are BUILT from it by
+# `scripts/build_maps.sh` and are what `make play MAP=the_gap_03` loads.
+# `tests/a2_the_maps.loft` asserts the two still agree.
+#
+# ⚠ It is also playable directly, without building:
+#     make play SCRIPT=maps/the_gap_03.keys
+#
+# ⚠⚠ A map holds the GROUND and the MARKERS and nothing else.  A `crew`
+# or a `schedule` line here would be authored, played, and then silently
+# dropped by the save — the run's wave list is the seven-wave default
+# every `PlayState` starts with (`waves.loft::wave_list_default`).
+#
+# A rock massif with one gap in it.  Nothing here can be repaired and
+# nothing here can be broken — the perimeter is the ground itself.
+# ⚠ The strongest base the repo can build today: WAVE 5 (`@M045`).
+echo the_gap_03: a massif with one gap in it, and the rock never breaks
+
+at 0 0 1
+
+palette 5
+
+# The home field, west of the massif.
+drag   -6  -8    5  -8
+drag   -6  -7    5  -7
+drag   -6  -6    5  -6
+drag   -6  -5    5  -5
+drag   -6  -4    5  -4
+drag   -6  -3    5  -3
+drag   -6  -2    5  -2
+drag   -6  -1    5  -1
+drag   -6   0    5   0
+drag   -6   1    5   1
+drag   -6   2    5   2
+drag   -6   3    5   3
+drag   -6   4    5   4
+drag   -6   5    5   5
+drag   -6   6    5   6
+drag   -6   7    5   7
+drag   -6   8    5   8
+
+# The approach, east of it.
+drag    9  -8   23  -8
+drag    9  -7   23  -7
+drag    9  -6   23  -6
+drag    9  -5   23  -5
+drag    9  -4   23  -4
+drag    9  -3   23  -3
+drag    9  -2   23  -2
+drag    9  -1   23  -1
+drag    9   0   23   0
+drag    9   1   23   1
+drag    9   2   23   2
+drag    9   3   23   3
+drag    9   4   23   4
+drag    9   5   23   5
+drag    9   6   23   6
+drag    9   7   23   7
+drag    9   8   23   8
+
+# ── The massif: three hexes deep, right across the map. ──
+#
+# ⚠⚠ `steep_rock` carries `walk_ground = false` and is NOT a structure,
+# so `structure_breakable` answers false: a robot can neither stand on
+# it nor ever chew through it.  starter_01's `wall` is 3 m of masonry
+# with HP and it comes down.
+#
+# ⚠ It stops the VEHICLE too — measured, not assumed.  `walk_vehicle` is
+# true for all twelve palette kinds and NOTHING READS IT yet
+# (`src/passable.loft` § walk_ground is NOT passability), so the rock is
+# no more passable to the player than to the robots.  The gap is the
+# only way through for anybody, in either direction.
+palette 8
+drag    6  -8    8  -8
+drag    6  -7    8  -7
+drag    6  -6    8  -6
+drag    6  -5    8  -5
+drag    6  -4    8  -4
+drag    6  -3    8  -3
+drag    6  -2    8  -2
+drag    6  -1    8  -1
+drag    6   0    8   0
+drag    6   1    8   1
+drag    6   2    8   2
+drag    6   3    8   3
+drag    6   4    8   4
+drag    6   5    8   5
+drag    6   6    8   6
+drag    6   7    8   7
+drag    6   8    8   8
+
+# ── And the gap cut back through it, three hexes wide. ──
+#
+# ⚠ Three rather than one on DRIVING grounds, not on defensive ones:
+# swept from 1 to 11 hexes wide, the width is worth 2 ticks in 233
+# (`@M045`) — the wallet's drain saturates at the core's own footprint,
+# so throttling the approach buys nothing today.
+palette 5
+drag    6  -1    8  -1
+drag    6   0    8   0
+drag    6   1    8   1
+
+# ── The markers ──
+do toggle_mode
+
+do cycle_kind
+click    0   0
+marker   0   0 target
+
+# FOUR towers around the mouth of the gap.
+#
+# ⚠⚠ Two is the WORST of one, two and four — measured, and it is not a
+# repair artefact, because it reproduces with the player left out at the
+# spawn.  Towers kill, kills leave BODIES, and bodies are terrain
+# (`docs/ENEMY_MOVEMENT.md` § Bodies are terrain): two guns kill fast
+# enough to choke their own kill zone and not fast enough to win anyway.
+# Four out-shoot the problem — 110 shots against 39 — and this is the
+# only base in the repo that reaches WAVE 5.
+do cycle_kind
+click    2   0
+click    4   0
+click    2  -1
+click    2   1
+marker   2   0 tower
+marker   2   1 tower
+
+# The spawn, 21 out — past the forward tower at (4, 0) plus its 15.
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click   21   0
+marker  21   0 spawn 3
+
+do toggle_mode
+
+count markers 6 6
+kind 0 0 grass
+kind 7 0 grass
+kind 7 4 steep_rock
+kind 7 -4 steep_rock

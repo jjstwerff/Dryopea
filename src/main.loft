@@ -236,10 +236,13 @@ fn main() {
     marker_save_path: text = DEFAULT_MARKER_SAVE_PATH;
     map_label:        text = "<default>";
     if map_name != "" {
-        save_path        = "maps/{map_name}.json";
-        marker_save_path = "maps/{map_name}_markers.json";
+        // ⚠ Through `maps.loft`, not composed here: the BUILDER writes
+        // this pair and a launcher that spelled it differently would
+        // open a map that had just been built somewhere else.
+        save_path        = map_slot_path(MAPS_DIR, map_name);
+        marker_save_path = map_marker_slot_path(MAPS_DIR, map_name);
         map_label        = map_name;
-        mkdir_all("maps");
+        mkdir_all(MAPS_DIR);
     }
 
     // Where the session STARTS.  Same as the save slot, except for a
@@ -537,8 +540,22 @@ fn main() {
     ground_gl_destroy(gg);
 
     // Save on exit so progress isn't lost when the window closes.
-    save_world(s.pw, s.cam, palette, "exit", save_path);
-    save_markers(s.mw, "exit", marker_save_path);
+    //
+    // ⚠⚠ **Only when there IS progress** (BACKLOG A2).  `maps/*.json` is
+    // committed repo content, and this line used to run unconditionally
+    // — so opening a shipped map, panning the camera and pressing Esc
+    // rewrote the file and left the checkout dirty for a session in
+    // which the player changed nothing.  ⚠ `s.dirty` is set by CONTENT
+    // edits only (`editor_step.loft`), never by a pan, so this is
+    // exactly the "paint progress" the header promises and the camera
+    // position is what it costs.
+    if s.dirty {
+        save_world(s.pw, s.cam, palette, "exit", save_path);
+        save_markers(s.mw, "exit", marker_save_path);
+        println("dryopea: saved on exit ({painted_count(s.pw)} hexes, {marker_count(s.mw)} markers)");
+    } else {
+        println("dryopea: nothing changed — {save_path} left alone");
+    }
     println("dryopea: saved on exit map=[{map_label}] ({painted_count(s.pw)} hexes, {marker_count(s.mw)} markers)");
     gl_destroy_window();
 }

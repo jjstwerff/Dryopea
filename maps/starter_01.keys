@@ -1,0 +1,115 @@
+# starter_01 — THE NARROWS
+#
+# BACKLOG A2.  ⚠ This is the SOURCE; `maps/starter_01.json` +
+# `maps/starter_01_markers.json` beside it are BUILT from it by
+# `scripts/build_maps.sh` and are what `make play MAP=starter_01` loads.
+# `tests/a2_the_maps.loft` asserts the two still agree.
+#
+# ⚠ It is also playable directly, without building:
+#     make play SCRIPT=maps/starter_01.keys
+#
+# ⚠⚠ A map holds the GROUND and the MARKERS and nothing else.  A `crew`
+# or a `schedule` line here would be authored, played, and then silently
+# dropped by the save — the run's wave list is the seven-wave default
+# every `PlayState` starts with (`waves.loft::wave_list_default`).
+#
+# One way in, five hexes wide, walled with a firing lane down the middle.
+# The first base: it teaches WHERE TO STAND, and nothing else.
+echo starter_01: the narrows — one way in, and it is five hexes wide
+
+at 0 0 1
+
+# ── The ground.  Unpainted is SEA, so the paint IS the geometry. ──
+palette 5
+
+# The home field, west.
+drag   -9  -7    4  -7
+drag   -9  -6    4  -6
+drag   -9  -5    4  -5
+drag   -9  -4    4  -4
+drag   -9  -3    4  -3
+drag   -9  -2    4  -2
+drag   -9  -1    4  -1
+drag   -9   0    4   0
+drag   -9   1    4   1
+drag   -9   2    4   2
+drag   -9   3    4   3
+drag   -9   4    4   4
+drag   -9   5    4   5
+drag   -9   6    4   6
+drag   -9   7    4   7
+
+# The neck — the only way through, five rows wide.
+drag    5  -2    9  -2
+drag    5  -1    9  -1
+drag    5   0    9   0
+drag    5   1    9   1
+drag    5   2    9   2
+
+# The approach field, east, where the robots form up.
+drag   10  -7   24  -7
+drag   10  -6   24  -6
+drag   10  -5   24  -5
+drag   10  -4   24  -4
+drag   10  -3   24  -3
+drag   10  -2   24  -2
+drag   10  -1   24  -1
+drag   10   0   24   0
+drag   10   1   24   1
+drag   10   2   24   2
+drag   10   3   24   3
+drag   10   4   24   4
+drag   10   5   24   5
+drag   10   6   24   6
+drag   10   7   24   7
+
+# ── The wall across the neck, with (7, 0) left open. ──
+#
+# ⚠ The gap is the TOWERS' firing lane, not an oversight: a `wall` is
+# 3 m and blocks a sight line, so a fully sealed neck would leave both
+# towers looking at masonry.  `plans/12` B7 measured a gate as worth
+# nothing to the WALL; it is worth everything to the guns.
+palette 9
+click    7  -2
+click    7  -1
+click    7   1
+click    7   2
+
+# ── The markers ──
+do toggle_mode
+
+do cycle_kind
+click    0   0
+marker   0   0 target
+
+# Two towers on the lane, one behind the other.  Park BETWEEN them at
+# (4, 0) and one vehicle repairs both — measured at +52 ticks and a
+# whole extra wave over parking at the core (`@M045`).
+do cycle_kind
+click    3   0
+click    5   0
+marker   3   0 tower
+marker   5   0 tower
+
+# The spawn, facing home.
+#
+# ⚠⚠ TWENTY-TWO hexes out, and the number is DERIVED: a tower reaches
+# 15 (`TOWER_RANGE_HEXES`) and the forward one stands at (5, 0), so a
+# spawn inside q = 21 is one the towers SHELL AS IT ARRIVES — wave 1
+# then dies without ever walking, and the neck this map is built
+# around never gets used.  The floor is 12 (`WAVE_1_PROVOCATION_HEXES`)
+# and the ceiling is the drive home in front of them.
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click   22   0
+marker  22   0 spawn 3
+
+do toggle_mode
+
+count markers 4 4
+kind 0 0 grass
+kind 7 0 grass
+kind 7 1 wall
+kind 12 5 grass

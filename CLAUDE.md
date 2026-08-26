@@ -55,10 +55,11 @@ triangles, every entity as a part-tree, through an eased camera that follows
 the vehicle, with the WALLET in the corner, ramping amber to red as it drains.  Press P again and the editor
 comes back.  ⚠ The HUD is one number and `docs/DESIGN.md` § HUD says it should
 be — no wave counter, no health bar, no minimap; everything else is diegetic.
-⚠⚠ **`SCRIPT=` is what gives it a base to be** (BACKLOG A1, 2026-08-26): any of
-the 36 `.keys` files in `tests/scripts/` + `tests/gl/` opens as a live starting
-position, cut at its first `tick` (`@X263`).  Bare `make play` still opens an
-empty world — `maps/` has no content (BACKLOG A2).
+⚠⚠ **`MAP=` and `SCRIPT=` are what give it a base to be.**  `make play
+MAP=starter_01` opens one of the three AUTHORED maps in `maps/` (BACKLOG A2,
+2026-08-27); `SCRIPT=<name>` opens any of the 36 `.keys` files in
+`tests/scripts/` + `tests/gl/` as a live starting position, cut at its first
+`tick` (`@X263`).  Bare `make play` opens the empty default slot.
 ⚠⚠ **The player still cannot BUILD** ([`plans/ROADMAP.md`](plans/ROADMAP.md)
 § The critical path, item 3 — the biggest missing mechanic, and it gates three
 finished designs).
@@ -67,7 +68,7 @@ finished designs).
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1410 green**, ~320 s on a busy box, 102 files |
+| tests | `scripts/test.sh` | **1420 green**, ~320 s on a busy box, 103 files |
 | scenarios | `scripts/validate.sh` | **33 scripts, 654 measurements**, ~14 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
 
@@ -389,12 +390,20 @@ scripts/validate_gl.sh the-ground    # just one
 # QUESTIONS_FOR_LOFT.md).  `loft src/main.loft` is `make play-native`,
 # kept for testing the eventual fix.
 make play
+# One of the three AUTHORED maps in maps/ (BACKLOG A2) — repo content.
 make play MAP=starter_01
 # Open one of the 36 `.keys` scenarios as a live starting position
 # (BACKLOG A1).  ⚠ `script=`, never `--script` — loft strips a leading
 # `--` argument as its own and the entry would open a MAP of that name.
 make play SCRIPT=a-base-that-plays-its-list
 make play SCRIPT=tests/gl/an-island.keys
+
+# Rebuild the authored maps from their `.keys` sources (BACKLOG A2).
+# ⚠⚠ NOT a gate — it WRITES maps/*.json, which are COMMITTED, because
+# `make play MAP=` loads them and a fresh checkout has no build in it.
+# `make maps` / `make maps MAP=starter_01` are the same thing.
+scripts/build_maps.sh
+scripts/build_maps.sh starter_01
 
 # Parse-check a single .loft file without running it.
 # ⚠⚠ NOT the aggregator — `loft --native-emit … src/dryopea.loft`
@@ -470,6 +479,7 @@ navigational summary of it.
 | `script.loft` | the `.keys` script runner and its whole vocabulary — commands name ACTIONS, never keys |
 | `scenario.loft` | **a `.keys` scenario, opened as a live STARTING POSITION** (BACKLOG A1) — the seam between `script_run_on` and the window.  ⚠⚠ **It TRUNCATES at the first `tick` / `fall`** (`@X263`): a scenario's tail is its ANSWER and a player wants its QUESTION, and it truncates rather than filters because a measurement written after a tick is false about the beginning.  ⚠ `tick` and `fall` are the WHOLE advancing set, and that claim is gated by a sweep asserting **t0 over every `.keys` file in the tree** rather than left to a comment.  ⚠⚠ It also owns the COMMAND LINE's reading — `script=<name>`, never `--script`, because loft strips a leading `--` argument as its own (`@X264`) — which lives here rather than in `main.loft` where nothing compiles it |
 | `validate.loft` / `validate_main.loft` | the second gate: sweep `tests/scripts/`, sum the measurements, report the FIRST failure |
+| `maps.loft` / `mapbuild_main.loft` | **a MAP, as repo content** (BACKLOG A2) — where its two files live, how one is BUILT from a `.keys` source, and `map_fault`.  ⚠⚠ **`map_fault` is the point of the file**: the failure it catches is *a map you can open, drive around and never start a run on*, because no spawn is `WAVE_1_PROVOCATION_HEXES` (12) from the core to poke or none can walk to it — `MAP=` loads it, P lands the crew, and the waves never come (`@X266`).  ⚠ Pure of the simulation, so it reads the same for a map built, painted or hand-written; the builder asks it and REFUSES to write a map that fails.  ⚠⚠ **The `.keys` is the SOURCE and the `.json` is BUILT, and both are committed** (`@X265`) — the build saves, so a source cannot forget to |
 | `editor_view.loft` | `render_editor_frame` — what the player sees, composed ONCE for both the GL loop and `snap` |
 | `measure.loft` | frame measurement — `classify_canvas` / `classify_world` → `FrameCounts` |
 | `golden.loft` | `assert_golden` — write `tests/actual/`, compare bytes to `tests/golden/` |
@@ -843,6 +853,7 @@ signature.
 | [docs/EXPLORATION.md](docs/EXPLORATION.md) | ⚠⚠ **Exploration IS scouting** — `DESIGN.md` § 13 already ranks it *the* progression activity, so this doc ASSEMBLES rather than adding a pillar.  ⚠⚠ **§ X0 POINTS AT [docs/PROGRESSION.md](docs/PROGRESSION.md), which was rewritten 2026-08-26** — the old *"progression is SKILL, not stats"* reading is superseded.  ⚠ Two of the new rulings are about exploration: **the RULES are learnable and the INSTANCE is not** (`@X122`), which is what stops a knowledge-dominant progression from solving the game, and **scouting converts rules-knowledge into instance-knowledge every run** (`@X123`) — so the veteran scouts faster and better, never less.  ⚠ The measurements are unchanged (a sealed wall doubles the clock, a gate buys nothing, boost is the only way out of a sealed base).  ⚠⚠ **§ X2b: the game already WAITS** — `wave_provoke_step` means an unlimited free recon phase the player ends deliberately.  ⚠⚠ **§ X2c: a find accelerates BUILDING, so its value collapses once you are busy** — measured twice already (plan 16 W4: one tick; plan 17 T3: +76 points).  ⚠⚠ The run ALREADY opens with a sortie (`wave_provoke_step` needs a vehicle 12+ hexes out), so *explore earlier* is content on a trip the player already takes, not a new phase.  ⚠ A find is ONE marker row + ONE cargo row; **the first scouting scenario needs no code at all** |
 | [docs/RENDERER.md](docs/RENDERER.md) | ⚠ **The camera and the pipeline** (plan 21) — moros's `RenderCamera`, FOLLOW behind the facing, and ⚠⚠ **`camera_overview` at 89° IS the editor's view**, so it is one camera with two presets.  ⚠ § R0 MEASURED that a GL frame survives `xvfb` → `gl_screenshot` → `imaging::png` → exact classification with **zero** colour drift — which is what makes going 3-D affordable at all.  ⚠ Retires `DESIGN.md` § 12 |
 | [docs/PROXY_ART.md](docs/PROXY_ART.md) | Placeholder shapes.  ⚠ Its SIZES stay and become a gate (`PARTS.md` § D6); its SHAPES retire entry by entry as plan 20's catalogue covers them |
+| [maps/README.md](maps/README.md) | ⚠ **The three authored bases**, what each teaches, and how to add one.  ⚠⚠ The `.keys` is the SOURCE and the `.json` is BUILT — both committed, `make maps` rebuilds |
 | [plans/README.md](plans/README.md) | Plan conventions (moros-style) + index |
 | [plans/_TEMPLATE.md](plans/_TEMPLATE.md) | Template for a new plan |
 | [plans/ROADMAP.md](plans/ROADMAP.md) | Comprehensive feature roadmap (5 tiers) |
@@ -922,7 +933,7 @@ signature.
 | Cite a design decision, or find where one was made | [`docs/DECISIONS.md`](docs/DECISIONS.md) — `grep -rn '@X025' .` finds every mention of a decision, `@M001` every quote of a number.  ⚠ **Never cite a bare plan phase in a code** — `S0` is two plans and `C2` is two more; write `22-S0`.  ⚠ A code is permanent even after its decision is reversed (it gains a `SUPERSEDED by` line, like `@D001`) |
 | Find a mechanic that is designed but NOT built | [docs/DESIGN.md](docs/DESIGN.md) (the mechanics) and [plans/ROADMAP.md](plans/ROADMAP.md) (the index).  ⚠ `plans/12` § Design recorded during this plan POINTS at them rather than restating — a second copy is the one that drifts |
 | Understand the fiction | [docs/SETTING.md](docs/SETTING.md) |
-| Pick something CONCRETE to build | [`plans/BACKLOG.md`](plans/BACKLOG.md) — ⚠⚠ **deliberately unordered**, grouped by what each item unblocks.  ⚠ **A1 shipped 2026-08-26**, so the game can now be sat down with (`make play SCRIPT=<name>`); the one fact left worth knowing, and it forces no sequence, is that **B1 (text) has the widest blast radius of anything on the list** |
+| Pick something CONCRETE to build | [`plans/BACKLOG.md`](plans/BACKLOG.md) — ⚠⚠ **deliberately unordered**, grouped by what each item unblocks.  ⚠ **A1 and A2 shipped 2026-08-26/27**, so the game can now be sat down with (`make play SCRIPT=<name>`); the one fact left worth knowing, and it forces no sequence, is that **B1 (text) has the widest blast radius of anything on the list** |
 | Pick next work to do | [plans/ROADMAP.md](plans/ROADMAP.md) § **The critical path** — the natural order by DEPENDENCY (the 5 tiers below it are ordered by impact-per-line instead, and say so).  ⚠ Its organising principle: **every step must be measurable when it lands**, and the questions now open are FEEL questions, which is what moves drawing up the list |
 | Ask what the BIGGEST missing mechanic is | ⚠⚠ **BUILDING.**  Walls and towers are placed in the EDITOR; the player cannot make a base, and the wallet buys nothing.  Three finished designs are inert without it — `@X022` (the pre-wave window is a budget), `@X024` (a find accelerates building), `@X019` (the layout is the exam).  ⚠ Its pieces are all designed and named: wall paint, the beacon ferry, helper construction time — and the carry model already moves a beacon exactly as it moves a tower-top |
 | TUNE a number | `examples/numbers.json`, then run `scripts/test.sh`.  ⚠ `tests/numbers_design_targets.loft` gates five of `docs/NUMBERS.md` § Design targets against the running sim, so a tuned value fails there naming the promise it broke.  ⚠ And nothing LOADS numbers.json: every value is hand-copied into a `.loft` constant, so edit BOTH — that test pins them together |
@@ -935,7 +946,8 @@ signature.
 | Write a situation down as a `.keys` file | `src/emit.loft::emit_keys` (plan 18 S2) — the ground, the markers and the whole runtime state, as an authored STARTING POSITION with no `tick` in it.  ⚠ Order is load-bearing: `flag` before `tower`, `crew` before an `object` it owns, `place` before `hit`/`stand`/`dead`, `schedule` before `pending`.  ⚠ Gated by capture → emit → replay over all 28 real scenarios, comparing the WORLD as well as the state — terrain is not in `WaveState`, so a state-only comparison is green for an emitter that lost the map |
 | Cut a captured situation down to the interesting part | `src/emit.loft::crop_keys` + `crop_fault` (plan 18 S3).  ⚠ **The refusals are NECESSARY and not SUFFICIENT** — dropping the core and cutting under a tower's 15-hex reach are refused, but a LEGAL crop can still change the answer: measured, a radius-15 crop of a band whose spawn marker sits at 18 silently stops every wave, because `SPAWN_DISABLE_RADIUS` and `WAVE_1_PROVOCATION_HEXES` are distances from the CORE.  ⚠ Only running both and comparing certifies a particular crop |
 | Cut a fixture down to what a behaviour needs | `src/reduce.loft::reduce_keys` (plan 18 S4) — greedy line removal against a PREDICATE, which is just `.keys` text appended to the fixture: the measurement vocabulary is the predicate language.  ⚠ **A predicate that holds over an EMPTY fixture is refused** — otherwise every line is removable and the reducer is a delete button.  ⚠ The result is 1-MINIMAL (removing any one line breaks it), not minimal: a pair of lines that only matter together survives |
-| Play the game in a window | ⚠⚠ **`make play SCRIPT=a-base-that-plays-its-list`** (BACKLOG A1, 2026-08-26) — any of the **36 `.keys` files** in `tests/scripts/` + `tests/gl/` opens as a live base; press **P** and it is the game, drawn (plan 19 P6).  ⚠⚠ **A scenario opens as its PREFIX**, cut at the first `tick` / `fall` (`@X263`) — its question, not its answer, so the wave list is armed and un-poked.  ⚠ The flag is `script=<name>`, **never `--script`** (`@X264`): loft strips a leading `--` argument as its own and the entry would open a MAP of that name, silently.  ⚠ A path is taken as given (`SCRIPT=tests/gl/an-island.keys`), a bare name resolves `tests/scripts/` then `tests/gl/`.  ⚠ Edits save to `maps/<stem>.json`, and re-launching with `SCRIPT=` serves the scenario again rather than those edits.  ⚠ `make play` with nothing still opens an EMPTY world — `maps/` has no content (BACKLOG A2) |
+| Play one of the AUTHORED maps, or add one | ⚠⚠ **`make play MAP=starter_01`** — three maps ship in [`maps/`](maps/README.md) (BACKLOG A2, 2026-08-27) and each teaches one MEASURED thing: `starter_01` where to stand (**+61 ticks and a whole wave**), `crossroads_02` that parking is the wrong answer (**shuttling t250 against t222 holding one lane**), `the_gap_03` terrain instead of masonry (**wave 5, the strongest base in the repo**) — `@M045`.  ⚠⚠ **The `.keys` beside each `.json` is the SOURCE** (`@X265`); edit it, run `make maps`, commit all three files.  ⚠ `make maps` **refuses a map nobody could play** (`@X266`).  ⚠⚠ **Two numbers decide where a spawn goes and BOTH bit while authoring these**: 12+ hexes from the core or wave 1 can never be provoked, and past *forward tower + 15* or the towers shell the spawn and wave 1 dies without ever walking.  ⚠ A map holds the GROUND and the MARKERS and nothing else — no crew, no schedule, so every one is played solo |
+| Play the game in a window | ⚠⚠ **`make play SCRIPT=a-base-that-plays-its-list`** (BACKLOG A1, 2026-08-26) — any of the **36 `.keys` files** in `tests/scripts/` + `tests/gl/` opens as a live base; press **P** and it is the game, drawn (plan 19 P6).  ⚠⚠ **A scenario opens as its PREFIX**, cut at the first `tick` / `fall` (`@X263`) — its question, not its answer, so the wave list is armed and un-poked.  ⚠ The flag is `script=<name>`, **never `--script`** (`@X264`): loft strips a leading `--` argument as its own and the entry would open a MAP of that name, silently.  ⚠ A path is taken as given (`SCRIPT=tests/gl/an-island.keys`), a bare name resolves `tests/scripts/` then `tests/gl/`.  ⚠ Edits save to `maps/<stem>.json`, and re-launching with `SCRIPT=` serves the scenario again rather than those edits.  ⚠ `make play` with nothing opens the default single-slot save, empty on a fresh checkout — `make play MAP=starter_01` is the one with a base in it |
 | Turn a state you REACHED into a test | [plans/18](plans/18-scenario-capture/README.md) — the tool is BUILT (S0-S4); the loop to capture FROM now exists (plan 19 P3), and wiring a key to it is plan 19 P5.  ⚠ Emits `.keys` and never a state blob: a saved `WaveState` is a golden of the simulation and *a golden agrees with a shear*.  ⚠ The work is making the vocabulary TOTAL over `WaveState` — enemies, towers, wallet and cargo have no setters today.  ⚠ A crop has a MINIMUM radius set by the mechanics (the core, the 25-hex bubble, a tower's range 15), so a naive one silently changes enemy steering |
 | Change what a frame contains | `editor_view.loft::render_editor_frame` — the GL loop and `snap` both draw it, so edit it there, not in `main.loft` |
 | Ask what an entity IS, or add a socket to one | `src/part.loft` (BUILT, plan 20 A1) — `Socket` / `Binding` / `Part` / `PartSet` over `hex_body::Rig`, and [`docs/PARTS.md`](docs/PARTS.md) § D3 for why the tower proves the model.  ⚠⚠ **Where a socket IS, is computed by `socket_world` and stored nowhere** — a `Binding` names a socket and a part and carries no coordinate, so moving a part moves everything in its sockets; adding a position field ends the design without failing a test.  ⚠ It carries no POSE either — plan 20 A4 asks `TowerState`.  ⚠ The doorstep is `part_fault`, which asks `hex_body::rig_admissible` before anything of dryopea's.  ⚠⚠ **The reuse gate is the `use` line, never the manifest**: dropping `hex_body` from `loft.toml` AND `loft.lock` leaves all 18 tests green ([loft#968](https://github.com/loft-lang/loft/issues/968)) |

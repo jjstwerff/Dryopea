@@ -1,0 +1,375 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// BACKLOG A2 — the authored maps in `maps/`, and what makes one a map.
+//
+// ── What can go wrong here, and what sees it ────────────────────
+//
+//   * ⚠⚠ **A map you can open and never start a run on.**  `MAP=`
+//     would load it, P would put the crew at the core, and the waves
+//     would simply never come — because no spawn marker is
+//     `WAVE_1_PROVOCATION_HEXES` from the core to poke, or none of
+//     them can walk to it.  Nothing else in the tree notices.
+//     `map_fault` is the check and § The fault fires is its control:
+//     **eight broken worlds, each refused by name.**
+//
+//   * **The shipped artefact drifting from its source.**
+//     `maps/<n>.json` is BUILT from `maps/<n>.keys` and both are
+//     committed, so an edit to one and not the other is a silent lie
+//     about where the map came from.  § The shipped pair is what its
+//     source says replays every source and compares the WORLD.
+//
+//   * ⚠ **A map that is structurally fine and unplayable anyway.**
+//     § A run starts on every shipped map drives the vehicle out and
+//     pokes a spawn, which is the only claim that reaches the
+//     simulation rather than the two layers.
+//
+// ⚠ The three maps' measured CHARACTER — what standing in the right
+// place is worth on each — is `docs/DECISIONS.md` § `@M045`, and
+// § What holding the line is worth pins the one that carries a design
+// claim rather than all six readings.
+
+#cwd
+
+use dryopea;
+
+const PAL:   text = "examples/palette.json";
+const SHOTS: text = "tests/actual";
+
+// Every map this repo ships.  ⚠ Written out rather than swept, so
+// DELETING a map is a decision that shows up in a diff — a sweep over
+// an emptied `maps/` reports green having checked nothing.
+fn a2_shipped(tag: integer) -> vector<text> {
+    ["starter_01", "crossroads_02", "the_gap_03"]
+}
+
+// A shipped map, loaded off disk exactly as `main.loft` loads it.
+fn a2_load(name: text) -> EditorState {
+    al_pal    = load_palette(PAL);
+    al_loaded = load_map_or_empty(map_slot_path(MAPS_DIR, name), al_pal);
+    al_s = editor_state_from(
+        al_loaded.0,
+        load_markers_or_empty(map_marker_slot_path(MAPS_DIR, name)),
+        al_loaded.1,
+        picker_default(PAL));
+    al_s
+}
+
+// A minimal WORKING map: a grass strip from the core out past the
+// provocation radius, with a spawn on the far end.
+//
+// ⚠ This is the POSITIVE control for every refusal below.  A fault
+// check whose only evidence is that it rejects things cannot tell
+// "correct" from "rejects everything".
+fn a2_ok_world(reach: integer) -> (PaintedWorld, MarkerWorld) {
+    aow_pw = painted_empty();
+    for aow_q in 0..reach + 1 { paint(aow_pw, aow_q, 0, 5 as u8); }
+    aow_mw = marker_empty();
+    place_target(aow_mw, 0, 0);
+    place_spawn(aow_mw, reach, 0, 3 as u8);
+    (aow_pw, aow_mw)
+}
+
+// Play a shipped map to the end of the run with the player parked at
+// (pq, pr), after driving out to poke the far spawn.  Answers the tick
+// the wallet emptied on and how many waves went out.
+//
+// ⚠ It stops at `wallet_broke`, which is the ONLY end state
+// (`wallet.loft`) — never at a tick budget, or a map that got stronger
+// would read as unchanged.
+fn a2_play_until_broke(name: text, pq: integer, pr: integer) -> (integer, integer) {
+    apu_s  = a2_load(name);
+    apu_ps = play_state_new();
+    play_set_mode(apu_ps, apu_s, true);
+
+    apu_core = play_core(apu_s.mw);
+    apu_q = 0;
+    apu_r = 0;
+    for apu_m in apu_s.mw.markers {
+        if apu_m.kind != MARKER_KIND_SPAWN as u8 { continue; }
+        if lat_distance(Hex { q: apu_m.q, r: apu_m.r },
+                        Hex { q: apu_core.1, r: apu_core.2 })
+           >= WAVE_1_PROVOCATION_HEXES { apu_q = apu_m.q; apu_r = apu_m.r; }
+    }
+    vehicle_drive(apu_ps.wave.player, apu_q, apu_r);
+    play_ticks(apu_ps, apu_s, 40);
+    vehicle_drive(apu_ps.wave.player, pq, pr);
+    for _ in 0..900 {
+        play_ticks(apu_ps, apu_s, 1);
+        if wallet_broke(apu_ps.wave.wallet) { break; }
+    }
+    (apu_ps.ticks, wave_schedule_sent(apu_ps.wave.schedule))
+}
+
+// ─── The fault fires ────────────────────────────────────────────
+
+fn test_a_working_map_has_no_fault() {
+    twm = a2_ok_world(14);
+    assert(map_fault(load_palette(PAL), twm.0, twm.1) == "",
+           "the positive control must be clean: [{map_fault(load_palette(PAL), twm.0, twm.1)}]");
+}
+
+// @DRY-086 — why a map cannot be played, named
+fn test_every_way_a_map_can_be_unplayable_is_named() {
+    tew_pal = load_palette(PAL);
+
+    // 1. No ground at all.
+    tew_1 = marker_empty();
+    place_target(tew_1, 0, 0);
+    assert(map_fault(tew_pal, painted_empty(), tew_1).find("ground is empty") != null,
+           "an empty world is refused");
+
+    // 2. No core.
+    tew_2 = a2_ok_world(14);
+    remove_marker(tew_2.1, 0, 0);
+    assert(map_fault(tew_pal, tew_2.0, tew_2.1).find("exactly ONE target") != null,
+           "a map with no core is refused: [{map_fault(tew_pal, tew_2.0, tew_2.1)}]");
+
+    // 3. TWO cores — the other side of the same rule, and the one a
+    //    count-only check would miss.
+    tew_3 = a2_ok_world(14);
+    place_target(tew_3.1, 1, 0);
+    assert(map_fault(tew_pal, tew_3.0, tew_3.1).find("exactly ONE target") != null,
+           "a map with two cores is refused: [{map_fault(tew_pal, tew_3.0, tew_3.1)}]");
+
+    // 4. The core on unpainted sea — the marker looks fine in the editor.
+    tew_4 = a2_ok_world(14);
+    paint(tew_4.0, 0, 0, 0 as u8);
+    assert(map_fault(tew_pal, tew_4.0, tew_4.1).find("unpainted sea") != null,
+           "a core on sea is refused: [{map_fault(tew_pal, tew_4.0, tew_4.1)}]");
+
+    // 5. No spawn marker at all.
+    tew_5 = a2_ok_world(14);
+    remove_marker(tew_5.1, 14, 0);
+    assert(map_fault(tew_pal, tew_5.0, tew_5.1).find("at least one spawn") != null,
+           "a map with no spawn is refused: [{map_fault(tew_pal, tew_5.0, tew_5.1)}]");
+
+    // 6. A spawn no robot can stand on.  `steep_rock` carries
+    //    `walk_ground = false`, so this is not a sea test wearing
+    //    another hat.
+    tew_6 = a2_ok_world(14);
+    paint(tew_6.0, 14, 0, 8 as u8);
+    assert(map_fault(tew_pal, tew_6.0, tew_6.1).find("no robot can stand") != null,
+           "a spawn on steep rock is refused: [{map_fault(tew_pal, tew_6.0, tew_6.1)}]");
+
+    // 7. A spawn that cannot REACH the core — the strip cut in half.
+    tew_7 = a2_ok_world(14);
+    paint(tew_7.0, 7, 0, 0 as u8);
+    assert(map_fault(tew_pal, tew_7.0, tew_7.1).find("cannot reach the core") != null,
+           "a walled-off spawn is refused: [{map_fault(tew_pal, tew_7.0, tew_7.1)}]");
+
+    // 8. ⚠⚠ THE ONE THIS FILE EXISTS FOR — every spawn inside the
+    //    provocation radius.  Everything about this map is otherwise
+    //    correct: it loads, it draws, the crew lands, and no wave ever
+    //    comes.
+    tew_8 = a2_ok_world(WAVE_1_PROVOCATION_HEXES - 1);
+    assert(map_fault(tew_pal, tew_8.0, tew_8.1).find("can never provoke wave 1") != null,
+           "a map whose spawns are all too close is refused: "
+           + "[{map_fault(tew_pal, tew_8.0, tew_8.1)}]");
+
+    // ⚠ And the boundary, both sides of it: `wave_provoke_step` reads
+    // `>=`, so exactly the radius is enough.
+    tew_9 = a2_ok_world(WAVE_1_PROVOCATION_HEXES);
+    assert(map_fault(tew_pal, tew_9.0, tew_9.1) == "",
+           "a spawn at exactly {WAVE_1_PROVOCATION_HEXES} hexes is pokeable: "
+           + "[{map_fault(tew_pal, tew_9.0, tew_9.1)}]");
+}
+
+// ─── The shipped maps ───────────────────────────────────────────
+
+// @DRY-085 — where a map is stored, and which maps there are
+fn test_the_repo_ships_maps_at_all() {
+    trs_pal = load_palette(PAL);
+    assert(len(map_names(MAPS_DIR)) >= 3,
+           "maps/ holds {len(map_names(MAPS_DIR))} sources — `make play MAP=` needs content");
+    for trs_n in a2_shipped(0) {
+        trs_s = a2_load(trs_n);
+        assert(painted_count(trs_s.pw) > 100,
+               "{trs_n} loaded {painted_count(trs_s.pw)} hexes — a map that small is not a base");
+        assert(marker_count(trs_s.mw) >= 3,
+               "{trs_n} loaded {marker_count(trs_s.mw)} markers");
+    }
+}
+
+fn test_every_shipped_map_is_playable() {
+    tes_pal = load_palette(PAL);
+    for tes_n in a2_shipped(0) {
+        tes_s = a2_load(tes_n);
+        assert(map_fault(tes_pal, tes_s.pw, tes_s.mw) == "",
+               "{tes_n} is not playable: {map_fault(tes_pal, tes_s.pw, tes_s.mw)}");
+    }
+}
+
+// @DRY-087 — the shipped artefact is what its source says
+fn test_the_shipped_pair_is_what_its_source_says() {
+    for tsp_n in a2_shipped(0) {
+        // Replay the source into a session of its own…
+        tsp_src = editor_state_new(PAL);
+        editor_state_attach(tsp_src, "{SHOTS}/a2_{tsp_n}.json",
+                                     "{SHOTS}/a2_{tsp_n}_markers.json");
+        tsp_run = map_play_source(tsp_src, MAPS_DIR, tsp_n, SHOTS);
+        assert(tsp_run.ok, "{tsp_n}.keys must replay green: {tsp_run.message}");
+
+        // …and compare the WORLD with the pair that shipped.  ⚠ By
+        // world and not by BYTES: both layers are hashes, and hash
+        // iteration order is not part of the state (`compare.loft`).
+        tsp_disk = a2_load(tsp_n);
+        tsp_d = world_diff(tsp_src.pw, tsp_src.mw, tsp_disk.pw, tsp_disk.mw);
+        assert(tsp_d == "",
+               "maps/{tsp_n}.json has drifted from maps/{tsp_n}.keys — {tsp_d}. "
+               + "Run scripts/build_maps.sh {tsp_n}");
+    }
+}
+
+// ⚠ The builder must not write a map nobody can play.  A source that
+// paints a world and puts every spawn next door is the shape that
+// would otherwise get committed and only be found by playing it.
+// @DRY-088 — the builder refuses a map nobody could play
+fn test_the_builder_refuses_an_unplayable_source() {
+    tbr_dir = "{SHOTS}/a2_build";
+    mkdir_all(tbr_dir);
+    tbr_f = file("{tbr_dir}/too_close.keys");
+    tbr_f.write("palette 5\ndrag 0 0 6 0\n"
+              + "do toggle_mode\ndo cycle_kind\nclick 0 0\n"
+              + "do cycle_kind\ndo cycle_kind\nclick 5 0\n");
+
+    // ⚠ A SENTINEL rather than `!exists()`, and it is not belt-and-
+    // braces: loft has no delete, `tests/actual/` is cleaned one level
+    // deep only (`rm -f tests/actual/*.json`), and a run in which the
+    // builder DID write this file leaves it there for ever — so the
+    // absence test passes once and then fails for the rest of the
+    // checkout's life.  Asking whether the slot still holds what was
+    // put there says the same thing and cannot go stale.
+    tbr_slot = file(map_slot_path(tbr_dir, "too_close"));
+    tbr_slot.write("SENTINEL — the builder must not have touched this");
+
+    tbr_run = map_build_one(tbr_dir, "too_close", PAL, SHOTS);
+    assert(!tbr_run.ok, "a source whose spawns are all too close must not build");
+    assert(tbr_run.message.find("can never provoke wave 1") != null,
+           "and the builder says WHY: [{tbr_run.message}]");
+    assert((file(map_slot_path(tbr_dir, "too_close")).content() ?? "")
+           == "SENTINEL — the builder must not have touched this",
+           "and it wrote nothing over the slot");
+
+    // The positive control: the same source with the spawn moved out
+    // builds and writes both files.
+    tbr_f2 = file("{tbr_dir}/far_enough.keys");
+    tbr_f2.write("palette 5\ndrag 0 0 16 0\n"
+               + "do toggle_mode\ndo cycle_kind\nclick 0 0\n"
+               + "do cycle_kind\ndo cycle_kind\nclick 14 0\n");
+    tbr_ok = map_build_one(tbr_dir, "far_enough", PAL, SHOTS);
+    assert(tbr_ok.ok, "the control must build: {tbr_ok.message}");
+    assert(file(map_slot_path(tbr_dir, "far_enough")).exists(), "the ground was written");
+    assert(file(map_marker_slot_path(tbr_dir, "far_enough")).exists(),
+           "and the markers beside it");
+}
+
+// @DRY-089 — a build sweep, and its three ways of finding nothing
+fn test_a_build_sweep_refuses_to_be_green_over_nothing() {
+    tab_empty = "{SHOTS}/a2_empty";
+    mkdir_all(tab_empty);
+    tab_r = map_build_all(tab_empty, PAL, SHOTS);
+    assert(tab_r.message != "", "a sweep that found no sources must not report success");
+    assert(tab_r.built == 0, "and it built nothing");
+
+    tab_missing = map_build_all("{SHOTS}/a2_no_such_dir", PAL, SHOTS);
+    assert(tab_missing.message.find("no map directory") != null,
+           "a missing directory is named: [{tab_missing.message}]");
+
+    tab_one = map_build_all(MAPS_DIR, PAL, SHOTS, "no-such-map");
+    assert(tab_one.message.find("no map source called") != null,
+           "and so is a name that is not there: [{tab_one.message}]");
+}
+
+// ⚠⚠ A map is a POSITION, so a source that ticks is CUT at the tick —
+// which is what makes "copy a scenario into maps/ and build it" work.
+// Without it, `a-base-that-plays-its-list` would be saved as the world
+// 500 ticks of siege left behind: rubble on the ground, walls broken,
+// and a base that reads as already fought over.
+fn test_a_map_is_built_from_the_position_not_the_end_state() {
+    tam_dir = "{SHOTS}/a2_pos";
+    mkdir_all(tam_dir);
+
+    // A source that paints a base, then RAISES a pile — standing in for
+    // the rubble a tick leaves — after the `tick` line.  The pile is
+    // what a whole-file build would bake into the ground.
+    tam_f = file("{tam_dir}/ticked.keys");
+    tam_f.write("palette 5\ndrag 0 0 16 0\n"
+              + "do toggle_mode\ndo cycle_kind\nclick 0 0\n"
+              + "do cycle_kind\ndo cycle_kind\nclick 14 0\n"
+              + "do toggle_mode\n"
+              + "tick 1\n"
+              + "palette 9\nclick 8 0\n");
+
+    tam_run = map_build_one(tam_dir, "ticked", PAL, SHOTS);
+    assert(tam_run.ok, "the source builds: {tam_run.message}");
+
+    tam_pal    = load_palette(PAL);
+    tam_loaded = load_map_or_empty(map_slot_path(tam_dir, "ticked"), tam_pal);
+    assert(lookup_painted(tam_loaded.0, 8, 0) == 5 as u8,
+           "(8, 0) must still be the grass the POSITION painted — a whole-file "
+           + "build would have made it wall, got kind {lookup_painted(tam_loaded.0, 8, 0) as integer}");
+    assert(painted_count(tam_loaded.0) == 17,
+           "and the strip is 17 hexes, got {painted_count(tam_loaded.0)}");
+}
+
+// ─── It is a game, not two layers ───────────────────────────────
+
+fn test_a_run_starts_on_every_shipped_map() {
+    for tar_n in a2_shipped(0) {
+        tar_s  = a2_load(tar_n);
+        tar_ps = play_state_new();
+        play_set_mode(tar_ps, tar_s, true);
+        assert(vehicle_present(tar_ps.wave.player),
+               "{tar_n}: P must put the crew on the ground");
+
+        tar_core = play_core(tar_s.mw);
+        tar_q = 0;
+        tar_r = 0;
+        for tar_m in tar_s.mw.markers {
+            if tar_m.kind != MARKER_KIND_SPAWN as u8 { continue; }
+            if lat_distance(Hex { q: tar_m.q, r: tar_m.r },
+                            Hex { q: tar_core.1, r: tar_core.2 })
+               >= WAVE_1_PROVOCATION_HEXES { tar_q = tar_m.q; tar_r = tar_m.r; }
+        }
+        vehicle_drive(tar_ps.wave.player, tar_q, tar_r);
+        // ⚠ The HIGH-WATER mark, not the count at the end.  Wave 1 is
+        // five robots against two towers, so by tick 40 they can all be
+        // dead — `alive_count` read once answers 0 for a base that is
+        // working perfectly, which is what the first version of this
+        // assertion did.
+        tar_seen = 0;
+        for _ in 0..10 {
+            play_ticks(tar_ps, tar_s, 4);
+            if alive_count(tar_ps.wave) > tar_seen { tar_seen = alive_count(tar_ps.wave); }
+        }
+
+        assert(tar_ps.wave.player.q == tar_q && tar_ps.wave.player.r == tar_r,
+               "{tar_n}: the player must be able to DRIVE to the spawn at "
+               + "({tar_q}, {tar_r}) — got ({tar_ps.wave.player.q}, {tar_ps.wave.player.r})");
+        assert(wave_schedule_sent(tar_ps.wave.schedule) >= 1,
+               "{tar_n}: poking the spawn must send wave 1");
+        assert(tar_seen > 0,
+               "{tar_n}: and put robots on the ground — none were ever alive");
+    }
+}
+
+// ⚠⚠ The one measured claim a map DOCUMENTS, gated.  `starter_01`'s
+// header says standing between its two towers is worth a wave; if that
+// stops being true the map's own description is a lie, and no other
+// test in the repo would notice.
+//
+// ⚠ One map, not three: the other two readings are in `@M045` and
+// pinning all six would put three more full runs in the fast suite for
+// no new claim.
+fn test_what_holding_the_line_is_worth() {
+    twh_held = a2_play_until_broke("starter_01", 4, 0);
+    twh_core = a2_play_until_broke("starter_01", 0, 0);
+
+    assert(twh_held.0 > twh_core.0 + 30,
+           "standing between starter_01's towers must be worth real time — "
+           + "held t{twh_held.0} ({twh_held.1} waves) against t{twh_core.0} "
+           + "({twh_core.1} waves) at the core");
+    assert(twh_held.1 > twh_core.1,
+           "and a whole extra WAVE — held {twh_held.1}, at the core {twh_core.1}");
+}
