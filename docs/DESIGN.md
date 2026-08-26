@@ -3688,6 +3688,91 @@ the design already supplies the shape:
 must be unconditionally available for ever** — which must include
 **somewhere still ordinary to play.**
 
+#### ⚠⚠ AND THIS IS HOW ALLIANCES CRUMBLE — nobody betrays anybody  `@X233`
+
+Owner, 2026-08-26:
+
+> *"the anti-robot alliances automatically crumble when individual
+> players start to aid the robots, to get them lined up against the
+> ancient ones."*
+
+⚠⚠ **This is the mechanism `ROBOT_ECONOMY.md` § The politics must be
+worth having asked for — *alliances grow and crumble* — and it is CAUSED
+by the campaign's own structure rather than authored.**
+
+⚠ The chain is entirely existing design:
+
+1. **Mid-game**: robots are the shared enemy, so players ally against
+   them.
+2. **End game** (§ The end game): *"the robots and insects are part of
+   the solution — the humans cannot attack an old one, but both the
+   other factions inherently can."*
+3. ⚠⚠ So a player at that depth **aids the robots on purpose**, to line
+   them up against the ancient ones.
+4. ⚠⚠ **And the alliance's PREMISE has evaporated for that player** —
+   not because they defected, but because they are no longer fighting
+   the thing the alliance was about.
+
+#### ⚠⚠ Two players, both RIGHT, in conflict — and that is the best kind
+
+⚠ **Nobody here is a traitor.**
+
+| | and they are correct |
+|---|---|
+| the **end-game** player aiding robots | § The end game says so outright — it is the only way anything reaches an old one |
+| the **early-game** player who feels betrayed | ⚠ robots are still **their** problem, and will be for a long time |
+
+⚠⚠ **Political conflict with no villain in it**, arising from
+`@X230`'s phase asymmetry given a consequence — **the two ideas lock
+together**, and neither needed a diplomacy system, a betrayal mechanic
+or a reputation penalty to produce it.
+
+#### ⚠ *"Automatically"* means it is a TRIGGER, not a choice
+
+⚠ Per `@X216` the alliance does not "break" as an action somebody takes.
+The **condition** *this player has been aiding robots* becomes true, and
+the alliance's basis is simply **void**.  ⚠ And per `@X217` the trigger
+tests **what happened** — traffic that was not attacked, escorts, routes
+left open — never a diplomacy stat.
+
+⚠⚠ **It is legible without a UI** (`@X207`): you are not told the
+alliance ended.  You notice that **robots stopped dying in somebody's
+region**, and the crew mention it — *"someone's been letting the miners
+through."*
+
+#### ⚠⚠ The same act reads TWO WAYS, and the game never disambiguates  `@X234`
+
+⚠ Aiding robots is also `@X176`'s combative route — **pointing the
+planet at somebody**.  So from outside:
+
+> ⚠⚠ **You cannot tell whether they are helping robots for end-game
+> reasons or to hurt you.  The ACT is identical; only the intent
+> differs, and intent is not visible.**
+
+⚠⚠ **That is real political texture requiring no lying system** — and it
+is `@X218`'s *never show the join* applied socially: the game presents
+what happened and never why.
+
+⚠ It also means an accusation can be **honest and wrong**, which is the
+most human thing this design has produced.
+
+#### ⚠⚠ And it is the first sign of the end game for people nowhere near it  `@X235`
+
+`@X232` says a newcomer **sees the effects of late content before the
+content**.  ⚠⚠ **This is the concrete case, and it is a superb one:**
+
+> **The first evidence of the end game, for a player who has never heard
+> of an old one, is that their ally started helping the enemy.**
+
+⚠ Which is exactly how [`SETTING.md`](SETTING.md) § The old ones says the
+deep layers must arrive — *present as signs long before they are a
+mechanic* — and here the sign is **another person's behaviour** rather
+than a portent in the landscape.
+
+⚠⚠ It also gives the deep lore a political weight beyond leverage: the
+truth about the old ones does not merely inform, **it reorganises who
+your enemies are** — and it does so unevenly, one player at a time.
+
 #### ⚠⚠ It is the strongest form of *other players are the seed*  `@X232`
 
 ⚠ `@X224` says other players seed the world with **what they did**.  ⚠⚠

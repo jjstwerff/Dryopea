@@ -1202,6 +1202,12 @@ of the station nobody is maintaining, a trader who used to be central and
 is now quiet.  ⚠ Without decay a political landscape only ever
 accumulates, and **nothing that only accumulates can be seen to fall.**
 
+⚠⚠ **And the crumbling has a CAUSE, already designed** — `DESIGN.md`
+§ 20 (`@X233`): anti-robot alliances dissolve when a member reaches the
+end game and starts **aiding** the robots against the ancient ones.
+**Nobody betrays anybody; the alliance's premise simply evaporates**, and
+it is `@X230`'s phase asymmetry given a consequence.
+
 ⚠ **It also means the politics must be SLOW.**  Fast politics leaves no
 readable trace; slow politics leaves **ruins**, and ruins are what the
 owner is asking to walk through.
