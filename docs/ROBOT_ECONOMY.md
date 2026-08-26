@@ -1031,6 +1031,113 @@ must not become a better way to play the sortie game already warns.
 [`SETTING.md`](SETTING.md) § The competitors, which `@X170` already uses
 for the same purpose one system over.
 
+#### ⚠⚠ A LIGHT POLITICAL SYSTEM — centrality converts into INVESTMENT  `@X213`
+
+Owner, 2026-08-26:
+
+> *"eventually I want a light political system in the station where
+> players can influence where bigger investments are done, perhaps even
+> building a second station."*
+
+⚠⚠ **This is what makes `@X212`'s centrality MATTER.**  Without it,
+being more central is a feeling; with it, **centrality is a lever over
+where shared money goes** — a new landing corridor, a refinery, a repair
+dock, an expanded permit quota, or **a second station** as the extreme
+case.
+
+⚠ **It is genuinely political because the investment is COLLECTIVE**:
+nobody can do it alone, the outcome affects everybody, and ⚠⚠ **players
+with holdings in different regions want it in different places** — a
+real conflict of interest **with no bad actors in it.**
+
+#### ⚠⚠ *"Light"* means it has NO SEPARATE INTERFACE — your play IS your vote
+
+⚠ `@X156` refuses question lists and `@X207` refuses a standings screen,
+so a parliament UI is out on both counts.
+
+⚠⚠ **The version that fits: you do not cast a ballot — your accumulated
+position IS the input.**  Your trade, your standing with the traders who
+matter, the deals you took worse terms on (`@X210`).  ⚠ **The political
+system has no interface because participating in it is what you were
+already doing**, and that is what makes it light rather than a second
+game.
+
+⚠ It also closes `@X210`'s loop: *a good deal for the trader hurts now*
+finally has a visible long-term payoff — **influence over where the next
+investment lands.**
+
+#### ⚠⚠ INFORMATION has value — for NPCs, never between players  `@X214`
+
+Owner, 2026-08-26:
+
+> *"in a campaign information is not traded between players, but
+> certainly has value for NPCs.  The general knowledge that there are
+> humans on the planet, that the robots are not haywire but steered, and
+> the city underground and the 'art' inside that city are all pieces of
+> information that have value — but lose their value when the common
+> public knows them."*
+
+⚠⚠ **This resolves a tension `@X164` created.**  Knowledge may not pass
+**player → player**, because buying an answer is buying the dominant
+axis.  ⚠ Selling to an **NPC** is a different act entirely:
+
+| ❌ player → player | ✅ player → NPC |
+|---|---|
+| hands somebody the answer they should have earned | **converts your own discovery into value** |
+| the buyer skips the work | ⚠⚠ **you keep the knowledge** — you sold a copy, not the thing |
+
+⚠⚠ **And it makes `@X102`'s knowledge tree economically live for the
+first time.**  Until now the tree changed *what the player could attempt*;
+this gives it a price without making it purchasable — ⚠ you still cannot
+**buy** a fact, only **sell** one you found.
+
+⚠ The named pieces are all already in [`SETTING.md`](SETTING.md), and
+each is a truth the cordon does not have:
+
+| the information | where it lives | ⚠ what revealing it does |
+|---|---|---|
+| **there are humans on the planet** | § History, § The settlers today | ⚠⚠ brings the government *in* — and the settlers **hide from the AI and from the players** |
+| **the robots are steered, not haywire** | § The premise — *"the outside government's read is half wrong"* | ⚠⚠ the biggest one: the **cordon is built around a phantom** |
+| **the city underground** | § The buried city | opens the deepest layer to outsiders |
+| **the ART inside it** | § The statues, and the cloth | ⚠ the 2023 data already sells *painting, jewelry, sculpture* — so art has **two** values: the artefacts, and **the knowledge that they exist** |
+
+⚠ § Future contact already said a player who discovers the truth *"holds
+serious leverage"*.  ⚠⚠ **This is that leverage given a price.**
+
+#### ⚠⚠ And the DECAY is the strongest anti-optimisation rule in this document  `@X215`
+
+> *"…but lose their value when the common public knows them."*
+
+⚠⚠ **A piece of information pays ONCE, EVER, across the whole player
+base.**  Three consequences, and the third is the important one:
+
+- ⚠ **first to sell takes the value** — so there is a race, and it is a
+  race in **discovery** rather than in grinding;
+- ⚠ **selling destroys the future value** — for you and for everybody,
+  so the decision is *take it now* against *it is worth more while I am
+  the only one who knows*;
+- ⚠⚠ **it cannot be farmed.**  A resource that exists in quantity **one**
+  has nothing to optimise, which is § The spreadsheet test satisfied
+  outright rather than defended.
+
+⚠ **And it carries its own pressure**, as § What actually defends it
+requires of every reward: revealing *there are humans down there* is a
+**betrayal with a price tag** — the settlers hide from players too, and
+⚠⚠ **it cannot be undone.**  Irreversible, morally weighted, and priced
+is exactly the shape this design wants.
+
+#### ⚠ The mystery does not evaporate in week one, for two reasons
+
+| | |
+|---|---|
+| ⚠ **late sellers get nothing** | so only the first few profit, and the rush is small |
+| ⚠⚠ **supply is naturally slow** | `@X155` keeps the deep truths on the **planet**, found by hard work — and `@X150` forbids the crew knowing them in advance |
+
+⚠ **The thing to watch**: if a single sale pays enough to fund a
+campaign, somebody will sell the setting for cash on day one.  ⚠⚠ Price
+it as *significant but not transformative*, and let the **strategic**
+cost — what the cordon does once it knows — be the larger half.
+
 #### ⚠⚠ And it is what makes the whole thread cohere  `@X209`
 
 ⚠ Read together, every rule in this thread is the same instruction from a
@@ -1045,6 +1152,7 @@ different angle:
 | `@X207` factions relate to each other | ⚠⚠ **the player is not the centre** |
 | `@X210` a good deal for the trader is an investment | **now versus later, with the cost visible and the payoff earned** |
 | `@X212` winning is centrality, and it decays | ⚠⚠ **nothing stays won** |
+| `@X215` information pays once, ever | ⚠⚠ **nothing to farm** |
 
 > ⚠⚠ **Each one removes a way to compute, and puts a way to LIVE in its
 > place.**  That is the sentence to keep when judging anything added to

@@ -1850,6 +1850,17 @@ insects come and can therefore choose to pay instead of fight; *robotic
 reserves* means a hibernating boss is a thing you can look for.  Each
 resolves into **position, terrain or timing**.
 
+⚠⚠ **AND IT HAS A PRICE — to NPCs, never to other players** (`@X214`,
+[`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) § The capstone).  *There are
+humans on the planet*, *the robots are steered rather than haywire*, *the
+buried city*, *the art inside it* — each is a truth the cordon does not
+have, and each can be **sold once**.  ⚠⚠ **It loses its value when the
+common public knows it**, so a piece pays once across every player, the
+race is in **discovery** rather than grinding, and it **cannot be
+farmed**.  ⚠ And every one carries a cost that is not money: the
+settlers hide from players too, so revealing them is **a betrayal that
+cannot be undone**.
+
 ⚠⚠ **And this tree is the game-state half of the DOMINANT progression**
 ([`PROGRESSION.md`](PROGRESSION.md) § P0, § P4): what the *player*
 learns lives in their head and cannot be taken away, while this is what
