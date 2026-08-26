@@ -3475,6 +3475,83 @@ once**, and the design never presents the pair.
 of the world: **everything the player learns about why something
 happened, they infer.**
 
+#### ⚠⚠ THE AUTHOR'S SAFETY NET — the design must survive being played by the person who wrote it  `@X221`
+
+Owner, 2026-08-26:
+
+> *"this system is also my own safety net.  I want to play this game
+> myself and I do not want a huge advantage to other players, and I want
+> to experience things that are not scripted and unknown till the moment
+> it happens."*
+
+⚠⚠ **This is the hardest version of § The spreadsheet test's
+requirement.**  Resisting somebody who read the source is one problem;
+resisting **the person who wrote it** is strictly harder — they know
+every condition, every event, every threshold, and no amount of *never
+showing the join* helps, **because they know the join.**
+
+⚠ **So it is worth being exact about what actually protects the author,
+and what does not:**
+
+| ⚠⚠ does protect | ⚠ does not |
+|---|---|
+| **the instance is not the rules** (`@X122`) — the author knows a withered tree opens a crystal site; **they do not know which tree on this map withered** | *never show the join* (`@X218`) — they wrote the join |
+| ⚠⚠ **other players' actions** — in a shared campaign the state includes what everybody else did, which the author cannot know.  **Multiplayer helps the author most** | hiding numbers — they chose the numbers |
+| **the COMPOUND of conditions** — knowing every rule does not tell you *which* are simultaneously true in a live campaign, and `BLOCKS.md`'s triggers get more complex as history accumulates | a secret list — they wrote the list |
+| ⚠ **time** — write it, forget it, meet it later.  Real, and the weakest of the four | |
+
+⚠⚠ **The author will retain some advantage, and a design that claimed
+otherwise would be lying.**  What this architecture can do is make it
+**small and decaying**, and the honest statement is that the *instance*
+and *other players* carry almost all of the work.
+
+#### ⚠⚠ Which gives the AUTHORING TEST: can a player STUMBLE into it?  `@X222`
+
+Owner: *"a lot of the events can be written in a way that players can
+stumble into them without prior knowledge."*
+
+> ⚠⚠ **The test: would knowing this event exists change how a player
+> plays?**
+>
+> - **No** → it is stumble-able.  ⚠ **The author can meet it too**, and
+>   a wiki does not spoil it.
+> - **Yes** → it is a quest with hidden steps, and it is spoiled the
+>   moment one person writes it down.
+
+⚠ **The mechanism is that the condition must be a BYPRODUCT of ordinary
+play, never a checklist.**
+
+| ❌ farmable | ✅ stumble-able |
+|---|---|
+| *visit these five locations* | ⚠ *you have worked this region for a long time* |
+| *sell three pieces of information* | *you left somebody behind here, twice* |
+| *reach standing 5 with a trader* | ⚠⚠ *you have been dealing straight with the same person for a while* |
+
+⚠⚠ **The rule underneath: a condition should describe a WAY OF PLAYING,
+not a list of actions** — because **you cannot shortcut being a certain
+kind of player.**  A checklist can be executed by somebody who does not
+mean it; a playstyle cannot.
+
+⚠ **And it follows directly from `@X217`**: triggers test *what
+happened*, never a rating.  A condition made of things-you-did is
+inherently stumble-able; one made of things-you-must-collect is a quest
+log with the log removed.
+
+#### ⚠ It also sets the ratio, and *stumble-able* should be most of them
+
+⚠ Some events will legitimately want a specific rare precondition — the
+deep-lore ones, where § Future contact's no-shortcut rule is the whole
+point.  ⚠⚠ **But the majority should be the stumble-able kind**, because
+those are the ones that:
+
+- keep working after the community documents the game;
+- **let the author play their own game** (`@X221`);
+- and are **cheap**, which `@X220` requires of anything rare.
+
+⚠ *"Unknown till the moment it happens"* is then not a promise the
+design has to keep by hiding things — **it is what falls out of
+conditions that describe how somebody played.**
+
 #### ⚠ Two failure modes, and STARVING is the dangerous one  `@X219`
 
 | | |
