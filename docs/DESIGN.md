@@ -3787,6 +3787,70 @@ reach: **they can see its effects before they can see it.**  ⚠⚠ Which is
 rule become **visible long before they are reachable**, which is exactly
 how that section says they should arrive.
 
+#### ⚠⚠ NEW PLAYERS KEEP ARRIVING — which is what stops the world CONVERGING  `@X236`
+
+Owner, 2026-08-26:
+
+> *"and because new players can always come into the game, there is a
+> natural landscape that will evolve."*
+
+⚠⚠ **This names the hazard the rest of this section had, and answers
+it.**  Without inflow, everyone advances toward the end game, **everyone
+ends up aiding the robots**, and the mid-game has nobody left in it — the
+political landscape collapses into uniformity, which is
+[`PROGRESSION.md`](PROGRESSION.md) § P2a2's *grey soup* at world scale.
+
+⚠ **Continuous arrival maintains a DISTRIBUTION rather than a march:**
+
+| ⚠⚠ always populated | so |
+|---|---|
+| somebody in their **first base** | robots are still a shared enemy for somebody |
+| somebody **mid-campaign** | anti-robot alliances keep **forming** |
+| somebody at the **end game** | and keep **crumbling** (`@X233`) |
+
+⚠⚠ **So the crumbling is TURNOVER, not decay toward nothing** — which
+completes `@X227`'s *grow and crumble* as a **cycle**.  The composition
+shifts and never empties.
+
+#### ⚠⚠ And each phase is CONTENT for the other
+
+⚠ The inversion is what makes it a landscape rather than a ladder:
+
+- **veterans' end-game behaviour is the world newcomers arrive into**
+  (`@X235` — their first sign of the old ones is an ally helping the
+  enemy);
+- **newcomers are who the leftovers are for** (`@X227`, `@X172`), and
+  they are the population an end-game player's actions land on.
+
+⚠⚠ **Neither phase is waiting for the other to finish.**  That is the
+ecology: a population with arrivals at the bottom and progression
+upward **holds every phase permanently**, so every conflict this design
+describes stays live.
+
+#### ⚠ Which makes one rule mandatory: NOTHING MAY PERMANENTLY CLOSE  `@X237`
+
+⚠⚠ **Inflow only helps if there is somewhere to arrive INTO.**  If a
+region can be exhausted for ever, or a faction destroyed permanently,
+the world converges anyway and newcomers land in **ruins with nothing
+in them.**
+
+⚠ So the world must **renew**, and parts of that already exist:
+
+| renewal | already designed |
+|---|---|
+| routes **reroute** when cut | [`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) § 3 |
+| **trees wither and open shafts** between missions | § The vertical dimension |
+| abandoned bases **encroach and persist** | § 20 above |
+| the robot economy **regrows** what is denied | ⚠ implied by § 2 and not yet stated — **worth stating** |
+
+⚠ `../crew_punk/BLOCKS.md` reaches the same rule from the other side:
+*"nothing closes — never got there is not the same as cannot."*
+
+⚠⚠ **And the honest caveat: this assumes real inflow.**  A game nobody
+new joins **does** converge — so the ecosystem's health is ultimately
+**player numbers**, which is `@X187`'s point exactly: *the dependency is
+an audience, and only the base game can provide it.*
+
 #### ⚠ Two failure modes, and STARVING is the dangerous one  `@X219`
 
 | | |
