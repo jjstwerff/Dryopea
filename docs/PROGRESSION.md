@@ -32,7 +32,7 @@ stats* is the part that is superseded.
 
 Codes: `@X016`, `@X017` **superseded**; `@X103` **reversed**; `@X018`,
 `@X019` stand with a wider reading; `@X111`–`@X136` are the design
-below.  Index: [`DECISIONS.md`](DECISIONS.md).
+below, and `@X137`–`@X141` (no tutorial) are `DESIGN.md` § 11's.  Index: [`DECISIONS.md`](DECISIONS.md).
 
 ## P0 — ⚠⚠ the model is BLUE PRINCE: information dominates, and friction is what upgrades buy
 
@@ -109,7 +109,7 @@ working as designed.
 |---|---|
 | **the first base may not be balanced for a naive player** | difficulty that assumes ignorance, so that knowing the answer feels like cheating |
 | **content may not be gated on progress already earned in the player's head** | *"clear three missions to unlock walls"* — a wall the player knows how to use, withheld because a counter says so |
-| **the tutorial cannot be a wall** | anything unskippable.  ⚠ `DESIGN.md` § HUD already wants everything diegetic, which is the same instinct: a world you can read needs no lesson you must sit through |
+| ⚠⚠ **there is no tutorial at all** (`@X137`) | anything unskippable — and since 2026-08-26, anything at all: no tutorial mission, no first-run overlay, no tooltip layer.  ⚠ `DESIGN.md` § There is NO TUTORIAL is the ruling; § Position triggers is why it is affordable, because most of the game has no key to learn |
 
 ⚠⚠ **And the corollary is a rule for every unlock this project ever
 adds: prefer FOUND over AWARDED.**
@@ -616,6 +616,24 @@ script:
 - **A player who has stalled hears one line, from whoever has something
   to say about where they are standing.**
 
+#### ⚠⚠ These remarks ARE the onboarding — there is no tutorial to fall back on  `@X137`
+
+`DESIGN.md` § There is NO TUTORIAL (owner, 2026-08-26) rules out a
+tutorial entirely: the controls are meant to be found by playing around,
+and most of the game has no key at all (§ Position triggers).  ⚠ What
+that leaves unanswered is **what to do first**, and this is what answers
+it — which makes the system **load-bearing rather than a convenience**.
+
+⚠ **One consequence: the LANDING remark must be near-certain.**  Every
+other remark is conditional on somebody having something to say (`@X136`),
+but on fresh ground *every* crew member has an observation in their own
+domain — so the opening is both where the system can reliably speak and
+the moment a lost player most needs it.
+
+⚠ **It still may not conclude** (`@X129`): *"soft ground on that ridge"*
+gets a lost player moving, *"press Q to paint a wall"* is the tutorial
+that was just refused.
+
 #### ⚠⚠ It skips itself for the player who does not need it — which is `@X120` for free
 
 `@X120` says a returning player may skip the ramp and **nothing may stop
@@ -692,6 +710,12 @@ simulation reads back.
 
 **This is the first designed feature that genuinely requires text**, and
 it turns a non-issue into a prerequisite.
+
+⚠⚠ **And `@X137` raises the stakes on it**: with no tutorial, the crew's
+remarks are the onboarding *and* — with § P2e's shared history — the
+campaign's engagement.  **Two load-bearing jobs now sit behind a font
+file**, which moves this from a deferred nicety to the prerequisite
+worth solving early.
 
 `DESIGN.md` § HUD and `@X097`: `graphics::draw_text` rasterises through
 a `#native` call unavailable under `loft test`, **and needs a font file

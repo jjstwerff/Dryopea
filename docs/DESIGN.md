@@ -2049,6 +2049,119 @@ Key presses are reserved for *mode toggles* and the rare
 intent that has no spatial form.  Design new mechanics in
 spatial terms first.
 
+### ⚠⚠ There is NO TUTORIAL, and the controls are the reason that is affordable  `@X137`
+
+Owner, 2026-08-26:
+
+> *"I will not have any tutorial in game, but with simple/visible enough
+> controls that a player can just find by playing around.  This is the
+> missing piece to get things rolling in a game without handholding."*
+
+⚠ **This is a ruling, not an aspiration.**  No tutorial mission, no
+first-run overlay, no "press W to move", no tooltip layer, no skippable
+intro.  ⚠⚠ And it is affordable **because of the section above**: most
+of this game has **no key to learn at all**.  A player who drives around
+discovers it by *being places* — driving over loot picks it up, driving
+to a tower repairs it, driving into the core arms the launch, standing on
+a spawn marker starts the run.  **There is nothing to teach because there
+is nothing to press.**
+
+#### The four jobs a tutorial does, and what already does each one here
+
+| a tutorial teaches | dryopea's answer | ⚠ built? |
+|---|---|---|
+| **the controls** | § Position triggers — most actions have no key; what remains is the handful below | ⚠ yes, and it is a BUDGET (see below) |
+| **the goal** | the core is visibly the thing being attacked, spawn markers pulse when a wave is coming, and the wallet is the one number (§ HUD) | mostly — the wallet shipped in `plans/19` § P7 |
+| **feedback** | § HUD's diegetic list: tower state is its colour, order status is the core's top, launch is the core's bottom pulse, what is carried floats above the carrier, construction grows out of the ground, paint mode tints the vehicle | partly |
+| **a safe place to experiment** | ⚠⚠ **`@X022` — the game WAITS.**  The wave list does not start until the player stands on a spawn marker, so the recon window is **unbounded and ended deliberately** | ⚠⚠ **yes, and nobody built it for this** |
+
+⚠⚠ **That last row is the whole thing.**  A new player can wander the map
+indefinitely, press every key, drive into everything, and **nothing
+punishes them** — because [`SETTING.md`](SETTING.md) § Nobody is
+attacking anybody makes the world safe to watch until the player
+interferes, and `wave_provoke_step` means the run begins when *they* say
+so.  **dryopea already ships a zero-cost tutorial sandbox and it is
+called the recon window.**
+
+#### ⚠⚠ The crew's remarks are the missing piece — which promotes them
+
+Owner, 2026-08-26:
+
+> *"But a simple input scheme is not guarantee that the player will be
+> engaged and have a clear view about what to do.  So that is where the
+> helpers come in."*
+
+⚠⚠ **Discoverable controls are NECESSARY and not SUFFICIENT**, and the
+distinction is worth holding because the two failures are unrelated and
+need different answers:
+
+| the failure | what actually fixes it |
+|---|---|
+| *"I don't know how to do anything"* | § Position triggers + the five keys — **solved above** |
+| *"I know how, and I don't know what is worth doing"* | ⚠ **the crew** — information |
+| *"I have stopped caring"* | ⚠⚠ **the crew** — engagement, and it is a different problem |
+
+⚠ **The third row is the one a control scheme can never reach.**  A
+player who has learned every key can still drift, and a silent world is
+where they drift: nothing acknowledges them, so nothing suggests a
+direction.  ⚠⚠ **A crew member remarking on where you are standing is
+the world noticing you** — that is engagement, and it is separate from
+the information the remark carries.
+
+⚠⚠ **And engagement across a CAMPAIGN comes from the same people.**
+[`PROGRESSION.md`](PROGRESSION.md) § P2e's shared history is what makes
+the voice worth listening to by the tenth sortie — you are not being
+prompted by a hint system, you are being talked to by somebody who was
+there when the last base fell.  ⚠ **The remarks and the relationships
+are one system doing two jobs**: information, and attachment.
+
+Controls answer *how*; the sandbox answers *is it safe to try*.  Neither
+answers **what to do first** or **why keep going**, and that is the gap
+the owner is naming.
+
+⚠ [`PROGRESSION.md`](PROGRESSION.md) § P2c's crew remarks fill it, and
+this ruling **changes their status**: they are not a convenience, they
+are **the onboarding**.  Two consequences follow:
+
+- ⚠⚠ **The landing remark is the one that must be near-certain.**  Every
+  other remark is conditional on somebody having something to say
+  (`@X136` — silence is load-bearing), but on fresh ground *every* crew
+  member has an observation in their own domain, so the opening is where
+  the system is reliably able to speak.
+- ⚠ **It still may not conclude** (`@X129`).  *"Soft ground on that
+  ridge"* gets a lost player moving; *"press Q to paint a wall"* is the
+  tutorial this section just refused.
+
+#### ⚠ The key table is now a DESIGN BUDGET, and a gate already enforces it
+
+**Every key is a thing the player must discover unaided.**  So a new
+binding is not free, and it needs an argument rather than a row.
+
+⚠⚠ `src/bindings.loft` is the ONE key table, and
+`tests/09_i1_bindings.loft` **pins its ROW COUNT** — a new row goes red
+by design.  That gate was written as a regression check; under this
+ruling it also carries the design meaning, which is a nice place for it
+to have ended up.
+
+#### ⚠ Two known discoverability hazards, named so they are not discovered late
+
+| key | why it is a risk | ⚠ what mitigates it today |
+|---|---|---|
+| **Q — wall-paint toggle** | ⚠⚠ **the sharpest one in the design.**  § The handful of keys already calls it *"acknowledged exception to the spatial principle"*, and **building is the biggest missing mechanic** ([`plans/ROADMAP.md`](../plans/ROADMAP.md)) — so a player who never presses Q never builds, and never plays the actual game | the vehicle **tints red** while paint mode is on, so it is obvious *once found*.  ⚠ The problem is purely finding it, and a crew remark is the intended answer |
+| **Shift — boost** | [`plans/13`](../plans/13-the-vehicle/README.md) § V4 measured that **boost is the only way out of a sealed base** — so a player who never finds it can wall themselves in permanently | ⚠ the hazard is **ordered**: sealing yourself in requires having built a wall, which requires having found Q.  So Q is the gate on both |
+
+#### ⚠⚠ And it adds a TEST for every future mechanic
+
+Alongside § What kind of game this is and the genre test:
+
+> ⚠⚠ **Can a player find this by playing around?**  A mechanic that
+> needs explaining needs **redesigning** — because there is no longer
+> anywhere to explain it.
+
+⚠ § Position triggers already gives the technique: *design new mechanics
+in spatial terms first*.  This ruling is what makes that instruction
+binding rather than preferred.
+
 ### The handful of keys
 
 | Key | Action |
