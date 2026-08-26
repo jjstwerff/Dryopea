@@ -36,7 +36,7 @@ below, and `@X137`–`@X141` (no tutorial) are `DESIGN.md` § 11's;
 `@X142`–`@X143` are the speaker rule and `@X144`–`@X149` the debrief and `@X150`–`@X151` what the crew
 can know at all, `@X152`–`@X156` the window into the
 universe, `@X157`–`@X158` personality,
-`@X159`–`@X167` the office, `@X189`–`@X194` the rate,
+`@X159`–`@X167` the office, `@X189`–`@X196` the rate,
 and `@X168`–`@X172` the crew section.  Index: [`DECISIONS.md`](DECISIONS.md).
 
 ## P0 — ⚠⚠ the model is BLUE PRINCE: information dominates, and friction is what upgrades buy
@@ -567,6 +567,63 @@ slow to learn something new.  ⚠ No new fiction required.
   ⚠⚠ **So the rule distinguishes the two cases by itself**: *recruiting
   to fill a gap* is good play, *recruiting to replace* still loses deep
   specialists for novices who take sessions to become useful (`@X160`).
+
+#### ⚠⚠ NO GREY SOUP — but there must be a REASON to broaden.  The lattice already is one  `@X195`
+
+Owner, 2026-08-26:
+
+> *"I do not want a grey soup where all helpers will eventually get every
+> skill.  But there should also be a reason to get more skills."*
+
+⚠ **Both failures are real, and they are opposite:**
+
+| ❌ grey soup | ❌ one-trick |
+|---|---|
+| everybody ends up with everything | everybody ends up with exactly one skill |
+| the roster is six identical people | a helper is idle whenever their one job is not needed **where they are** |
+
+⚠⚠ **The resolution is that it was never breadth-versus-depth.  It is
+WHICH breadth** — and § P2a's lattice already prices the two differently:
+
+| | ✅ **adjacent** breadth | ❌ **distant** breadth |
+|---|---|---|
+| what it is | a skill **sharing a statistic** with your specialism | a skill sharing **nothing** |
+| what it costs | ⚠⚠ **pre-paid by spill** — `@X124` has already been raising it | full price, against `@X193`'s slowdown |
+| example | a **repairer** {plan, tinker} growing into **build**, **operate**, **mine**, **boost**, **hack**, **scrounge** | that same repairer learning **scout**, **drive** or **social** |
+
+⚠⚠ **Every skill has exactly 6 cheap neighbours and 5 expensive
+strangers** — read straight off the lattice, not invented.  So a
+specialist becomes *half a generalist along their own two statistics*
+for free, and the other half is what the global slowdown makes
+expensive.
+
+#### ⚠⚠ Which gives the design target a SHAPE — a helper is an ARCHETYPE, not a profile
+
+> ⚠⚠ **A mature helper is deep in 2-3 statistics and the skills hanging
+> off them — a CLUSTER.**  Not one skill, and not twelve.
+
+⚠ Six statistics, and a person is characterised by which few they live
+in: a **plan/tinker** person is the engineer; **observe/stamina** is the
+field hand; **charisma/agility** is the nimble talker.  ⚠⚠ **That is
+neither soup nor a one-trick**, and it needs **no new mechanism** — the
+lattice produces it once `@X193` prices distant breadth properly.
+
+#### ⚠ And the reasons to broaden are already load-bearing
+
+⚠⚠ **A person is in ONE PLACE at a time**, which is the strongest one and
+it is *measured*: [`plans/17`](../plans/17-tower-hot-swap/README.md) § T3
+found upkeep to be a **positioning problem** — two *shuttling* helpers
+clear all 205 robots where the same two *parked* lose the base.  ⚠ A
+helper who can only do one thing is **idle whenever that thing is not
+needed where they are standing**, and the second skill is what converts
+their presence into work.
+
+| the reason | where it already lives |
+|---|---|
+| ⚠⚠ **coverage in time and space** | `plans/17` § T3, and § P2c's idle helper — an idle person is a wasted trip |
+| **the six-person cap** | § P2i — you cannot bring a specialist per job, and some stay at the station |
+| **redundancy against loss** | § P2f's empty chair: if the only hacker is stranded, somebody must partly cover |
+| **a second kind of account** | `@X146`'s sensor loadout — two domains, two readings of the same sortie |
 
 #### ⚠ Two things to settle
 
