@@ -635,6 +635,87 @@ to be read twice and mean opposite things.
 stops defending your core and starts defending **their road**.  Same
 walls, same towers, same crew, different thing behind them.
 
+## ⚠⚠ THE SPREADSHEET TEST — the economy must not be solvable, even with the source  `@X200`
+
+Owner, 2026-08-26:
+
+> *"the same rule for skills of a helper should also apply for the
+> economy.  It should be influenced by the players but I do not want to
+> give them enough information to write their own spreadsheets **even if
+> they know the source code of the game**."*
+
+⚠⚠ **That last clause sets the bar, and it is much higher than *do not
+show the numbers*.**  This repo is public and the rules are readable, so
+**any defence made of secrecy has already failed.**  The economy has to
+resist optimisation **by its shape**, not by its presentation.
+
+> ⚠⚠ **The test: can a player write down a single number to maximise?**
+> If yes, they will — and the design has failed.
+
+### ⚠⚠ Two instinctive answers that DO NOT work
+
+| ❌ | why it fails |
+|---|---|
+| **hide the numbers** | source is readable, and even closed games are datamined and measured.  ⚠ It also punishes the honest player and rewards the one with a wiki |
+| ⚠⚠ **make it random** | **a spreadsheet just computes the expected value** — randomness alone makes the optimum *easier* to state, not harder, because it replaces a hard question with an average.  ⚠ It is the instinctive answer and it is the wrong one |
+
+### ⚠⚠ What actually defends it — four, and the first is the rule being transferred
+
+**1. NO SCALAR OBJECTIVE.**  ⚠⚠ *A spreadsheet needs something to
+maximise.*  This is `DESIGN.md` § 9 § ASSIGNMENT IS A PILLAR's `@X198`
+moved one system over: if the economy pays in things that **cannot be
+ranked against each other**, there is no objective function to write
+down.
+
+⚠ **And this design is already built that way** — `DESIGN.md` § Scouting
+states it outright: *every reward has its own pressure.*
+
+| the gain | the pressure it carries |
+|---|---|
+| **crystal** — the highest value in the economy (§ 1a) | ⚠ it **wakes elementals** |
+| **cutting a transport route** (§ 3) | ⚠ it **reroutes through you** |
+| **starving a factory** (§ 2) | denied throughput is what **wakes the military** (§ Open questions 4) |
+| **sap** | invites an **insect chase by smell** |
+
+⚠⚠ **Value, risk, time and attention are four currencies with no exchange
+rate**, so *"how much crystal should I take"* has no computable answer —
+only a positional and temporal one.
+
+**2. THE WORLD REACTS.**  ⚠ § 3 already reroutes traffic when a route is
+cut, so **a computed optimum invalidates itself the moment it is acted
+on.**  A spreadsheet describes a fixed system; this one moves in response
+to being used.
+
+**3. THE INSTANCE IS NOT THE RULES.**  ⚠⚠ `@X122` — a player may know
+every rule and still not know **this** map: where the mine is, which tree
+withered, what is in the wave.  ⚠ So a spreadsheet over the rules tells
+you *what to look for*, never *what is there* — and looking is the trip
+(§ How the player ever learns any of this).
+
+**4. THE DECISIONS ARE WHERE AND WHEN, NOT HOW MUCH.**  ⚠ A spreadsheet
+is good at quantities and bad at *should I drive there now, with a wave
+inbound*.  ⚠⚠ Keeping the economy's decisions **positional and temporal**
+is what keeps them off the page.
+
+### ⚠⚠ Honest check: *"a static graph plus a rate per edge"* is spreadsheet-shaped
+
+⚠ § What this design does NOT do commits to exactly that — and **a static
+graph with rates is the most computable object there is.**  It has to be
+said rather than smoothed over.
+
+⚠⚠ **What saves it is that the graph is not what the player optimises.**
+The rates are legible; **the pressures attached to each reward are not
+commensurable**, the graph reacts, and the map is unknown until scouted.
+⚠ So the simplicity of the model is fine — *the economy is easy to
+understand and hard to solve*, which is the right way round.
+
+⚠ **The thing to watch**, and it is a real risk as this fills in: **do
+not add a resource that is purely good.**  One reward with no pressure
+attached is a scalar, and a scalar is a spreadsheet's foothold.
+⚠⚠ Every new node, route or material must arrive with **what it costs
+you to take it**, or it hands the player exactly what this rule is
+refusing.
+
 ## What this design does NOT do
 
 - **No economy simulation.**  Nodes do not need inventories, production

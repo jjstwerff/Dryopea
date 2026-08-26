@@ -125,6 +125,12 @@ person, at a moment when collecting it costs something**:
 | a sniper's range | it wants the outer ridge, which means driving **outside the wall** mid-wave to service it |
 | the whole run | scramble-and-salvage: every tower-top taken disables the tower it came from |
 
+⚠⚠ **And the same rule reaches the ECONOMY** (`@X200`,
+[`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) § The spreadsheet
+test): *every reward has its own pressure*, so there is **no
+single number to maximise** — which is what keeps the economy
+unsolvable even by somebody reading the source.
+
 ⚠⚠ **And it has a MANAGEMENT layer** (`@X197`, § 9 § ASSIGNMENT
 IS A PILLAR): *there are always more tasks than helpers*, so
 handing somebody a job spends everything they are not doing.
