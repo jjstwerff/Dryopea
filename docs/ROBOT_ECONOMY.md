@@ -1146,6 +1146,92 @@ campaign, somebody will sell the setting for cash on day one.  ⚠⚠ Price
 it as *significant but not transformative*, and let the **strategic**
 cost — what the cordon does once it knows — be the larger half.
 
+#### ⚠⚠ THE POLITICS MUST BE WORTH HAVING FOR SOMEBODY WHO NEVER PLAYS IT  `@X227`
+
+Owner, 2026-08-26:
+
+> *"I do not like the player politics for myself.  I want to experience
+> the **leftovers** of other players, see their struggles and their
+> alliances grow and crumble."*
+
+⚠⚠ **This is a different requirement from everything above, and it is
+the more important one.**  § A light political system and § The TRADER
+design the politics as something a player **does**.  This asks for it as
+something a player **encounters** — and *that* audience is the larger
+one.
+
+⚠ **So the political layer has two audiences:**
+
+| | |
+|---|---|
+| **participants** | the trader role, the investment votes, standing (`@X165`, `@X213`) |
+| ⚠⚠ **everybody else** | who never touch it and meet it **as world content** |
+
+⚠⚠ **And that is exactly the relationship this document already builds
+between the player and the ROBOT economy**: a world with its own economy
+that you **perturb without running**.  **The station's politics should be
+the same thing one layer up, made of people instead of installations.**
+
+#### ⚠⚠ Which gives the rule: politics must produce ARTEFACTS, not just state
+
+⚠ **If an alliance is only a relationship in a database, a
+non-participant experiences nothing.**  It has to leave things in the
+world:
+
+| the political event | ⚠ what a non-participant finds |
+|---|---|
+| an alliance formed | an **investment that landed somewhere odd**, and the reason is inferable |
+| a coalition succeeded | ⚠⚠ **a second station that exists because of people you never met** (`@X213`) |
+| a feud | a trader who **will not deal with you** because of who you are associated with |
+| an alliance crumbled | ⚠ **a shared cache nobody maintains**; a base two operators built and neither kept |
+| somebody rose | a region **worked out**, or a route suddenly contested |
+
+⚠⚠ **Every political outcome must leave something a stranger can find.**
+That is `@X174`'s *consequence made physical*, applied to people rather
+than to terrain — and it is what turns a database of standings into a
+landscape.
+
+#### ⚠⚠ *"Grow and crumble"* needs TRAJECTORY, and DECAY is what supplies it
+
+⚠ The phrase asks for more than a current value: **you should be able to
+tell that something WAS strong and is now weakening.**
+
+⚠⚠ **`@X212`'s decay is what makes crumbling visible.**  A fading
+alliance reads as **deals that used to happen and no longer do**, a wing
+of the station nobody is maintaining, a trader who used to be central and
+is now quiet.  ⚠ Without decay a political landscape only ever
+accumulates, and **nothing that only accumulates can be seen to fall.**
+
+⚠ **It also means the politics must be SLOW.**  Fast politics leaves no
+readable trace; slow politics leaves **ruins**, and ruins are what the
+owner is asking to walk through.
+
+#### ⚠ And the channel is the one already built  `@X228`
+
+⚠ `@X207` forbids a standings screen, so a non-participant learns this
+the way they learn everything else — ⚠⚠ **by how people treat them, and
+by what the crew mention.**  The crew and the traders are partial sensors
+(`@X129`, `@X204`) and this is the **fourth** thing they report on.
+
+⚠ *"I heard the Kessler outfit lost their berth."*  ⚠⚠ That is one line
+of overheard chatter (`@X152`) carrying an entire political event, to
+somebody who was never in it.
+
+#### ⚠⚠ The guard: OBSERVING is not SPECTATING  `@X229`
+
+⚠ The risk is that a non-participant feels like an audience for somebody
+else's game.
+
+⚠⚠ **What prevents it is `@X211`'s guard, which was written for a
+different reason: the planet is the primary tap.**  A player who ignores
+the politics entirely still has the whole game — so they are not
+*watching* while others play, they are **playing their own game in a
+world that has other people's history in it.**
+
+> ⚠⚠ **That is the difference between spectating and inhabiting**, and it
+> is the same difference `DESIGN.md` § 20's abandoned bases already rely
+> on.
+
 #### ⚠⚠ And it is what makes the whole thread cohere  `@X209`
 
 ⚠ Read together, every rule in this thread is the same instruction from a
@@ -1161,6 +1247,7 @@ different angle:
 | `@X210` a good deal for the trader is an investment | **now versus later, with the cost visible and the payoff earned** |
 | `@X212` winning is centrality, and it decays | ⚠⚠ **nothing stays won** |
 | `@X215` information pays once, ever | ⚠⚠ **nothing to farm** |
+| `@X227` politics leaves artefacts a stranger finds | ⚠⚠ **the system is content even for those outside it** |
 
 > ⚠⚠ **Each one removes a way to compute, and puts a way to LIVE in its
 > place.**  That is the sentence to keep when judging anything added to
