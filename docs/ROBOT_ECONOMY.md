@@ -768,6 +768,67 @@ re-deriving each time.  It is also what makes § P2i's **trader role**
 political (`@X165`): if prices come from **people**, then dealing is
 about *those people*, and the politics has a face.
 
+#### ⚠⚠ TRUST per trader — which is what stops *shop around* being the answer  `@X205`
+
+Owner, 2026-08-26:
+
+> *"switching traders can be done by players, but the level of trust for
+> individual traders has an influence on their pricing, so that becomes
+> also a hard decision."*
+
+⚠⚠ **Without this, the whole trader design has an obvious solution:
+visit them all and take the best price.**  That is a shopping algorithm —
+computable, mechanical, and it turns § The mechanism's *positional*
+variation straight back into a solvable search.
+
+⚠⚠ **Trust is what closes it**: switching costs you accumulated standing,
+so
+
+> ⚠⚠ **the question stops being *where is the best price* and becomes
+> *who am I doing business with*.**  A search becomes a **commitment**,
+> and a commitment is a decision.
+
+#### ⚠ It is the same LEDGER as the crew's, one system over
+
+⚠ [`PROGRESSION.md`](PROGRESSION.md) § P2e (`@X131`) already refuses an
+affinity bar and records **what actually happened** instead.  Trust here
+is the same: how much you have traded, whether you came back, whether you
+dealt straight.
+
+⚠⚠ **So no new mechanism, and no number on screen** — trust reads out of
+events the player remembers: *"I have sold to her for six sorties."*
+
+⚠ And it makes the market **political from both sides**: `@X165` gives a
+**trader-player**'s lever as *who they deal with*, and this gives the
+**sortie-player** the same lever pointed back.  Symmetric, and it is why
+the market is a social space rather than a shop.
+
+#### ⚠⚠ The hard part is a NOW-versus-LATER trade
+
+⚠ The tension the owner names is exact: **the best price today may be
+elsewhere; the best price over the campaign is here.**  ⚠⚠ Immediate
+value against accumulated standing — two currencies with no exchange
+rate, which is § What actually defends it's first point arriving again.
+
+#### ⚠⚠ Two hazards, and the first would kill the decision outright
+
+| hazard | ⚠ what it needs |
+|---|---|
+| ⚠⚠ **loyalty becomes automatically optimal** — if trust only ever accumulates, the play is *pick one early, never switch*, which is a **dominant strategy** and the decision dies after the first sortie | ⚠⚠ **traders must SPECIALISE** — one deals metals, another chemicals, another is simply somewhere else.  So your trusted metals buyer is **no help when you come back with sap**, and the switching question is live every time your cargo changes.  ⚠ Same shape as helper specialisation (`@X196`), one system over |
+| **trust everywhere** — build standing with all of them slowly and the decision dies again | *Recommendation: make trust accrue slowly enough that a campaign only deepens two or three.*  ⚠ The harder version — dealing with one **costs** standing with another — is more political and more frustrating; keep it in reserve rather than shipping it |
+
+#### ⚠ Related to `@X169`'s reputation, and probably not the same thing
+
+⚠ [`PROGRESSION.md`](PROGRESSION.md) § P2e gives a player who reliably
+returns other people's stranded crew a **reputation**.  ⚠⚠ That is
+**general standing** (how the station sees you); trust here is
+**per-person** (a ledger with one trader).  Both exist, they are
+genuinely different, and they should probably **feed each other** — a
+known-straight dealer starts a little higher with a new trader.
+
+⚠ *Recorded as a connection rather than a decision*, because collapsing
+them into one *social score* is exactly the affinity bar `@X131` refuses.
+
 #### ⚠ Honest limit: this is *not worth computing*, not *uncomputable*
 
 ⚠ A determined player observing many traders over many sessions **can**
