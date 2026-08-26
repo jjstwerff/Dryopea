@@ -31,7 +31,7 @@ and it still stands as § P1.  Reading it as *therefore there are no
 stats* is the part that is superseded.
 
 Codes: `@X016`, `@X017` **superseded**; `@X103` **reversed**; `@X018`,
-`@X019` stand with a wider reading; `@X111`–`@X123` are the design
+`@X019` stand with a wider reading; `@X111`–`@X128` are the design
 below.  Index: [`DECISIONS.md`](DECISIONS.md).
 
 ## P0 — ⚠⚠ the model is BLUE PRINCE: information dominates, and friction is what upgrades buy
@@ -297,6 +297,185 @@ statistic bonuses exactly four skills** — a 6x12 lattice with no
 dominant stat, which is why it is worth taking as authored rather than
 re-derived.
 
+### ⚠⚠ P2a — the two layers are a LOOP: practice raises the statistic, and the statistic permeates  `@X124`
+
+Owner, 2026-08-26:
+
+> *"a statistic gives a bonus to skills but is also increased with the
+> practice in that skill.  So this is a system where characters (NPCs)
+> get gradually better at what they actively do and via the 2 related
+> statistics that permeates to other skills too."*
+
+**So the arrow runs both ways, and that is the whole system:**
+
+```
+   practise a SKILL  ──raises──▶  its 2 STATISTICS  ──bonus──▶  their 4 SKILLS each
+        ▲                                                              │
+        └──────────────  the crew get better at what they DO  ─────────┘
+```
+
+⚠ **Fast layer and slow layer.**  The skill itself rises quickly with
+use; the two statistics behind it rise slowly, and they lift **six other
+skills** a little.  So **specialisation is fast and generalisation is
+slow**, which is exactly the shape a roster wants: a helper who repairs
+becomes a repairer within a sortie and a broadly useful engineer over a
+campaign.
+
+#### The lattice, verified against the data
+
+⚠ Read out of [`../archive/gameplay.data`](../archive/gameplay.data),
+not retyped: **12 skills, 6 statistics, every skill bonused by exactly
+2 and every statistic bonusing exactly 4.**  24 edges, no exceptions,
+nothing declared-but-unused in either direction.
+
+**Practise the left column, and these are the skills it quietly lifts:**
+
+| practise | via | it permeates to | n |
+|---|---|---|---|
+| **boost** | agility + tinker | build, drive, hack, repair, scrounge, stealth | 6 |
+| **build** | agility + plan | boost, drive, mine, operate, repair, stealth | 6 |
+| **combat** | observe + stamina | drive, mine, scout, scrounge, social | ⚠ 5 |
+| **drive** | agility + observe | boost, build, combat, scout, scrounge, stealth | 6 |
+| **hack** | charisma + tinker | boost, operate, repair, scrounge, social, stealth | 6 |
+| **mine** | plan + stamina | build, combat, operate, repair, scout, social | 6 |
+| **operate** | charisma + plan | build, hack, mine, repair, social, stealth | 6 |
+| **repair** | plan + tinker | boost, build, hack, mine, operate, scrounge | 6 |
+| **scout** | observe + stamina | combat, drive, mine, scrounge, social | ⚠ 5 |
+| **scrounge** | observe + tinker | boost, combat, drive, hack, repair, scout | 6 |
+| **social** | charisma + stamina | combat, hack, mine, operate, scout, stealth | 6 |
+| **stealth** | agility + charisma | boost, build, drive, hack, operate, social | 6 |
+
+#### ⚠⚠ The graph has DIAMETER 2 — there are no dead ends
+
+Measured: **every skill reaches every other skill in at most two hops**,
+and the eccentricity is 2 for all twelve.  ⚠ So a crew member put on one
+job for a whole campaign never becomes *narrow* — anything they were
+never asked to do is still only one statistic away from something they
+were.
+
+⚠ **That is what makes the hard cap of six helpers (`DESIGN.md` § 9)
+comfortable rather than tight**: a specialised crew generalises on its
+own, so the player is not forced to hire redundancy against a job that
+might come up.
+
+#### ⚠ `combat` and `scout` are statistical TWINS — and in dryopea that is a finding
+
+Both are **observe + stamina**.  They are the only pair in the table
+that collapses, which is why both reach 5 instead of 6, and it means
+**practising one advances the other exactly as much as practising it
+directly would.**
+
+⚠⚠ **dryopea should probably drop `combat` and keep `scout`.**
+`DESIGN.md` § 8 makes the player a noncombatant and the towers do the
+fighting, so `combat` has almost nothing to scale — while `scout`
+scales the detection radius, which is one of the owner's own three
+examples.  ⚠ Dropping it costs nothing structurally: its statistic pair
+stays covered, so no statistic is orphaned and no other skill's
+permeation changes.
+
+#### ⚠ Four statistic pairs are unused, and they are the slots for a 13th skill
+
+11 of the 15 possible pairs are in play.  ⚠ **A new skill should take a
+free pair rather than duplicate an occupied one** — duplication is how
+`combat`/`scout` became twins:
+
+| free pair | ⚠ the shape a skill there would have |
+|---|---|
+| **agility + stamina** | fast *and* enduring — physical field work; the closest thing to a *labourer* |
+| **charisma + observe** | reading people and signs — ⚠ the natural home for **native contact** ([`SETTING.md`](SETTING.md) § The settlers today) |
+| **observe + plan** | noticing and then thinking ahead — ⚠ this is *surveying*, which is what a base LAYOUT decision actually is |
+| **stamina + tinker** | long grinding machine work — sustained repair under load |
+
+#### ⚠⚠ Why this passes § P6a's fence automatically
+
+**Use-based advancement can only ever reward work the player already
+decided to do.**  It cannot supply an answer, because it has no way to
+act before the player acts — the player's assignment decisions are its
+only input.  ⚠ That makes it the purest friction-reducer in the design:
+it lowers the cost of the thing you have been doing, and it is silent
+about everything you have not.
+
+⚠ **And it is § P0c's smoothing with no dial on it.**  *"After doing
+many scenarios the game helps the player to get to content/actions
+easier"* — a crew that has built forty bases builds faster, and nobody
+had to tune a curve to make that true.
+
+#### ⚠ The one real danger: advancement must not reward a NO-OP
+
+Use-based systems invite busywork — grinding repairs on an undamaged
+tower to farm `tinker`.  ⚠ **The rule: practice counts only for work
+that had a reason to be done**, and dryopea's existing mechanics
+already enforce most of it — a **firing tower refuses repair**
+(`DESIGN.md` § 7), salvage **decays**, and the permit clocks the run
+([`EXPLORATION.md`](EXPLORATION.md) § X2d).  ⚠ A new skill whose
+practice can be repeated at zero cost has broken this, and that is the
+question to ask of each one before it ships.
+
+#### ⚠⚠ When practice BANKS — and the scramble already answers it
+
+⚠ Practice accrues **during** a sortie, which looks like it cuts against
+§ Open questions 2's *between runs only*.  It does not, because
+`DESIGN.md` § 14's cargo manifest already draws the line: **a helper's
+gains bank when that helper boards before force-launch.**
+
+⚠⚠ **So leaving somebody behind now costs their experience as well as
+their body** — which sharpens the scramble decision rather than
+softening it, and needs no new mechanism at all.
+
+### ⚠⚠ P2b — TEMPLATES, never rerolls  `@X125`
+
+Owner, 2026-08-26:
+
+> *"I do not like the system where players have to do many rerolls to
+> get the optimal NPC in the game, so we give them templates instead
+> that can be optimized by actually letting the NPC perform related
+> tasks."*
+
+⚠ **A background is a TEMPLATE the player picks with known contents**,
+not a roll they repeat until it comes up good.
+
+| | reroll-for-stats | ⚠ template + practice |
+|---|---|---|
+| how you get a good NPC | spend real time re-drawing until the numbers are right | **pick the profile you want, then give them the work** |
+| what it tests | patience | ⚠ **what the player knows about the base they intend to build** |
+| where it happens | in a menu, before the game | in the game, as assignments |
+| under § P6a | ⚠⚠ **fails** — you are paying time for the game to hand you an answer | **passes** — the player decides, and the payoff follows the decision |
+
+⚠⚠ **The reroll loop is § P6a's failure mode wearing a dice cup**, which
+is why the objection is not merely taste: it takes the dominant axis
+(§ P1a, deciding with information) and replaces it with attrition.
+A template turns hiring into exactly the kind of decision `@X117`
+rewards — the veteran knows a swamp base needs `build` more than
+`scout`, and hires accordingly on day one.
+
+#### ⚠ The trap: do not randomise which templates are OFFERED
+
+That re-invents the reroll one level up.  ⚠ **The catalogue must be
+stable and knowable** — the 2023 data's eight backgrounds (*colonist,
+earthling, hive dweller, member, spacer, trader, artist, athlete*) and
+sixteen classes (*astro-miner, engineer, hacker, ranger,
+anthropologist, doctor, ecologist, enforcer, military, miner, official,
+templar, researcher, animal handler, diplomat, investigator*) are a
+**menu**, not a draw.
+
+⚠ It looks like it should be allowed under `@X122` (*vary the
+instance*), and it is not — because § P1d's other half says every random
+element must be **something you go and LOOK at**.  A hiring pool is not
+a place; re-rolling it is waiting, not exploring.
+
+#### ⚠ The template slots exist in the schema and are EMPTY
+
+`archive/world.gcp` gives `Item { name, type, description, statistics[Stat] }`
+— so a background *can* carry starting statistics — but every background
+and class in `gameplay.data` carries **a description and no numbers**.
+
+⚠ **That is the authoring job, and it is small**: eight backgrounds and
+sixteen classes, each a handful of starting values over 6 statistics and
+12 skills.  ⚠ Design them so **no template is dominant** — the pairs
+above are the tool: a template should be strong on two statistics that
+share few skills, so its strength is a genuine shape rather than a
+bigger number.
+
 ### ⚠⚠ The rule that keeps it in-genre: a skill SCALES A NUMBER THAT ALREADY EXISTS  `@X112`
 
 This is the same rule [`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) and
@@ -316,14 +495,14 @@ and here it is what makes the whole layer cheap:
 | **drive** | helper travel speed between jobs | `helper.loft::helper_bank` |
 | **combat** | tower accuracy / traverse under a crew member's hand | `tower.loft` aim time, `DESIGN.md` § Aiming costs time |
 | **stealth** | ⚠ whether a sortie is noticed — the seed notes' *"stealth is possible, however not for the jammer"* | `wave_provoke_step`'s thresholds |
-| **social** | ⚠ crew retention and native contact — see § P2b | run-level, `SETTING.md` § Future contact |
+| **social** | ⚠ crew retention and native contact — see § P2d | run-level, `SETTING.md` § Future contact |
 
 ⚠ **So no skill introduces a mechanism.**  Each one multiplies a
 constant dryopea either ships or has already named, which means the
 layer can land incrementally — one skill at a time, each with a gate
 that reads a number that is already measured.
 
-### P2b — pools, rest, and losing people  `@X113`
+### P2d — pools, rest, and losing people  `@X113`
 
 The seed notes: *"individual humans can have skills and different pool
 levels.  So they need rest/sleep."*
@@ -520,23 +699,42 @@ is much weaker without it.
 1. **Are skills per-CHARACTER or per-ROLE?**  The 2023 sheet is
    per-character; dryopea's helpers are interchangeable with an opaque
    id (`DESIGN.md` § 9).  *Recommendation: per-character — the id is
-   already there for exactly this, and § P2b's defection needs people
+   already there for exactly this, and § P2d's defection needs people
    who are distinguishable enough to miss.*
-2. **Do skills improve WITHIN a run or only between?**  ⚠ Within-run
-   improvement makes a long base self-reinforcing, which cuts against
-   the scramble decision.  *Recommendation: between runs only, so the
-   sortie's crew is a choice made at the station (`DESIGN.md` § 16) and
-   the run is played with what you brought.*
-3. **How many of the twelve ship first?**  ⚠ § P2's rule makes the
-   answer cheap: ship the skills whose scaled number is already
-   measured — **build, repair, scout** are the owner's own three
-   examples and all three have a constant to multiply today.
+2. ~~**Do skills improve WITHIN a run or only between?**~~  ⚠⚠
+   **ANSWERED by § P2a**: practice accrues *during* a sortie and
+   **banks when that helper boards before force-launch** — the cargo
+   manifest `DESIGN.md` § 14 already keeps.  ⚠ The worry that a long
+   base becomes self-reinforcing is answered by the same line: it does,
+   and **only if you get the crew out**, which sharpens the scramble
+   decision instead of softening it.
+3. **How many of the twelve ship first, and does `combat` ship at
+   all?**  ⚠ § P2's rule makes the first half cheap: ship the skills
+   whose scaled number is already measured — **build, repair, scout**
+   are the owner's own three examples and all three have a constant to
+   multiply today.  ⚠⚠ For the second half, § P2a's twin finding says
+   **probably not**: `combat` shares its whole statistic pair with
+   `scout`, and a noncombatant player (`DESIGN.md` § 8) gives it almost
+   nothing to scale.  *Recommendation: drop it, and leave
+   observe+stamina to `scout`.*
 4. **Does the player's own character have stats?**  If the player is a
    person (§ P8), they must.  ⚠ But a `drive` stat on the driven
    vehicle collides with § P1 — the player *feels* their own driving.
    *Recommendation: the player's character carries the WORK skills
    (build, repair, mine, hack) and not the movement ones; movement
    stays P1.*
+5. **What is in each template?**  ⚠ § P2b's slots exist in the 2023
+   schema and are **empty** — eight backgrounds and sixteen classes
+   with descriptions and no numbers.  *Recommendation: author them
+   against the pair table, so a template is strong on two statistics
+   that share few skills — a genuine shape rather than a bigger
+   number — and no template is dominant.*
+6. **How fast is the slow layer?**  ⚠ The whole design rests on
+   statistics rising **much** more slowly than skills; if they rise at
+   comparable rates, specialisation stops meaning anything and every
+   crew member converges.  *No recommendation — this is the one number
+   here that needs a measurement rather than an argument, and it cannot
+   be taken from the 2023 data, which carries no rates.*
 
 ## See also
 
@@ -545,7 +743,9 @@ is much weaker without it.
   § 9 Helpers — where the per-character id already lives.
 - [`SETTING.md`](SETTING.md) § The knowledge tree — axis P4.
 - [`MATERIALS.md`](MATERIALS.md) — axis P3's catalogue, and § The crew
-  are people for the quarters building § P2b needs.
+  are people for the quarters building § P2d needs.
+- [`../archive/gameplay.data`](../archive/gameplay.data) — the source
+  of § P2's lattice, and of the template names § P2b has to fill in.
 - [`EXPLORATION.md`](EXPLORATION.md) — where P1 is practised and P4 is
   gathered.
 - [`DESIGN_HISTORY.md`](DESIGN_HISTORY.md) §§ 4-5 — the routing of the

@@ -199,7 +199,7 @@ they only live in their vehicles.  They can get lonely without means to
 communicate in the wild."*
 
 ⚠⚠ **This became a real building on 2026-08-26.**
-[`PROGRESSION.md`](PROGRESSION.md) § P2b gives the crew **endurance
+[`PROGRESSION.md`](PROGRESSION.md) § P2d gives the crew **endurance
 pools, spent by work and restored by rest** — so quarters are what a
 sortie long enough to need rest has to build.  A base is then **a place
 people live**, not only a firing position.
