@@ -1716,6 +1716,27 @@ hang off existing characters without re-engineering.
 § 14's cargo manifest becomes a question about *which skills* boarded
 before force-launch, not only a headcount.
 
+⚠⚠ **And after a sortie the player may DEBRIEF them** (`@X144`,
+[`PROGRESSION.md`](PROGRESSION.md) § P2f) — optional, at the station
+(§ 16), and the pull counterpart to the remarks below.  ⚠ Each gives
+**their own account** of the base just played, and they may disagree —
+⚠⚠ they are **unreliable narrators** (`@X147`), coloured by where they
+stood and what they know rather than by any dishonesty, which is what
+stops the debrief becoming an oracle.  ⚠ Facts stay reliable; **causes
+and blame** are the part that is angled.
+⚠⚠ **A helper left behind at force-launch is not there to be
+debriefed** — § 14's *"cost of haste"* reaching into the station.
+⚠ Never a scoring screen: § 14 has no fail screen, and a grade would
+announce what that section says must be felt across the sequence.
+
+⚠⚠ **An IDLE helper is the one who speaks** (`@X142`,
+[`PROGRESSION.md`](PROGRESSION.md) § P2c).  Helpers take their jobs from
+the player, so *"nobody has given me a task"* is a fact the roster
+already carries — which makes the crew's remarks a **feedback channel on
+the order system** rather than a hint layer bolted beside it.  ⚠ **One
+speaks, never six**: pick the idle helper whose skills best match where
+the player is standing.
+
 ⚠⚠ **A helper's past job is their template, and it is AUDIBLE**
 (`@X129`, [`PROGRESSION.md`](PROGRESSION.md) § P2c).  An ex-asteroid
 miner, an ex-security officer, an ex-repair handyman and an ex-scout
@@ -2131,6 +2152,16 @@ are **the onboarding**.  Two consequences follow:
 - ⚠ **It still may not conclude** (`@X129`).  *"Soft ground on that
   ridge"* gets a lost player moving; *"press Q to paint a wall"* is the
   tutorial this section just refused.
+- ⚠⚠ **WHO speaks is answered by the ORDER SYSTEM itself** (`@X142`):
+  **the helper with no task assigned.**  § 8 makes the player a manager
+  who issues orders that NPC workers construct, so an unassigned worker
+  reporting in is exactly what a foreman hears — no stall detector, no
+  tuned window, and it **cannot misfire on a parked player who is
+  repairing**.  ⚠⚠ It **self-calibrates**: assign the whole crew and
+  there is silence, while on landing nobody has orders yet, so the
+  opening remark falls out of the rule instead of being special-cased.
+  ⚠ **Assigning work is therefore the in-fiction off switch** — the
+  remedy for the nudge is the play it was nudging toward.
 
 #### ⚠ The key table is now a DESIGN BUDGET, and a gate already enforces it
 

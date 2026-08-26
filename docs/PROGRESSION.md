@@ -32,7 +32,8 @@ stats* is the part that is superseded.
 
 Codes: `@X016`, `@X017` **superseded**; `@X103` **reversed**; `@X018`,
 `@X019` stand with a wider reading; `@X111`–`@X136` are the design
-below, and `@X137`–`@X141` (no tutorial) are `DESIGN.md` § 11's.  Index: [`DECISIONS.md`](DECISIONS.md).
+below, and `@X137`–`@X141` (no tutorial) are `DESIGN.md` § 11's;
+`@X142`–`@X143` are the speaker rule and `@X144`–`@X148` the debrief.  Index: [`DECISIONS.md`](DECISIONS.md).
 
 ## P0 — ⚠⚠ the model is BLUE PRINCE: information dominates, and friction is what upgrades buy
 
@@ -565,10 +566,18 @@ exclusively is how a base goes wrong.**  Every remark is *true*; the
 error is never a lie, it is **incompleteness** — which keeps the
 synthesis in the player's hands, where § P1a needs it.
 
-⚠ **That also rules out the tempting version**: a crew member who is
-occasionally *wrong* to keep the player honest.  Being lied to by your
-own people is frustrating rather than interesting; **true-but-partial
-does the same work and respects the character.**
+⚠⚠ **REFINED 2026-08-26 — and the distinction is the whole thing.**
+What is ruled out is **arbitrary error**: a crew member who is wrong *by
+dice*, some fraction of the time, to keep the player honest.  That is
+being lied to by your own people, it is not learnable, and it is
+frustrating rather than interesting.
+
+⚠ What is **adopted** is the opposite kind of wrongness — **systematic
+bias from perspective**, which § P2f develops as *unreliable narration*.
+The facts are true; the **account** is coloured by where the speaker
+stood and what they know.  ⚠⚠ Arbitrary error is noise; systematic bias
+is **character**, and it is learnable, which is what makes it feed the
+dominant axis instead of fighting it.
 
 #### ⚠ It is the SKILL SHEET made diegetic — which is how a roster stays legible with no UI
 
@@ -662,10 +671,86 @@ place the player is actually standing.  When nothing matches, **nobody
 speaks**, and the player is left with the problem — which is where
 § P1a wants them.
 
-#### ⚠⚠ The trigger is the absence of PROGRESS, not idleness — and in dryopea that distinction bites
+#### ⚠⚠ WHO speaks: the helper with NO TASK — and it is a better trigger than the one below  `@X142`
 
-⚠⚠ **Standing still is WORK in this game**, which makes the naive
-detector actively harmful:
+Owner, 2026-08-26:
+
+> *"And because the player gives orders about what helpers should do, the
+> helper that has no tasks assigned to them is the natural one to comment
+> on that fact."*
+
+⚠⚠ **This supersedes most of § The trigger is the absence of PROGRESS
+below, and it is strictly better.**  That section reaches for a
+heuristic — counters, a window, *when did anything last move* — and this
+needs none of it, because **the game already knows who has nothing to
+do.**
+
+| | the progress heuristic | ⚠ the idle helper |
+|---|---|---|
+| what it reads | six counters and a tuned window | **a task list that already exists** |
+| how it can misfire | a parked player is repairing, so idleness ≠ lost | ⚠ cannot: it is not a guess about the player at all |
+| what the player can reason about | nothing — it is invisible | ⚠⚠ **a fact they can see and act on** |
+| standing to speak | a hint system talking | ⚠⚠ **an employee with no work**, which is legitimate and true |
+
+⚠ **It is the management loop's own feedback channel.**  `DESIGN.md` § 8
+makes the player a manager who issues orders that NPC workers construct;
+an unassigned worker reporting in is **exactly what a foreman hears**,
+and it needed no design.
+
+#### ⚠⚠ Idleness picks WHO and WHEN; the skill lattice picks WHAT
+
+The two rules compose cleanly and neither needs to know about the other:
+
+- **Idle** → this crew member has standing to speak, *now*.
+- **Skills** (`@X129`) → what they say is their own domain, about where
+  the player actually is.
+
+⚠ So the ex-miner with nothing to do does not say *"I am idle"* — they
+say **"there's ore on that ridge, want me to cut it?"**  ⚠⚠ The idleness
+is the *occasion*; the observation is the content; and the player hears
+one sentence that is simultaneously a status report, a hint and a
+character note.
+
+#### ⚠⚠ It self-calibrates, which is `@X120` and `@X135` for free
+
+- **A player who has assigned everyone hears nothing** — there is nobody
+  idle to speak.  A veteran who lands and puts the whole crew to work is
+  silent by construction, with no stall detector involved.
+- **A player who is drifting has idle helpers**, and they speak.
+- ⚠⚠ **On landing nobody has orders yet**, so the whole crew is idle —
+  which is exactly why § These remarks ARE the onboarding can promise the
+  opening remark is near-certain.  **The onboarding moment falls out of
+  the rule rather than being special-cased.**
+
+⚠⚠ **And assigning work is the in-fiction OFF SWITCH**: a player who
+finds the crew talkative silences them by *doing the thing the remarks
+were nudging them toward*.  ⚠ The remedy for the hint system is the play
+it wanted — which is the best possible shape for one.
+
+#### ⚠ Two hazards, both cheap to avoid
+
+| hazard | ⚠ the rule |
+|---|---|
+| **six idle helpers all speaking** — a chorus of complaints is the opposite of *not intrusively* | **ONE speaks.**  Pick the idle helper whose domain best matches where the player is standing; the rest stay silent even though they qualify |
+| **nagging** — *"I've got nothing to do"* repeated is worse than silence | ⚠ an idle helper speaks **when there is something new in their domain to point at**, not on a repeat timer.  `@X136`'s silence rule still governs: no observation, no line |
+| **busywork to shut them up** — assigning a pointless order to buy quiet | ⚠ self-limiting, and already: **helper-seconds are the real bottleneck** (`DESIGN.md` § 13), so a wasted order costs the player exactly what they were short of.  ⚠ `@X127` covers the same shape one system over |
+
+#### ⚠ The progress heuristic below is now a FALLBACK, and may not be needed at all
+
+The one case idleness does not cover: **every helper is busy and the
+player is still drifting.**  ⚠ That is a much narrower gap than the one
+the next section was written against, and it is worth building nothing
+for it until it is observed — a player who has the whole crew working is
+usually not the player who is lost.
+
+#### ⚠ FALLBACK — the absence of PROGRESS, and why a naive idle detector is harmful
+
+⚠ **Superseded as the primary trigger by § WHO speaks above**; kept
+because it records a trap that any future *"is the player stuck"*
+heuristic will walk into.
+
+⚠⚠ **Standing still is WORK in this game**, which makes a naive
+player-idleness detector actively harmful:
 
 | looks idle | is actually | ⚠ nudging here would be |
 |---|---|---|
@@ -762,6 +847,154 @@ levels.  So they need rest/sleep."*
 numbers** — *colonist, spacer, hive dweller, trader, artist*;
 *astro-miner, engineer, hacker, ranger, anthropologist, templar*.  A
 class is a starting profile, not a permanent multiplier.
+
+### ⚠⚠ P2f — the DEBRIEF: after a mission, the player may ask what the crew thought  `@X144`
+
+Owner, 2026-08-26:
+
+> *"And after a mission the helpers can be optionally briefed by the
+> player to ask their opinions about what happened during the mission."*
+
+⚠ **PULL, where § P2c's remarks are PUSH.**  In a sortie the crew speak
+when they are idle and the player may ignore them; between sorties the
+**player asks** and the crew answer.  ⚠⚠ That is the complete pair — *a
+nudge you can ignore* and *a question you can ask* — and neither is a
+wall, which is what `@X137`'s no-tutorial ruling requires of both.
+
+Lives at the station, `DESIGN.md` § 16 § Meta-game hub /
+[`SETTING.md`](SETTING.md) § Between missions.
+
+#### ⚠⚠ This is HOW the dominant axis accumulates, and § P1 never said
+
+§ P1a says what the player knows dominates progression, and `@X122` says
+the **rules** are learnable while the instance is not.  ⚠ Neither said
+**how a player who just lost a base finds out why** — and *"play again
+and notice"* is a weak answer for the axis the whole design rests on.
+
+⚠⚠ **The debrief is the delivery mechanism.**  It is where a sortie
+becomes a lesson, and it is diegetic, optional and character-driven
+rather than a statistics screen.
+
+#### ⚠⚠ The fence RELAXES here, and for a precise reason
+
+§ P6a is strict in-mission — *a remark points, it never concludes* —
+because the instance is live and the player still has to decide.  ⚠⚠
+**After the mission that base is finished**, so there is no open question
+left for an answer to short-circuit:
+
+| in-mission | after |
+|---|---|
+| *"soft ground on that ridge"* — points, does not conclude | ⚠ *"the wall came down where the ground was soft.  I'd not build there again"* — **concludes freely** |
+| naming the incoming wave would be `@X118`'s failing row | ⚠ naming what the wave **was** costs nothing; it is over |
+
+⚠⚠ **And what the player carries away is RULES-knowledge** (`@X122`) —
+the transferable kind — rather than instance-knowledge about a map they
+will never see again.  **That is exactly the axis that is supposed to
+accumulate**, arriving through the one channel that can hand it over
+without solving anything.
+
+#### ⚠ Four partial accounts of one sortie, and assembling them is still the player's job
+
+`@X129`'s partial sensors, now pointed at a completed event:
+
+| the ex- | their account of the same base |
+|---|---|
+| **security** | *"perimeter was too spread.  I could not cover the north face and the east one."* |
+| **miner** | *"there was ore two hexes outside the wall you never cut."* |
+| **scout** | *"they came from the marker nobody went out to."* |
+| **handyman** | *"that tower was black from the third wave on and nobody came."* |
+
+⚠⚠ **They may disagree, and that is free and true** — two people who were
+in different places saw different things.  ⚠ The synthesis stays the
+player's, exactly as it is in-mission, so the debrief does not become an
+oracle just because the fence relaxed.
+
+#### ⚠⚠ The roster is therefore a SENSOR LOADOUT — which makes hiring a knowledge decision
+
+**The crew you brought decides what you can learn afterwards.**  A sortie
+with no scout comes back with **nobody who can tell you where the wave
+came from.**
+
+⚠ That is a strong, non-obvious consequence: § P2b's template choice was
+a labour decision (*who can do the work*), and this makes it **also a
+knowledge decision** (*whose account will I have*).  ⚠⚠ It connects the
+purchasable axis to the dominant one without either supplying the
+other — you can buy a *witness*, and you still have to do the thinking.
+
+#### ⚠⚠ And there is an empty chair, at no cost
+
+**A helper who was left behind is not there to be debriefed.**
+
+⚠ The person who could have told you what happened on the east side is
+the person you abandoned on the east side.  ⚠⚠ That is § P2e's ledger and
+`DESIGN.md` § 14's *"cost of haste"* producing a consequence **nobody had
+to design** — the scramble decision reaches into the debrief and takes an
+account away from you.
+
+#### ⚠⚠ The crew are UNRELIABLE NARRATORS — and that is what keeps the relaxed fence safe  `@X147`
+
+Owner, 2026-08-26:
+
+> *"And again here the helpers with comment from their skills and actual
+> actions in game perspective, they should be unreliable narrators of the
+> mission here."*
+
+⚠⚠ **This closes a hole § The fence RELAXES opened.**  Letting the crew
+*conclude* after the mission is safe only while their conclusions are not
+authoritative — a debrief that relaxed the fence **and** spoke with
+authority would simply hand over the dominant axis, which is the one
+thing `@X118` exists to prevent.
+
+⚠ **Unreliable narration is the safety valve**: the player must
+**triangulate**, and triangulating is doing the thinking.
+
+#### ⚠ What unreliable means here — four sources, none of them lying
+
+| source | what it colours |
+|---|---|
+| **position** | they only saw their part of it — a helper parked west has nothing true to say about the east |
+| **expertise** | ⚠ they interpret through what they know: a miner reads a collapse as **bad rock**, a security officer reads the same collapse as **a breach**.  Same event, two honest accounts |
+| **stake** | they were *in* it.  Somebody left outside the wall remembers that base differently |
+| **salience** | the thing that nearly killed them looms larger than the thing that actually decided the base |
+
+⚠⚠ **The events are not random and nobody lies.**  What happened,
+happened; the *telling* is angled.  That is why it composes with
+`@X132`'s ledger rather than needing a fiction layer: the sortie's real
+events are the material, and each helper narrates the subset **they were
+actually present for**.
+
+⚠ **Mechanically it is free**: a helper's account is limited to the
+hexes they occupied and the events they were near, and *where a helper
+was over time* is something the simulation already knows.
+
+#### ⚠⚠ It is LEARNABLE, which is why it is a progression rather than an obstacle
+
+**The player calibrates their crew over a campaign.**
+
+> *"Vasquez says the perimeter was too spread.  She says that every
+> time."*
+
+⚠⚠ That is `@X122` exactly — **the crew's biases are stable RULES and
+the sortie is the instance** — so learning to read your own people is
+the transferable kind of knowledge, accumulating on the dominant axis
+(`@X117`).  ⚠ It cannot be bought, it survives a restart in the player's
+head (§ P1c), and **nobody had to author a progression for it**: it is a
+side effect of the crew being people.
+
+#### ⚠ Three rules that keep unreliability from becoming noise  `@X148`
+
+| rule | why |
+|---|---|
+| ⚠⚠ **Facts are reliable; causes and blame are not** | *"the tower went black on the third wave"* is a fact and must be true.  *"…because nobody came for it"* is an opinion and may be unfair.  ⚠ Get this backwards and the debrief stops being usable at all |
+| ⚠⚠ **Bias misleads in DEGREE, never in DIRECTION** | the security officer over-weights the perimeter; they never send you to the wrong wall.  ⚠ If acting on crew advice is worse than ignoring it, players learn to ignore them — and `@X137`'s onboarding role collapses with it |
+| ⚠ **Bias is CONSISTENT per character** | a bias that varies run to run is indistinguishable from lying, and it is unlearnable.  ⚠ Consistency is what turns it from a dice roll into a person |
+
+#### ⚠ Two things it must not become
+
+| ❌ | why |
+|---|---|
+| **a scoring screen** — *"4 waves survived, 12 towers built, grade B"* | ⚠⚠ `DESIGN.md` § 14 § No hard run-loss: there is **no fail screen**, and *"a run the player feels was bad is simply a run that produced meagre carryover … the difference is felt across the sequence, not announced by the game."*  A grade announces it.  **Opinions, not a scorecard** |
+| **an interrogation UI** — a menu of questions, a dialogue tree | ⚠ that is a system to manage, and § P2c's *not intrusively* applies to the pull side too.  **Ask the crew; hear what they say.**  ⚠ And it must be **skippable in one action**, because `@X120`'s returning player will skip it |
 
 ### ⚠⚠ P2e — the relationships are a LEDGER of what happened, never an affinity bar  `@X131`
 
