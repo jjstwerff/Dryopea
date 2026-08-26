@@ -18,6 +18,22 @@ The design is canonical: [`docs/DESIGN.md`](docs/DESIGN.md); what
 actually exists is [`plans/README.md`](plans/README.md), where each
 plan's own Status is the source of truth.
 
+## Play it
+
+```bash
+make play MAP=starter_01
+```
+
+Press **P** and the map editor becomes the game.  ⚠ **It is a
+development build**, not a demo: there are three authored bases, seven
+waves of robots, towers you keep alive by parking beside them — and you
+cannot BUILD anything during a run yet, which is the biggest missing
+mechanic.
+
+⚠⚠ **[`docs/PLAYING.md`](docs/PLAYING.md) is the whole of what exists**
+— every key, what happens without pressing one, and an honest list of
+what is not there yet.  The bases are in [`maps/`](maps/README.md).
+
 ## What sets it apart — the scramble phase
 
 At the start of each base the player places a **core building** —
@@ -84,19 +100,24 @@ low content cost.
 ## Repo layout
 
 ```
-docs/                 — design + design-history references
-  DESIGN.md           — canonical @PLAN46 design (mirrors loft tracker)
+src/                  — the game: ~60 .loft files, from the lattice to the
+                        GL renderer.  docs/ARCHITECTURE.md is the listing
+maps/                 — the authored bases `make play MAP=` loads.  The
+                        .keys beside each .json is its source
+tests/                — 1400+ tests, plus tests/scripts/*.keys (the second
+                        gate) and tests/gl/*.keys (the third)
+docs/                 — design, and how the thing works
+  PLAYING.md          — how to play what exists
+  DESIGN.md           — the master design
+  ARCHITECTURE.md     — what each src/ file owns
   DESIGN_HISTORY.md   — design seeds salvaged from the 2023 prototype
-plans/                — phased work tracking, loft-style
-  current/            — active phases
-  future/             — drafted but not yet started
-  finished/           — closed phases
-  README.md           — index + workflow
-  DEFERRED.md         — items parked behind a trigger
+plans/                — phased work tracking, loft-style.  FLAT: plans/<NN>-<slug>/
+  README.md           — conventions + index
+  ROADMAP.md          — the dependency order
+  BACKLOG.md          — concrete things to build, unordered
 examples/             — sample input data (terrain palette, map.png/.xcf)
 archive/              — preserved 2023 prototype artefacts (proto-loft .gcp,
                         partial world.loft, gameplay/terrain data)
-src/                  — game source (empty until D0 starts)
 loft.toml             — package manifest
 ```
 

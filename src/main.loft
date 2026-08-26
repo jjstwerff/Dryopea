@@ -30,62 +30,26 @@
 // get the base it authors, not the state it ends in.  The reasoning
 // is `src/scenario.loft` § A POSITION is the PREFIX (`@X263`).
 //
-// Controls:
-//   WASD              pan camera (held → debounced ~8 hexes/sec)
-//   scroll wheel      zoom in/out
-//   1..9, 0, -, =     select palette type (1=sea, 5=grass, 9=wall,
-//                     0=wall_high; - and = reserved for indices 10
-//                     and 11 as the palette grows past 9 types)
-//   Left-click/drag   paint hovered hex with active type
-//                     (ground mode) — in marker mode, single-click
-//                     places a spawn at the hovered hex with the
-//                     current place-direction; clicking on an
-//                     existing marker removes it.
-//   Tab               toggle Ground ↔ Marker mode; the badge in
-//                     the top-right of the HUD shows the current
-//                     mode (grass-green = Ground, hot pink = Marker).
-//   R / Shift+R       (marker mode, kind=spawn) rotate the
-//                     place-direction clockwise / counter-
-//                     clockwise (0..5, mod 6).  No-op when
-//                     kind=target (targets are spherical).
-//                     A faint outline ghost preview at the
-//                     hovered hex previews where the next click
-//                     will land.
-//   K                 (marker mode) cycle the place-kind:
-//                     SPAWN ↔ TARGET.  Targets are sub-mode
-//                     markers @PLAN50 consumes — placed at
-//                     hex coords, anchored to the extruded
-//                     surface at render time.
-//   Ctrl+S            save to dryopea_save.json
-//   Ctrl+Z            undo the most recent action.  Strokes
-//                     count as ONE action (one drag = one undo).
-//                     50-deep history.
-//   Ctrl+Y            redo (re-apply the most recently undone).
-//                     Any non-undo action discards the redo
-//                     branch.
-//   Ctrl+R            reload painted + marker layers from disk,
-//                     discarding any in-memory changes.  Ctrl+Z
-//                     restores the pre-reload state (one entry
-//                     captures the whole diff).
-//   Ctrl+N            clear all — empty painted layer, empty
-//                     marker layer, reset camera to origin.
-//                     Recorded as one undoable action.  Does
-//                     NOT auto-save; the next Ctrl+S commits
-//                     the cleared state.
-//   H                 recentre camera at origin (without clearing
-//                     painted or marker layers).  Letter rather
-//                     than `Home` because graphics.loft doesn't
-//                     ship a KEY_HOME constant yet.
-//   P                 PLAY / EDIT (plan 19 P3 + P6).  Starts the
-//                     game clock: waves arrive on the wall clock,
-//                     the crew appears at the core, and WASD
-//                     drives it instead of panning the camera.
-//                     ⚠ The window switches to the GAME's picture
-//                     — the ground and every entity in 3-D,
-//                     through the eased follow camera.  Press
-//                     again to freeze and go back to the map
-//                     editor — the run is kept, so it is a pause.
-//   Esc               save + exit
+// ── Controls: `docs/PLAYING.md` ─────────────────────────────────
+//
+// ⚠⚠ **They are NOT listed here any more, and the reason is that the
+// list that used to be was WRONG.**  It said *"1=sea, 5=grass, 9=wall,
+// 0=wall_high"* and three of those four are off by one: the palette
+// actions are `palette_1`..`palette_11` over entries 0..10, so key `5`
+// paints **sand** and `wall` is on `0`.  It had said so for
+// twenty-five plans, because a comment is compiled by nothing — and a
+// second copy of a table is always the copy that drifts.
+//
+// [`docs/PLAYING.md`](../docs/PLAYING.md) is the one human-readable
+// list, and `tests/a4_the_controls.loft` holds it to
+// `src/bindings.loft::editor_actions` — every action must have a table
+// row, and every palette key must be named on the same row as the
+// ground it paints.  A binding that moves goes red there.
+//
+// What belongs HERE is only what this file decides, and that is two
+// things: `Esc` leaves the loop (it is the window's, not an action),
+// and `P` is read from the table like everything else but acted on by
+// this loop rather than by either seam.
 //
 // Hotkey strategy: 12 base slots (1234567890-=) cover the near-term
 // palette growth.  Future expansion uses modifier engagers (Shift,

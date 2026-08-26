@@ -112,6 +112,13 @@ fn act_palette(name: text, key: integer, index: integer) -> EditorAction {
 // ⚠ Build it ONCE per session and carry it — see `EditorInputSource`.
 // Calling this per query would rebuild thirty records for every
 // question asked, twenty times a frame.
+//
+// ⚠ Its human-readable form is [`docs/PLAYING.md`](../docs/PLAYING.md),
+// and that note is GATED against this function rather than maintained
+// beside it — the last hand-kept copy was off by one for twenty-five
+// plans (BACKLOG A4).
+//
+// Example: @DRY-094
 pub fn editor_actions() -> vector<EditorAction> {
     ea: vector<EditorAction> = [];
 
@@ -340,6 +347,7 @@ pub fn action_palette_index(actions: const vector<EditorAction>, name: text) -> 
 // does — there are eleven of them over a twelve-entry palette, so
 // `rubble` is unreachable from the keyboard and a script asking for
 // it is asking for a gesture no player can make.
+// Example: @DRY-095
 pub fn action_for_palette(actions: const vector<EditorAction>, index: integer) -> text {
     for afp_a in actions {
         if afp_a.ea_palette == index && index >= 0 { return afp_a.ea_name; }

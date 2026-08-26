@@ -1,0 +1,165 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// BACKLOG A4 — `docs/PLAYING.md`, held to the key table it describes.
+//
+// ── Why a document gets a test ──────────────────────────────────
+//
+// ⚠⚠ **Because the last hand-maintained controls list was WRONG, and
+// had been for twenty-five plans.**  `src/main.loft`'s header said
+// *"1=sea, 5=grass, 9=wall, 0=wall_high"* and three of those four are
+// off by one: the palette actions are `palette_1`..`palette_11` over
+// entries 0..10, so key `5` paints **sand** and `wall` is on `0`.  A
+// player following it painted the wrong ground and a reader learned a
+// wrong fact about the table.  Nothing could see it, because a
+// document is not compiled.
+//
+// So this file compiles it.  Three claims, and each is a way the note
+// can silently stop being true:
+//
+//   * **an action nobody documented** — every row of
+//     `editor_actions()` must be named in the note, so a new binding
+//     goes red here as well as in `tests/09_i1_bindings.loft`, which
+//     pins the row COUNT and cannot say what the new row is;
+//   * ⚠⚠ **a palette row pointing at the wrong ground** — the defect
+//     that actually happened.  Each `palette_N` must be named on the
+//     SAME LINE as the entry it paints, which is the pairing the
+//     off-by-one broke;
+//   * **a map that is not there** — the note tells a player to run
+//     `make play MAP=starter_01`.
+//
+// ⚠ It does NOT gate the prose, and could not: *what* a key does is a
+// sentence, and the only instrument for that is reading it.  What it
+// gates is the part that is mechanical, which is the part that rots.
+
+#cwd
+
+use dryopea;
+
+const NOTE: text = "docs/PLAYING.md";
+const PAL:  text = "examples/palette.json";
+
+// The note, as text.  ⚠ An absent file must FAIL rather than read as
+// an empty document in which no action is named — that would go red
+// for the right reason by luck, and green the moment the first check
+// was relaxed.
+fn a4_note(tag: integer) -> text {
+    a4n = file(NOTE).content() ?? "";
+    a4n
+}
+
+// The TABLE ROW of `src` naming `needle`, or "" — a line that starts
+// with `|` and carries the name in backticks.
+//
+// ⚠⚠ **Both halves of that are load-bearing, and each was found by a
+// break that failed to fire.**  A bare substring search made
+// `scramble` "documented" by the prose sentence *the scramble is not
+// built*, so an undocumented new binding passed; and `palette_1` is a
+// prefix of `palette_10` and `palette_11`, so an unquoted search could
+// answer the wrong row and pair a key with another key's ground.
+// Backticks are how a table writes a name and how prose does not.
+fn a4_row_naming(src: text, needle: text) -> text {
+    a4r_q = "`" + needle + "`";
+    for a4l in src.split('\n') {
+        if a4l.starts_with("|") && a4l.find(a4r_q) != null { return a4l; }
+    }
+    ""
+}
+
+// ─── The note exists and says something ─────────────────────────
+
+fn test_the_note_is_there_and_is_not_empty() {
+    ttn = a4_note(0);
+    assert(file(NOTE).exists(), "{NOTE} must exist — BACKLOG A4");
+    assert(ttn.size() > 2000,
+           "{NOTE} is {ttn.size()} bytes, which is too short to be the note");
+    assert(ttn.find("make play MAP=starter_01") != null,
+           "the note must say how to launch");
+}
+
+// ─── Every binding is documented ────────────────────────────────
+
+// @DRY-094 — every key the game reads is named in the note
+fn test_every_action_in_the_table_is_named_in_the_note() {
+    tea_note = a4_note(0);
+    tea_acts = editor_actions();
+    tea_missing = "";
+    tea_n = 0;
+    for tea_a in tea_acts {
+        tea_n += 1;
+        if a4_row_naming(tea_note, tea_a.ea_name) == "" {
+            if tea_missing == "" { tea_missing = tea_a.ea_name; }
+        }
+    }
+    assert(tea_missing == "",
+           "{NOTE} has no TABLE ROW naming the action `{tea_missing}` — a key the "
+           + "game reads that the note does not document");
+    // ⚠ The control: this check is worth nothing if the table is empty.
+    assert(tea_n == 33,
+           "the key table holds {tea_n} actions, not 33 — `tests/09_i1_bindings.loft` "
+           + "pins the count and this note has to grow with it");
+}
+
+// ⚠⚠ The defect that actually happened, gated at the pairing rather
+// than at the presence: `palette_6` and `grass` must be on ONE LINE.
+// Naming both somewhere in the file is what the broken version did.
+//
+// @DRY-095 — the key that paints a ground, and the ground it paints
+fn test_every_palette_key_is_paired_with_the_ground_it_paints() {
+    tep_note = a4_note(0);
+    tep_pal  = load_palette(PAL);
+    tep_acts = editor_actions();
+    assert(len(tep_pal) == 12, "the palette holds {len(tep_pal)} entries, not 12");
+
+    tep_paired = 0;
+    for tep_i in 0..len(tep_pal) {
+        tep_name = (tep_pal[tep_i] ?? GroundType { }).name;
+        tep_act  = action_for_palette(tep_acts, tep_i);
+        if tep_act == "" {
+            // The twelfth entry has no hotkey on purpose, and the note
+            // has to say so rather than quietly omit it.
+            assert(tep_note.find(tep_name) != null,
+                   "{NOTE} does not mention `{tep_name}`, which is the entry with "
+                   + "no hotkey — an omission reads exactly like an oversight");
+            continue;
+        }
+        tep_row = a4_row_naming(tep_note, tep_act);
+        assert(tep_row != "",
+               "{NOTE} has no row for `{tep_act}`");
+        assert(tep_row.find(tep_name) != null,
+               "{NOTE}'s row for `{tep_act}` does not name `{tep_name}` — it says "
+               + "[{tep_row}].  That is the off-by-one `src/main.loft`'s header had");
+        tep_paired += 1;
+    }
+    assert(tep_paired == 11,
+           "paired {tep_paired} palette keys with their ground, expected 11");
+}
+
+// ─── What the note points at exists ─────────────────────────────
+
+fn test_every_map_the_note_names_is_shipped() {
+    tem_note = a4_note(0);
+    for tem_n in map_names(MAPS_DIR) {
+        assert(file(map_slot_path(MAPS_DIR, tem_n)).exists(),
+               "{tem_n} has a source but no built map");
+    }
+    // The note names one by hand, because "start here" is a choice and
+    // not a listing.
+    assert(tem_note.find("starter_01") != null, "the note names a map to start on");
+    assert(file(map_slot_path(MAPS_DIR, "starter_01")).exists(),
+           "and `starter_01` is shipped");
+}
+
+// ⚠ The two numbers the note states about starting a run are the ones
+// a player acts on, and both are constants two files away from it.
+fn test_the_numbers_the_note_quotes_are_the_running_ones() {
+    ttn_note = a4_note(0);
+    assert(ttn_note.find("{WAVE_1_PROVOCATION_HEXES} or more hexes") != null,
+           "the note must quote the live provocation radius ({WAVE_1_PROVOCATION_HEXES})");
+    assert(ttn_note.find("closer than {SPAWN_DISABLE_RADIUS} hexes") != null,
+           "and the live silencing radius ({SPAWN_DISABLE_RADIUS})");
+    assert(ttn_note.find("{TOWER_SHOT_BUDGET}-shot magazine") != null,
+           "and the live magazine ({TOWER_SHOT_BUDGET})");
+    assert(ttn_note.find("for {TOWER_REPAIR_SECONDS:2.0} seconds") != null,
+           "and the live repair clock ({TOWER_REPAIR_SECONDS:2.0} s)");
+}
