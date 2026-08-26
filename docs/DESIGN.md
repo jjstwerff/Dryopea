@@ -1768,6 +1768,71 @@ for nine.
 - **a person strictly best at everything** — prevented already by
   [`PROGRESSION.md`](PROGRESSION.md) § P2a2's global slowdown (`@X193`).
 
+#### ⚠⚠ SEMI-AUTOMATIC BY DEFAULT, SPECIALISED BY ATTENTION — and it resolves the contradiction  `@X252`
+
+Owner, 2026-08-26:
+
+> *"the helpers are semi-automatic at the start.  But later a player can go to an
+> individual one of them and in that interaction can give them specific tasks
+> instead — from then on they behave less general."*
+
+⚠⚠ **This settles a real conflict between two things this document says.**
+§ 11 § Wall paint has helpers **picking up build orders themselves** (*"only
+valid while no helper has started building"*), while `@X198` names
+**auto-assignment** as the thing that deletes this pillar.
+
+⚠ **They are the same mechanic, and the resolution is that it is a DEFAULT
+rather than a CEILING:**
+
+| | |
+|---|---|
+| **at the start** | ⚠ helpers are **semi-automatic** — they find work, and a new player never has to assign anything |
+| **later, per person** | ⚠⚠ the player **goes to one of them** and gives specific tasks; **from then on that one behaves less generally** |
+
+#### ⚠⚠ The pillar survives because DIRECTING SOMEBODY COSTS A TRIP
+
+⚠ `@X156` makes **presence the interaction**, so specialising a helper means
+**driving to them** — and that is § What kind of game this is at the management
+layer: *the thing you spend is a trip, and you spend it while something else
+needs doing.*
+
+⚠⚠ **And your attention is the scarce resource, not the orders.**  You cannot go
+to all six, so ***which one you specialise IS the decision*** — `@X197`'s *more
+tasks than helpers* reflected as **more helpers than trips.**
+
+#### ⚠ It is a RATCHET, so a crew accumulates SHAPE
+
+⚠⚠ *"From then on they behave less general"* is **persistent and per-helper**,
+so a run produces a crew with a **profile**: some general, some dedicated.
+
+⚠ **Which is `@X196`'s cluster idea applied to BEHAVIOUR rather than skills** —
+and the two **reinforce each other for free**: a helper you keep directing to
+repair *becomes* a repairer under `@X124`'s practice loop.  ⚠⚠ **Direction and
+advancement point the same way**, with no mechanism connecting them.
+
+#### ⚠⚠ And over-specialising TELLS YOU, diegetically
+
+⚠ A **general** helper is rarely idle — they find work.  A **specialised** one is
+idle whenever their job is not needed **where they are**.
+
+⚠⚠ **So narrowing somebody makes them more likely to speak up** (`@X142`), and a
+crew narrowed too far **starts telling you they have nothing to do.**  ⚠ The
+system reports its own over-tuning, through the channel that already exists and
+with no warning UI — which is `@X137`'s discipline holding at the management
+layer.
+
+#### ⚠⚠ It also makes the whole pillar DISCOVERABLE rather than mandatory
+
+⚠ A new player never assigns anything and the base still works; the depth is
+**opt-in by walking over to somebody.**  ⚠⚠ **Which is exactly what `@X137`
+requires** — no tutorial, and *a player who never finds this still plays* — and
+it is the same shape as `@X247`'s unconditional walls: **a floor that holds
+while the ceiling is optional.**
+
+⚠ **OPEN**: can a specialised helper be **widened again**?  The natural reading
+is yes — the interaction sets their remit, so another sets it back — ⚠ but it is
+not stated, and a one-way ratchet would be a very different game.
+
 #### ⚠⚠ It sharpens the idle helper rather than contradicting it
 
 ⚠ The apparent collision: if there is *always* more work than people, how
