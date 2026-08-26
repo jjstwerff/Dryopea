@@ -36,7 +36,7 @@ below, and `@X137`–`@X141` (no tutorial) are `DESIGN.md` § 11's;
 `@X142`–`@X143` are the speaker rule and `@X144`–`@X149` the debrief and `@X150`–`@X151` what the crew
 can know at all, `@X152`–`@X156` the window into the
 universe, `@X157`–`@X158` personality,
-`@X159`–`@X167` the office,
+`@X159`–`@X167` the office, `@X189`–`@X190` the rate,
 and `@X168`–`@X172` the crew section.  Index: [`DECISIONS.md`](DECISIONS.md).
 
 ## P0 — ⚠⚠ the model is BLUE PRINCE: information dominates, and friction is what upgrades buy
@@ -426,6 +426,81 @@ gains bank when that helper boards before force-launch.**
 ⚠⚠ **So leaving somebody behind now costs their experience as well as
 their body** — which sharpens the scramble decision rather than
 softening it, and needs no new mechanism at all.
+
+### ⚠⚠ P2a2 — the RATE: bounded per session, and slower where it is already deep  `@X189`
+
+Owner, 2026-08-26:
+
+> *"a helper should not increase in skill too much in a single session,
+> but they also need to slow down in progression on skills/statistics
+> that are already learned deeply, so they still progress but probably
+> only after multiple sessions."*
+
+⚠ **Two separate rules solving two separate problems**, and it is worth
+keeping them apart because only one of them is a curve:
+
+| rule | what it stops | ⚠ where it acts |
+|---|---|---|
+| **bounded per session** | a single long base transforming somebody, and grinding inside a run | the **session** |
+| **diminishing with depth** | a veteran running away, and it is why *"only after multiple sessions"* | the **level** |
+
+⚠ **The second is already half-designed**: § P2a's fast/slow split (skills
+quickly, statistics slowly) is the same instinct applied to the *layer*.
+This adds the curve **within** each layer.
+
+⚠ **And the first composes with `@X126`**: practice already banks only if
+the helper boarded before force-launch, so a session's gain is **bounded
+AND conditional** — nothing at all if you left them.
+
+#### ⚠⚠ THE COLLISION: diminishing returns and the anti-churn defence pull opposite ways  `@X190`
+
+**This is the part that needs deciding rather than tuning.**
+
+§ P2i § The CHURN hazard is defended *structurally* — fire-the-mediocre,
+hire-fresh is bad play because **twenty sorties of practice beat any
+fresh template**.  ⚠⚠ **Diminishing returns weakens exactly that
+defence**, because it makes a fresh hire climb fast and a veteran crawl:
+
+| | a fresh hire | a veteran |
+|---|---|---|
+| early practice | ⚠ **fast** — the steep part of the curve | — |
+| late practice | — | ⚠ **slow** — *"only after multiple sessions"* |
+| ⚠⚠ **so over time** | catches up | is caught |
+
+⚠ **If the curve is steep enough, a replacement reaches "good enough" in a
+few sessions and churning is viable again** — which is `@X125`'s reroll
+trap arriving through the maths rather than through a button.
+
+⚠⚠ **The discriminator is whether there is a CEILING, and how close
+ordinary play gets to it:**
+
+- **asymptotic to a high value, rarely approached** → the gap stays wide,
+  growth still slows, **both rules hold**;
+- **convergent to a reachable ceiling** → everybody arrives eventually,
+  the veteran's edge is temporary, **and churn reopens**.
+
+⚠ **Open — owner's call.**  It is the same number § Open questions 6
+already flags as needing a measurement rather than an argument, now with
+a second constraint on it.
+
+#### ⚠ A shape worth considering: let the POOLS do the per-session bounding
+
+⚠⚠ A hard per-session cap has a cliff in it — once it is hit, the rest of
+the sortie teaches nothing, and short sessions become the efficient ones.
+
+⚠ **§ P2d's endurance pools already bound how much work a person can do
+before they need rest.**  So the per-session limit could **emerge** from
+endurance rather than being a second rule beside it: a tired person works
+less, therefore practises less, therefore learns less.
+
+| ✅ | ❌ |
+|---|---|
+| the same curve applied on a second axis — the first hour of a job teaches more than the fifth | a hard cap with a cliff |
+| **no new mechanism** — pools are already designed | a second limiter to keep consistent with the first |
+| ⚠ and it makes `MATERIALS.md`'s **living quarters** matter twice | |
+
+⚠ **It does not remove the collision above**, which is about the *level*
+curve rather than the session one.
 
 ### ⚠⚠ P2b — TEMPLATES, never rerolls  `@X125`
 
