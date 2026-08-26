@@ -1748,7 +1748,17 @@ A downed helper **not retrieved by force-launch** is
 **stranded** at their wreck hex.  They are not lost
 permanently — they become a **rescue-quest target** for the
 same player on a later run, or (multiplayer) for a different
-player who lands nearby.  Persists with the abandoned-bases
+player who lands nearby.
+
+⚠⚠ **With `@X131`'s shared history this stops being a fetch
+quest** ([`PROGRESSION.md`](PROGRESSION.md) § P2e).  You left
+them because the wave was on the core and the rocket was lit;
+going back is a decision about **a person you know**, and the
+scramble mechanic generated it without anybody writing a
+story.  ⚠ The dark branch is § 9's own: a crew member
+abandoned often enough joins a competitor
+([`SETTING.md`](SETTING.md) § The competitors) — the same
+ledger read with the opposite sign.  Persists with the abandoned-bases
 mechanic (§ Future expansion).  For validation: stranded is a
 data state only; the rescue-quest UI is deferred.
 
