@@ -1184,7 +1184,28 @@ where the player looks would change the outcome.  A nudge is
 signal that they are engaged — but ⚠ it must never feed anything the
 simulation reads back.
 
-#### ⚠⚠ BLOCKED: dryopea cannot draw text at all  `@X130`
+#### ~~⚠⚠ BLOCKED: dryopea cannot draw text at all~~ — UNBLOCKED 2026-08-27  `@X130`
+
+⚠⚠ **BACKLOG B1 shipped it** (`@X268`, `@M047`): `assets/DejaVuSans-Bold.ttf`
+is in the repo and `src/font.loft` is the seam, so **both conditions below
+are met** and nothing in this section is a prerequisite any more.
+
+⚠ **And half of it was never true.**  *`draw_text` is unreachable under
+`loft test`* was measured **FALSE** — it draws 1324 pixels on a headless
+`Canvas` with the pinned `graphics` 0.5.2.  The claim had aged against a
+binary that moved under it, which is why it is worth re-probing a blocker
+before designing around it.
+
+⚠⚠ **What a remark still has to settle is COMPOSITING, not capability**:
+774 of a glyph line's 1324 lit pixels are BLENDED, and
+`measure.loft::classify_canvas` looks colours up exactly — so a line drawn
+into the world frame breaks `@X077`'s `other == 0` and `@X092`'s
+`unknown - entity pixels == 0`.  `@M042`'s own-canvas count is the
+precedent; loosening the classifier is refused.
+
+The section below is kept as it stood, because the reasoning about *why a
+spoken line cannot route around text* is unchanged.
+
 
 **This is the first designed feature that genuinely requires text**, and
 it turns a non-issue into a prerequisite.
@@ -1660,10 +1681,12 @@ mystery**, which is exactly what a window should do.
 
 #### ⚠ And it raises the text prerequisite again
 
-⚠⚠ `@X130` now blocks **four** things: the onboarding nudge, the
-campaign's engagement, the debrief, and now the entire delivery of
-`SETTING.md`.  **A font file is the highest-leverage missing piece in
-the project**, and nothing else in the design is close.
+⚠⚠ `@X130` blocked **four** things: the onboarding nudge, the
+campaign's engagement, the debrief, and the entire delivery of
+`SETTING.md`.  ⚠⚠ **All four are UNBLOCKED since 2026-08-27** — BACKLOG B1
+put a font in the repo and `src/font.loft` is the seam (`@X268`).  ⚠ What
+each still needs is its own design; what none of them needs any more is a
+prerequisite.
 
 ### ⚠⚠ P2h — they have real PERSONALITY: class decides what they notice, voice decides how they say it  `@X157`
 
@@ -2424,9 +2447,12 @@ remarks have something concrete to point at.
   shipped** — *"each mission is independent; persistence isn't shipped"*.
   Crew records are per-campaign by definition, so this cannot land
   before that does.
-- ⚠⚠ **Text** — `@X130`.  Relationships compound the same blocker
-  remarks have, and they need it more: a bond is *expressed* almost
-  entirely in what people say.
+- ~~⚠⚠ **Text** — `@X130`.~~  **SHIPPED 2026-08-27** (BACKLOG B1,
+  `@X268`): `src/font.loft` over `assets/DejaVuSans-Bold.ttf`.
+  Relationships compounded the same blocker remarks had, and needed it
+  more — a bond is *expressed* almost entirely in what people say — so
+  this prerequisite is gone.  ⚠ **Persistent campaign state above is
+  the one that remains.**
 
 ## P3 — equipment, and the 28 upgrades  `@X114`
 

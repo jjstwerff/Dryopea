@@ -1374,6 +1374,47 @@ src/
                    the lattice's; there is no y-flip here, because
                    the one sign inversion lives in the metre
                    conversion
+  font.loft        THE FONT — the ONE seam to graphics::draw_text
+                   (BACKLOG B1) — TEXT_FONT_FILE, Font { handle, path,
+                   loaded }, font_load / font_load_from / font_ready /
+                   text_fault / text_width / text_line_height /
+                   text_draw.  dryopea rasterises NOTHING: `graphics`
+                   owns the glyphs, and this owns which font, where it
+                   lives, and what one that did not load may do.
+                   ⚠⚠ THE PATH IS ABSOLUTE, and that is a requirement
+                   rather than a tidiness: `gl_load_font` resolves a
+                   RELATIVE path against the process CWD in the pinned
+                   graphics 0.5.2 and against `source_dir()` in 0.8.0,
+                   so `loft install graphics` would silently stop the
+                   font loading (@X268).  `{source_dir()}/../assets/…`
+                   is the one form both pass through verbatim, and it
+                   resolves from BOTH entry shapes — `tests/` and
+                   `src/`.  ⚠ `#cwd` does NOT move `source_dir()`.
+                   ⚠⚠ `font_load_from` REFUSES a relative path rather
+                   than documenting against one: `is_file` answers TRUE
+                   for `assets/…` from the repo root, so a relative
+                   path passes every check dryopea could make and only
+                   then means two different things.
+                   ⚠⚠ A FONT THAT FAILED TO LOAD DRAWS IN WHATEVER
+                   FONT LOADED FIRST — a `null` handle collapses to 0
+                   at the native boundary, which is a live handle, so
+                   the failure is the WRONG TYPEFACE and not a blank
+                   corner (@M047).  Every door asks `loaded`.
+                   ⚠⚠ `loaded` is a SECOND field for one fact, against
+                   `carry.loft`'s own rule, and [loft#914] is why: a
+                   partial literal takes the silent default, and
+                   omitting `loaded` FAILS CLOSED where omitting a
+                   `handle` would default to 0 and fail INTO the trap.
+                   ⚠ Nothing outside this file may call
+                   `graphics::draw_text`.
+                   ⚠⚠ It does NOT decide COMPOSITING: 774 of a glyph
+                   line's 1324 lit pixels are BLENDED, so text drawn
+                   into a classified frame breaks @X077's `other == 0`
+                   and @X092's `unknown - entity == 0`.  That is the
+                   first consumer's call — @M042's own-canvas count is
+                   the precedent, a flat-thresholded door the other
+                   candidate, and loosening `classify_canvas` is
+                   refused outright
   golden.loft      assert_golden(cv, name) — writes tests/actual/<n>.png,
                    asserts byte-equality against tests/golden/<n>.png;
                    FAILs via loft's now-working assert (@P367 fixed)

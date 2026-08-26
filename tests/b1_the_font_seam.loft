@@ -1,0 +1,207 @@
+#cwd
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// BACKLOG B1 — the font seam's gate.
+//
+// ⚠⚠ **The claim this file exists to defend is not "text draws".**
+// It is `src/font.loft` § A NULL HANDLE DRAWS: a font that failed to
+// load draws in whatever font loaded FIRST, so *text appeared* is
+// exactly the reading a broken seam also produces.  The test that
+// carries the weight is § The trap, and it ships with the UNGUARDED
+// version reproduced beside it — because a control the plausible
+// wrong version also satisfies is not one (`CLAUDE.md` § Testing
+// something that moves).
+
+use dryopea;
+use graphics;
+
+// Lit pixels on a fresh canvas after one draw through the seam.
+fn seam_lit(sl_f: const Font, sl_s: text, sl_size: float) -> integer {
+    sl_cv = canvas(320, 64, 0x000000);
+    text_draw(sl_cv, sl_f, sl_s, sl_size, 4, 4, 0xffffff);
+    sl_n = 0;
+    for sl_y in 0..64 {
+        for sl_x in 0..320 {
+            if (sl_cv.get_pixel(sl_x, sl_y) & 0xffffff) != 0x000000 { sl_n = sl_n + 1; }
+        }
+    }
+    sl_n
+}
+
+// ─── The seam ───────────────────────────────────────────────────
+
+// @DRY-096 — the repo's own font loads, measures and draws
+fn test_the_repo_font_loads_and_draws() {
+    f = font_load();
+    fault = text_fault(f);
+    ready = font_ready(f);
+    lit = seam_lit(f, "Ore on that ridge", 18.0);
+    w = text_width(f, "Ore on that ridge", 18.0);
+    h = text_line_height(f, 18.0);
+    p = text_font_path();
+    // ONE claim about one subject, so ONE assertion carrying every
+    // reading — `CLAUDE.md` § SEVERAL COUNTS IN ONE TEST FUNCTION.
+    assert(fault == "" and ready and lit > 200 and w > 100 and h > 8,
+           "the repo font must load and draw: fault='{fault}' ready={ready} lit={lit} width={w} height={h} path='{p}'");
+}
+
+// The vacuity control the repo asks of every gate: can this reading be
+// non-trivial at all, and can it be ZERO?  An empty string is the one
+// input that must draw nothing through a HEALTHY font, which is what
+// separates "the seam refused" from "there was nothing to draw".
+fn test_the_gate_can_read_zero_and_not_zero() {
+    f = font_load();
+    some = seam_lit(f, "42", 18.0);
+    none = seam_lit(f, "", 18.0);
+    assert(some > 0 and none == 0,
+           "a gate that cannot read both ends cannot see the seam: some={some} none={none}");
+}
+
+// ─── The trap ───────────────────────────────────────────────────
+
+// @DRY-097 — a font that did not load REFUSES BY NAME and draws nothing
+//
+// ⚠⚠ The good font is loaded FIRST on purpose.  That is what puts a
+// real handle at 0, and a `null` reaching the native boundary
+// collapses to 0 — so this is the arrangement in which a missing font
+// draws in somebody else's face.  Loading only the bad one would pass
+// with the guard deleted.
+fn test_a_missing_font_refuses_by_name() {
+    good = font_load();
+    assert(font_ready(good), "the control needs a REAL font at handle 0 first");
+
+    miss = "{source_dir()}/../assets/there-is-no-such-font.ttf";
+    bad  = font_load_from(miss);
+    fault = text_fault(bad);
+    drew = text_draw(canvas(320, 64, 0x000000), bad, "42", 18.0, 4, 4, 0xffffff);
+    lit = seam_lit(bad, "42", 18.0);
+
+    ready = font_ready(bad);
+    named = fault.contains("there-is-no-such-font.ttf");
+    assert(!ready and !drew and lit == 0 and named,
+           "a missing font must refuse BY NAME and draw nothing: ready={ready} drew={drew} lit={lit} named={named} fault='{fault}'");
+}
+
+// ⚠⚠ THE CONTROL — the unguarded version, reproduced.
+//
+// This is what `text_draw` would do without its `font_ready` check:
+// the SAME missing path, taken straight to `graphics::draw_text`.  If
+// this ever reads 0 the trap has gone away upstream and the test
+// above stops being evidence of anything — so it is the gate on the
+// gate, not a demonstration.
+fn test_the_unguarded_version_really_does_draw_in_the_wrong_font() {
+    good = font_load();
+    assert(font_ready(good), "the control needs a REAL font at handle 0 first");
+
+    raw = graphics::gl_load_font("{source_dir()}/../assets/there-is-no-such-font.ttf");
+    cv = canvas(320, 64, 0x000000);
+    cv.draw_text(raw, "42", 18.0, 4, 4, 0xffffff);
+    lit = 0;
+    for uy in 0..64 {
+        for ux in 0..320 {
+            if (cv.get_pixel(ux, uy) & 0xffffff) != 0x000000 { lit = lit + 1; }
+        }
+    }
+    ref = seam_lit(good, "42", 18.0);
+    assert(lit > 0 and lit == ref,
+           "the guard is only load-bearing while an unloaded handle still draws — unguarded={lit} good={ref} handle={raw}");
+}
+
+// ⚠⚠ THE TRAP ITSELF, isolated from the sentinel.
+//
+// `font_load_from` stores `FONT_NO_HANDLE` (-1) on failure, and -1
+// draws nothing — so the test above catches a deleted `font_ready`
+// guard through its `drew` flag but reads `lit == 0` either way.  The
+// guard is only PROVEN by a `Font` that carries a REAL handle while
+// `loaded` is false, which is exactly what a `null` collapsing to 0
+// at the native boundary produces.  Delete the guard in `text_draw`
+// and this one paints the wrong typeface.
+fn test_a_live_handle_marked_unloaded_still_refuses() {
+    good = font_load();
+    assert(font_ready(good), "the control needs a REAL font at handle 0 first");
+
+    // Same handle the good font uses; `loaded` is the ONLY difference.
+    imposter = Font { handle: good.handle, path: good.path, loaded: false };
+    drew = text_draw(canvas(320, 64, 0x000000), imposter, "42", 18.0, 4, 4, 0xffffff);
+    lit = seam_lit(imposter, "42", 18.0);
+    ref = seam_lit(good, "42", 18.0);
+
+    assert(!drew and lit == 0 and ref > 0,
+           "a live handle marked unloaded must draw NOTHING — that is the whole guard: drew={drew} lit={lit} good={ref} handle={good.handle}");
+}
+
+// A RELATIVE path is refused BY NAME, however real the file is.
+//
+// ⚠⚠ This is the version hazard closed at the door: `assets/…` is a
+// real file from the repo root and `is_file` would say so, but
+// `gl_load_font` reads it against the process CWD on `graphics` 0.5.2
+// and against `source_dir()` on 0.8.0 — so accepting it would make the
+// font's identity depend on which release is installed.
+fn test_a_relative_path_is_refused_however_real_the_file_is() {
+    rel = TEXT_FONT_FILE;                 // "assets/DejaVuSans-Bold.ttf"
+    there = is_file(rel);                 // true from the repo root
+    f = font_load_from(rel);
+    fault = text_fault(f);
+    ready = font_ready(f);
+    named = fault.contains("RELATIVE");
+    assert(there and !ready and named,
+           "a relative path must be refused BY NAME even when the file is there: exists={there} ready={ready} fault='{fault}'");
+}
+
+// ─── Metrics ────────────────────────────────────────────────────
+
+// A longer string is wider and a bigger size is taller.  ⚠ RELATIONS
+// rather than pixel counts: the exact numbers are the font's and would
+// pin this gate to one release of one typeface.
+fn test_the_metrics_move_the_way_type_does() {
+    f = font_load();
+    w1 = text_width(f, "4", 18.0);
+    w3 = text_width(f, "444", 18.0);
+    h18 = text_line_height(f, 18.0);
+    h36 = text_line_height(f, 36.0);
+    big = seam_lit(f, "42", 36.0);
+    small = seam_lit(f, "42", 18.0);
+    assert(w3 > w1 and h36 > h18 and big > small,
+           "type must scale: w1={w1} w3={w3} h18={h18} h36={h36} big={big} small={small}");
+}
+
+// A font that did not load measures ZERO, and that is not what
+// `graphics` answers — `gl_text_height(null, 18.0)` is a plain
+// non-zero, so the underlying call cannot be asked whether a font is
+// there.  This pins the seam's answer, not the library's.
+fn test_an_unloaded_font_measures_zero() {
+    bad = font_missing();
+    w = text_width(bad, "444", 18.0);
+    h = text_line_height(bad, 18.0);
+    assert(w == 0 and h == 0,
+           "an unloaded font must measure zero through the seam: width={w} height={h}");
+}
+
+// ─── What text costs a classified frame ─────────────────────────
+
+// @M047 — most of a glyph's ink is NOT the ink colour.
+//
+// ⚠⚠ `measure.loft::classify_canvas` looks colours up EXACTLY, so
+// every blended pixel lands in `unknown`.  This is pinned as a
+// RATIO rather than a count so it survives a font change, and it is
+// here so the first consumer of `text_draw` cannot be surprised by
+// it: `@X077`'s `other == 0` and `@X092`'s `unknown - entity == 0`
+// are both assertions that text drawn into a classified frame breaks.
+fn test_most_of_a_glyphs_ink_is_blended() {
+    f = font_load();
+    cv = canvas(320, 64, 0x000000);
+    text_draw(cv, f, "Ore on that ridge", 18.0, 4, 4, 0xffffff);
+    lit = 0;
+    pure = 0;
+    for by in 0..64 {
+        for bx in 0..320 {
+            c = cv.get_pixel(bx, by) & 0xffffff;
+            if c != 0x000000 { lit = lit + 1; }
+            if c == 0xffffff { pure = pure + 1; }
+        }
+    }
+    blended = lit - pure;
+    assert(lit > 0 and blended * 2 > lit,
+           "anti-aliasing must still be the MAJORITY of a glyph ink — if this flips, `classify_canvas` may be able to see text and § What this seam does NOT decide is stale: lit={lit} pure={pure} blended={blended}");
+}

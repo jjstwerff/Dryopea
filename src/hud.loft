@@ -4,15 +4,25 @@
 // THE HUD — the editor's status indicators, and the ONE number the
 // game shows.
 //
-// Pure Canvas, no font dependency.  ⚠⚠ **THAT IS A CONSTRAINT AND NOT
-// A STYLE.**  `graphics` does publish `draw_text`, and it is unusable
-// here twice over: it rasterises through `#native
-// rasterize_text_into`, which answers *"native function not loaded"*
-// under `loft test`, and it needs a FONT FILE this repo does not have.
-// A HUD nothing headless can draw is a HUD no test and no `snap` can
-// see — so the digits below are RECTANGLES, which every gate in the
-// repo can already read.  ⚠ `picker.loft` reached the same conclusion
-// in plan 01 and its note is the older half of this one.
+// Pure Canvas, no font dependency.  ⚠⚠ **THAT WAS A CONSTRAINT AND IS
+// NOW A CHOICE** (BACKLOG B1, `@X268`).  It said `graphics::draw_text`
+// was unusable twice over — a `#native` call answering *"native
+// function not loaded"* under `loft test`, and no font file in the
+// repo.  ⚠ The first half is **stale**: measured on the pinned
+// `graphics` 0.5.2, `draw_text` draws 1324 pixels on a headless
+// `Canvas` under the interpreter (`@M047`).  The second half is
+// **paid**: `assets/DejaVuSans-Bold.ttf` ships and `src/font.loft` is
+// the seam.
+//
+// ⚠⚠ **The digits stay RECTANGLES anyway, and not out of inertia.**
+// They are gated by an INDEPENDENT ORACLE (the lit-segment counts),
+// they are sized 24 x 40 because 14 x 24 was an unreadable squint in a
+// real window (`@M042`), and — the reason that would decide it alone —
+// **anti-aliased text is not a palette colour**: 774 of a glyph line's
+// 1324 lit pixels are blended, so `classify_canvas`'s exact lookup
+// would put the wallet in `unknown` and `@X092`'s frame arithmetic
+// would stop closing.  ⚠ `picker.loft` reached the same conclusion in
+// plan 01 and its note is the older half of this one.
 //
 // Plan 03 follow-up — QoL polish.  ⚠ Plan 19 P7 added § The wallet.
 

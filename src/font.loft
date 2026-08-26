@@ -1,0 +1,291 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE FONT — the ONE seam between dryopea and `graphics::draw_text`.
+//
+// #examples
+//
+// BACKLOG B1.  ⚠⚠ **dryopea rasterises nothing here.**  `graphics`
+// already owns the glyph work (`gl_load_font` / `gl_measure_text` /
+// `gl_text_height` / `draw_text`), so what this file owns is the
+// three things `graphics` cannot know: **WHICH font, WHERE it lives,
+// and what a font that did not load is allowed to do.**
+//
+// ── The invariant ───────────────────────────────────────────────
+//
+// **dryopea owns the font's ABSOLUTE path and loads it once; every
+// draw goes through one door that has already proven the handle
+// real — so neither the caller's cwd, nor the entry's directory, nor
+// the `graphics` version can decide which typeface appears, and a
+// font that did not load REFUSES BY NAME instead of silently drawing
+// in somebody else's.**
+//
+// ── Why that sentence has three clauses ─────────────────────────
+//
+// Each one is a MEASURED failure, not a precaution (`@M047`).
+//
+// ⚠⚠ **A NULL HANDLE DRAWS, AND IT DRAWS IN WHATEVER FONT LOADED
+// FIRST.**  Measured: with a good font already at handle 0, a failed
+// `gl_load_font` returns null, and `gl_measure_text(null, "X", 16)`
+// answers **12.34** — the same as the good handle — while
+// `draw_text` puts down the same **128** pixels.  A `null` reaching
+// the native boundary collapses to **0**, which is a real handle.
+// So the failure of a font to load is not *nothing appears*; it is
+// *the wrong typeface appears, silently*.  ⚠ With NO font loaded at
+// all it does draw nothing (0 pixels) — which is exactly what makes
+// the trap invisible in a one-font test and live in a two-font one.
+// **That is why `Font` carries `loaded` and every door asks it.**
+//
+// ⚠⚠ **A RELATIVE PATH MEANS TWO DIFFERENT THINGS, AND WHICH ONE
+// DEPENDS ON THE `graphics` VERSION.**  Measured across the two
+// releases installed on this box:
+//
+//   graphics 0.5.2 (PINNED)  `gl_load_font` IS the raw native —
+//                            the path resolves against the PROCESS
+//                            CWD.  `assets/…` loads; `../assets/…`
+//                            does not.
+//   graphics 0.8.0           its #255 fix joins `source_dir()` —
+//                            the path resolves against the ENTRY's
+//                            directory.  `assets/…` would become
+//                            `tests/assets/…` and load NOTHING.
+//
+// So `loft install graphics` would silently stop the font loading,
+// and by the paragraph above that is not a blank screen but the
+// wrong face.  ⚠ An **absolute** path is the one form both releases
+// pass through verbatim, which is why `text_font_path` builds one
+// rather than trusting either convention.
+//
+// ⚠ **`#cwd` does NOT move `source_dir()`** — measured: under
+// `loft test` it still answers `<repo>/tests`.  The two mechanisms
+// are unrelated, so dryopea's `#cwd` + repo-root-relative rule (which
+// governs `file()`, and therefore `examples/palette.json`) says
+// nothing about where a font is found.
+//
+// ── Why the path is built from `source_dir()` ───────────────────
+//
+// ⚠ It is the only ABSOLUTE anchor pointing into the repo that loft
+// offers: there is no `cwd()` builtin, and `program_directory()` is
+// the loft binary's.  Every dryopea entry — `src/main.loft`,
+// `src/validate_main.loft`, `src/gl_gate_main.loft`,
+// `src/mapbuild_main.loft` and every `tests/*.loft` — sits exactly
+// ONE level under the repo root, so `{source_dir()}/../assets` is the
+// root's `assets/` from all of them.  ⚠⚠ **That is an assumption
+// about the tree's SHAPE, so it is not left to a comment**:
+// `text_fault` asks `is_file` and NAMES the path it tried, and
+// `tests/b1_the_text_seam.loft` fails on the name rather than on a
+// blank canvas.  A nested entry directory would go red at once.
+//
+// ── What this seam does NOT decide ──────────────────────────────
+//
+// ⚠⚠ **Anti-aliased text is not a palette colour, and the number is
+// large** (`@M047`): one 18 px line of white-on-black measures 1324
+// lit pixels of which only **550 are pure white** — **774 are
+// blended**.  `measure.loft::classify_canvas` looks colours up
+// EXACTLY, so every one of those 774 lands in `unknown`, and both
+// `@X077`'s `other == 0` and `@X092`'s `unknown - entity pixels == 0`
+// are assertions text would break.
+//
+// ⚠ **That is the first CONSUMER's problem and it is deliberately
+// left open here.**  The precedent is already in the tree and it is
+// `@M042`'s: the wallet overlay is composed on its OWN canvas and
+// blitted 1:1, so the gate counts the ink in that canvas rather than
+// hunting it in the frame.  A door that thresholds text to one flat
+// colour is the other candidate — cheap to add over `text_draw`, and
+// **not added now, because a door with no consumer is a door nobody
+// has measured**.  ⚠ What must NOT happen is loosening
+// `classify_canvas` to a nearest-colour match: `docs/RENDERER.md`
+// § R0 measured exact classification through GL at zero drift, and
+// that property is what three gates stand on.
+
+use graphics;
+
+// The font, relative to the repo root.  ⚠ DejaVu Sans **Bold**:
+// BOLD because text is drawn over a busy world and a hairline face is
+// unreadable there, and DejaVu because its Bitstream Vera licence is
+// permissive — `assets/LICENSE-DejaVu.txt` travels with it, as that
+// licence requires.  ⚠ Liberation Sans Narrow (which `graphics`
+// itself bundles) was refused on licence rather than on looks: it is
+// GPL-2-with-a-font-exception, which is copyleft, and this repo is
+// LGPL-3.0-or-later.
+pub const TEXT_FONT_FILE: text = "assets/DejaVuSans-Bold.ttf";
+
+// A handle that is not a font.  ⚠ NOT 0 — 0 is the first handle
+// `gl_load_font` hands out, so 0 is the value a `null` collapses to
+// and the one that must never mean *absent*.
+pub const FONT_NO_HANDLE: integer = -1;
+
+// A loaded font.
+//
+// ── Why there are TWO fields for one fact ───────────────────────
+//
+// ⚠⚠ `loaded` looks redundant beside a negative `handle`, and the
+// repo's own rule is against it — `carry.loft` refuses a *carried*
+// flag beside an owner because **two facts can disagree**.  It is
+// here anyway, and the reason is [loft#914]: **a struct literal that
+// omits a field takes that field's default SILENTLY.**  Which
+// default a partial literal lands on is therefore the whole
+// question, and the two designs land on opposite ones (measured):
+//
+//   `Font { handle: h, path: p }`   omits `loaded` -> **false**
+//                                   -> `font_ready` says no
+//                                   -> FAILS CLOSED.
+//   readiness as `handle >= 0`      omits `handle` -> **0**
+//                                   -> 0 is a LIVE handle
+//                                   -> FAILS INTO THE TRAP.
+//
+// So the second fact is not duplication, it is the direction the
+// silent default falls in.  ⚠ The two can only disagree through a
+// hand-built literal, because `font_load_from` is the only
+// constructor of a loaded `Font` and it sets both at one site.
+//
+// ⚠⚠ **The doors read `loaded`, never `handle >= 0`** — and the two
+// stop DIFFERENT failures, which is measured rather than assumed
+// (`tests/b1_the_font_seam.loft`).  Delete the `text_draw` guard and
+// a *missing file* still draws nothing, because `FONT_NO_HANDLE` is
+// not a handle `graphics` will use: what breaks is `text_draw`'s
+// ANSWER, which starts saying `true` while painting nothing.  What
+// the guard stops in PIXELS is the other case — a `Font` carrying a
+// LIVE handle with `loaded` false, which is what a partial literal
+// makes — and that one paints the wrong typeface exactly (203 pixels
+// against the good font's 203).
+pub struct Font {
+    handle: integer,
+    path:   text,
+    loaded: boolean,
+}
+
+// Where the repo's font is, as an ABSOLUTE path.
+//
+// ⚠⚠ Absolute is the requirement, not a convenience: it is the one
+// form `graphics` 0.5.2 and 0.8.0 agree on (§ A RELATIVE PATH MEANS
+// TWO DIFFERENT THINGS).  ⚠ It is a function and not a `const`
+// because `source_dir()` is `#impure(host_io)` and loft refuses a
+// call in a const initialiser.
+//
+// Example: @DRY-096
+pub fn text_font_path() -> text {
+    "{source_dir()}/../{TEXT_FONT_FILE}"
+}
+
+// A `Font` that never loaded — what a caller holds before asking, and
+// what `font_load_from` answers on any failure.
+//
+// Example: @DRY-097
+pub fn font_missing() -> Font {
+    Font { handle: FONT_NO_HANDLE, path: "", loaded: false }
+}
+
+// Load a font from an ABSOLUTE path.  ⚠ The door for a test, or for a
+// future setting that names a face; `font_load` is the one the game
+// calls.
+//
+// ⚠ It asks `is_file` FIRST so the two failures stay apart: *the file
+// is not there* and *the file is there and the loader refused it* are
+// different problems with different fixes, and one message covering
+// both would name neither.
+//
+// Example: @DRY-097
+pub fn font_load_from(flf_path: text) -> Font {
+    // ⚠⚠ ABSOLUTE is ENFORCED, not just documented.  A relative path
+    // would pass `is_file` (cwd-relative) and then mean something
+    // ELSE to `gl_load_font` depending on the `graphics` version —
+    // which is the whole failure this file exists to prevent, and a
+    // public door that accepts one silently is where it would come
+    // back in.
+    if !flf_path.starts_with("/") {
+        return Font { handle: FONT_NO_HANDLE, path: flf_path, loaded: false };
+    }
+    if !is_file(flf_path) {
+        return Font { handle: FONT_NO_HANDLE, path: flf_path, loaded: false };
+    }
+    flf_h = graphics::gl_load_font(flf_path);
+    if flf_h == null or flf_h < 0 {
+        return Font { handle: FONT_NO_HANDLE, path: flf_path, loaded: false };
+    }
+    Font { handle: flf_h, path: flf_path, loaded: true }
+}
+
+// Load the repo's own font.  ⚠ The ONE call the game makes, and it
+// takes no argument on purpose: a path parameter here is a second
+// place the answer to *which font* could live.
+//
+// Example: @DRY-096
+pub fn font_load() -> Font {
+    font_load_from(text_font_path())
+}
+
+// May this font be drawn with?  ⚠⚠ **Every door below asks this, and
+// nothing outside this file should have to** — that is what makes the
+// seam a chokepoint rather than a convention.
+//
+// Example: none — a one-line accessor over `f.loaded`
+pub fn font_ready(fr_f: const Font) -> boolean {
+    fr_f.loaded
+}
+
+// What is wrong with this font — `""` when nothing is.
+//
+// ⚠ It NAMES the path, because the failure this file exists to
+// prevent is a silent one: a blank corner and a corner drawn in the
+// wrong face look identical, and neither says where it looked.
+//
+// Example: @DRY-097
+pub fn text_fault(tf_f: const Font) -> text {
+    if font_ready(tf_f) { return ""; }
+    if tf_f.path == "" { return "no font has been loaded"; }
+    if !tf_f.path.starts_with("/") {
+        return "`{tf_f.path}` is a RELATIVE font path — it would mean the process cwd on `graphics` 0.5.2 and the entry's directory on 0.8.0, so only an absolute one is accepted";
+    }
+    if !is_file(tf_f.path) {
+        return "no font file at `{tf_f.path}` — `{TEXT_FONT_FILE}` is missing from the repo";
+    }
+    "`{tf_f.path}` exists but `graphics::gl_load_font` refused it — not a font this build can read"
+}
+
+// How wide `tw_s` draws, in pixels.  0 for a font that did not load.
+//
+// ⚠ It matches `graphics::draw_text`'s own `as integer + 1` rather
+// than rounding independently, so a caller that reserves this many
+// pixels reserves exactly what the ink will occupy.
+//
+// Example: @DRY-096
+pub fn text_width(tw_f: const Font, tw_s: text, tw_size: float) -> integer {
+    if !font_ready(tw_f) { return 0; }
+    graphics::gl_measure_text(tw_f.handle, tw_s, tw_size) as integer + 1
+}
+
+// One line's height in pixels.  0 for a font that did not load.
+//
+// ⚠⚠ It returns 0 rather than what `graphics` answers, and that is
+// the point: `gl_text_height(null, 16.0)` measured **20** — a plain
+// non-zero — so the underlying call cannot be used to ask whether a
+// font is there.  `text_fault` is that question.
+//
+// Example: @DRY-096
+pub fn text_line_height(tlh_f: const Font, tlh_size: float) -> integer {
+    if !font_ready(tlh_f) { return 0; }
+    graphics::gl_text_height(tlh_f.handle, tlh_size)
+}
+
+// Draw `td_s` at `(td_x, td_y)`, the TOP-left of the line.  Answers
+// whether anything was drawn.
+//
+// ⚠⚠ **This is the only place in dryopea that may call
+// `graphics::draw_text`.**  A second call site is a second place the
+// handle check can be forgotten, and § A NULL HANDLE DRAWS is what
+// forgetting it costs — not a blank screen, but the wrong typeface
+// with every gate still green.
+//
+// ⚠ The boolean is what makes the refusal VISIBLE to a test: a draw
+// that silently does nothing and a draw that succeeded look the same
+// from the outside, and `tests/b1_the_text_seam.loft` asserts on this
+// as well as on the pixels.
+//
+// Example: @DRY-096
+pub fn text_draw(td_cv: Canvas, td_f: const Font, td_s: text, td_size: float,
+                 td_x: integer, td_y: integer, td_colour: integer) -> boolean {
+    if !font_ready(td_f) { return false; }
+    if td_s == "" { return false; }
+    td_cv.draw_text(td_f.handle, td_s, td_size, td_x, td_y, td_colour);
+    true
+}

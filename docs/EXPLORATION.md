@@ -98,7 +98,7 @@ first thing a new player does is **read a living world.**
 | the opening needs | ⚠ status today |
 |---|---|
 | **a world to look at** — robots at work, insects on trees, an elemental moving | ⚠⚠ **the gap.**  Entities *draw* ([`plans/20`](../plans/20-entity-art/README.md) A5), but **every robot in the code is a WAVE**: `spawn.loft` produces them at markers when provoked, and there is **no mover for a robot going about its business** |
-| **somebody to point at it** — the crew's remarks | ⚠⚠ blocked on TEXT (`@X130`) — and this answer is what promotes that from a deferred chore to **the gate on the opening** |
+| **somebody to point at it** — the crew's remarks | ⚠⚠ **NO LONGER BLOCKED** — BACKLOG B1 shipped text 2026-08-27 (`@X268`), so `src/font.loft` can draw a line and this stopped being the gate on the opening.  ⚠ What remains is the remark DESIGN itself (`@X129`'s *point, never conclude*) and where a line is composited (`@M047`) |
 | **somewhere to go** — the gradient | ⚠ **exists**: § X1's four rings, plus authored markers |
 
 ⚠⚠ **So ambient life is what the finished opening most depends on** — and

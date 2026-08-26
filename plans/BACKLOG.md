@@ -33,7 +33,7 @@ runs and a game you can sit down with.**
 
 | # | What | Size | Why |
 |---|---|---|---|
-| **B1** | ⚠⚠ **TEXT: a font file + `draw_text` reachable under `loft test`** | **M** | ⚠⚠ `@X130` — it blocks **five designed things**: the onboarding nudge, the debrief, crew chatter, the whole delivery of `SETTING.md`, and faction feedback.  ⚠ `@X097` is why the wallet is seven-segment rectangles.  **Nothing else in the design is close to this leverage** |
+| **B1** | ✅ **DONE 2026-08-27** — `assets/DejaVuSans-Bold.ttf` + [`src/font.loft`](../src/font.loft) | M | ⚠⚠ **Half the blocker was STALE**: `draw_text` already worked headless under `loft test` — measured at **1324 pixels** on the pinned `graphics` 0.5.2 (`@M047`).  The font half was real and is paid.  ⚠⚠ **The seam owns the ABSOLUTE path**, because a relative one means different things in 0.5.2 and 0.8.0, and a font that failed to load **draws in whatever font loaded first** rather than drawing nothing (`@X268`).  ⚠ The five designed things (`@X130`) are unblocked; the wallet stays seven-segment by CHOICE now.  ⚠⚠ **What the first consumer must know**: 774 of a glyph line's 1324 pixels are BLENDED, so text drawn into a classified frame breaks `@X077` and `@X092`.  Gated by `tests/b1_the_font_seam.loft` |
 | **B2** | ⚠⚠ **BUILDING** — wall paint (Q), the order record, helper construction, the wall appearing | **H** | ⚠⚠ `ROADMAP.md` § The critical path: **the biggest missing mechanic**, and it gates three finished designs (`@X022`, `@X024`, `@X019`).  ⚠ The design is complete — `DESIGN.md` § 11 § Wall paint, § 13's *helper-seconds is the bottleneck*, and `@X252` settles who builds |
 | **B3** | **Per-planet persistence** | MH | ⚠⚠ The **sole** prerequisite of five multiplayer features (`@X182`), and wanted by Tier D's own inventory and chaining anyway |
 | **B4** | ⚠ **A mover for a robot going about its business** | M | ⚠⚠ **Every robot in the code is a WAVE** (`@X245`).  The opening needs ambient life, and this is the smallest slice of `ROBOT_ECONOMY.md` that provides it |
@@ -89,7 +89,12 @@ an order:
   MAP=starter_01` opens an authored base, `SCRIPT=<name>` opens any of
   the 36 scenarios, and [`docs/PLAYING.md`](../docs/PLAYING.md) says
   what every key does.
-- **B1 has the widest blast radius of anything on the list.**
+- ~~**B1 has the widest blast radius of anything on the list.**~~  **B1 is
+  done** (2026-08-27) — text draws headless, so the onboarding nudge, the
+  debrief, crew chatter, `SETTING.md`'s delivery and faction feedback are
+  all unblocked.  ⚠ The widest-blast-radius item left is **B2 (BUILDING)**,
+  which `ROADMAP.md` § The critical path has always named the biggest
+  missing mechanic.
 
 ⚠ **Most of this is not a plan** (`README.md` § Pick the lightest
 workflow that fits).  Only **B2** is clearly multi-phase; the rest are
