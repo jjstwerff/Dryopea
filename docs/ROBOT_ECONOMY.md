@@ -652,11 +652,28 @@ resist optimisation **by its shape**, not by its presentation.
 > ⚠⚠ **The test: can a player write down a single number to maximise?**
 > If yes, they will — and the design has failed.
 
-### ⚠⚠ Two instinctive answers that DO NOT work
+### ⚠⚠ The HELPERS and the ECONOMY need different answers  `@X203`
+
+Owner, 2026-08-26: *"to the helpers it is more about hiding numbers, but
+inside the economy we just define individual NPC traders…"*
+
+⚠⚠ **Hiding numbers is the RIGHT answer for helpers and the WRONG one for
+the economy**, because the two are defending different things:
+
+| | ⚠ **helper skills** | ⚠⚠ **the economy** |
+|---|---|---|
+| what hiding buys | ⚠⚠ **character** — you read a person through what they say and do ([`PROGRESSION.md`](PROGRESSION.md) § P2h), not off a sheet | it would buy **unsolvability**, and it cannot |
+| does it hold against a source-reader? | ⚠ **it does not need to** — knowing *"repair 34"* still leaves `@X198`'s four incommensurable axes, so the decision is not solved by the number | ⚠⚠ **no** — and this is the case the owner's clause was about |
+| verdict | **hide them, for feel** | **hiding is not a defence; shape is** |
+
+⚠ So `@X201` below applies to the **economy**.  A helper's stat sheet
+stays off the screen for the reason § P2c gives — the roster is legible
+through behaviour, and a character screen would replace people with rows.
+
+### ⚠ And the one instinctive answer that DOES NOT work anywhere
 
 | ❌ | why it fails |
 |---|---|
-| **hide the numbers** | source is readable, and even closed games are datamined and measured.  ⚠ It also punishes the honest player and rewards the one with a wiki |
 | ⚠⚠ **make it random** | **a spreadsheet just computes the expected value** — randomness alone makes the optimum *easier* to state, not harder, because it replaces a hard question with an average.  ⚠ It is the instinctive answer and it is the wrong one |
 
 ### ⚠⚠ What actually defends it — four, and the first is the rule being transferred
@@ -696,6 +713,74 @@ you *what to look for*, never *what is there* — and looking is the trip
 is good at quantities and bad at *should I drive there now, with a wave
 inbound*.  ⚠⚠ Keeping the economy's decisions **positional and temporal**
 is what keeps them off the page.
+
+### ⚠⚠ The mechanism: individual NPC TRADERS, on their own daily business  `@X204`
+
+Owner, 2026-08-26:
+
+> *"inside the economy we just define individual NPC traders that do not
+> really adhere to the general trend but to their daily activities.  So
+> there is a general trend but it is hidden enough."*
+
+⚠⚠ **This is how the previous section's requirement is actually met, and
+it is NOT the randomness that was just refused.**  The difference is
+exact:
+
+| ❌ randomness | ✅ individual traders |
+|---|---|
+| a distribution you **sample** | ⚠ **a person you VISIT** |
+| a spreadsheet averages it | ⚠⚠ there is nothing to average — you are not sampling, you are going to **one** of them |
+| noise with no cause | ⚠ **what that trader happens to be doing today**, which has a reason |
+
+⚠⚠ **So the variation becomes POSITIONAL and TEMPORAL rather than
+statistical**, which is § What actually defends it's fourth support made
+concrete: *the decisions are where and when, not how much.*
+
+#### ⚠ It reconciles with `@X162`'s stable prices — the trend is the stable part
+
+[`PROGRESSION.md`](PROGRESSION.md) § P2i requires prices **stable and
+knowable**, so a sortie can be planned around what is worth taking, and
+refuses a price that **fluctuates on entry** as a refresh button on the
+economy.
+
+⚠⚠ **Both hold, and the split is what makes them hold:**
+
+- **the general TREND is stable and learnable** → you can plan a sortie
+  on it, and player action moves it (*"it should be influenced by the
+  players"*);
+- **an individual trader deviates** → you cannot compute the exact
+  outcome, ⚠ and it is **not a re-roll**, because you cannot refresh a
+  person.  Going to a different one is **a trip**.
+
+> ⚠⚠ **You can plan on the trend; you cannot compute the result.**  That
+> is the owner's requirement stated in one line.
+
+#### ⚠⚠ And the traders are the ECONOMY's partial sensors
+
+⚠ The player learns the trend **through** traders, imperfectly, over
+time — which is exactly [`PROGRESSION.md`](PROGRESSION.md) § P2c's crew
+pattern (`@X129`) applied to a system instead of a place: **honest,
+individual, partial reports that the player has to assemble.**
+
+⚠⚠ **The design keeps reusing one shape** — *learn a system through
+partial honest reports* — and that is worth noticing rather than
+re-deriving each time.  It is also what makes § P2i's **trader role**
+political (`@X165`): if prices come from **people**, then dealing is
+about *those people*, and the politics has a face.
+
+#### ⚠ Honest limit: this is *not worth computing*, not *uncomputable*
+
+⚠ A determined player observing many traders over many sessions **can**
+build a model.  ⚠⚠ What stops it paying off is everything else: the
+trend **moves with player action**, the map instance varies (`@X122`),
+and the payoff is still **incommensurable** (§ What actually defends it,
+point 1) — so a perfect price model still does not tell you whether to
+take the crystal.
+
+⚠ **State it that way rather than overclaiming.**  The goal is *the
+spreadsheet is not worth writing*, which is achievable; *the spreadsheet
+is impossible* is not, and a design that claimed it would be wrong the
+first time somebody tried.
 
 ### ⚠⚠ Honest check: *"a static graph plus a rate per edge"* is spreadsheet-shaped
 
