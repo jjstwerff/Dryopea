@@ -1808,6 +1808,17 @@ permanently — they become a **rescue-quest target** for the
 same player on a later run, or (multiplayer) for a different
 player who lands nearby.
 
+⚠⚠ **And in multiplayer the rescuer may KEEP them** (`@X168`,
+[`PROGRESSION.md`](PROGRESSION.md) § P2e): a helper brought home by
+another player normally returns to their own crew, but where the
+relation is *frankly* bad — abandoned before, stranded long, nobody ever
+came — **they may stay with the person who came for them.**  ⚠⚠ So crew
+move between players and **never as goods**: not a transaction but a
+choice, and *you cannot buy somebody's crew, you can only be the one who
+came for them.*  ⚠ It needs no new mechanic — the retrieval path above
+is the whole of it — and it degrades to single player as § Damage →
+wreck's competitor defection.
+
 ⚠⚠ **With `@X131`'s shared history this stops being a fetch
 quest** ([`PROGRESSION.md`](PROGRESSION.md) § P2e).  You left
 them because the wave was on the core and the rocket was lit;

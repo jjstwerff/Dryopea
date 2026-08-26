@@ -36,7 +36,8 @@ below, and `@X137`–`@X141` (no tutorial) are `DESIGN.md` § 11's;
 `@X142`–`@X143` are the speaker rule and `@X144`–`@X149` the debrief and `@X150`–`@X151` what the crew
 can know at all, `@X152`–`@X156` the window into the
 universe, `@X157`–`@X158` personality,
-and `@X159`–`@X167` the office.  Index: [`DECISIONS.md`](DECISIONS.md).
+`@X159`–`@X167` the office,
+and `@X168`–`@X170` the crew section.  Index: [`DECISIONS.md`](DECISIONS.md).
 
 ## P0 — ⚠⚠ the model is BLUE PRINCE: information dominates, and friction is what upgrades buy
 
@@ -1779,6 +1780,132 @@ can join competitors when not treated well"*.  A crew member abandoned
 often enough turns up on a competitor's payroll
 ([`SETTING.md`](SETTING.md) § The competitors) — the same ledger, read
 with the opposite sign.
+
+#### ⚠⚠ THE CREW SECTION — somebody else's player can pick up who you left, and they may not come back  `@X168`
+
+Owner, 2026-08-26:
+
+> *"There is a crew section, when the player is not able to get all
+> helpers off the planet.  And another player can pick them up, they can
+> be brought back to the player in the station but they develop a
+> relation with a player and when that relation is frankly bad then they
+> can go to their rescuer instead."*
+
+⚠⚠ **This is the ledger's strongest consequence, and half of it is
+already written down.**  `DESIGN.md` § 9 § Stranded helpers says a helper
+not retrieved by force-launch becomes *"a rescue-quest target for the
+same player on a later run, **or (multiplayer) for a different player who
+lands nearby**"*.
+
+⚠ **What is new is what happens AFTER the pickup** — and it is the
+ledger, cashed in: *"they develop a relation with a player, and when that
+relation is frankly bad then they can go to their rescuer instead."*
+
+#### ⚠⚠ It answers `@X164`'s open question, and better than trading would
+
+§ P2g left *"can crew move between players?"* open, under a trade
+heading.  ⚠⚠ **The answer is yes — but never as GOODS.**
+
+| ❌ | ✅ |
+|---|---|
+| selling a crew member | ⚠⚠ **failing one badly enough that they leave** |
+| a transaction between two players | a **choice** made by the person |
+| the market channel (`@X162`) | **abandonment and rescue** — a channel made of play |
+
+⚠ **`@X164` therefore holds exactly as written**: things cross between
+players, people are not things.  ⚠⚠ **You cannot buy somebody's crew.
+You can only be the one who came for them.**
+
+#### ⚠ And it needs NO new mechanic — the retrieval path is shipped
+
+[`plans/14`](../plans/14-helpers/README.md) already built it: drive to
+the wreck, press pickup, the downed helper becomes a carry object,
+deliver to the core, **60 s of recovery**, they rejoin the roster.
+
+⚠⚠ **A cross-player rescue is that path with a different name on the
+record.**  The work is real — land near them, reach them, get them out —
+so the rescuer pays in the currency this game charges in, and nothing has
+to be invented for it.
+
+#### ⚠⚠ The default must be RETURN, or multiplayer becomes a punishment  `@X169`
+
+⚠ If defection were common, leaving anybody behind would mean losing them
+to whoever found them, and the mechanic would read as *being robbed for
+playing multiplayer*.
+
+⚠⚠ **The owner's word is the calibration: *frankly* bad.**  So:
+
+- **the ordinary case is a courtesy** — somebody found your crew member
+  and brought them home;
+- **defection is rare and EARNED**, out of a relation that was already
+  bad before the rescue happened.
+
+⚠⚠ **And that makes returning a helper a favour with no mechanical
+reward**, which is the most interesting thing in this whole mechanic: a
+player who reliably brings people home **acquires a reputation**, and
+reputation is precisely § P2i § The TRADER's political currency
+(`@X165`) arriving on a second channel, for free.
+
+#### ⚠ The choice reads out of the LEDGER, and it must stay legible
+
+⚠⚠ `@X131` forbids an affinity bar, and that rule does the work here:
+the decision follows from **events the player can remember** — how many
+times they were left, how long they were stranded, whether anybody ever
+came back for them before.
+
+| ✅ legible | ❌ |
+|---|---|
+| *"You left me twice.  He came for me."* | *loyalty: 34%* |
+| a consequence the player **saw themselves cause** | a dice roll at the moment of rescue |
+
+⚠ And § P2h is why it lands: **you do not lose *a scout*.**  You lose the
+one who reported in three words — and you find out at the office, which
+is where crew news belongs.
+
+#### ⚠⚠ What crosses is a PERSON, not an ANSWER — so `@X164` survives intact
+
+⚠ A defecting helper carries their **practice** (`@X124`) and their
+**history** (`@X131`).  They also carry what they learned alongside their
+old employer (`@X151`), which looks at first like the knowledge transfer
+`@X164` forbids.
+
+⚠⚠ **It is not, and the existing rules are why:** they **report and do
+not prescribe** (`@X149`), they **point and do not conclude**
+(`@X129`), and their accounts are partial by construction.  So the new
+employer gains **a colleague with a history elsewhere**, not a rule:
+
+> *"That's like a base I was on before — the ground gave way there too."*
+
+⚠ Referring to a base the new player never saw.  ⚠⚠ **That is colour,
+and it is richer for being unshareable** — the one thing a defector can
+never hand over is the campaign that produced them.
+
+#### ⚠ It degrades gracefully to single player, with no second design  `@X170`
+
+⚠⚠ Without other players, the rescuer is **a competitor** — which is
+`@X160` already: *"personnel can join competitors when not treated
+well."*  ⚠ Same ledger, same threshold, same outcome, and
+[`SETTING.md`](SETTING.md) § The competitors is already the place they
+go.
+
+⚠ So this is **one mechanic with two audiences** rather than a
+multiplayer feature with a single-player stub — which is the shape this
+project reaches for everywhere else.
+
+#### ⚠ And it is a SECOND asynchronous channel
+
+⚠⚠ Like § P2i's market (`@X163`), **the two players never have to meet**:
+one leaves somebody behind, another lands there later and finds them.
+⚠ That keeps multiplayer inside `DESIGN.md` § 14's bounded one-sitting
+sessions, and it means the second multiplayer feature costs no more
+netcode than the first.
+
+⚠ **Open question.**  Is the original player *told*?  ⚠ It is strong
+either way, and it is information about their **own** crew rather than
+about somebody else's game — so it does not run into `@X164`.
+*Recommendation: yes, at the office.  Learning that somebody chose not to
+come back is the point of the mechanic, and hearing it from the crew
+section is where § P2i already puts crew news.*
 
 #### ⚠ Helper ↔ helper costs nothing extra, and is heard rather than managed
 
