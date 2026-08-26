@@ -125,6 +125,11 @@ person, at a moment when collecting it costs something**:
 | a sniper's range | it wants the outer ridge, which means driving **outside the wall** mid-wave to service it |
 | the whole run | scramble-and-salvage: every tower-top taken disables the tower it came from |
 
+⚠⚠ **And it has a MANAGEMENT layer** (`@X197`, § 9 § ASSIGNMENT
+IS A PILLAR): *there are always more tasks than helpers*, so
+handing somebody a job spends everything they are not doing.
+Same test, one level up — the scarce thing is **a person**.
+
 ⚠ **That pattern is systematic, not accumulated**, and it is
 worth stating as a test rather than a description.  A mechanic
 earns its place here when it answers yes to: *does this put
@@ -1690,6 +1695,87 @@ landing), **6 maximum** (hard cap).  Helpers can be ordered
 mid-mission at the core's NPC-ordering face (cost 100 points
 per helper); a lander touches down at the lift-off face
 ~20 s later.
+
+### ⚠⚠ ASSIGNMENT IS A PILLAR — and scarcity is what keeps it one  `@X197`
+
+Owner, 2026-08-26:
+
+> *"decisions about what tasks to assign helpers to should be a big part
+> of the game.  It should never be totally clear what they should do, and
+> there are always more tasks that need attention than there are helpers
+> around, for the tension to remain."*
+
+⚠⚠ **Two rules, and the second is the guarantee that keeps the first
+alive:**
+
+| | |
+|---|---|
+| ⚠ **never totally clear** what a helper should do | there must be **no dominant answer** |
+| ⚠⚠ **always more tasks than helpers** | so every assignment **spends** something |
+
+⚠ **This is § What kind of game this is at the MANAGEMENT layer**:
+*something put in the player's hands at a moment when using it costs
+them something* — here the thing is **a person**, and the cost is
+everything they are not doing.
+
+#### ⚠⚠ The scarcity is STRUCTURAL — every advantage the player builds generates work
+
+⚠ Nothing has to be throttled to keep demand above supply.  **Growth
+creates its own demand**, and all of it is already built:
+
+| the player gains | the work it creates |
+|---|---|
+| **a tower** | its charge decays **per shot**, and only somebody standing there refills it (§ 7) |
+| **a bigger perimeter** | more wall to build, brace and repair — ⚠ and `@X185`'s *a big area is much harder to guard* is the **same rule inside one base** |
+| **kills** | bodies pile into a ramp that somebody must drive **into** and clear ([`ENEMY_MOVEMENT.md`](ENEMY_MOVEMENT.md) § Bodies are terrain) |
+| **salvage** | it **decays**, so collection is time-critical |
+
+⚠⚠ **So the 6-helper cap is not a limit to be overcome — it is the
+mechanism.**  Ordering more helpers must never dissolve the tension, and
+it does not: a base big enough to want seven is a base generating work
+for nine.
+
+#### ⚠⚠ *Never totally clear* needs FOUR axes that do not reduce to each other  `@X198`
+
+⚠ Ambiguity is not achieved by hiding information.  It comes from
+**incommensurable** considerations, and dryopea has four:
+
+| axis | why it cannot be ranked against the others |
+|---|---|
+| ⚠⚠ **value-kind** | repair pays in *defence*, clearing pays in *access*, building pays in *future defence*, salvage pays in *points*.  **Different currencies** |
+| **information** | you do not know exactly what is coming (`@X122`), and the crew **point without concluding** (`@X129`) |
+| ⚠ **growth** | `@X192` — the job somebody is *worse* at costs you now and pays later, so the obvious person is not obviously right |
+| **position** | the best person for the job may be on the wrong side of the base, and a job started is not cheap to abandon |
+
+> ⚠⚠ **The test: does a proposed change make ONE axis dominate?**  If it
+> does, the decision becomes clear and the pillar dies.
+
+⚠ Named failure modes, because each will be proposed as a convenience:
+
+- ⚠⚠ **a task list ranked by priority** — that is the game doing the
+  player's thinking ([`PROGRESSION.md`](PROGRESSION.md) § P6a), and it
+  collapses *value-kind* on its own;
+- ⚠⚠ **auto-assignment** — *"helpers pick their own work"* deletes the
+  pillar entirely, and it is the quality-of-life feature most likely to
+  be asked for;
+- **one task that always pays best** — breaks incommensurability;
+- **a person strictly best at everything** — prevented already by
+  [`PROGRESSION.md`](PROGRESSION.md) § P2a2's global slowdown (`@X193`).
+
+#### ⚠⚠ It sharpens the idle helper rather than contradicting it
+
+⚠ The apparent collision: if there is *always* more work than people, how
+is anybody ever **idle** (`@X142`, the helper who speaks)?
+
+⚠⚠ **Because idle is a MANAGEMENT state, not a world state.**  A helper
+stands waiting **because nobody has given them a job**, not because there
+is nothing to do — and with obvious work in every direction, *"nobody has
+given me a task"* is a **sharper** complaint, not a weaker one.
+
+⚠ And it explains the onboarding case exactly: on landing nobody has
+orders yet, so the whole crew is idle **while the work is already
+visible** — which is precisely the moment a new player needs somebody to
+point.
 
 ### Skills — ⚠ the layer this was reserving space for
 
