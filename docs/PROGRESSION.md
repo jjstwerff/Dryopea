@@ -35,7 +35,8 @@ Codes: `@X016`, `@X017` **superseded**; `@X103` **reversed**; `@X018`,
 below, and `@X137`–`@X141` (no tutorial) are `DESIGN.md` § 11's;
 `@X142`–`@X143` are the speaker rule and `@X144`–`@X149` the debrief and `@X150`–`@X151` what the crew
 can know at all, `@X152`–`@X156` the window into the
-universe, and `@X157`–`@X158` personality.  Index: [`DECISIONS.md`](DECISIONS.md).
+universe, `@X157`–`@X158` personality,
+and `@X159`–`@X161` the office.  Index: [`DECISIONS.md`](DECISIONS.md).
 
 ## P0 — ⚠⚠ the model is BLUE PRINCE: information dominates, and friction is what upgrades buy
 
@@ -1392,6 +1393,125 @@ the authoring stays additive only if a voice is a **small named set**
 (*cautious, bold, dry, warm, sour*) rather than a stat block.  ⚠⚠ **Never
 numbers**: a *"cautious: 7"* field is the RPG-affinity trap in new
 clothes, and it would need a UI that `@X156` refuses.
+
+### ⚠⚠ P2i — the OFFICE: between missions, recruit, dismiss, or put somebody to work up here  `@X159`
+
+Owner, 2026-08-26:
+
+> *"Between missions the player has a choice to recruit new helpers and
+> so also to dismiss helpers or give them a task in the 'office/store'
+> there."*
+
+⚠ Lives at the station — `DESIGN.md` § 16 § Meta-game hub,
+[`SETTING.md`](SETTING.md) § Between missions, the cooperative's rented
+bay.  ⚠ Today `DESIGN.md` § 9 orders helpers **in-mission** at the core's
+NPC-order face for 100 points, with a hard cap of **6**; this is the
+between-missions half, which has never existed.
+
+#### ⚠⚠ The third option is the interesting one: a helper who STAYS UP
+
+Recruit and dismiss are obvious.  **Give them a task in the office** is
+not, and it changes what the roster is:
+
+| a station task | what it plausibly does | ⚠ and it practises |
+|---|---|---|
+| **running the store** | selling salvage, sourcing what the next sortie needs | `social` |
+| **processing salvage** | [`MATERIALS.md`](MATERIALS.md)'s recycler, which § Open questions 4 already hands to a person rather than a building | `scrounge` |
+| **analysing AI cores** | `MATERIALS.md` § The AI core — *"needs programming/hacking, different levels"* | `hack` |
+| **cataloguing what came back** | [`SETTING.md`](SETTING.md) § The knowledge tree's own bookkeeping | `plan` |
+
+⚠⚠ **And § P2a's loop applies here unchanged** — a station task *is*
+work, so it advances the skills it uses.  **No new rule, and no
+"training" verb**, which is important: a training menu would be a
+shortcut around use-based advancement, and `@X124` exists precisely so
+that competence comes from doing the job.
+
+#### ⚠⚠ It turns the roster into an ALLOCATION problem, every mission
+
+**The cap is six and a sortie has seats.**  So leaving somebody behind
+stops being a loss and becomes a **choice**:
+
+| who goes down | who stays up |
+|---|---|
+| labour for this base, and ⚠ `@X146`'s **sensor loadout** — whose account you will have at the debrief | station work that pays, and ⚠ **they are safe**: they cannot be wrecked, stranded, or left at force-launch |
+
+⚠ **That is a real decision every mission and it is made with
+knowledge** — the dominant axis (`@X117`) — because *which base am I
+about to play* decides who is worth taking.  ⚠⚠ A swamp base wants the
+builder; a base you intend to scout wide wants the scout; and **the
+person you leave in the office is the account you will not have
+afterwards.**
+
+#### ⚠⚠ Dismissal is a real decision, because the docs already gave it a dark ending  `@X160`
+
+Firing somebody costs their accumulated practice (`@X124`) and their
+history with the crew (`@X131`).  ⚠ But the sharper consequence is
+already written down:
+
+> § P2d, from the 2023 data: *"**Defection** — personnel can join
+> competitors when not treated well."*
+
+⚠⚠ **A dismissed crew member can turn up on a competitor's payroll**
+([`SETTING.md`](SETTING.md) § The competitors) — where *neglect* was the
+accidental route to that, **dismissal is the deliberate one.**  ⚠ So
+dismissal is not a delete button, and the person you let go is somebody
+the planet may hand back to you from the other side.
+
+#### ⚠⚠ The CHURN hazard, and use-based advancement is already the defence
+
+⚠ The obvious exploit: **fire the mediocre, hire fresh, repeat** — which
+is `@X125`'s reroll trap wearing a third hat, now with dismissal as the
+reroll button.
+
+⚠⚠ **§ P2a defends it structurally**: a crew member with twenty sorties
+of practice is **strictly better than any fresh template**, so churning
+is *bad play* rather than a forbidden move.  ⚠ Nothing has to police it,
+which is the right kind of answer.
+
+⚠ **But it puts weight on § Open questions 6** — *how fast is the slow
+layer?*  ⚠⚠ If statistics rise too slowly, a veteran is not
+distinguishably better than a new hire and the churn exploit opens after
+all.  **That number is now load-bearing in two places**, and it is still
+the one thing here that needs a measurement rather than an argument.
+
+#### ⚠ The office is a PLACE, not a roster screen  `@X161`
+
+⚠⚠ **`@X156` holds here too**: you go to somebody and they say their
+piece.  Recruiting is **going to the person you might hire**; dismissing
+is going to the person you are letting go — ⚠ and that is what a
+dismissal should cost, because you have to say it to their face rather
+than clicking a row.
+
+| ✅ | ❌ |
+|---|---|
+| the office is somewhere you walk around, and the crew are **in** it | a roster spreadsheet with hire / fire buttons |
+| ⚠ **fast to skip entirely** — launch without visiting anyone (`@X120`) | a mandatory between-missions management step |
+| who is available is **who is there** | ⚠⚠ a refresh button, or a pool that re-rolls when you re-enter |
+
+⚠⚠ **And that last row is `@X125` again.**  The catalogue of backgrounds
+and classes stays stable and knowable; **who happens to be in the office
+may change, but never as a draw the player can retry.**  ⚠ It should
+change for a *reason* — a competitor folded, a rescue brought somebody
+in, a sortie went badly somewhere else — which keeps it legible and makes
+it `@X122`'s *vary the instance* rather than a dice roll with a caption.
+
+#### ⚠ Open questions
+
+1. **What does recruiting cost, and does dismissing refund anything?**
+   ⚠ `DESIGN.md` § 9 prices an in-mission helper at 100 points; a
+   between-missions hire is spending **carryover** (§ P5), which is a
+   different budget with a different feel.  *No recommendation — this is
+   `DESIGN.md` § 13's to price, and it wants building to exist first.*
+2. **Does a station task pay in points, in materials, or in neither?**
+   ⚠ Paying in points makes the office an income source and the sortie
+   optional, which inverts the game.  *Recommendation: it pays in
+   **materials and readiness** ([`MATERIALS.md`](MATERIALS.md)) rather
+   than in the wallet — the office prepares the next sortie, it does not
+   replace it.*
+3. **Does the in-mission order face survive?**  ⚠ Two hiring channels is
+   one more than the design needs.  *Recommendation: keep both and let
+   them differ — the office is deliberate and the core's face is
+   desperate, at a worse rate.*
 
 ### ⚠⚠ P2e — the relationships are a LEDGER of what happened, never an affinity bar  `@X131`
 

@@ -1675,6 +1675,16 @@ chassis as the player, **silver-grey** body, black front
 
 ### Roster
 
+⚠⚠ **And between missions the roster is MANAGED at the station**
+(`@X159`, [`PROGRESSION.md`](PROGRESSION.md) § P2i): recruit, dismiss, or
+**give a helper a task in the office** — running the store, processing
+salvage, analysing AI cores.  ⚠ A station task is work, so it advances
+the skills it uses; there is **no training verb**.  ⚠⚠ With a cap of six
+this makes every mission an **allocation**: who goes down is labour and
+whose account you will have at the debrief, who stays up is paid work
+and **safety**.  ⚠ The office is a PLACE and not a roster screen — and
+dismissing somebody can put them on a competitor's payroll.
+
 **2 starting** (emerging from the core's lift-off face on
 landing), **6 maximum** (hard cap).  Helpers can be ordered
 mid-mission at the core's NPC-ordering face (cost 100 points
