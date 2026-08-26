@@ -904,6 +904,133 @@ through honest, individual, incomplete reports.**
 | ⚠⚠ **reactive, never STRATEGIC** | § What this design does NOT do refuses *AI strategy*: *"nothing in the graph reacts intelligently — the escalation ladder is a threshold, and rerouting is a shortest-path recompute."*  ⚠ Faction relations must respond the same way: **to what the player did**, by threshold and tally, **never by planning against them.**  Reactive is not strategic, and the distinction is this document's own |
 | ⚠ **sparse and AUTHORED, never a matrix** | nine factions is 36 pairs, and most of them never touch.  ⚠⚠ Author **a handful of live tensions**, the way § Open questions 3 already prefers *two or three named alternates per route* over a computed detour — because the player needs the web to be **learnable**, and a full matrix is not |
 
+#### ⚠⚠ THE LESSON THE PLAYER MUST LEARN: a good deal for the TRADER is an investment  `@X210`
+
+Owner, 2026-08-26:
+
+> *"it should become clear to a player that giving a trader a good deal
+> hurts in the short term but can mean survival in the long term struggle
+> against potential other players in the political landscape of the
+> station.  There is no PvP here, but also a shared resources system where
+> players can win."*
+
+⚠⚠ **This inverts the usual trading game.**  Extracting maximum value per
+transaction is the obvious play and it is **short-sighted** — and that is
+a lesson the player learns by *playing*, which is `@X117`'s dominant axis
+doing its job at the station.
+
+⚠ **The asymmetry is what makes it a real decision:**
+
+| ⚠⚠ **the cost is VISIBLE** | ⚠⚠ **the payoff is NOT** |
+|---|---|
+| you can see the worse price you accepted | standing is never a number on screen (`@X207`) |
+| it is felt **this sortie** | it arrives as **being served when supply is tight** |
+
+⚠ **That is the design's own test at the social layer** — *something put
+in the player's hands at a moment when using it costs them something* —
+and here the thing is **a margin you chose not to take**.
+
+#### ⚠⚠ How it becomes CLEAR without a tutorial or a standings screen
+
+⚠ `@X137` allows no tutorial and `@X207` allows no standings screen, so
+the lesson has to arrive the way every other one does — **through
+consequence, and through partial reports**:
+
+- the trader you dealt well with is the one **who has stock for you when
+  it is scarce**, or who holds something back, or who does not sell it to
+  your rival;
+- somebody **mentions** that another operator has been buying up what you
+  need (traders and crew as sensors, `@X129` / `@X204`);
+- ⚠⚠ and the first time a rival gets the supply you were counting on,
+  **you understand** — which is `@X174`'s *it teaches* arriving in the
+  station instead of on the planet.
+
+#### ⚠⚠ *"No PvP, but a shared resource system where players can win"*  `@X211`
+
+⚠ **The station is competitive and non-violent** — which is `@X175`
+(*a base is impregnable to a person*) applied one layer up: **the
+competition is entirely social and economic.**
+
+⚠ What is shared and genuinely scarce:
+
+| the resource | why it is contested |
+|---|---|
+| a trader's **stock** | finite — if a rival bought it, it is gone |
+| a trader's **priority** | who gets served first when supply is tight |
+| ⚠⚠ **permits** | the chokepoint of the whole fiction ([`SETTING.md`](SETTING.md) § The quarantine) |
+| **standing with a particular trader** | ⚠ partly positional — *the* trusted operator is a place only one can occupy |
+| **regions of the planet** | `@X177`'s race, per-planet |
+
+#### ⚠⚠ *Winning* is BEING A BIGGER PART OF THE ECOSYSTEM — like winning in a democracy  `@X212`
+
+Owner, 2026-08-26:
+
+> *"winning here is to be a bigger part of the station ecosystem.  Not a
+> fixed thing — like winning in a democracy is never a fixed
+> condition."*
+
+⚠⚠ **That is a better model than *a series of contests you win*, and it
+is exact**: § The capstone says factions make the player **one node among
+many rather than the centre**, so
+
+> ⚠⚠ **winning is CENTRALITY IN THE WEB, not victory over anybody.**
+
+⚠ The analogy carries all the way, and each part of it is a design rule:
+
+| in a democracy | ⚠ here |
+|---|---|
+| you can win an election; you never win *democracy* | you can win a supply or a permit; there is **no state where the station is finished** |
+| influence is a **degree**, not a binary | standing is continuous, and nobody is *in* or *out* |
+| ⚠⚠ it must be **MAINTAINED** — neglect loses it | ⚠⚠ **station standing DECAYS**, and that is the same rule the whole game runs on |
+| your position moves when **others** act | ⚠ you can become less central having done nothing wrong, because somebody else did something right |
+
+#### ⚠⚠ Decay is not a new mechanic — it is this game's signature applied socially
+
+⚠ `DESIGN.md` § What kind of game this is is **entirely** about advantages
+that must be maintained in person: a tower's charge decays per shot,
+salvage decays, bodies pile back into the kill zone.
+
+⚠⚠ **Standing decaying is that rule at the social layer**, and it is a
+*better* answer to § TRUST per trader's second hazard than the one
+recorded there: ⚠ *trust everywhere* is prevented not by making trust
+slow to accrue, but by **maintenance costing trips and deals** — you
+cannot hold every relationship at once because keeping them is work.
+
+⚠ **And it preserves `DESIGN.md` § 14 exactly**: there is no fail screen
+and no win state, a run ends when the player stops, and a bad run is one
+with meagre carryover.  ⚠⚠ *More central* and *less central* are the only
+readings, and **neither is an ending.**
+
+⚠ **No rank, no leaderboard, no score.**  A democracy shows you no
+number either — ⚠⚠ **you know your influence by what happens when you ask
+for something**, which is `@X207`'s *you learn where you stand by how
+people treat you*, said again.
+
+#### ⚠ Which also means losing is never elimination
+
+⚠ A supply lost is a **harder next sortie**, not a defeat — and § The
+guard below is why: the planet is the primary tap, so a player who is
+peripheral at the station still has the whole game.
+
+#### ⚠⚠ The guard that keeps it from locking anybody out
+
+⚠ The obvious failure of a zero-sum social economy is that an established
+player **starves out** a new one.
+
+⚠⚠ **What prevents it is already structural: the planet is the primary
+tap.**  Salvage is produced by sorties and by nothing else (`@X166`), so
+a player denied at the station can always **go and get more** — the
+station is a **multiplier, never the only source.**
+
+⚠ *That is the boundary to hold when pricing any of this*: station
+standing may make a sortie's haul worth more; it must never become a
+substitute for going down, or the game inverts exactly as § The market
+must not become a better way to play the sortie game already warns.
+
+⚠ **And it degrades to single player unchanged**: the rivals are
+[`SETTING.md`](SETTING.md) § The competitors, which `@X170` already uses
+for the same purpose one system over.
+
 #### ⚠⚠ And it is what makes the whole thread cohere  `@X209`
 
 ⚠ Read together, every rule in this thread is the same instruction from a
@@ -916,6 +1043,8 @@ different angle:
 | `@X204` traders you visit, not distributions | **positional, not statistical** |
 | `@X205` trust makes switching a commitment | **relationship, not search** |
 | `@X207` factions relate to each other | ⚠⚠ **the player is not the centre** |
+| `@X210` a good deal for the trader is an investment | **now versus later, with the cost visible and the payoff earned** |
+| `@X212` winning is centrality, and it decays | ⚠⚠ **nothing stays won** |
 
 > ⚠⚠ **Each one removes a way to compute, and puts a way to LIVE in its
 > place.**  That is the sentence to keep when judging anything added to
