@@ -2816,6 +2816,18 @@ vision (recorded so the core design doesn't foreclose it):
   planet — coordinated economy disruption + abandoned-base
   rescue + shared-territory missions.  Reuses loft's shipped
   netcode (`lib/server` + `lib/web`).
+  ⚠⚠ **And it now has a PLACE to start from**
+  ([`PROGRESSION.md`](PROGRESSION.md) § P2i, `@X163`): **the
+  station's market.**  A shared market needs none of the
+  netcode a shared sortie would — players never have to be in
+  the same base at the same time — so it is **asynchronous**,
+  which is exactly the shape § 14's bounded one-sitting
+  sessions already have.  ⚠ The first multiplayer feature is
+  therefore *two players who never meet, trading through a
+  station*, and the abandoned-base bullet above is the same
+  asynchrony one layer out.  ⚠⚠ **Knowledge may never be
+  traded** (`@X164`) — things cross between players, answers
+  do not, or a player buys the dominant progression.
 - **Three concentric truths about the cordon** (SETTING.md):
   public AI-contagion story, military naval-blockade
   reality, hidden faction-escape-rocket fact.  A player who

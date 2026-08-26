@@ -36,7 +36,7 @@ below, and `@X137`–`@X141` (no tutorial) are `DESIGN.md` § 11's;
 `@X142`–`@X143` are the speaker rule and `@X144`–`@X149` the debrief and `@X150`–`@X151` what the crew
 can know at all, `@X152`–`@X156` the window into the
 universe, `@X157`–`@X158` personality,
-and `@X159`–`@X161` the office.  Index: [`DECISIONS.md`](DECISIONS.md).
+and `@X159`–`@X164` the office.  Index: [`DECISIONS.md`](DECISIONS.md).
 
 ## P0 — ⚠⚠ the model is BLUE PRINCE: information dominates, and friction is what upgrades buy
 
@@ -1495,7 +1495,104 @@ change for a *reason* — a competitor folded, a rescue brought somebody
 in, a sortie went badly somewhere else — which keeps it legible and makes
 it `@X122`'s *vary the instance* rather than a dice roll with a caption.
 
+#### ⚠⚠ The office is also the MARKET — where salvage becomes money  `@X162`
+
+Owner, 2026-08-26:
+
+> *"The office should also be where the player can sell salvage, and they
+> can use that to interface with other players or NPCs in world."*
+
+⚠⚠ **This closes the contract's own loop.**
+[`SETTING.md`](SETTING.md) § The recruitment is explicit that **salvage
+IS the pay** — *"you can keep any interesting materials that the AI used
+to build these robots"* — and until now there was nowhere to be paid.
+
+⚠ It is also where [`MATERIALS.md`](MATERIALS.md) connects to the
+economy that already exists: **materials come back, points go out**,
+which is exactly § Open questions 1's recommendation there — *points stay
+the ORDER currency and materials are the carried thing* — with the office
+as the exchange between them.
+
+⚠ **And the fiction already gates it**: the 2023 knowledge tree carries
+*"**Economy** — some items are valuable enough to sell to other star
+systems"* ([`SETTING.md`](SETTING.md) § The knowledge tree).  ⚠⚠ So
+**knowing what is worth selling is DISCOVERED**, not given — which is
+`@X102` doing real work rather than being colour.
+
+#### ⚠⚠ The market must never be a way to earn without going down
+
+⚠ The hazard is the one § Open questions 2 already names for station
+tasks, and it is sharper here: **a market can become the game.**  If
+trading pays better than playing, the sortie is optional and the design
+has inverted.
+
+| ✅ | ❌ |
+|---|---|
+| the market **converts what you brought back** | a way to make money without landing |
+| prices are **stable and knowable**, so the player can plan a sortie around what is worth taking | ⚠⚠ prices that **fluctuate on entry** — that is `@X161`'s refresh button on the economy, and waiting for a good day is the reroll trap again |
+| a price may move **for a reason** — a competitor dumped two hundred tonnes of steel — which is `@X122`'s *vary the instance* | market timing, arbitrage, buy-low-sell-high |
+
+⚠ **Stable prices are also what make salvage decisions legible
+in-mission**: `DESIGN.md` § What kind of game this is has the player
+choosing what to grab *while a wave is on the core*, and that choice is
+only real if they know what it is worth.
+
+#### ⚠⚠ And it is where MULTIPLAYER finally has a PLACE  `@X163`
+
+`DESIGN.md` § 20 has carried multiplayer as an ambition for a long time —
+*"multiple players operate on the same planet — coordinated economy
+disruption + abandoned-base rescue + shared-territory missions"* — with
+**no interface anywhere in the design**.
+
+⚠⚠ **A shared market is the lightest possible version, and it needs none
+of the netcode a shared sortie would**: players never have to be in the
+same base at the same time.  It is **asynchronous**, which fits
+`DESIGN.md` § 14's bounded sessions exactly — a run is a sequence of
+one-sitting missions with clean save-and-quit points between them, and
+the office is what sits in the gaps.
+
+⚠ So the first multiplayer feature is not co-op.  It is **two players who
+never meet, trading through a station**, and the second is
+§ 20's abandoned-base inheritance, which is the same asynchrony one layer
+out.
+
+#### ⚠⚠ But KNOWLEDGE is not tradeable, and that is a hard line  `@X164`
+
+⚠ What may cross between players: **materials, salvage, equipment,
+tower-tops** — things.
+
+⚠⚠ **What may not: knowledge.**  `@X117` makes what the player knows the
+**dominant** progression and `@X118` forbids buying answers — so a player
+who could purchase *"crystal wakes elementals"* or *"a gate buys
+nothing"* would be buying the axis the whole design rests on.
+
+⚠ **The same line applies to NPC vendors**, and it is the office's
+version of `@X155`: **the office carries the OFFICIAL world and the
+planet carries the real one.**  A trader may tell you the price of
+lithium; nobody at the station can tell you what is under the buried
+city.
+
+⚠ **Crew, though, are an interesting maybe.**  A dismissed helper joining
+a competitor is already designed (`@X160`); a helper *changing employer*
+between players is the same event with a name on it — and it would give
+§ P2h's personalities somewhere to go after they leave.  ⚠ Recorded as an
+open question rather than a decision.
+
+#### ⚠ Still a PLACE, and still people
+
+⚠ `@X161` holds: **you go to the buyer.**  The station may carry more
+interface than a sortie does — `DESIGN.md` § 16 already contemplates a
+hub with map selection and loadout — but ⚠⚠ **the design should resist a
+commodities screen**: a person who buys metal is better than a table of
+prices, and `@X156` still forbids a dialogue tree in front of them.
+
 #### ⚠ Open questions
+
+0. **Can crew move between players?**  ⚠ `@X160` already sends a
+   dismissed helper to a competitor, so the mechanism exists in the
+   fiction.  *No recommendation — it is the most interesting and the
+   most dangerous of the trade goods, because a crew member carries
+   accumulated practice and somebody else's history.*
 
 1. **What does recruiting cost, and does dismissing refund anything?**
    ⚠ `DESIGN.md` § 9 prices an in-mission helper at 100 points; a
