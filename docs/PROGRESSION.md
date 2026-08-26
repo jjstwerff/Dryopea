@@ -31,7 +31,7 @@ and it still stands as § P1.  Reading it as *therefore there are no
 stats* is the part that is superseded.
 
 Codes: `@X016`, `@X017` **superseded**; `@X103` **reversed**; `@X018`,
-`@X019` stand with a wider reading; `@X111`–`@X134` are the design
+`@X019` stand with a wider reading; `@X111`–`@X136` are the design
 below.  Index: [`DECISIONS.md`](DECISIONS.md).
 
 ## P0 — ⚠⚠ the model is BLUE PRINCE: information dominates, and friction is what upgrades buy
@@ -588,14 +588,105 @@ and earlier** — a skill the player perceives without a bar or a number.
 
 #### ⚠ "Not intrusively" is a hard constraint, not a tone note
 
-- **No pop-up, no modal, no forced camera, no pause.**  Ambient — on
-  landing, and on arriving somewhere notable.
+- **No pop-up, no modal, no forced camera, no pause.**  Ambient — and
+  ⚠ **timed by the player's own state**, which is § WHEN they speak
+  below: off-time only, silent while the player is working.
 - ⚠ **A player who ignores every remark must lose nothing they could
   not get themselves.**  The remark is a shortcut to looking, and
   looking remains available.
 - ⚠ **It must not become a quest log.**  A remark is said once and is
   gone; a list of outstanding crew suggestions is a task UI, and
   `DESIGN.md` § HUD refuses it.
+
+#### ⚠⚠ WHEN they speak: off-time only — and SILENCE is the load-bearing part  `@X135`
+
+Owner, 2026-08-26:
+
+> *"The crew should spread their remarks during off-time in the scenario
+> so when a player is wondering what to do.  They do not hold all the
+> answers too.  When the player is busy with planning/scouting they will
+> just not remark on it.  It is the gentle nudge to a player that feels
+> lost."*
+
+⚠ **This is what makes *"not intrusively"* a mechanism rather than a tone
+note.**  The trigger is **the player's own state**, not a timer and not a
+script:
+
+- **A player who is getting on with it hears nothing.**
+- **A player who has stalled hears one line, from whoever has something
+  to say about where they are standing.**
+
+#### ⚠⚠ It skips itself for the player who does not need it — which is `@X120` for free
+
+`@X120` says a returning player may skip the ramp and **nothing may stop
+them**, and that *the tutorial cannot be a wall*.
+
+⚠⚠ **A nudge gated on stalling satisfies that automatically**: a veteran
+who never stalls **never hears a hint**, and nobody had to build a
+difficulty setting, a skip button or a tutorial toggle to make it so.
+⚠ It is `@X121`'s smoothing aimed at the one moment it is wanted, and
+absent everywhere else.
+
+#### ⚠⚠ SILENCE has to be a real outcome, or the whole thing inverts
+
+> *"They do not hold all the answers."*
+
+⚠⚠ **This is not modesty — it is the defence, and without it the feature
+becomes an exploit.**  If the crew *always* produce a useful line when
+the player stalls, then **stalling becomes the way to get answers**, and
+a player who learns that will stall deliberately.  That is `@X118`
+violated through a back door: waiting turns into a means of making the
+game supply what you do not know.
+
+⚠ **So the honest shape is:** the crew say something only when one of
+them actually has an observation their skills would produce, about the
+place the player is actually standing.  When nothing matches, **nobody
+speaks**, and the player is left with the problem — which is where
+§ P1a wants them.
+
+#### ⚠⚠ The trigger is the absence of PROGRESS, not idleness — and in dryopea that distinction bites
+
+⚠⚠ **Standing still is WORK in this game**, which makes the naive
+detector actively harmful:
+
+| looks idle | is actually | ⚠ nudging here would be |
+|---|---|---|
+| parked beside a black tower | **repairing it** — `plans/17` § T1: repair is a POSITION, so a parked player is working whether they meant to or not | the worst possible moment: interrupting the most important job in the game |
+| stationary on a ridge | **planning** — reading the ground before committing a layout | interrupting § P1a, the dominant axis |
+| driving in a wide arc past the haze | **scouting** — `@X123`, converting rules-knowledge into instance-knowledge | interrupting the thing the remark was going to be *about* |
+
+⚠ **So the signal is progress, and dryopea already computes every part
+of it**: ground newly seen, wallet spent, an order placed, a hex
+salvaged, a repair clock ticking, something carried.  None of it is new
+state — it is a handful of counters and *when did any of these last
+move*.
+
+⚠⚠ **And the off-time this fires in is already a designed phase**:
+`@X022` — [`EXPLORATION.md`](EXPLORATION.md) § X2b — the game **waits**,
+because the wave list does not start until the player pokes a spawn
+marker.  **The recon window is unbounded and the player ends it
+deliberately**, which is exactly the *"wondering what to do"* the owner
+is describing, and it already exists.
+
+#### ⚠ Bias the window LONG, because the two errors are not symmetric
+
+- ⚠ **Too early** is a crew member talking over a player who was
+  thinking — annoying, and it teaches the player to tune them out.
+- ⚠ **Too late costs nothing at all**: the player solved it themselves,
+  which is the outcome the design wanted anyway.
+
+⚠⚠ **So there is no reason to be clever about detecting *planning*
+specifically** — a generous window does it, because a thinking player
+will have acted before it expires.  ⚠ The one-shot timer this needs is
+built: `fixstep`'s `timer_arm` / `timer_spend` (plan 26 L3), which is
+exact at all seven tick lengths.
+
+⚠ **And it may read the CAMERA, where the simulation may not.**
+`@X033` forbids *simulation granularity* following the camera, because
+where the player looks would change the outcome.  A nudge is
+**presentation**, and *where the player is looking* is a legitimate
+signal that they are engaged — but ⚠ it must never feed anything the
+simulation reads back.
 
 #### ⚠⚠ BLOCKED: dryopea cannot draw text at all  `@X130`
 
