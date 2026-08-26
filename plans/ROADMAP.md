@@ -23,6 +23,12 @@ Within a tier, ordering is a suggestion — you can pick any row.
 
 ---
 
+⚠⚠ **For a CONCRETE, UNORDERED list of buildable things, see
+[`BACKLOG.md`](BACKLOG.md)** (owner, 2026-08-26).  ⚠ This file keeps the
+**dependency order**; that one keeps **what a person could sit down and
+build**, grouped by what each item unblocks.  The two are complements,
+and BACKLOG's lack of an order is deliberate rather than an omission.
+
 ## ⚠⚠ The critical path — the natural order to a full game
 
 *(project owner, 2026-08-15: "create a natural order for game features to get to

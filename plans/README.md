@@ -55,6 +55,14 @@ A plan's identity is its **zero-padded integer**, and the directory is
 > issues, switching to moros's scheme is the better end state — that is an
 > open decision, not a settled difference.
 
+## ⚠⚠ Not everything is a plan — [`BACKLOG.md`](BACKLOG.md) is the rest
+
+⚠ *Most work is not a plan* (§ Pick the lightest workflow that fits), and
+[`BACKLOG.md`](BACKLOG.md) is where the concrete, **unordered** list of buildable
+things lives — grouped by what each unblocks rather than by priority (owner,
+2026-08-26).  ⚠⚠ [`ROADMAP.md`](ROADMAP.md) keeps the **dependency order**; the
+absence of one in `BACKLOG.md` is deliberate.
+
 ## Index
 
 Each plan's own `## Status` section is the source of truth; this table is a
