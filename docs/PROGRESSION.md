@@ -36,7 +36,7 @@ below, and `@X137`–`@X141` (no tutorial) are `DESIGN.md` § 11's;
 `@X142`–`@X143` are the speaker rule and `@X144`–`@X149` the debrief and `@X150`–`@X151` what the crew
 can know at all, `@X152`–`@X156` the window into the
 universe, `@X157`–`@X158` personality,
-`@X159`–`@X167` the office, `@X189`–`@X192` the rate,
+`@X159`–`@X167` the office, `@X189`–`@X194` the rate,
 and `@X168`–`@X172` the crew section.  Index: [`DECISIONS.md`](DECISIONS.md).
 
 ## P0 — ⚠⚠ the model is BLUE PRINCE: information dominates, and friction is what upgrades buy
@@ -495,11 +495,85 @@ their own specialism has spent the surplus **becoming broadly capable**.
 ⚠⚠ **So the difference between a veteran and a newcomer stops being LEVEL
 and becomes BREADTH** — which is a much better answer than a numerical
 gap, and it was already in the design rather than invented for this.
+⚠⚠ **AMENDED by `@X193`**: that breadth is a **byproduct of depth**, not
+a goal to pursue — a player who chases it directly is priced out by the
+global slowdown below.
 
 ⚠ **And it turns the saturation into the REASON the lattice exists**:
 without it a player would specialise for ever; with it, over-investment
 converts itself into range.  **Saturation is what drives
 generalisation.**
+
+#### ⚠⚠ AND SPECIALISATION MUST BEAT BREADTH — a GLOBAL slowdown on total learning  `@X193`
+
+Owner, 2026-08-26:
+
+> *"there should be a situation where specialisation is preferred above
+> getting everything high.  Because everything will hinder the helper
+> too, so we can add a general reduction in learning speed when they have
+> learned a lot, even for skills that are low."*
+
+⚠ **A second curve, on a different axis** — and the two now stack:
+
+| curve | axis | what it prices |
+|---|---|---|
+| `@X191` **diminishing effect** | ⚠ **per SKILL** | more of a high skill buys little |
+| `@X193` **diminishing learning rate** | ⚠⚠ **per PERSON, on TOTAL learning** | ⚠ **a broad person learns everything slower — including skills that are still LOW** |
+
+⚠⚠ **The second is what makes specialisation the better play**, and the
+arithmetic is clean: **the same total learning buys more when it is
+concentrated.**
+
+- **spread it** → total rises fast, everything slows, and **no skill is
+  deep enough to be worth its plateau**;
+- **concentrate it** → one skill climbs the steep part of its utility
+  curve where the value is, for the same accumulated total.
+
+#### ⚠⚠ Which AMENDS § The excess SPILLS — breadth is a BYPRODUCT, never a goal
+
+⚠ § P2a2 above concludes that a veteran's identity is **breadth**.  ⚠⚠
+**That stands only as a side effect.**  `@X124`'s permeation gives a
+specialist modest breadth for free, and that is the **reward** for going
+deep — but a player who *chases* breadth by rotating somebody through
+every job now gets the worst of both: a high total, a slow learner, and
+nothing at its plateau.
+
+> ⚠⚠ **Breadth comes from depth.  It is not an alternative to it.**
+
+#### ⚠ The fiction is already there, and it is `@X157`'s
+
+⚠ Why would knowing a lot slow you down?  **Because an experienced person
+has habits.**  They meet new work through what they already know — faster
+at first, slower to master.
+
+⚠⚠ That is § P2h's *habits of attention* seen from the other side:
+**expertise is a lens that focuses and narrows at once**, so the same
+thing that makes a veteran's remarks worth hearing is what makes them
+slow to learn something new.  ⚠ No new fiction required.
+
+#### ⚠⚠ Three consequences, and the first is why the rule is needed at all
+
+- ⚠⚠ **It stops the roster converging on six interchangeable veterans.**
+  Without it, the endgame optimum is six people who are all good at
+  everything, and § P2i's allocation problem evaporates.  **With it the
+  roster is heterogeneous by construction**, and the six-person cap
+  means something.
+- ⚠ **Losing a specialist hurts more**, because you cannot retrain into
+  the gap — which sharpens § P2f's empty chair, § P2e's stranded helper
+  and defection all at once.
+- ⚠⚠ **It makes RECRUITING legitimate late, and separates it from churn.**
+  A fresh hire has a low total and therefore **learns fast**, so bringing
+  somebody in is how you cover a gap no veteran can grow into.
+  ⚠⚠ **So the rule distinguishes the two cases by itself**: *recruiting
+  to fill a gap* is good play, *recruiting to replace* still loses deep
+  specialists for novices who take sessions to become useful (`@X160`).
+
+#### ⚠ Two things to settle
+
+| | |
+|---|---|
+| ⚠⚠ **does SPILL count toward the total?** | if it does, specialising still bloats the total through the lattice and the pressure is weaker; if only **deliberate practice** counts, chosen breadth and incidental breadth are cleanly separated.  *Recommendation: count everything and keep spill small — one accumulator is simpler than two, and the pressure survives either way because a generalist accumulates faster regardless.  Revisit if it measures badly.* |
+| ⚠ **the slowdown must never reach zero** | the owner's own framing is *"they still progress, but probably only after multiple sessions"*.  A veteran who has stopped developing entirely reads as a dead character, and § P2h's *the researcher stops hedging by the tenth base* needs them to still be moving |
 
 #### ⚠⚠ Where saturation BEGINS is measurable, not a feel judgement  `@X192`
 
