@@ -1014,8 +1014,17 @@ signature.
 **Until a runnable game build exists, direct commits to `main`
 are the normal flow.**  The repo is small, single-author, and
 the cost of branching ceremony outweighs its benefit while the
-foundation is being laid.  Commit locally, push when the user
-asks — no automatic pushes.
+foundation is being laid.
+
+⚠⚠ **ALWAYS PUSH AFTER COMMITTING — the user's standing instruction, and
+it is a SAFETY measure** (*"always push as a safety measure"*, restated
+2026-08-26).  The remote is the **backup of record**, and work that
+exists only in a local commit is work that can be lost.  ⚠ This line
+previously said *"push when the user asks — no automatic pushes"*, which
+was stale from the day the instruction was given.
+
+⚠ **The override is about PUSHING only.**  Still never create a branch or
+open a PR unprompted — that ceremony is unchanged by this.
 
 **Trigger for switching to the formal flow below:** the moment
 there's a runnable game — even a minimum-playable validation —
