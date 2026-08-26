@@ -1370,6 +1370,59 @@ side effect of the crew being people.
 | ⚠⚠ **Bias misleads in DEGREE, never in DIRECTION** | the security officer over-weights the perimeter; they never send you to the wrong wall.  ⚠ If acting on crew advice is worse than ignoring it, players learn to ignore them — and `@X137`'s onboarding role collapses with it |
 | ⚠ **Bias is CONSISTENT per character** | a bias that varies run to run is indistinguishable from lying, and it is unlearnable.  ⚠ Consistency is what turns it from a dice roll into a person |
 
+#### ⚠⚠ AND IT IS HOW THE ASSIGNMENT SYSTEM IS DISCOVERED — *"my skills went unused"*  `@X255`
+
+Owner, 2026-08-26:
+
+> *"that assignment is never mandatory — it is an advanced option for players
+> that know how to use it.  The whole first scenario can be easily played without
+> it.  And perhaps in the debriefing helpers can comment that their skills are
+> less used than they preferred/expected."*
+
+⚠⚠ **This supplies the half `@X254` was missing.**  That decision says the
+assignment pillar is *discoverable rather than mandatory*; it never said **how
+anybody discovers it.**  This is how — and it needs no new channel:
+
+> ⚠⚠ **A helper says, at the debrief, that they spent the base doing work
+> beneath what they are good at.**  The player was never told the system
+> exists; **they were told a person was wasted**, and the rest is theirs to
+> work out.
+
+#### ⚠ It obeys every rule the debrief already has
+
+| rule | how |
+|---|---|
+| **points, never concludes** (`@X129`) | *"I hauled rubble for the whole base"* is what happened.  ⚠ *"Assign me to repair next time"* is the prescription `@X149` forbids |
+| **nothing false** (`@X148`) | their skills **genuinely** went unused; only the **emphasis** is theirs |
+| ⚠⚠ **stumble-able** (`@X222`) | the condition is *this person's best skills went unused* — **a byproduct of ordinary play that cannot be farmed** |
+| **one speaks, never six** (`@X143`) | and only when the mismatch is real, or `@X136`'s silence stops meaning anything |
+
+⚠ **And it is characterful rather than uniform** (`@X157`): the researcher
+mentions it hedgingly, the security officer flatly, the handyman as a
+grievance.  ⚠⚠ **So the strength of the remark is a PERSONALITY expression, not
+a metric** — a proud specialist minds more than an easy-going generalist.
+
+#### ⚠⚠ It must read as a PERSON being underused, never as a SCORE
+
+⚠ § Two things it must not become already forbids a scoring screen, and this is
+where that rule earns its keep: *"less used than they preferred"* is **somebody's
+feeling about their own work.**
+
+> ⚠⚠ **A character, not a performance review.**  The difference is whether the
+> player feels **told off** or feels **that they let somebody down** — and only
+> the second produces the curiosity that finds the feature.
+
+#### ⚠ And it is the early warning for a defection that has a real cause
+
+⚠⚠ Being **consistently** wasted is a grievance, and § P2e's ledger accumulates
+grievances.  ⚠ § P2d's *"personnel can join competitors when not treated well"*
+(`@X160`) then has a **concrete** meaning: **ten sorties of being underused IS
+not being treated well.**
+
+⚠⚠ **So the same remark is a tutorial the first time and a warning the tenth**,
+through one mechanism and with nothing added — which is the shape this design
+keeps arriving at.
+
 #### ⚠ Two things it must not become
 
 | ❌ | why |

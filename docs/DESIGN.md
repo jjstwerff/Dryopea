@@ -1829,6 +1829,12 @@ requires** — no tutorial, and *a player who never finds this still plays* — 
 it is the same shape as `@X247`'s unconditional walls: **a floor that holds
 while the ceiling is optional.**
 
+⚠⚠ **And it is NEVER MANDATORY — the whole first scenario plays easily
+without it** (`@X255`).  ⚠ How a player ever *finds* it is
+[`PROGRESSION.md`](PROGRESSION.md) § P2f: **a helper mentions at the
+debrief that their skills went unused.**  The player is not told the
+system exists — **they are told a person was wasted.**
+
 ⚠ **OPEN**: can a specialised helper be **widened again**?  The natural reading
 is yes — the interaction sets their remit, so another sets it back — ⚠ but it is
 not stated, and a one-way ratchet would be a very different game.
