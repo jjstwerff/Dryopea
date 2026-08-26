@@ -644,7 +644,12 @@ walls, same towers, same crew, different thing behind them.
 
 ## Open questions
 
-1. **Does the graph live per-map or per-planet?**  Per-map is cheap and
+1. ⚠⚠ **SETTLED 2026-08-26 — per-PLANET** (`@X177`, `DESIGN.md` § 20).
+   `DESIGN.md`'s multiplayer makes the default PvP a **race for
+   resources**, and *"you cannot compete for a mine that only exists
+   inside your own instance"* decides it.  ⚠ The recommendation below is
+   now the **migration path** rather than an open choice.  Original
+   question, kept for its reasoning: per-map is cheap and
    makes each base self-contained; per-planet means cutting a route in
    one sortie changes the next one, which is what would make a *run*
    feel like a campaign.  *Recommendation: author per-map, but keep the

@@ -2866,6 +2866,114 @@ vision (recorded so the core design doesn't foreclose it):
   planet — coordinated economy disruption + abandoned-base
   rescue + shared-territory missions.  Reuses loft's shipped
   netcode (`lib/server` + `lib/web`).
+
+  ⚠⚠ **Eventually full CO-OPERATIVE and COMBATIVE** (owner,
+  2026-08-26, `@X175`) — *"but it should also be about the
+  bases and the environment around."*  The whole shape falls
+  out of one rule the design already has.
+
+  #### ⚠⚠ TOWERS ARE ALWAYS STRONGER THAN A PLAYER — and that is § 8, applied
+
+  *"You are normally not able to get into another player's
+  base unless they set their towers to friendly for you.  The
+  towers are always stronger than a player/helper
+  themselves."*
+
+  ⚠ This is not a new rule.  § 8 already makes the player a
+  **noncombatant manager** with no weapon, and § 7 makes the
+  towers the things that fight.  ⚠⚠ **Applied to two players
+  it means a base is IMPREGNABLE TO A PERSON**, and therefore:
+
+  | | |
+  |---|---|
+  | ⚠⚠ **PvP cannot be raiding-by-violence** | you have nothing to shoot with, and their towers do |
+  | **the only way in is INVITATION** | friendly towers, set by the owner |
+  | **the only way against them is the PLANET** | *"unless you can hack enough robots to overwhelm another player"* |
+
+  #### ⚠⚠ So the aggressive route runs through the ROBOT ECONOMY, not through combat  `@X176`
+
+  ⚠ You do not attack a player.  **You point the planet at
+  them** — which is the genre preserved rather than bent: the
+  enemy is still robots, the defence is still towers and
+  walls, and an "attack" is a **redirection of the threat that
+  was already there**.
+
+  ⚠ Every piece of it is designed already: § 9's hacking
+  helpers, [`MATERIALS.md`](MATERIALS.md)'s **AI core** (the
+  one part that cannot be manufactured, only taken), the
+  `hack` skill and its levels
+  ([`PROGRESSION.md`](PROGRESSION.md) § P2), and
+  [`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md)'s graph of routes to
+  divert.
+
+  ⚠⚠ **And it is deliberately EXPENSIVE**: *enough* robots to
+  overwhelm somebody is a campaign-scale investment in cores,
+  hacking level and time — so hostility is a **decision made
+  over sorties**, never a raid somebody launches on a whim.
+  ⚠ That is [`SETTING.md`](SETTING.md) § Nobody is attacking
+  anybody — yet, holding at the multiplayer layer too:
+  **aggression has to be earned.**
+
+  #### ⚠⚠ The attack arrives as CONTENT, not as griefing
+
+  ⚠ When a hacked swarm reaches somebody's perimeter, their
+  answer is the answer they always had: **towers, walls,
+  position, timing.**  They are playing the game they signed
+  up for, harder.  ⚠⚠ **Nothing arrives that the defender has
+  no vocabulary for** — which is the property that makes
+  combative multiplayer safe to build at all.
+
+  #### ⚠ The DEFAULT is economic competition, and it is what a mining company would do
+
+  *"…other than gathering resources quicker than they are."*
+
+  ⚠⚠ **So the ordinary PvP is a RACE, not a fight** — two
+  operators working the same region, competing for mines,
+  routes, wrecks and crystal.  ⚠ The contested space is **the
+  environment around the bases**, which is exactly where this
+  game already spends its time (§ Scouting, salvage, the
+  approach).
+
+  ⚠⚠ **And it settles [`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md)
+  § Open questions 1** (`@X177`): per-map or per-planet?
+  **Per-planet** — you cannot compete for a mine that only
+  exists inside your own instance.  That question's own
+  recommendation (author per-map, keep node identifiers
+  global) is the migration path.
+
+  #### ⚠⚠ Co-op is FREE, because every action is position-triggered  `@X178`
+
+  ⚠ *"unless they set their towers to friendly for you"* is a
+  **permission**, and once it is given the co-op feature is
+  already built: § 11 § Position triggers means every action
+  is a place rather than a keypress, and **none of them asks
+  who you are**.
+
+  | a guest can | because |
+  |---|---|
+  | **repair their towers** | § 7's repair is 20 s of *standing there* |
+  | **clear bodies from their kill zone** | `salvage_at` takes a hex |
+  | **deliver salvage to their core** | driving over it is the mechanic |
+
+  ⚠⚠ **So letting somebody in IS the co-op feature**, and it
+  needs no shared-control model, no party system and no second
+  input path.
+
+  ⚠ **Permission is a TOWER STATE, which the design already
+  speaks**: § HUD makes tower state a **colour** (red / black
+  / pink top).  ⚠⚠ *Friendly to you* is another colour —
+  diegetic, no UI, and legible from across the base.  ⚠ It is
+  revocable, so **betrayal is possible** — a guest inside a
+  base whose towers just turned is in a kill zone — and that
+  is what makes the trust worth something.
+
+  #### ⚠ It stays asynchronous-capable
+
+  ⚠ An attack on somebody who is not online is the **abandoned
+  base** bullet below, one step over: a base persists with
+  what was not evacuated, and things encroach.  ⚠⚠ So
+  combative play does not force synchronous sessions, and
+  § 14's bounded one-sitting shape survives contact with PvP.
   ⚠⚠ **And it now has a PLACE to start from**
   ([`PROGRESSION.md`](PROGRESSION.md) § P2i, `@X163`): **the
   station's market.**  A shared market needs none of the
