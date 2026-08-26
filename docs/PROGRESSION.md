@@ -709,6 +709,69 @@ A template turns hiring into exactly the kind of decision `@X117`
 rewards — the veteran knows a swamp base needs `build` more than
 `scout`, and hires accordingly on day one.
 
+#### ⚠⚠ THE FIRST TWO ARE GIVEN — choice enters at RECRUITING  `@X258`
+
+Owner, 2026-08-26:
+
+> *"the player cannot choose their first helpers, but can recruit others than the
+> default (and well balanced) set."*
+
+⚠⚠ **This removes the worst possible instance of the reroll trap: the choice made
+at MINIMUM KNOWLEDGE.**  A template choice is only a decision if you know what
+the options mean (`@X117`), and **before the first sortie the player knows
+nothing** — so offering it there would be a lookup, not a decision, and *"the
+best starting pair"* would be the first thing anybody wrote down.
+
+⚠ **And the fiction supplies the reason, which is always better than a design
+one**: [`SETTING.md`](SETTING.md) § The player is a **small mining co-op**, so
+
+> ⚠⚠ **you do not choose them because they are who you have.**  Centaur Mining
+> is small; **these are the people who came.**
+
+⚠ `DESIGN.md` § 9's roster already opens at **2 starting, 6 maximum** — this
+says the two are **fixed**, and that choice begins at the sixth's worth of
+hiring rather than the first's.
+
+#### ⚠⚠ *Well balanced* makes them the CONTROL, not a placeholder
+
+⚠ A balanced pair covers a spread rather than a specialism, which does two
+things:
+
+- ⚠ **the first scenario plays without understanding specialisation at all**
+  (`@X255`), and
+- ⚠⚠ **they become the baseline the player later notices DIFFERENCE against** —
+  you learn what a specialist *is* by contrast with the two you started with.
+
+#### ⚠⚠ Which produces an onboarding CURVE with no gates in it
+
+⚠ Each step is **caused by the previous one**, and nothing is unlocked,
+scheduled or explained:
+
+| | |
+|---|---|
+| **sortie 1** | the given pair, no choice, no assignment needed — it plays |
+| **then** | ⚠ recruit somebody, **with a sortie's worth of knowledge to choose on** |
+| **sortie 2+** | ⚠⚠ that specialist's skills go **underused**, and they say so at the debrief (`@X255`) |
+| **then** | the player goes looking, and finds § P2i's assignment |
+
+⚠⚠ **So the discovery path fires in the right order by construction**: the
+underuse remark is unlikely from a *balanced* helper and likely from a
+*recruited specialist*, which means **the tutorial arrives exactly when the
+player has earned the vocabulary to read it.**
+
+#### ⚠ And the default pair are the game's main characters
+
+⚠⚠ `@X238` says most players play a couple of scenarios and stop.  ⚠⚠ **So the
+starting two are the only crew most players will ever meet**, and their voices
+(`@X157`) are the voices of the game.
+
+> ⚠ **They are not a placeholder to be filled in later.**  They are the
+> performance the majority of the audience sees, and they should be authored
+> that way.
+
+⚠ It also holds across worlds: `@X242` keeps assets off a new server, so **every
+campaign anywhere opens with these two.**
+
 #### ⚠ The trap: do not randomise which templates are OFFERED
 
 That re-invents the reroll one level up.  ⚠ **The catalogue must be

@@ -1697,7 +1697,13 @@ and **safety**.  ⚠ The office is a PLACE and not a roster screen — and
 dismissing somebody can put them on a competitor's payroll.
 
 **2 starting** (emerging from the core's lift-off face on
-landing), **6 maximum** (hard cap).  Helpers can be ordered
+landing), **6 maximum** (hard cap).  ⚠⚠ **The two are FIXED and the
+player does not choose them** (`@X258`,
+[`PROGRESSION.md`](PROGRESSION.md) § P2b) — a small co-op brings **who
+it has** — and they are deliberately **well balanced**, which makes them
+the control a player later notices specialists against.  ⚠⚠ Since most
+players play only a few sorties (`@X238`), **these two are the only crew
+most people will ever meet**: main characters, not placeholders.  Helpers can be ordered
 mid-mission at the core's NPC-ordering face (cost 100 points
 per helper); a lander touches down at the lift-off face
 ~20 s later.
