@@ -3631,6 +3631,77 @@ populated one, and the difference is exactly why `@X221` says
 planet is large, unclaimed regions exist, and `@X219`'s rule already
 requires that **some content be unconditionally available for ever.**
 
+#### ⚠⚠ PLAYERS ARE IN DIFFERENT CAMPAIGN PHASES — and that is a feature  `@X230`
+
+Owner, 2026-08-26:
+
+> *"especially when players work together against the robots, they are
+> themselves in different phases of the campaign.  Eventually different
+> players get into the end game and stir up the meta a lot."*
+
+⚠ **A shared world is not synchronised.**  One player is on their third
+base; another has been at it for months and has woken something.
+
+⚠⚠ **And the asymmetry is safe here for a reason that is already
+load-bearing: `@X119` — the player stays SMALL.**  There is no personal
+power curve, so a veteran's advantage is **crew skill** (build speed,
+repair speed, detection) and equipment, never weapons.
+
+| a veteran joining a newcomer's base | ⚠ what it does NOT do |
+|---|---|
+| ⚠⚠ **a force multiplier on WORK** — exactly what a struggling base needs | trivialise the defence: the layout is still the player's (`@X117`), and **the towers still do the fighting** |
+| brings a crew who learned elsewhere (`@X151`) | make the newcomer a passenger |
+
+⚠ **So phase asymmetry is not a balance problem to fix — it is the
+mentorship the co-op design gets for free**, and it is `@X172`'s *let
+them see what is possible* arriving as a person rather than as a ruin.
+
+#### ⚠⚠ End-game players *stir up the meta* — and that is the POINT, with one guard  `@X231`
+
+§ The end game changes **who attacks** and makes robots and insects
+**co-belligerents**; [`SETTING.md`](SETTING.md) § End-game says waking an
+old one **takes many players.**
+
+⚠⚠ **So an end-game player's actions land on people nowhere near that
+content** — which is the largest possible shared world event, and the
+owner wants it.
+
+⚠ **The guard is that it must not make the early game unplayable**, and
+the design already supplies the shape:
+
+> ⚠⚠ [`SETTING.md`](SETTING.md) § Elementals escalate on a different
+> axis: **COMMAND, not units** — *"nothing gets stronger, the elementals
+> simply start wanting something."*
+
+⚠⚠ **Generalise that into the rule for all end-game spill:**
+
+> **End-game actions change what the world IS, not how hard it is for
+> everybody.**
+
+| ✅ | ❌ |
+|---|---|
+| factions realign; routes change; new things appear; signs accumulate | a **global difficulty multiplier** |
+| ⚠ effects are **regional** — per-planet persistence keeps them somewhere | a uniform planet-wide buff |
+| a newcomer sees **evidence** of something enormous | a newcomer's third base becomes unwinnable |
+
+⚠ And `@X219`'s starving rule has a second reading here: **some content
+must be unconditionally available for ever** — which must include
+**somewhere still ordinary to play.**
+
+#### ⚠⚠ It is the strongest form of *other players are the seed*  `@X232`
+
+⚠ `@X224` says other players seed the world with **what they did**.  ⚠⚠
+**This says they also seed it with WHAT PHASE IT IS IN** — and the phase
+is a thing no single player advanced alone, cannot be read off any
+save, and **did not exist when the author wrote the events.**
+
+⚠ It also gives a newcomer a reason to care about content they cannot
+reach: **they can see its effects before they can see it.**  ⚠⚠ Which is
+`@X172`'s *it teaches* at the largest scale — and the deep-lore layers
+[`SETTING.md`](SETTING.md) § Future contact gates behind a no-shortcut
+rule become **visible long before they are reachable**, which is exactly
+how that section says they should arrive.
+
 #### ⚠ Two failure modes, and STARVING is the dangerous one  `@X219`
 
 | | |
