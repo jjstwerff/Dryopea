@@ -66,6 +66,16 @@ decision before the clock runs out.
 
 ## ⚠⚠ X0b — THE FIRST FIFTEEN MINUTES ARE SCOUTING, and the world must be ALIVE  `@X245`
 
+> ⚠⚠ **THIS SECTION DESCRIBES THE FINISHED GAME, AND IS A TEST RATHER THAN A
+> TASK** (owner, 2026-08-26: *"this is the experience a player has when the game
+> is finished — we are not there yet"*, `@X251`).
+>
+> ⚠ Read it the way this repo reads its other tests — *does this feature serve
+> the opening described here?* — and **not** as a work queue.  ⚠⚠ The critical
+> path is unchanged: [`../plans/ROADMAP.md`](../plans/ROADMAP.md) § The critical
+> path, where **BUILDING** is still the load-bearing gap and everything below
+> sits on top of it.
+
 Owner, 2026-08-26, asked what a new player's opening actually consists of:
 
 > *"they are squarely in the scouting phase of their first mission.  There is a
@@ -91,8 +101,10 @@ first thing a new player does is **read a living world.**
 | **somebody to point at it** — the crew's remarks | ⚠⚠ blocked on TEXT (`@X130`) — and this answer is what promotes that from a deferred chore to **the gate on the opening** |
 | **somewhere to go** — the gradient | ⚠ **exists**: § X1's four rings, plus authored markers |
 
-⚠⚠ **So the single most valuable unbuilt thing for a new player is AMBIENT
-LIFE**, and it is not on the critical path today.
+⚠⚠ **So ambient life is what the finished opening most depends on** — and
+⚠ **that is a statement about the destination, not about what to build next**
+(`@X251`).  It is not on the critical path, and it should not be moved onto it
+on the strength of a description.
 
 ### ⚠⚠ *"Robots in their normal work flow"* is `ROBOT_ECONOMY.md` arriving early
 

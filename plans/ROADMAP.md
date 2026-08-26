@@ -56,14 +56,16 @@ moves drawing up the list.
 **most players to play a couple of scenarios and never reach the end
 game**.
 
-⚠⚠ **The same day named the opening's own gap** (`@X245`,
-[`../docs/EXPLORATION.md`](../docs/EXPLORATION.md) § X0b): the first
-fifteen minutes are **scouting**, and they need a world that is **alive**
-— robots in their normal work flow, insects on trees.  ⚠⚠ **Every robot
-in the code today is a WAVE**; there is **no mover for a robot going
-about its business**, and that is now the most valuable unbuilt thing a
-new player would notice.  ⚠ It makes a small slice of `ROBOT_ECONOMY.md`
-an **opening** requirement rather than a Tier E one.  ⚠⚠ **So the early game IS the product for almost everybody who
+⚠ **The same day also specified the finished game's OPENING** (`@X245`,
+[`../docs/EXPLORATION.md`](../docs/EXPLORATION.md) § X0b) — the first
+fifteen minutes are **scouting** in a world that is **alive**, with
+robots in their normal work flow and insects on trees.  ⚠⚠ **That is a
+TEST, not a task** (`@X251`): the owner's own note is *"this is the
+experience a player has when the game is finished — we are not there
+yet"*.  ⚠ It records one real fact worth knowing — **every robot in the
+code today is a WAVE**, and there is no mover for a robot going about its
+business — **but it does not move the critical path**, which is still
+BUILDING.  ⚠⚠ **So the early game IS the product for almost everybody who
 ever plays this** — and *building a base* is the first thing they will
 try to do.
 
