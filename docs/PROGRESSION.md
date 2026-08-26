@@ -36,7 +36,7 @@ below, and `@X137`–`@X141` (no tutorial) are `DESIGN.md` § 11's;
 `@X142`–`@X143` are the speaker rule and `@X144`–`@X149` the debrief and `@X150`–`@X151` what the crew
 can know at all, `@X152`–`@X156` the window into the
 universe, `@X157`–`@X158` personality,
-and `@X159`–`@X164` the office.  Index: [`DECISIONS.md`](DECISIONS.md).
+and `@X159`–`@X167` the office.  Index: [`DECISIONS.md`](DECISIONS.md).
 
 ## P0 — ⚠⚠ the model is BLUE PRINCE: information dominates, and friction is what upgrades buy
 
@@ -1519,12 +1519,17 @@ systems"* ([`SETTING.md`](SETTING.md) § The knowledge tree).  ⚠⚠ So
 **knowing what is worth selling is DISCOVERED**, not given — which is
 `@X102` doing real work rather than being colour.
 
-#### ⚠⚠ The market must never be a way to earn without going down
+#### ⚠⚠ The market must not become a better way to play the SORTIE game
 
-⚠ The hazard is the one § Open questions 2 already names for station
-tasks, and it is sharper here: **a market can become the game.**  If
-trading pays better than playing, the sortie is optional and the design
-has inverted.
+⚠ **REFINED 2026-08-26** — the first version of this rule said *never a
+way to earn without going down*, and that is too broad.  ⚠⚠ The failure
+it was aimed at is specific: **a sortie player who discovers that trading
+pays better and stops landing.**  That player has not chosen a different
+game, they have *skipped the content of the one they are in*, and the
+design has inverted.
+
+⚠ **A player who chooses to be a trader outright is a different matter
+entirely** — see § P2i § The TRADER, below.
 
 | ✅ | ❌ |
 |---|---|
@@ -1536,6 +1541,102 @@ has inverted.
 in-mission**: `DESIGN.md` § What kind of game this is has the player
 choosing what to grab *while a wave is on the core*, and that choice is
 only real if they know what it is worth.
+
+#### ⚠⚠ The TRADER — a legitimate role, and it has to be POLITICAL  `@X165`
+
+Owner, 2026-08-26:
+
+> *"I am not against a pure trader player, but that has to become a
+> political role in station too.  And it should not be a spreadsheet
+> role."*
+
+⚠ **So the exploit and the role are different things**, and the line
+between them is what the trader's game is *made of*:
+
+| ❌ the exploit | ✅ the role |
+|---|---|
+| a sortie player who found a better income and stopped landing | a player who **chose the station** as their game |
+| plays the same game, skipping its content | plays a **different game**, with its own content |
+| its substance is **margins** | ⚠⚠ its substance is **politics** |
+
+#### ⚠⚠ Stable prices are what FORCE it to be political — the anti-reroll rule pays off twice
+
+`@X162` fixes prices so the economy has no refresh button.  ⚠⚠ **That
+also removes arbitrage entirely** — there are no margins to optimise, no
+market to time, nothing to buy low and sell high.
+
+⚠ **Which leaves exactly one lever: WHO you deal with.**  A rule written
+against the reroll trap turns out to be the thing that makes the trader's
+game about people, and it is why *not a spreadsheet role* is achievable
+rather than aspirational — **there is no spreadsheet to keep.**
+
+#### ⚠ The political material is already in the fiction, and it is substantial
+
+Nothing here needs inventing; [`SETTING.md`](SETTING.md) has been holding
+it:
+
+| lever | where it already is |
+|---|---|
+| ⚠⚠ **permits** — *"permit on file = pass; permit missing = destroyed"* | § The quarantine.  **The chokepoint of the entire fiction**, and a trader who influences who holds one holds real power |
+| **competitors**, some approved and some not | § The competitors |
+| **the cordon's own people** — Ian Thorne of the Department of Outer Planets | § The recruitment |
+| **factions**, with `economy` among them as a faction in its own right | § The knowledge tree's nine |
+| ⚠ **the escalation ladder** — *"the government will send their fearsome armada when somehow forced to"* | the 2023 knowledge data |
+
+#### ⚠⚠ And it CANNOT hollow out the game, because it feeds on it
+
+**A trader's inputs come from people who went down.**  Salvage is
+produced by sorties and by nothing else, so ⚠⚠ **a trader with no
+sortie-runners has nothing to trade.**
+
+⚠ That is the structural answer to the hazard above, and it is stronger
+than a rule: the trader role **presupposes** the sortie game rather than
+competing with it.  ⚠ Which also tells you where it sits — see § It is
+naturally a MULTIPLAYER role.
+
+#### ⚠ What a trader actually decides, and it is the same design test
+
+`DESIGN.md` § What kind of game this is: *does this put something in the
+player's hands at a moment when using it costs them something?*
+
+⚠ **Supplying one operator is not supplying another**, and the
+consequence lands on somebody the trader knows.  ⚠⚠ A trader's scarce
+resource is not money — it is **whose side they are on**, spent once per
+decision, in front of people who remember.  That is recognisably the same
+shape as § P2e's ledger, one layer out.
+
+⚠ **What a trader may broker: contracts, access, supply, permits.**
+⚠⚠ **What they may not: knowledge** (`@X164`).  An information broker is
+the natural trader fantasy and it is exactly the forbidden one — selling
+*"a gate buys nothing"* is selling the dominant axis.  ⚠ Brokering *who
+lands where* is fine; brokering *what they will find* is not.
+
+#### ⚠⚠ Recorded honestly: this is the one part of the design that is NOT a tower defence
+
+⚠ `DESIGN.md` § And the DEEP layers sets a genre test — *does it resolve
+into position, terrain or timing?* — and **a trader's game resolves into
+relationships and consequences**.  It does not pass, and it is not meant
+to: it is a **different role**, not a mechanic inside the tower defence.
+
+⚠⚠ **So the boundary that matters is this: the trader role must not
+change the tower-defence game for the people playing it.**  A trader may
+decide *who gets supplied*; they may not gain a lever that reaches into
+somebody else's base, alters their waves, or plays their sortie for them.
+⚠ Recorded as a deliberate departure rather than smoothed over, because
+the next contributor will otherwise either delete it for failing the
+genre test or let it grow into the main game.
+
+#### ⚠ It is naturally a MULTIPLAYER role, which sets where it belongs
+
+⚠⚠ **In single player a trader needs NPC operators generating real supply
+and demand — a whole economic simulation**, which
+[`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) § What this design does NOT do
+already refuses for the enemy side and would be no cheaper here.
+
+⚠ **In multiplayer it is nearly free**: other players *are* the economy,
+and § below makes that traffic asynchronous.  ⚠ So the trader belongs
+**after** the shared market, not beside it — and the shared market is
+worth building first on its own terms.
 
 #### ⚠⚠ And it is where MULTIPLAYER finally has a PLACE  `@X163`
 
