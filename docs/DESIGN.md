@@ -1740,6 +1740,14 @@ does **automated asteroid mining**.  A past job gives them trained
 explain them, and the *never concludes* rule above holds **by fiction
 rather than by discipline**.
 
+⚠⚠ **And the player may go to one of them and stay a moment** (`@X156`,
+§ P2g) — which is § 11 § Position triggers applied to conversation:
+**presence is the whole interaction**, there is no topic list, no
+dialogue panel and no `talk` key.  ⚠ **The player chooses who and when;
+the crew choose what** — so this and the idle remark below are **one
+mechanism with two selectors**, and the cost is the clock and the trip,
+exactly as tower repair is.
+
 ⚠⚠ **An IDLE helper is the one who speaks** (`@X142`,
 [`PROGRESSION.md`](PROGRESSION.md) § P2c).  Helpers take their jobs from
 the player, so *"nobody has given me a task"* is a fact the roster

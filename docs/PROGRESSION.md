@@ -34,7 +34,7 @@ Codes: `@X016`, `@X017` **superseded**; `@X103` **reversed**; `@X018`,
 `@X019` stand with a wider reading; `@X111`–`@X136` are the design
 below, and `@X137`–`@X141` (no tutorial) are `DESIGN.md` § 11's;
 `@X142`–`@X143` are the speaker rule and `@X144`–`@X149` the debrief and `@X150`–`@X151` what the crew
-can know at all.  Index: [`DECISIONS.md`](DECISIONS.md).
+can know at all, and `@X152`–`@X156` the window into the universe.  Index: [`DECISIONS.md`](DECISIONS.md).
 
 ## P0 — ⚠⚠ the model is BLUE PRINCE: information dominates, and friction is what upgrades buy
 
@@ -1116,7 +1116,179 @@ side effect of the crew being people.
 | ❌ | why |
 |---|---|
 | **a scoring screen** — *"4 waves survived, 12 towers built, grade B"* | ⚠⚠ `DESIGN.md` § 14 § No hard run-loss: there is **no fail screen**, and *"a run the player feels was bad is simply a run that produced meagre carryover … the difference is felt across the sequence, not announced by the game."*  A grade announces it.  **Opinions, not a scorecard** |
-| **an interrogation UI** — a menu of questions, a dialogue tree | ⚠ that is a system to manage, and § P2c's *not intrusively* applies to the pull side too.  **Ask the crew; hear what they say.**  ⚠ And it must be **skippable in one action**, because `@X120`'s returning player will skip it |
+| **an interrogation UI** — a menu of questions, a dialogue tree | ⚠⚠ § P2g § UI-LIGHT (`@X156`) makes this a **system-wide** rule and not a local one: **there is no question list anywhere in this design**.  You go to somebody, they say their piece.  ⚠ And it must be **skippable in one action**, because `@X120`'s returning player will skip it |
+
+### ⚠⚠ P2g — the crew are the WINDOW INTO THE BIGGER UNIVERSE  `@X152`
+
+Owner, 2026-08-26:
+
+> *"they are also the window into the bigger universe.  The player gets
+> pushed head-first into the scenario but the helpers have a background.
+> They give structure to everything and link things together to the
+> 'outer world' instead.  So they can chatter on their own or between
+> them.  But they can also be asked for their opinion when the player
+> takes time to get to them."*
+
+#### ⚠⚠ This answers a hole nobody had named: SETTING.md has no delivery channel
+
+[`SETTING.md`](SETTING.md) is **~2 300 lines** of wormholes, a military
+cordon, three concentric truths, an empire where interstellar shipping is
+ruinous, a company that mines asteroids.  ⚠⚠ **And the game has no way to
+tell the player any of it** — `@X137` refuses a tutorial, `DESIGN.md`
+§ HUD refuses an overlay, and everything is diegetic.
+
+⚠ `@X102`'s knowledge tree covers what is **discovered on the planet**.
+It cannot cover the **outer** world, because none of that is lying
+around on Dryopea's surface to be found.
+
+⚠⚠ **The crew are that channel, and they are the only one available.**
+
+#### ⚠⚠ It does NOT contradict `@X150` — the split is Dryopea vs everywhere else
+
+| about | the crew |
+|---|---|
+| **Dryopea** — this planet, its robots, its trees, its ground | ⚠ **know no more than the player** (`@X150`).  First time here, same as you |
+| **the outer world** — the empire, the cordon, the company, home, how anything got this way | ⚠⚠ **know vastly more, and are the only source** |
+
+⚠ **Novices about the planet; natives of the setting.**  Both rules hold
+at once, and together they say something exact: **the crew can explain
+where you all came from and not where you are.**
+
+#### ⚠⚠ Which gives BACKGROUNDS a third job, and makes them the right primitive
+
+§ P2b's templates were already doing two things — starting skills, and
+`@X150`'s habits of attention.  This is the third: **a background is a
+VANTAGE ON THE UNIVERSE.**
+
+⚠ The 2023 list is exactly a set of vantage points, which is why it is
+worth keeping as authored: *colonist, earthling, **hive dweller**,
+member (of a technologist family), **spacer**, trader, artist, athlete.*
+⚠⚠ A hive dweller and a spacer have **different outer worlds**, so the
+same universe arrives through different eyes — and the player who hired
+them chose which eyes.
+
+⚠ **And it is how the crew give a campaign STRUCTURE.**  Without them a
+run is a sequence of disconnected sorties; with them, somebody keeps
+linking this base to the last one (§ P2e), this planet to the empire,
+and this contract to the company that took it.
+
+#### ⚠⚠ Four channels, and they must not be collapsed into one  `@X153`
+
+Each has a different direction, trigger and cost.  ⚠ Writing them out
+because the obvious refactor — *one dialogue system* — would destroy
+what makes each of them safe:
+
+| channel | direction | trigger | ⚠ what it carries | its cost to the player |
+|---|---|---|---|---|
+| **idle remark** (§ P2c) | push | a helper has **no task** (`@X142`) | what they notice, **here, now** | none — ignorable |
+| **crew chatter** (this section) | push, **ambient** | between themselves, overheard | ⚠⚠ **the outer world**, each other, past sorties | none — it is atmosphere |
+| **ask them** (this section) | **pull, in-mission** | ⚠ the player **drives to them and stays a moment** — ⚠⚠ presence is the whole interaction (`@X156`), there is no topic list | whatever that person has to say now | ⚠⚠ **the clock and the position** |
+| **debrief** (§ P2f) | pull, post-mission | at the station (`@X144`) | their account of the sortie | none — it is between sorties |
+
+#### ⚠⚠ *"Ask them"* passes the game's own core test outright
+
+`DESIGN.md` § What kind of game this is: *does this put something in the
+player's hands at a moment when using it costs them something?*
+
+⚠⚠ **Driving across the base to a crew member and spending time there,
+mid-sortie, costs exactly what this game is made of** — the clock, the
+position, the trip.  ⚠ It is the same shape as tower repair
+([`plans/17`](../plans/17-tower-hot-swap/README.md) § T1): **a position,
+not a keypress**, and the player who wants the conversation pays for it
+in the currency the design already charges in.
+
+⚠ And it is optional, so `@X120`'s returning player skips it without
+losing anything they could not get by playing.
+
+#### ⚠⚠ UI-LIGHT: presence IS the interaction — there is no list of questions  `@X156`
+
+Owner, 2026-08-26:
+
+> *"I want to keep this system UI light, so getting to them and
+> interacting gives them a moment to comment but the player has no list
+> of questions to ask of them."*
+
+⚠⚠ **So *ask them* is not really asking.**  It is **being there long
+enough that they say something** — and the player's only input is
+**where they are and when.**
+
+⚠ That is `DESIGN.md` § 11 § Position triggers, the deepest input rule in
+the project, applied to conversation: *the player should feel they
+activated something through motion, not by typing.*  ⚠⚠ **A topic menu
+would be the one thing § 11 exists to avoid**, and it would need a UI
+that `@X137`'s no-tutorial ruling and § HUD both refuse.
+
+| ✅ | ❌ |
+|---|---|
+| drive over, stay a moment, hear what they have to say | a list of topics |
+| the line appears **near them, in the world** | a dialogue panel with a speaker header |
+| leave whenever | a conversation to exit |
+| **it is the same verb as repairing a tower** — a position, banked over time | a `talk` key |
+
+#### ⚠⚠ The player chooses WHO and WHEN; the crew choose WHAT
+
+⚠ **This is `@X142`'s rule with the selector swapped**, which means the
+push and pull channels are **one mechanism, two selectors**:
+
+| | who selects the speaker | who selects the content |
+|---|---|---|
+| **idle remark** | ⚠ the **game** — whoever has no task | the speaker, from their own skills and vantage |
+| **ask them** | ⚠ the **player** — whoever they drove to | the speaker, unchanged |
+
+⚠⚠ **So the player never steers what is said**, and does not need to:
+what they get is what that person has to say *right now*, filtered by
+their skills (`@X129`), where they have been (`@X150`) and what has
+happened (`@X131`).  ⚠ One system, two doors — which is the shape this
+project reaches for everywhere else.
+
+⚠ **And it keeps the debrief honest too** (§ P2f): the same rule applies
+at the station.  You go to somebody, they say their piece.  ⚠⚠ **No
+question list anywhere in this design.**
+
+#### ⚠ Chatter is OVERHEARD, never delivered
+
+⚠⚠ **Nobody explains the cordon to the player.**  Two crew members
+disagree about it while driving, and the player picks it up in pieces.
+That is how the setting arrives without a lecture, and it is the same
+synthesis rule as everything else here — ⚠ the player assembles it, and
+a fragment that explained itself fully would be an exposition dump with
+a face on it.
+
+⚠ **It must not repeat.**  A finite pool that depletes over a campaign;
+a chatter line heard twice is wallpaper, and wallpaper is what players
+learn to tune out — taking the idle remark's channel down with it.
+
+#### ⚠⚠ Chatter and the NUDGE compete, and the nudge wins  `@X154`
+
+**`@X142`'s idle remark works because speech is RARE.**  If the crew
+chatter constantly, a helper speaking stops being a signal and becomes
+background noise — and the onboarding role `@X137` depends on goes with
+it.
+
+⚠ **So chatter is sparse, and it yields**: while the player is stalled
+and a helper has something to point at, **the nudge gets the channel**.
+Atmosphere is what plays when nothing needs saying.
+
+#### ⚠ What the crew may carry, and what stays the planet's to reveal
+
+⚠⚠ A clean division falls out of [`SETTING.md`](SETTING.md) § The
+quarantine's own three concentric truths:
+
+| truth | who delivers it |
+|---|---|
+| **1. the public story** — *"a haywire AI; the planet is quarantined"* | ⚠ **the crew.**  Everybody out there believes it, so everybody in the vehicle can say it |
+| **2. the military reality** — two battleships, nothing leaves without a permit | ⚠ **the crew**, partially and with rumour attached — it is the world they live in |
+| **3. the hidden truth** — personality-altered AIs, the underground humans, the portal | ⚠⚠ **the PLANET.**  `@X102`'s knowledge tree, found on the ground — and `@X150` forbids the crew knowing it in advance |
+
+⚠ **So the crew can carry a great deal of setting without touching the
+mystery**, which is exactly what a window should do.
+
+#### ⚠ And it raises the text prerequisite again
+
+⚠⚠ `@X130` now blocks **four** things: the onboarding nudge, the
+campaign's engagement, the debrief, and now the entire delivery of
+`SETTING.md`.  **A font file is the highest-leverage missing piece in
+the project**, and nothing else in the design is close.
 
 ### ⚠⚠ P2e — the relationships are a LEDGER of what happened, never an affinity bar  `@X131`
 
