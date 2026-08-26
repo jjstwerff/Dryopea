@@ -3552,6 +3552,85 @@ those are the ones that:
 design has to keep by hiding things — **it is what falls out of
 conditions that describe how somebody played.**
 
+#### ⚠⚠ THE SAME SYSTEM BUILDS THE TERRAIN — and OTHER PLAYERS ARE THE SEED  `@X224`
+
+Owner, 2026-08-26:
+
+> *"that is why I want to use the same system for building terrain and
+> events on the current terrain.  I do not want to know what to find
+> before I boot up the game.  **And other players are exactly the seed
+> that prevents it altogether.**"*
+
+⚠⚠ **This is the closing move of the whole design, and it is the
+strongest anti-optimisation statement in it.**
+
+⚠ A procedural world has a **seed**.  If the seed is a number the author
+chose, **the author knows the world**.  If the seed is *what other
+people did*:
+
+| ⚠⚠ | |
+|---|---|
+| **the author cannot know it** | it has not happened yet, and it is not theirs |
+| **it is not RANDOM** | `@X201` refuses randomness because a spreadsheet averages it — ⚠⚠ **player history is not a random variable and has no expectation to compute.**  It is specific, caused, and unrepeatable |
+| **it is SHARED** | the world other people made is the world you land in |
+
+> ⚠⚠ **You cannot precompute a world whose seed is other people's future
+> decisions.  The information does not exist yet.**
+
+⚠ **And dryopea already does a small version of it**: `@X174` — *the
+planet accumulates other people's play* — makes abandoned bases, caches
+and homesteads into terrain nobody authored.  **The owner is generalising
+a principle the design already had.**
+
+#### ⚠ *Assembles, never invents* — the generator is built from AUTHORED parts
+
+⚠ `../crew_punk/BLOCKS.md`: *"the generator assembles.  It never
+invents"*, and everything it emits is made of hand-written pieces.  ⚠⚠
+**dryopea already has the bricks**: [`SETTING.md`](SETTING.md) § The
+biomes (six authoring briefs), [`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md)'s
+six installation types, § Trees as terrain, and the ground palette.
+
+⚠⚠ **So the biomes and installations are the BRICKS; conditions and
+player history are the ASSEMBLY RULE.**  Nothing has to be invented at
+runtime, which is what makes generation affordable in a design that
+refuses filler.
+
+#### ⚠⚠ But the GATES need deterministic terrain, and that line must not blur  `@X225`
+
+⚠ dryopea's maps are hand-painted today — `maps/`, the editor, and **33
+`.keys` scripts with 654 measurements** that play fixed terrain
+(`scripts/validate.sh`).
+
+⚠⚠ **Generation must never touch the test corpus.**  A gate over a
+generated map measures nothing, and the second gate's whole value is that
+the same script produces the same numbers.
+
+> ⚠⚠ **Hand-authored maps stay, for TESTING.  Generated maps are for
+> PLAY.**  Two purposes, one editor, and the `.keys` corpus is the line
+> between them.
+
+⚠ That also keeps the editor's reason to exist intact: it is how the
+bricks get authored, and how a fixture gets pinned.
+
+#### ⚠ Single player still works, because the seed degrades  `@X226`
+
+⚠ Without other players there is no shared seed, so it falls back — and
+each fallback is already designed:
+
+| seed | already exists as |
+|---|---|
+| **your own history** | the per-planet persistence every feature in this section wants |
+| **NPC operators** | [`SETTING.md`](SETTING.md) § The competitors — *"their tries will be visible on the planet"* |
+| **the world's own clock** | `ROBOT_ECONOMY.md` § The vertical dimension — a tree withering **between missions** opens a crystal site that was not there |
+
+⚠⚠ **So a long solo campaign still surprises its author** — less than a
+populated one, and the difference is exactly why `@X221` says
+**multiplayer helps the author most.**
+
+⚠ **And a newcomer is not landing in a veterans' world by force**: the
+planet is large, unclaimed regions exist, and `@X219`'s rule already
+requires that **some content be unconditionally available for ever.**
+
 #### ⚠ Two failure modes, and STARVING is the dangerous one  `@X219`
 
 | | |
