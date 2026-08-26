@@ -1056,6 +1056,16 @@ anti-elemental dampener, anti-comms-priority disruptor,
 area-effect splash, …; exact catalogue TBD).  See
 [§ Economy + progression](#13-economy--progression).
 
+⚠⚠ **Two entries from the 2023 catalogue are worth taking now**
+([`MATERIALS.md`](MATERIALS.md) § Towers): a **trap that does
+not automatically reset** — placed in advance, fires once, and
+then somebody has to drive out **mid-wave** to re-arm it, which
+is § What kind of game this is passed outright and costs no new
+mechanism (it is a black tower restored by a standing vehicle,
+§ Tower overload + hot-swap) — and a **grabber**, but only in
+its *move a body off the chokepoint* form, never as a way to
+bank salvage without the trip.
+
 #### Damage TYPE is the axis, and it is a triangle rather than a ladder
 
 Project owner, 2026-08-13.  Designed, **not built** — plan 12
@@ -1671,10 +1681,23 @@ mid-mission at the core's NPC-ordering face (cost 100 points
 per helper); a lander touches down at the lift-off face
 ~20 s later.
 
-### Future skills
+### Skills — ⚠ the layer this was reserving space for
 
-Eventually each helper carries a **per-character skill
-profile** (validation: interchangeable, opaque id):
+⚠⚠ **[`PROGRESSION.md`](PROGRESSION.md) § P2 now owns this** (owner's
+ruling, 2026-08-26): the crew are characters with **twelve skills over
+six statistics**, plus endurance pools that rest restores.  The
+per-helper id below was added in plan 14 *"so future skills hang off
+existing characters without re-engineering"* — that reservation is what
+this is spending.
+
+⚠ Its landing rule is what keeps it cheap: **a skill scales a number
+that already exists** (`@X112`).  `build` scales helper-seconds — which
+§ 13 already names as the wall bottleneck — `repair` scales § 7's 20 s
+standing clock, `scout` the detection radius.  No skill introduces a
+mechanism.
+
+The six roles below are the game-facing subset, and they map onto the
+twelve:
 
 - **Building** — faster wall / tower construction.
 - **Mining** — gather raw materials from terrain hexes.
@@ -1688,6 +1711,10 @@ profile** (validation: interchangeable, opaque id):
 
 Data model carries the per-helper id today so future skills
 hang off existing characters without re-engineering.
+
+⚠ **And with skills, the roster stops being interchangeable** —
+`DESIGN.md` § 14's cargo manifest becomes a question about *which
+skills* boarded before force-launch, not only a headcount.
 
 ### Damage → wreck → retrieve → recover
 
@@ -2159,6 +2186,17 @@ Walls (both heights) and **bridges between walls (future,
 phase 2)** are **free in points** — helper-seconds is the
 bottleneck.  Same economics for both wall heights.
 
+⚠ **Points are a single scalar, and the tree behind it is
+[`MATERIALS.md`](MATERIALS.md)** (design, not built) — nine
+materials, the parts they make, and what each robot class is
+rich in.  ⚠ Its governing rule is what keeps it compatible with
+§ What kind of game this is: **materials have weight and are
+somewhere else**, so getting one is a trip.  ⚠ Its
+recommendation is that **points stay the ORDER currency** and
+materials become a second, *carried* resource — an abstract
+currency does not have to be driven anywhere, which is the
+whole value of the tree.
+
 ### Starting budget + 1:1 carryover
 
 Every base begins with a **points budget** (default 200) the
@@ -2567,6 +2605,21 @@ vision (recorded so the core design doesn't foreclose it):
   public AI-contagion story, military naval-blockade
   reality, hidden faction-escape-rocket fact.  A player who
   discovers the truth holds future-content leverage.
+  ⚠⚠ **The third truth is now contested** — the 2026-08-26
+  seed notes say the rockets are *"a cry of help from yet
+  another human"*, not the AI's.  Open, and it changes what
+  the leverage IS: see [`SETTING.md`](SETTING.md) § OPEN —
+  whose rockets are they?
+- **The knowledge tree** (SETTING.md § The knowledge tree) —
+  ~55 discrete facts in per-faction arcs, recovered from the
+  2023 game data.  It is the structure § Future contact's
+  no-shortcut rule was describing without one, and the only
+  accumulating progression that passes the genre test.
+- **The six biomes** (SETTING.md § The biomes) — moors,
+  forest, mountains, caves, coast, swamp, as *authoring
+  briefs*: each states the problem a base built there has to
+  solve.  The persistent planet map above is what makes them
+  a sequence rather than a menu.
 
 Architectural notes (so the core build leaves room): keep
 base state self-contained (already true: terrain + structure
@@ -2602,8 +2655,13 @@ value in `numbers.json`.
 - [`NUMBERS.md`](NUMBERS.md) +
   [`../examples/numbers.json`](../examples/numbers.json) —
   runtime parameters.
+- [`MATERIALS.md`](MATERIALS.md) — the salvage / craft tree
+  behind § 13's points, and the catalogue of weapons,
+  machines and defensive structures.  ⚠ Design, not built.
 - [`DESIGN_HISTORY.md`](DESIGN_HISTORY.md) — design seeds
-  from the 2023 prototype.
+  from the 2023 prototype (§§ 1-3) and the owner's later
+  seed hand-over (§§ 4-5), each routed block by block to the
+  document that now owns it.
 - Plans 01-05 in `plans/`.
 
 ---

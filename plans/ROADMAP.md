@@ -219,6 +219,21 @@ making a top carriable is an OWNERSHIP move — the budget becomes a
 property of the top — and *detach-and-remount must not refill*, or
 two keypresses bypass the whole loop.
 
+#### ⚠ From the 2026-08-26 seed hand-over
+
+Three mechanics arrived with the owner's seed notes that pass
+[`DESIGN.md`](../docs/DESIGN.md) § What kind of game this is without
+argument, because each puts something in the player's hands **at a
+moment when using it costs them something**.
+
+| Feature | Status | Slot | Brief |
+|---|---|---|---|
+| **The jammer can be switched OFF** | drafted | [SETTING § The recruitment](../docs/SETTING.md) | ⚠⚠ *"It is possible to turn off the Jammer tower.  Has an impact on attack waves."*  The core is the jammer, so switching it off **stops the waves — and stops the salvage**, since scattered robots are what the contract pays for (`DESIGN.md` § 13).  ⚠ It also re-coordinates the swarm, so it is a decision with a downside on both sides.  Cheap: the core already owns the bubble |
+| **Traps that do not auto-reset** | drafted | [MATERIALS § Towers](../docs/MATERIALS.md) | ⚠ From the 2023 catalogue (*spike trap*, *demolition*).  Placed in advance, fires once, then somebody must **drive out mid-wave to re-arm it** — mechanically a black tower restored by a standing vehicle (`plans/17` T1), with the cost moved to the front |
+| **Moat — a trench that fills with water** | drafted | [MATERIALS § Defensive structures](../docs/MATERIALS.md) | ⚠ The cheapest of the three defensive additions: `GROUND_TYPES.md` already carries water's DROP and nothing reads it — [`plans/25`](25-the-terrain-mesh/README.md) § M2 names that as [`plans/02`](02-solver-validation-viewer/README.md)'s decision.  *Many machines tolerate water badly* is the whole rule |
+| **Drawbridge** | drafted | [MATERIALS § Defensive structures](../docs/MATERIALS.md) | Seals or opens the perimeter on demand — and `plans/13` § V4 measured that a sealed base can only be left by boosting, so closing it is a bet on your own flying |
+| **Rock kind decides wall strength** | sketch | [MATERIALS § The 2023 catalogue](../docs/MATERIALS.md) | ⚠ Granite sturdy / sand rock brittle / volcanic easy to cut — **the ground you dug becomes the wall's strength**, over a palette and a `structure_max_hp` that both already exist.  The cheapest material rule available |
+
 ### Editor-to-entity content pipeline
 
 The whole stencil-from-editor arc — multi-layer painting,
@@ -302,6 +317,10 @@ each mission is independent; persistence isn't shipped.
 | Persistent inventory (tops, materials, points) | drafted | DESIGN § 13 | Carries across runs |
 | Q4 loadout closure | drafted | DESIGN § 7 + § 13 | Pick towers from inventory before each sortie |
 | Scouting unlocks new tower types | drafted | DESIGN § 7 + § 13 | Scouted intel persists; variants become orderable |
+| **Crew skills + statistics** | drafted | [PROGRESSION § P2](../docs/PROGRESSION.md) | ⚠⚠ **The RPG layer, adopted 2026-08-26** (`@X111`) — twelve skills, six statistics, per-character.  ⚠ Its landing rule makes it incremental: **a skill scales a number that already exists** (`@X112`), so ship the three the owner named — `build` scales helper-seconds (the bottleneck DESIGN § 13 names), `repair` the 20 s standing clock, `scout` the detection radius.  Each has a constant to multiply and a gate that already measures it |
+| **Endurance pools + living quarters** | drafted | [PROGRESSION § P2b](../docs/PROGRESSION.md) | Work spends a pool, rest restores it — the crew-side version of the tower's charge (`@X113`).  ⚠ It is what turns [MATERIALS § The crew are people](../docs/MATERIALS.md)' *living quarters* into a building a long sortie must actually put up |
+| **Defection — crew join competitors when neglected** | sketch | [PROGRESSION § P2b](../docs/PROGRESSION.md) | From the 2023 data.  ⚠ Neglect becomes a run-level consequence with a face on it, and it lands the player's crew on [SETTING § The competitors](../docs/SETTING.md)' payroll |
+| **The perspective rule — switch human at the terminal** | sketch | [PROGRESSION § P8](../docs/PROGRESSION.md) | ⚠ `@X115` — see the world through a person, switch only at the main communication terminal.  ⚠⚠ Without it a skilled crew is a spreadsheet the player watches; with it the switch costs a drive back to the core mid-wave.  A change to the control model (DESIGN § 8, § 9), so it needs a decision before a plan |
 | Helper rescue quests | drafted | DESIGN § 9 Helpers | Stranded helpers from past missions, rescuable |
 | Static planet-view map selector | drafted | [plan 04 L3](04-map-library/README.md) | Clickable markers per available map |
 | Rotating planet-view UI (future UX) | sketch | SETTING § Future UX | Day/night terminator, overlay state |
@@ -324,6 +343,10 @@ for the no-shortcut design rule.
 | Feature | Status | Slot | Brief |
 |---|---|---|---|
 | **Robot economy — natural wave patterns** | drafted | [docs/ROBOT_ECONOMY.md](../docs/ROBOT_ECONOMY.md) | Six installation types + transport routes; traffic replaces the authored wave list and spawn markers.  ⚠ **Retires [plan 16](16-the-wave-system/README.md)**, which the owner has committed to removing before ship |
+| **The knowledge tree — ~55 facts in arcs** | drafted | [SETTING § The knowledge tree](../docs/SETTING.md) | ⚠⚠ The structure § Future contact's no-shortcut rule has been describing without one, recovered from the 2023 data: natives → sap/insects → robots → aliens/portal → the old ones, each arc a chain of sentences the player learns.  ⚠ Knowledge must change what the player can **attempt**, never how well they do it — a knowledge item granting *+10% hacking* belongs on [PROGRESSION § P2](../docs/PROGRESSION.md)'s crew axis instead.  ⚠⚠ And it must be **found, never sold** (§ P6a: knowledge IS the answer, and an upgrade may only buy friction) |
+| **Competitors — the other permits** | sketch | [SETTING § The competitors](../docs/SETTING.md) | Other operators, some unapproved.  ⚠ Start with the **traces** (a stripped wreck field, a half-built wall) — authored terrain, no mechanism.  A raid is a wave that wants your cargo rather than your jammer |
+| **The four endings** | sketch | [SETTING § The endings](../docs/SETTING.md) | Reprogram / shut down / keep mining / set to defend the natives.  ⚠ All four resolve *what do you do with a machine a person lives inside*, and **destroying it in battle is not among them** |
+| **The six biomes** | sketch | [SETTING § The biomes](../docs/SETTING.md) | Moors / forest / mountains / caves / coast / swamp, as **authoring briefs** — each states the problem a base built there must solve.  ⚠ Caves stay geography, never a level (`ROBOT_ECONOMY.md`) |
 | Faction territory awareness | drafted | SETTING § Robot diversity | Maps tagged with AI faction; affects compositions |
 | Side quests — underground human contact | drafted | SETTING § Future contact | Breadcrumb discovery → first contact → trade |
 | **The buried city + the portal** | sketch | [SETTING § The buried city](../docs/SETTING.md) | An ancient city the underground humans FOUND, its statues of the OLD ONES AND THEIR SERVANTS kept under cloth, and a portal beneath it to a benevolent being that accepts people at the price of their individuality.  ⚠ The builders took that portal, so the statues are documentation and the cloth is denial — and the statue gallery is the end-game BESTIARY, seen before it is ever met |

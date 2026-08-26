@@ -172,6 +172,36 @@ This history reframes the situation:
   there.  This is future-content territory but the door is
   open.
 
+### ⚠⚠ Both hackers had a MOTIVE, and they are opposite
+
+Owner's seed notes (see [`DESIGN_HISTORY.md`](DESIGN_HISTORY.md) § 4).
+The two intrusions above were not curiosity — each was an attempt to
+*solve* something, and knowing what makes the AIs legible:
+
+- **The girl hacked it to stay hidden.**  Her target was the
+  **surveillance function itself** — she reached into the survey system
+  *to prevent universal discovery*.  The settlement had spent
+  generations staying out of sight; an automated survey mapping the
+  whole planet was about to end that.  ⚠ **So the founding act was
+  DEFENSIVE**, and it worked: the robots have run this planet ever since
+  without knowing the humans are below it.
+- **The second hacker wanted control over their own people.**  They
+  added **hostility and unbridled growth** — a swarm that expands and
+  bites is a threat, and a threat is leverage over the neighbours who
+  have to live near it.  ⚠ **It failed**, and the settlement *punished
+  the one responsible.*
+
+⚠ **This is the cleanest available answer to "why is the swarm hostile
+at all"**, and it does not contradict § What they do now: the hostility
+was authored, by a person, for a domestic political reason, and then
+outlived both the reason and the author.  The AIs are not malfunctioning
+and they are not evil; **they are carrying an instruction somebody gave
+them to win an argument.**
+
+⚠ And it gives the underground a *guilt* the player can eventually
+discover: the settlement knows exactly who did this, tried them for it,
+and has been living beside the consequence ever since.
+
 ## The premise — a quarantined colonization run (the cover story)
 
 *This section reads the situation as the outside cordoning
@@ -295,6 +325,179 @@ This frames the *entire game loop*:
   are scavenged or improvised on the same industrial
   substrate.
 
+## The recruitment — the cover story, delivered in person
+
+The run starts with a sales call.  **Linn Everett of Centaur Mining**
+takes a call from **Ian Thorne of the Department of Outer Planets**, and
+by the end of it the co-operative has a contract on **Radiat-514 V-II**
+— *the cursed moon*.
+
+⚠ **Every word Thorne says is § The premise, not § History.**  He is
+truth #1 of § The quarantine's three concentric truths, spoken by
+somebody who probably believes it.  That is what makes the scene worth
+keeping: it is the *only* version of events the player's own company
+was told.
+
+> **Linn:** Here Linn Everett of Centaur Mining, how can I help you sir?
+>
+> **Ian:** As you can see I am Ian Thorne of the Department of Outer
+> Planets.  We have a proposal for you, if you are interested.
+>
+> **Linn:** A mining contract I presume?  Is there a new project we are
+> currently unaware of?
+>
+> **Ian:** Well, it is mining related.  You see, there is a planet in
+> the Radiat-514 system that might need a special operation.
+>
+> **Linn:** Radiat, hey?  You mean the cursed moon?  I know about that
+> failure.  Are you aware that we actually specialize in automated
+> asteroid mining?
+>
+> **Ian:** Yes, I know your reputation.  And I am also aware of the fact
+> that you defended yourself a couple of times against raiders on your
+> projects.
+>
+> **Linn:** Sir.  If you want us as a military subcontractor, I can
+> directly call you off.  We might be tenacious when it is called for,
+> but we do not involve ourselves with conflicts.
+>
+> **Ian:** You know why that moon is cursed?  What actually happened on
+> Radiat-514 V-II?
+>
+> **Linn:** Not in detail sir.  We seem to have lost contact with a lush
+> earth-like planet, and that is a shame.
+>
+> **Ian:** Well.  What is not generally known is that our automated
+> survey system there was quite successful, but before it was not needed
+> anymore it developed independence.
+>
+> **Linn:** An artificial intelligence that has gone haywire.  So there
+> are now robots crawling all of that moon?
+>
+> **Ian:** Yes, but that is not the problematic part of it.  There were
+> a couple of rocket launches from that surface too.
+>
+> **Linn:** That is wonderful.  So, this AI is now trying to expand.  I
+> presume you intercepted those rockets?  I might feel safer in a galaxy
+> without roaming killer robots everywhere.
+>
+> **Ian:** As far as I can tell we shot down anything that was sent up.
+> But you might have a hunch about the costs involved to quarantine a
+> moon, or rather a whole solar system.
+>
+> **Linn:** I can imagine that it will take quite a sizable chunk out of
+> your budget, yes.  So how would we be able to help you here?  How can
+> our small but successful mining company defeat a robot army?
+>
+> **Ian:** Well, we can provide you with a multi-frequency radio jammer.
+> That will prevent this AI from coordinating the individual robots,
+> making them easy prey.  This way you can round up these individual
+> robots in certain strategic areas.  And there is an actual mining part
+> on this.  **You can keep any interesting materials that the AI used to
+> build these robots.**
+>
+> **Linn:** You realize that we also use radio communication with our
+> automated systems?
+>
+> **Ian:** That is the problem here, yes.  There will be very little
+> communication with the surface possible during a mission.  **So there
+> has to be personnel below to service the different systems.**
+>
+> **Linn:** So you ask me to send our technicians down to a warzone
+> against killer robots?  And how do you think I can convince them to
+> risk their lives this way?
+>
+> **Ian:** Well, for a start.  We pay quite well.
+
+### ⚠⚠ Three mechanics are chartered in that conversation, and one of them is the whole game
+
+This scene is not colour.  It is where three load-bearing rules come
+from, and they are rules the design already runs on:
+
+| The line | The mechanic it charters |
+|---|---|
+| *"a multi-frequency radio jammer … prevent this AI from coordinating the individual robots"* | ⚠ **The core IS the jammer.**  `DESIGN.md` § 4's scrambling tower and § Why waves happen — robots seeking their lost signal.  It is government-issued equipment, not something the co-op built |
+| *"You can keep any interesting materials that the AI used to build these robots"* | ⚠ **Salvage is the pay**, which is `DESIGN.md` § 13's wallet and the whole of [`MATERIALS.md`](MATERIALS.md).  The player is not a soldier being paid to kill; they are a **scrap contractor** whose product is wrecks |
+| *"very little communication with the surface … so there has to be personnel below to service the different systems"* | ⚠⚠ **This is the justification for the entire game.**  The jammer that makes the robots beatable is the same jammer that makes remote operation impossible — so **humans have to be down there, in person, driving between machines.**  Every servicing loop dryopea has measured (a tower's 20-second repair clock, the shuttling helpers of [`plans/17`](../plans/17-tower-hot-swap/README.md) § T3) exists because of this sentence |
+
+⚠⚠ **The third row is the answer to *why can the player not automate
+any of this*** — and it is a *fiction* answer rather than a game-design
+excuse, which is the strongest kind.  The jammer's blast radius covers
+the player's own base.  Nothing in it can be told what to do from
+orbit, and nothing in it can be told what to do from across the base
+either.  That is why [`MATERIALS.md`](MATERIALS.md) § Power refuses a
+power grid and why *"maximize automatic transport"* is the seed notes'
+least compatible ambition: **automation is the thing the premise
+removed.**
+
+⚠ **And it prices the co-op.**  Centaur Mining specialises in
+*automated asteroid mining* and has fought off raiders *"a couple of
+times"* — they are competent and they are not soldiers, which is
+exactly § The player's *"small mining co-op"* and `DESIGN.md` § 8's
+noncombatant vehicle.  They took this because it pays.
+
+⚠ **Radiat-514 V-II is a MOON of a planet**, in Thorne's account, and
+every other document says *the planet*.  Treat the two as the same
+place under two names — a moon large enough to hold an ocean, huge
+trees and a breathable-at-altitude atmosphere reads as a planet to
+everybody standing on it.  Nothing mechanical depends on which word is
+used.
+
+⚠⚠ **And the planet has a name: it is called *Dryopea*.**  The 2023
+gameplay data ([`../archive/gameplay.data`](../archive/gameplay.data))
+names it in forty places — *"there were human natives already living on
+Dryopea"*, *"a generation ship has landed on Dryopea in the long past"*,
+*"the huge trees on Dryopea"*.  **The project is named after the world
+it is set on**, and until 2026-08-26 no document said so.  `Radiat-514
+V-II` is the survey catalogue's designation; *Dryopea* is what the
+people who go there call it.
+
+## The pollen — the planet is hostile to MACHINES too
+
+⚠⚠ **The single most load-bearing piece of the seed lore**, because it
+is the environmental cause of three systems that were designed
+separately and never had one.
+
+The planet's flora broadcasts **aggressive, sticky pollen**.  It is
+hostile to human lungs — which is part of why the original survivors
+retreated to caves and why the crew never leaves a sealed vehicle
+(§ Why the crew never walks the surface) — but the important half is
+that **it is just as hostile to machinery.**  It gets into joints,
+bearings, optics and intakes.  The local fauna adapted to it over
+whatever time it took; nothing manufactured has.
+
+⚠ **So on this planet, repair is not an event.  It is a condition.**
+
+That single fact supplies a cause for four things already in the
+design:
+
+- **Why the robots have a repair economy.**
+  [`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) § 5 gives the swarm *local
+  repair points* as one of six installation types.  Pollen is why they
+  need them everywhere rather than at a depot.
+- **Why a robot approaching the player reads as HELPFUL.**
+  § They were on an ERRAND, and they think they are helping already
+  says a robot converges on the jammer because a peer looks broken.
+  ⚠ **On a planet where everything is always slightly broken, a
+  machine that has stopped responding is the most ordinary thing in the
+  world** — which is exactly why nobody's threat assessment fires.
+- **Why the map is littered with wrecks nobody killed.**  The seed
+  notes: *"machines all over the place that are destroyed by the
+  wildlife.  They are not targeted by the AI though.  Not
+  intentionally."*  ⚠ Free salvage with no combat attached, authored
+  into a map as terrain — and it is the cheapest possible scouting
+  reward ([`EXPLORATION.md`](EXPLORATION.md) § X2c).
+- **Why a base needs upkeep at all.**  `DESIGN.md` § 7's tower charge
+  decay and `plans/17` § T1's repair clock are mechanically motivated
+  already; pollen is why they are *fictionally* inevitable, and why an
+  abandoned base decays (`DESIGN.md` § 20).
+
+⚠ **It also sets the boundary for the mechanic.**  Pollen must stay a
+*constant*, never a weather event with a timer: the moment it becomes a
+storm the player waits out, it is a lean-back mechanic, which
+`DESIGN.md` § What kind of game this is refuses.  **It explains decay;
+it is not itself a hazard the player fights.**
+
 ## The other enemy — insects + sap
 
 The robots are tier 1.  **Tier 2 are insects** — biological,
@@ -308,6 +511,69 @@ Their sap is extraordinarily valuable:
 - **A life-prolonging medicine** — its medicinal properties
   are the real treasure; the kind of compound that humans go
   to a war-cordoned planet for.
+
+### ⚠ What a tree IS — the biology the tree mechanics lean on
+
+Owner's seed notes.  The trees are not scenery with a resource attached;
+they are the planet's dominant organism and nearly every one of these
+traits is already load-bearing somewhere:
+
+- **They grow for millennia, and not upward.**  A huge trunk can run
+  **horizontal**, in layers.  ⚠ This is what `DESIGN.md` § Trees as
+  terrain is describing from the gameplay side — *a 10-hex tree stem is
+  a plateau, so the perimeter IS the terrain* — and it is why a forest
+  map has multiple levels rather than a field of poles.
+- **They have limited control over the shape of their trunks.**  ⚠ So a
+  span, a ledge or an arch over a valley is something the tree *did*,
+  which makes an authored piece of terrain legible instead of arbitrary.
+- **Spikes on branches that sweep back quickly.**  A moving hazard tied
+  to a fixed place — the terrain version of a trap.
+- **Sticky surfaces, thick strong bark, minerals ON the bark.**  ⚠ The
+  minerals are a *reachable* resource that costs a climb rather than a
+  dig, which is a scouting reward with a skill gate on it
+  ([`PROGRESSION.md`](PROGRESSION.md) § G3).
+- **Acid fruits, and acid pools beneath them.**  Terrain that damages
+  what stands in it; the palette already models per-kind ground and
+  `GROUND_TYPES.md` is where a kind would land.
+- **Potent fruit for procreation**, and **one or more HEARTS** storing
+  valuable minerals or water against drought.  ⚠⚠ **A heart is a
+  treasure with an address**: a single high-value cache inside a
+  structure the player must get into, which is § Finding things worth
+  finding made concrete without inventing a container.
+- **They float in the ocean, and dislike being submerged in fresh
+  water.**  ⚠ That is the coast biome's *floating plant islands* and
+  the reason a swamp has few trees — the biome table below is derived
+  from this rather than decorated with it.
+- **They tunnel to deep minerals and back out after depletion.**
+  Already canon: § A tree is also a drill — and a dead one is a way
+  down.  ⚠ The seed notes add the *reason* — the tree went down for the
+  minerals, so a withered one's shaft leads somewhere that was worth
+  going.
+
+### ⚠⚠ The ants are the insect tier, and the alarm is the mechanic
+
+The trees live in symbiosis with **ants that feed on concentrated sap** —
+denser and more energetic than the sap itself.  Two properties matter:
+
+- **They feel the tree's emergency signal.**  Cutting, burning or
+  tapping a tree is not a quiet act; the colony knows.
+- **They carry an ODOUR SAC that attracts and alerts all kinds of
+  animals.**  ⚠⚠ **The alarm is not the ants' own attack — it is a
+  BROADCAST that brings everything else.**
+
+⚠ This is the exact mechanism `DESIGN.md` § Scouting already prices as
+*"sap invites insect chase by smell"*, and § It is a MUTUALISM already
+frames as insects guarding a wound.  The seed notes supply the organ.
+**Keep it as a summons rather than a damage type**: the cost of taking
+sap is *what arrives afterwards*, which is a timing decision, and the
+genre test ([`DESIGN.md`](DESIGN.md) § And the DEEP layers) wants
+timing.
+
+⚠ **And it closes the loop with the pollen**: the flora attacks
+machines passively and summons fauna actively.  The planet is not
+neutral ground that happens to have monsters on it — **it is a third
+party**, and § The player is the only one on it with no adaptation at
+all.
 
 ### ⚠ A tree is also a drill — and a dead one is a way down
 
@@ -690,6 +956,16 @@ is coordinated players, and that half is undesigned.
 So the planet carries the same irony twice over: the swarm kills the
 forest to reach crystal, and reaching crystal is what has been waking
 something none of the three factions could handle.
+
+⚠⚠ **A seed answer exists and it does not close the question — it
+sharpens it.**  The 2023 knowledge data (§ The knowledge tree) carries
+*"Lord powers — even during their sleep it is possible to **contact**
+these lords"* and *"Awaken — it is **unwise though possible**"*.  So the
+shape is **talk first, wake later**: a player can be drawing on a
+sleeping lord long before anything stirs, which makes an awakening a
+consequence of a *relationship* rather than a switch found on a map.
+⚠ And it leaves the many-player gate intact — being able to contact one
+alone is not being able to wake one alone.
 
 ### ⚠ And it closes the tree life-cycle loop
 
@@ -1236,6 +1512,16 @@ only way it knows to make someone survivable, and it is right.  A
 kindness that is also an annihilation, with no bad intent anywhere in
 it, is a far better antagonist-shaped thing than a malicious one.
 
+⚠⚠ **The 2023 data said this three years earlier, in six words.**
+[`../archive/gameplay.data`](../archive/gameplay.data) carries
+*"**Alien outcasts** — some aliens are somehow **fully mentally
+shielded**"*, beside *"**Alien rescue** — given enough pressure the
+alien society can send **rescue squads**"*.  ⚠ Shielded rather than
+strong, and a squad the hive dispatches under pressure — the
+immune-response framing above, arrived at independently and long
+afterwards.  When a design lands twice from two directions it is
+usually the world's own logic rather than an author's preference.
+
 ### The responses to the incomprehensible — and who can FIGHT
 
 Owner, 2026-08-14, completing the structure: **the humans cannot
@@ -1431,6 +1717,155 @@ looking harder.
    statues until an awakening needs them, and each one designed early
    is a temptation to spend it on an ordinary wave.
 
+## The settlers today — scavengers in suits, hiding from the player too
+
+§ History says where the underground humans came from and what they did.
+This is **what they are doing now**, on the surface, where the player
+might actually meet one.
+
+- **They live in caves and in the trees**, deliberately **outside the
+  AI's mining opportunities**.  ⚠ Their geography is *defined by
+  avoidance*: they are wherever the robots have no reason to be, which
+  is a rule a map author can apply directly.
+- **They bonded with the living roots**, shamanistically.  Through that
+  bond they **communicate with the trees — or at least detect threats in
+  different areas.**  ⚠⚠ **This is an early-warning network, and they
+  use it to stay out of reach of the AI *and of the player*.**  So a
+  settlement is not found by searching harder; it is found when they
+  decide to be found, which is precisely § Future contact's
+  no-shortcut rule given a mechanism.
+- **Some still scavenge the surface in special suits.**  Mostly they
+  strip **broken AI robots** — the same wrecks the player is contracted
+  to strip — and take animal skins and meat.  ⚠ **They are competitors
+  for salvage before they are ever a story**, which is the cheapest
+  possible first contact: a wreck field that has already been picked
+  over.
+- **They use small entrances**, as protection against most of the
+  wildlife, and they left **rock paintings**.  ⚠ Paintings are the
+  breadcrumb layer: a find with no mechanical effect that tells the
+  player somebody is alive down there.
+- ⚠⚠ **They are afraid of the player — as a MUTATION OF THE AI, not as
+  a human.**  From below, a machine arrives, plants a tower, kills
+  robots and takes their parts.  That is what the AI does.  **The
+  player's own behaviour is the evidence against them**, and no amount
+  of good intent reads through a sealed vehicle.
+
+⚠ **That last point is the best available answer to *why is first
+contact hard*.**  It is not shyness and it is not a quest flag: the
+player looks exactly like the enemy, does exactly what the enemy does,
+and § Why the crew never walks the surface means they cannot step out
+and show a face.  ⚠ **Anything that makes the player look LESS like a
+robot is therefore a real mechanic** — and it is diegetic, which is
+what `DESIGN.md` § HUD wants.
+
+### ⚠⚠ OPEN — whose rockets are they?
+
+**The seed notes and canon disagree, and this one has to be ruled on by
+the owner rather than merged.**
+
+| Source | The claim |
+|---|---|
+| **canon** — § The quarantine | *"The robots are building their own rockets"*, repurposing colonisation fabrication.  It is the **primary reason** for the battleships' orbital posture |
+| **seed notes** | *"The rockets into the sky are a cry of help from yet another human.  This is not the AI's doing."*  ⚠ And the launch site, when found, is *"nothing spectacular"* |
+
+⚠ They are not trivially compatible: the cordon's whole justification is
+the first reading, and the second makes the cordon a **tragedy** — two
+battleships shooting down a distress signal, repeatedly, for years.
+
+⚠⚠ **The seed version is the better story and the more expensive
+retcon.**  It adds a fourth concentric truth beneath § The quarantine's
+three, it gives Thorne's *"I presume you intercepted those rockets?"*
+a horrible second meaning, and it makes *finding the launch site* — a
+shed, some scaffolding, nothing spectacular — one of the strongest
+discoveries the game could have.  ⚠ But `DESIGN.md` § 20 already lists
+*"hidden faction-escape-rocket fact"* as future-content leverage, so
+flipping it changes what that leverage IS.
+
+⚠ **A version where both are true costs nothing and may be the answer**:
+the AIs *do* build rockets (they have the factories and the reason), and
+**at least one launch was a human's**, unnoticed among them.  The cordon
+is then correct about the pattern and lethally wrong about one instance
+— which is how a cordon actually fails.  **Owner's call; recorded, not
+decided.**
+
+## The knowledge tree — what a run actually accumulates
+
+⚠⚠ **This is the strongest single artefact in the 2023 material**
+([`../archive/gameplay.data`](../archive/gameplay.data), mined
+2026-08-26) and it is the thing § Future contact has been describing
+without a structure: **~55 discrete pieces of KNOWLEDGE, in arcs, each
+one a sentence the player learns.**
+
+A knowledge item is not a stat and not an unlock you buy.  It is *a
+fact about the world that the player did not have before* — and the
+arcs are ordered, so each one is the door to the next.
+
+| Arc | The chain, in the order it opens |
+|---|---|
+| **The natives** | natives known → planet fall (*a generation ship landed here in the long past*) → native culture (*towns in the mountains, left empty*) → living natives → native caves → cave entrances (*it is possible to SCAN for them*) → native contacts → the ancient City |
+| **What the natives can do** | native filters (*they clean huge volumes of polluted air*) → native hacking (*very capable in steering machines AND animals*) → native pets (*insect or robotic*) → shamans (*wise men hold significant power over the world*) → robot chaos (*some natives hacked the machines' AI cores*) → **wars** (*native factions held wars using robots and insects as soldiers*) |
+| **Sap and insects** | sap → sap defence (*insects come to defend the extraction points*) → **sap payment** (*the sap is produced as a GIFT to insect nests*) → sap battery → sap fuel → sap engineering (*greatly enhance human lifespan*) → insect society → insect nest → insect taming |
+| **The robots** | robotic mines → robotic industry → robotic bosses (*moving maintenance platforms*) → robotic reserves (*bosses hibernate till needed*) → robotic specials (*some use special materials for their weapons*) → robotic hacking |
+| **The aliens and the portal** | alien artifacts → ancient city (*it existed far before human history*) → alien travel (*mental powers, between stars*) → alien portal → activate portal → alien society (*a HIVE MIND behind the portals*) → **alien outcasts** (*some aliens are somehow fully mentally shielded*) → alien rescue (*given enough pressure the society sends RESCUE SQUADS*) |
+| **The old ones** | ancient lords (*dormant creatures of immeasurable powers*) → **lord powers** (*even during their sleep it is possible to CONTACT them*) → **awaken** (*it is unwise though possible to WAKE them*) |
+| **The company's own** | mission accomplished → economy (*some items are valuable enough to sell to other star systems*) → missing personnel → **defection** (*personnel can join competitors when not treated well*) → **army** (*the government will send their fearsome armada when somehow FORCED to*) |
+
+### ⚠⚠ Three canon questions this answers, and it answers them from BEFORE they were asked
+
+The 2023 data predates every document in `docs/`, which is what makes
+the agreements worth reading rather than dismissing:
+
+- **§ The warriors are the world's immune response** asks why the
+  warriors can stand what nobody else can, and answers *not strength*.
+  The seed says it outright: **alien outcasts — *"somehow fully
+  mentally shielded"*** — and *alien rescue* makes them **a squad the
+  hive sends under pressure**, which is exactly the immune-response
+  framing arrived at independently three years later.
+- **§ What wakes an old one is OPEN** now has a seed answer with a
+  crucial shape: **contact is possible while they SLEEP** (*lord
+  powers*), and waking is *"unwise though possible"*.  ⚠⚠ So the
+  progression is **talk first, wake later** — a player can draw on a
+  sleeping lord long before anything wakes, which makes the awakening
+  a *consequence of a relationship* rather than a switch found on a
+  map.  ⚠ It also keeps `DESIGN.md`'s many-player gate intact: being
+  able to contact one alone is not being able to wake one alone.
+- **ROBOT_ECONOMY § Open questions 4 — *what wakes the military,
+  exactly?***  The seed's answer is a knowledge item: *"the government
+  will send their fearsome armada **when somehow forced to**"*.  ⚠ That
+  is the cordon's own escalation and it belongs to § The quarantine —
+  the battleships are the standing posture, the armada is what a
+  *failure* of that posture buys.
+
+### ⚠ The rule that keeps a knowledge tree from becoming an upgrade tree
+
+⚠⚠ **Knowledge must never be an input to a formula.**  A knowledge item
+that grants *+10% hacking* is not knowledge — it is a stat wearing a
+story's clothes, and [`PROGRESSION.md`](PROGRESSION.md) has a separate
+axis (§ P2) for stats, which is where a hacking bonus belongs.
+
+The version that works: **knowledge changes what the player can ATTEMPT
+and what the map will SHOW them** — *cave entrances* means the scan
+exists at all; *sap payment* means the player understands why the
+insects come and can therefore choose to pay instead of fight; *robotic
+reserves* means a hibernating boss is a thing you can look for.  Each
+resolves into **position, terrain or timing**.
+
+⚠⚠ **And this tree is the game-state half of the DOMINANT progression**
+([`PROGRESSION.md`](PROGRESSION.md) § P0, § P4): what the *player*
+learns lives in their head and cannot be taken away, while this is what
+the *run* recorded, so a mechanic can be gated on it.  ⚠ Its own rule
+follows from § P6a — knowledge **is** the answer, so it must be
+**found** and never sold.
+
+⚠ And the arcs are **per-FACTION** in the source — `Faction.knowledge[]`
+— across nine factions: **spacers, economy, natives, shaman, robots,
+world, oceanic, ancients, aliens**.  ⚠ Six of those are already canon
+under other names; the two that are not are **`world`** (*"somehow many
+beasts on this world behave intelligently"*) and **`oceanic`**
+(*"creatures from the ocean often fight the others"*) — ⚠ note that
+*fight the others* makes the ocean a party with its own quarrel rather
+than a hazard, which is the coast biome's reason to exist.
+
 ## Future contact — humans, AIs, and the no-shortcut rule
 
 The setting has **more story beneath the validation slice**.
@@ -1610,6 +2045,13 @@ Most of the lore above is **backdrop** — the world the player
 operates within.  The player's own identity is closer-in and
 smaller-scale:
 
+⚠ **The company has a name and so does the person who took the
+contract** — see § The recruitment: **Centaur Mining**, whose head
+**Linn Everett** was talked into this by **Ian Thorne** of the
+Department of Outer Planets.  Centaur specialises in *automated
+asteroid mining* and has fought off raiders *"a couple of times"* —
+competent, and not soldiers, which is exactly the posture below.
+
 - The player is the **field-head of a small mining
   cooperative.**  Not a marine, not a government agent, not a
   freelance mercenary — a working team-leader of a small,
@@ -1709,6 +2151,109 @@ the engine doesn't need to draw the whole map, just the haze
 radius around the player.  Distant detail is *not* needed
 because it would be unrealistic to see anyway.
 
+## The biomes — six kinds of hard ground
+
+Owner's seed notes.  ⚠ **These are AUTHORING briefs, not a terrain
+generator** — `GROUND_TYPES.md` owns the palette and every map in
+`maps/` is hand-painted.  A biome is a *statement about what a base
+built here has to solve*, which is what makes it worth writing down:
+`DESIGN.md` § What kind of game this is wants every location to give a
+reason to build, and [`PROGRESSION.md`](PROGRESSION.md) § G3 wants
+height a good pilot crosses and a bad one goes round.
+
+| Biome | What it is | ⚠ The problem it sets the builder |
+|---|---|---|
+| **Moors** | hills with little growth — weather and exposure keep them bare — around enclosed valleys | ⚠ **the honest baseline**: open ground, long sight lines, nothing to hide behind.  Towers see everything and so does everything else.  A valley is the only defensible shape and there is a limited number of them |
+| **Forest** | the huge trees, growing sideways as well as up, **in multiple layers**, over hills | ⚠ `DESIGN.md` § Trees as terrain — the perimeter IS the terrain, and a layered canopy is the extreme case of § 21's open multi-level pathing question |
+| **Mountains** | steep rock, wild glaciers, bad weather — and **the settlers' cave homes** | ⚠ height everywhere, so passability does the defending and the player's boost does the commuting.  The one biome where § The settlers today live *above* rather than below |
+| **Caves** | many local creatures, rivers, and **some steered by settlers or by an AI** | ⚠⚠ **the one that needs a second everything.**  `ROBOT_ECONOMY.md` § What this deliberately does NOT design is explicit: a cavern is a HOLE in the surface map, and descending is a different game.  Cave *homes* on a mountainside are fine; a cave *level* is not |
+| **Coast** | cliffs with tidal caves, **floating plant islands**, sea monsters | ⚠ the floating islands follow from § What a tree IS — they float in salt water — so this biome is terrain that MOVES, which nothing in the mesher supports today (`plans/25`) |
+| **Swamp** | water everywhere and **few trees — but trees are what you build with** | ⚠⚠ **the sharpest brief of the six**: the material you need is the material this biome withheld, and *"many machines have a low tolerance to water"* ([`MATERIALS.md`](MATERIALS.md) § Defensive structures) makes the ground itself a weapon you can dig for |
+
+### ⚠⚠ Rock blocks radio — which is why the AI is a SURFACE power
+
+*"Layers in the ground have good protection against radio activity so
+no big AI presence."*
+
+⚠ This is the second-best piece of the seed lore after the pollen,
+because it explains — with one physical fact — everything § History
+asserts about the geography:
+
+- **Why the underground humans were never found.**  A surveillance
+  swarm that talks by radio cannot coordinate underground, so the one
+  place it does not look is the one place they live.
+- **Why the surface is robot territory and the deep is not.**  Not a
+  border anyone defends — a **propagation limit**.
+- **Why the jammer works at all.**  The player's core is a
+  *multi-frequency radio jammer* (§ The recruitment); the planet has
+  been jamming the AI with geology since the day it landed.  ⚠ The
+  player is doing artificially, in a 25-hex bubble, what a hundred
+  metres of rock does for free.
+- ⚠ **And why a cave is a hiding place rather than a shortcut.**  The
+  moment the player goes below, the AI cannot follow — which is a
+  problem, because a place the enemy cannot reach is a place the game
+  does not happen.  One more reason `ROBOT_ECONOMY.md` keeps the
+  underground as geography rather than as a level.
+
+## The competitors — the other permits
+
+⚠ **Drafted, not designed.**  The cordon issues permits (§ The
+quarantine), and the player is not the only holder.
+
+- **Other operators work the planet**, some government-approved and
+  **some not**.
+- **They may raid a site** — and ⚠ *at minimum their attempts are
+  VISIBLE on the planet*, which is the cheap version: a stripped wreck
+  field, a half-built wall, a burnt-out camp, authored into a map with
+  no new mechanism at all.
+- **They use the same infrastructure the AI does**, and so does the
+  player — *"the AI uses more or less the same infrastructure as the
+  players, so they can reuse most of what they find"*.  ⚠ That is a
+  strong authoring licence: an abandoned competitor base is a
+  **playable** base, and `DESIGN.md` § 20's persistent abandoned bases
+  already describes the shape from the player's own side.
+- **Their goals differ from the player's** — the seed notes name
+  *kidnapping settlers* as one, which puts a competitor on the wrong
+  side of § Future contact and gives the player a reason to care about
+  people they have not met yet.
+
+⚠ **The mechanical warning is the same one `ENEMY_MOVEMENT.md` gives:
+ONE AI, per-class DATA.**  A raiding competitor that needs its own
+strategy layer is a second game; a raiding competitor that is *a wave
+with different colours, arriving from a marker, wanting your cargo
+rather than your jammer* costs a row.  ⚠ Start with the traces, and
+only build the raid when a map wants one.
+
+## The endings — all four are about what happens to the AI
+
+⚠ **Sketch.**  `DESIGN.md` § 14 is explicit that there is **no fail
+screen** and a run ends when the player stops; these are *campaign*
+resolutions, not lose states.  What makes them worth recording is that
+all four resolve the same question — **what do you do with a machine
+intelligence that a person is living inside?** (§ The sci-fi twist) —
+and none of them is obviously right:
+
+| Ending | What it costs | ⚠ Why it is not the easy one |
+|---|---|---|
+| **Reprogram it** | the most work; needs AI cores, hacking levels, and contact | ⚠ this is *doing to it what the hackers did*, which § Both hackers had a MOTIVE just showed going wrong twice |
+| **Shut it down completely** | halts the whole operation — ⚠ **including the player's income**, since salvage IS the pay (§ The recruitment) | the cordon's preferred answer, and it kills a person to get it |
+| **Keep it mining** | nothing, immediately | ⚠ the *company's* answer.  It leaves the swarm hostile and the settlers hiding, and it is the one Centaur Mining's shareholders want |
+| **Set it to defend the natives and the planet's life** | gives up the salvage economy and hands the surface to the people who have been hiding from you | ⚠⚠ the one that requires having actually made contact — so it is **gated on the hardest content in the game** rather than on a final mission |
+
+⚠ **The design rule that keeps these honest**: each must resolve into
+something the player *did over many sorties*, not a menu at the end.
+§ Future contact's no-shortcut rule is the existing statement of that,
+and [`PROGRESSION.md`](PROGRESSION.md) § P6a is the general form — an
+ending bought with materials would be an upgrade supplying the answer,
+which is the one thing the fence forbids.
+
+⚠ **And note what is absent: destroying the AI in battle is not on the
+list.**  That is consistent with everything else — `DESIGN.md` § 8
+makes the player a noncombatant manager, and the end game
+(`DESIGN.md` § The end game) turns the robots into **co-belligerents**.
+The AI is a problem to be *settled*, and the game has been saying so
+since the first wave arrived thinking it was helping.
+
 ## How the setting shapes the mechanics
 
 ⚠⚠ **And the deep layers are what keep it a TOWER DEFENCE** (owner,
@@ -1791,3 +2336,11 @@ tower defence.
   framed it as "tactical campaign with relatively short
   missions"; the haywire-AI quarantine is the 2026 expansion
   of that frame.
+- [`MATERIALS.md`](MATERIALS.md) — what the wrecks are made of and what
+  a base is built from.  § The pollen is why any of it needs repairing.
+- [`../archive/seed-notes.md`](../archive/seed-notes.md) and
+  [`../archive/gameplay.data`](../archive/gameplay.data) — the seed
+  sources for § The recruitment, § The pollen, § The settlers today,
+  § The biomes and § The knowledge tree, preserved verbatim.  ⚠ Where
+  they disagree with this file, this file wins; the disagreements are
+  listed in [`DESIGN_HISTORY.md`](DESIGN_HISTORY.md) §§ 4-5.

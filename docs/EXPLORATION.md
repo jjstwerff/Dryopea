@@ -31,19 +31,36 @@ are one row of data.
 
 ---
 
-## X0 — the progression is SKILL  →  moved to [`PROGRESSION.md`](PROGRESSION.md)
+## X0 — progression  →  moved to [`PROGRESSION.md`](PROGRESSION.md)
 
 ⚠ **This section MOVED** (2026-08-15).  It answered *what exploration is FOR* —
-the landscape is where the player learns to fly, and the base is where that
-competence cashes out — and it grew into a subject of its own.
+the landscape is where the player learns, and the base is where that competence
+cashes out — and it grew into a subject of its own.
 
-[`PROGRESSION.md`](PROGRESSION.md) owns it now: `@X016` (skill, not stats),
-`@X017` (⚠⚠ the vehicle must not get faster), `@X018` (the landscape is a
-school), `@X019` (the base is the exam, and there is a racing line).
+⚠⚠ **And it was REWRITTEN on 2026-08-26, in a way that changes what this
+document is written against.**  `PROGRESSION.md` used to say the progression
+*was* the player's own skill with the controls and refused a character-stat
+layer.  The owner has ruled otherwise: progression runs on **several axes**,
+the crew are characters with skills, and the model is **Blue Prince** —
+information and the player's own build choices dominate, while build speed,
+repair speed and detection radius smooth a long campaign.  `@X016` and `@X017`
+are **superseded**; `@X018` and `@X019` stand with a wider reading.
+
+⚠⚠ **Two of the new rulings are ABOUT exploration and belong in view here:**
+
+- **`@X122` — the RULES are learnable, the INSTANCE is not.**  Enough varies
+  per scenario that a veteran *roughly knows what to expect and cannot predict
+  everything*.  ⚠ **This is what stops a knowledge-dominant progression from
+  solving the game**, and it is the reason everything below has a future: the
+  world's rules are stable, the map in front of you is not.
+- **`@X123` — scouting is how rules-knowledge becomes instance-knowledge, every
+  run.**  ⚠ So the veteran scouts **faster and better, never less**, and § X1's
+  four rings stay a gradient rather than becoming a checklist.
 
 ⚠ The pointer stays rather than the section being deleted, because everything
 below is written against it: § X2c's *find it early* and § X2d's permit are both
-pressures on a player who is trying to get **good**, not merely rich.
+pressures on a player who is trying to convert an unknown map into a build
+decision before the clock runs out.
 
 ---
 
