@@ -3896,6 +3896,92 @@ product.**  ⚠ Which is [`../plans/ROADMAP.md`](../plans/ROADMAP.md)
 missing mechanic**, and *building a base* is the first thing almost
 everybody who ever plays this will try to do.
 
+#### ⚠⚠ A CAPPED SEMI-OPEN SERVER, and MANY of them  `@X241`
+
+Owner, 2026-08-26:
+
+> *"beside the influx of players to a semi-open server (max player
+> count), we can allow multiple servers, or even player groups to start
+> their own server."*
+
+⚠⚠ **The cap is not a technical limit — it is what makes the social
+layer PERCEPTIBLE.**  Everything in this section depends on the world
+being *legible*: you notice robots stopped dying in somebody's region,
+you hear an outfit lost its berth, you find somebody's cache.
+
+> ⚠⚠ **Among ten thousand players none of that reads.**  A stranded
+> helper in a crowd is noise; **among forty it is a story.**
+
+⚠ So the cap serves `@X227` (leftovers must be findable), `@X228`
+(trajectories must be visible) and `@X233` (you must *notice* an ally
+shifted).  **Legibility has a population size.**
+
+#### ⚠⚠ And MANY servers is what resolves the cap against `@X236`'s inflow
+
+⚠ `@X236` needs **arrivals** to stop a world converging; a cap **limits**
+arrivals.  ⚠⚠ **Multiple servers dissolve it: inflow goes to new worlds
+rather than saturating one**, which is why the two halves of the owner's
+sentence belong together.
+
+⚠⚠ **It also gives `@X237` its honest ending.**  *Nothing may permanently
+close* is right **within a world's life** — but a world may itself have a
+life.  ⚠ If one eventually runs its course, **the answer is not a wipe:
+it is that other worlds exist**, and that one becomes a history.
+
+> ⚠⚠ **The lifecycle is per-WORLD, not per-player.**
+
+#### ⚠⚠ The server boundary is decided by the design's own progression split  `@X242`
+
+⚠ Does a player's campaign carry to another server?  **The answer falls
+straight out of `@X117` and `@X238`:**
+
+| ⚠⚠ crosses servers | ⚠⚠ does NOT |
+|---|---|
+| **what the player KNOWS** — it lives in their head and cannot be taken (`@X117`, § P1c) | **crew, standing, carryover, caches** — the purchasable axes |
+
+⚠⚠ **Knowledge crosses; assets do not.**  ⚠ Which means joining a new
+world is a genuine restart — and `@X120` already says that is **fine**:
+a returning player skips the ramp **with knowledge, not with assets**.
+
+⚠ **And it protects the new world**: a veteran landing with a deep crew
+would flatten its early game, which is the one thing `@X238` says most
+players will ever see.
+
+#### ⚠ A "server" here is a SHARED STORE, not a live host  `@X243`
+
+⚠⚠ Worth stating plainly, because *server* suggests real-time
+infrastructure and this design does not need it: `@X182` established that
+**every asynchronous feature needs only a shared store** — the market,
+crew rescue, caches, homesteads, attacks on offline bases.
+
+> ⚠⚠ **So a server is a persistent world-state store plus identity.**
+> Only `@X179`'s team matches want a live host, and those are behind
+> their own trigger.
+
+⚠ Which is what makes *"player groups start their own server"* cheap
+enough to mean anything, and it puts self-hosting within reach of the
+same people who would run a game's community.
+
+#### ⚠⚠ Which means SCALE MUST NOT BE ASSUMED  `@X244`
+
+⚠ A five-player friends' world and a capped public one are different
+places, and **features must degrade rather than require population**:
+
+| at low population | ⚠ what carries the load |
+|---|---|
+| few traders, thin market | **NPC traders** (`@X204`) — already the mechanism |
+| no rivals | **NPC competitors** (`@X170`, `@X226`) — already designed as the single-player fallback |
+| no coalition politics | ⚠⚠ **`@X229`'s guard**: the planet is the primary tap, so a player who meets no politics still has the whole game |
+
+⚠⚠ **The political layer must therefore be EMERGENT AND OPTIONAL, never
+required** — which it already is, and this is the reason to keep it that
+way.
+
+⚠ **And it completes `@X221`'s safety net**: a world the author does not
+run, populated by people they do not know, is **the strongest version of
+*other players are the seed*.**  They can join somebody else's server and
+know nothing about its history at all.
+
 #### ⚠ Which makes one rule mandatory: NOTHING MAY PERMANENTLY CLOSE  `@X237`
 
 ⚠⚠ **Inflow only helps if there is somewhere to arrive INTO.**  If a
