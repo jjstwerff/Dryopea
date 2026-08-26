@@ -34,7 +34,8 @@ Codes: `@X016`, `@X017` **superseded**; `@X103` **reversed**; `@X018`,
 `@X019` stand with a wider reading; `@X111`–`@X136` are the design
 below, and `@X137`–`@X141` (no tutorial) are `DESIGN.md` § 11's;
 `@X142`–`@X143` are the speaker rule and `@X144`–`@X149` the debrief and `@X150`–`@X151` what the crew
-can know at all, and `@X152`–`@X156` the window into the universe.  Index: [`DECISIONS.md`](DECISIONS.md).
+can know at all, `@X152`–`@X156` the window into the
+universe, and `@X157`–`@X158` personality.  Index: [`DECISIONS.md`](DECISIONS.md).
 
 ## P0 — ⚠⚠ the model is BLUE PRINCE: information dominates, and friction is what upgrades buy
 
@@ -1289,6 +1290,108 @@ mystery**, which is exactly what a window should do.
 campaign's engagement, the debrief, and now the entire delivery of
 `SETTING.md`.  **A font file is the highest-leverage missing piece in
 the project**, and nothing else in the design is close.
+
+### ⚠⚠ P2h — they have real PERSONALITY: class decides what they notice, voice decides how they say it  `@X157`
+
+Owner, 2026-08-26:
+
+> *"as characters they should show real personality.  A miner has a
+> different way to respond than a scout, a hacker or a researcher."*
+
+⚠⚠ **This is a second axis, not a restatement of § P2c.**  Everything so
+far governs **what** a crew member notices — domain (`@X129`), habits of
+attention (`@X150`), where they stood (`@X148`).  ⚠ **None of it governs
+how they SOUND**, and four people reporting the same fact should be four
+recognisably different people.
+
+| the ex- | professional register, and where it comes from |
+|---|---|
+| **miner** | ⚠ **plain and physical.**  Talks in what a thing would take — *"that's two days of cutting"* — because a mine measures everything in effort |
+| **scout** | ⚠ **terse, positional, present-tense.**  Reports the way somebody reports over a radio while moving: *"movement, past the ridge, three of them"* |
+| **hacker** | ⚠ **oblique and amused**, interested in how a thing is put together rather than what it is for.  ⚠ [`SETTING.md`](SETTING.md) makes this the loaded one — hacking a machine's mind is the founding act of this planet's history |
+| **researcher** | ⚠ **hedged and precise**, qualifies everything, will not commit past the evidence.  *"It may be the ground.  I would want to see it again."* |
+| **security** | ⚠ **clipped, worst-case first.**  Names the threat before the situation |
+| **handyman** | ⚠ **grumbling, particular, proprietary about the machines.**  Talks about kit as if it were owed something |
+
+⚠ **The 2023 data already carries the classes** (§ P2b) and gives each a
+one-line description — *"quite useless outside of gaining knowledge"* for
+the researcher, *"technologist that uses equipment in non-intended ways"*
+for the hacker.  ⚠⚠ **What it does not carry is a voice**, and that is
+the new authoring field.
+
+#### ⚠⚠ Personality reaches WORDING and EMPHASIS — never the FACTS
+
+`@X148` is absolute: nothing a crew member says is false.  ⚠ Personality
+must not become a fourth distortion on top of selection, emphasis and
+omission — it slots into the ones already there:
+
+| layer | driven by |
+|---|---|
+| **the facts** | ⚠⚠ **fixed and always true** — personality does not reach here at all |
+| **selection and omission** | position and domain, primarily |
+| **emphasis** | domain, and ⚠ *secondarily* temperament — a cautious miner mentions the fracture, a bold one mentions the ore.  Both saw both |
+| **wording and register** | ⚠⚠ **purely personality** |
+
+⚠ **So a blunt person and a hedging person report the same fact**, and
+the player who has learned to read them extracts the same information
+from either — just faster from one.  That keeps § P2f's triangulation
+honest: **the differences are in the telling, and the telling is
+learnable** (`@X147`).
+
+#### ⚠⚠ The authoring cost is the real constraint — so it is a FILTER, not a matrix
+
+⚠ The trap: if every line is written per **(class × personality ×
+situation)**, the content budget explodes combinatorially and the feature
+dies of authoring.
+
+⚠⚠ **The affordable shape is two stages, and it is the same shape
+`@X148` already uses:**
+
+```
+   situation  ──(domain: what would this class notice?)──▶  a true thing to say
+                                                                    │
+                          (voice: how does this person say it?)  ◀──┘
+```
+
+⚠ **Content is picked by domain; the voice colours the phrasing.**  So
+authoring is **additive** — a new class costs its observations, a new
+voice costs a register — rather than multiplicative.  ⚠⚠ And it is the
+same *filter over a true event list* the debrief already needs, with one
+more stage bolted on the end.
+
+#### ⚠ Two rules that keep a personality from being a liability
+
+| rule | why |
+|---|---|
+| ⚠⚠ **Personality changes how PLEASANT or QUICK a source is — never whether it is a source** | a player who finds the researcher's hedging tiresome may avoid them, and that is a **real choice with a real cost** (they lose that domain).  ⚠ But a personality that makes somebody's information *unusable* punishes the player for hiring them, and § P2b's template choice stops being a decision |
+| ⚠ **Clashing temperaments belong in CHATTER, not in mechanics** | two crew who rub each other are excellent § P2g material.  ⚠⚠ But a compatibility table that changed **work efficiency** would be `@X131`'s affinity bar with extra steps — the thing that section refuses.  Keep the friction *audible* and out of the numbers |
+
+#### ⚠⚠ And this is what makes the empty chair hurt
+
+§ P2f notes that a helper left behind is **not there to be debriefed**,
+and § P2e makes going back for them the campaign's best story beat.
+
+⚠⚠ **Both of those only land if the player would MISS the person.**  You
+do not miss *a scout*; you miss the one who reported in three words and
+was always right about the ridge.  ⚠ **Personality is what converts the
+roster from a loadout into a crew** — and without it, `DESIGN.md` § 9's
+stranded-helper rescue is a fetch quest for a unit.
+
+⚠ It is also what makes `@X151` audible as *people learning* rather than
+as a counter going up: the researcher stops hedging about the ground,
+because by the tenth base they have seen it three times.
+
+#### ⚠ Individual variation on top of class — natural, and flagged as an extension
+
+The owner's ruling is that **the class carries the voice**, which is the
+cheap and legible version: hire a researcher, get a researcher.
+
+⚠ Two people of the same class differing is the obvious extension and it
+is *not* free — it needs a personality field independent of class, and
+the authoring stays additive only if a voice is a **small named set**
+(*cautious, bold, dry, warm, sour*) rather than a stat block.  ⚠⚠ **Never
+numbers**: a *"cautious: 7"* field is the RPG-affinity trap in new
+clothes, and it would need a UI that `@X156` refuses.
 
 ### ⚠⚠ P2e — the relationships are a LEDGER of what happened, never an affinity bar  `@X131`
 

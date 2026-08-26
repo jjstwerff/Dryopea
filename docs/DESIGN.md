@@ -1756,6 +1756,14 @@ the order system** rather than a hint layer bolted beside it.  ⚠ **One
 speaks, never six**: pick the idle helper whose skills best match where
 the player is standing.
 
+⚠⚠ **And they are people rather than sources** (`@X157`,
+[`PROGRESSION.md`](PROGRESSION.md) § P2h): the class decides what a
+helper notices and their **voice** decides how they say it — a miner
+talks in effort, a scout in terse position reports, a researcher hedges.
+⚠ It reaches wording and emphasis and **never the facts**.  ⚠⚠ It is
+also what makes § Stranded helpers land: **you do not miss *a scout***,
+you miss the one who reported in three words.
+
 ⚠⚠ **A helper's past job is their template, and it is AUDIBLE**
 (`@X129`, [`PROGRESSION.md`](PROGRESSION.md) § P2c).  An ex-asteroid
 miner, an ex-security officer, an ex-repair handyman and an ex-scout
