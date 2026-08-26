@@ -3827,6 +3827,75 @@ ecology: a population with arrivals at the bottom and progression
 upward **holds every phase permanently**, so every conflict this design
 describes stays live.
 
+#### ⚠⚠ MOST PLAYERS NEVER REACH THE END GAME — and they must still matter  `@X238`
+
+Owner, 2026-08-26:
+
+> *"I expect a lot of players to be satisfied with playing a couple of
+> scenarios, so they have an influence but do not reach the end game
+> themselves."*
+
+⚠ **This corrects the shape of `@X236`'s distribution.**  It is not a
+pipeline everybody flows along — ⚠⚠ **it is heavily weighted at the
+early and middle phases with a thin tail**, and that is *better* for the
+ecosystem: the anti-robot layer is **permanently and robustly
+populated**, not merely topped up.
+
+#### ⚠⚠ A short player's contribution is DISPROPORTIONATE, because the world KEEPS it
+
+| a few scenarios produce | and it persists |
+|---|---|
+| **salvage** | which feeds the market — and `@X166`: a trader with no sortie-runners has nothing |
+| **routes cut, throughput denied** | perturbing the robot economy |
+| ⚠⚠ **bases left behind, caches, stranded crew** | **content for everybody else, for ever** (`@X174`, `@X227`) |
+| **trades** | moving trader standing and the general trend |
+
+> ⚠⚠ **You do not have to keep playing for your play to keep counting.**
+> Three bases played and abandoned are three bases **in the world**.
+
+#### ⚠⚠ Which makes one thing mandatory: NOTHING IMPORTANT MAY REQUIRE DEPTH TO INFLUENCE  `@X239`
+
+⚠ If the only levers that matter are end-game ones, **the majority of
+players are decoration.**  Two places this bites, and one is a real
+constraint on a decision above:
+
+- **the market must move on ordinary salvage volume**, not only on rare
+  goods;
+- ⚠⚠ **station investment (`@X213`) must AGGREGATE BREADTH, not only
+  depth.**  If centrality is winner-take-all, a casual player has none
+  — so many small positions must be able to outweigh a few deep ones.
+  **The politics is a coalition problem, which is what makes it
+  political at all.**
+
+#### ⚠⚠ And it corrects how § WORLD EVENTS was framed  `@X240`
+
+⚠ § dryopea has spent this whole design building the trigger inputs says
+*"only an invested player has accumulated enough state for the
+interesting conditions to be true."*  ⚠⚠ **True of the deep events, and
+if that is ALL there is, the event system serves a tiny minority.**
+
+> ⚠⚠ **The distribution of TRIGGER DEPTHS must match the distribution of
+> PLAYERS.**  Most events should fire **early** — on one or two facts,
+> in the first few sorties — with the compound conditions as the rare
+> tail.
+
+⚠ That is `@X220`'s *rare content must be cheap* pointed at the other
+end: **common content must fire for people who will never come back**,
+and `BLOCKS.md`'s own phase-1 example is exactly that shape — *"they are
+docked with a cargo.  One fact."*
+
+⚠ **It also reinforces `DESIGN.md` § 14**: a player who stops after three
+bases has not lost.  They had a run, it produced carryover they will
+never spend, and **the world kept what they did.**
+
+#### ⚠⚠ And it points straight back at the near-term priority
+
+⚠⚠ **If most players only ever see the early game, the early game is the
+product.**  ⚠ Which is [`../plans/ROADMAP.md`](../plans/ROADMAP.md)
+§ The critical path unchanged and sharpened: **BUILDING is the biggest
+missing mechanic**, and *building a base* is the first thing almost
+everybody who ever plays this will try to do.
+
 #### ⚠ Which makes one rule mandatory: NOTHING MAY PERMANENTLY CLOSE  `@X237`
 
 ⚠⚠ **Inflow only helps if there is somewhere to arrive INTO.**  If a

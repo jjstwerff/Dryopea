@@ -52,6 +52,12 @@ moves drawing up the list.
 
 ### ⚠⚠ Why BUILDING is the load-bearing gap
 
+⚠⚠ **And 2026-08-26 sharpened it** (`@X238`, `@X240`): the owner expects
+**most players to play a couple of scenarios and never reach the end
+game**.  ⚠⚠ **So the early game IS the product for almost everybody who
+ever plays this** — and *building a base* is the first thing they will
+try to do.
+
 Walls and towers are placed in the **editor** today
 ([`plan 19`](19-the-interactive-loop/README.md) § What this plan does NOT build).
 The player cannot make a base.  Three completed designs are written against that
