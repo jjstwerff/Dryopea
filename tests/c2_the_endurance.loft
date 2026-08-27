@@ -1,0 +1,258 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// BACKLOG C2 — endurance: work spends it, rest restores it.
+//
+// ⚠⚠ **The claim: a crew member working flat out gets slower, recovers
+// when they stop, and a base short enough to be in the corpus never
+// reaches either.**  That last clause is what the 687 gate measurements
+// rest on, and it is asserted here rather than hoped for.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+fn pal() -> vector<GroundType> { load_palette(PALETTE) }
+
+fn field() -> EditorState {
+    s = editor_state_new(PALETTE);
+    for f_q in -8..9 {
+        for f_r in -6..7 { paint(s.pw, f_q, f_r, as_u8(5)); }
+    }
+    place_marker(s.mw, 0, 0, MARKER_KIND_TARGET, as_u8(0));
+    s
+}
+
+// ─── The pool ───────────────────────────────────────────────────
+
+// @DRY-117 — fresh is EXACTLY full rate, and tiring is a ramp to a floor
+//
+// ⚠ The flat region is the design's (`PROGRESSION.md` refuses a cliff),
+// and the early return that makes it exactly 1.0 is the guard: a float
+// ramp that happened to start at 1.0 would round somewhere and move a
+// clock nobody touched.
+fn test_fresh_is_full_rate_and_tiring_ramps_to_a_floor() {
+    e = endurance_new();
+    fresh = endurance_factor(e);
+
+    endurance_work(e, ENDURANCE_FRESH_UNITS);
+    edge = endurance_factor(e);
+
+    endurance_work(e, (ENDURANCE_POOL_UNITS - ENDURANCE_FRESH_UNITS) / 2);
+    half = endurance_factor(e);
+
+    endurance_work(e, ENDURANCE_POOL_UNITS);
+    empty = endurance_factor(e);
+
+    assert(fresh == 1.0 && edge == 1.0 && half < 1.0 && half > ENDURANCE_TIRED_FLOOR
+           && empty == ENDURANCE_TIRED_FLOOR
+           && endurance_spent(e) == ENDURANCE_POOL_UNITS,
+           "full rate until tired, then a ramp to a floor: fresh={fresh} at_threshold={edge} half_spent={half} empty={empty}");
+}
+
+// ⚠ The pool does not go past its ends — work cannot tire somebody
+// beyond empty, and rest cannot take them past rested.
+fn test_the_pool_has_two_ends() {
+    e = endurance_new();
+    endurance_rest(e, ENDURANCE_POOL_UNITS);
+    still_full = endurance_spent(e);
+
+    endurance_work(e, ENDURANCE_POOL_UNITS * 10);
+    capped = endurance_spent(e);
+
+    assert(still_full == 0 && capped == ENDURANCE_POOL_UNITS
+           && endurance_left(e) == 0,
+           "rested stays rested and spent stops at spent: {still_full} / {capped}");
+}
+
+// ⚠⚠ **Skill makes you PRODUCTIVE, not TIRELESS.**  Two crew members
+// doing the same tick of work tire by exactly the same amount, and the
+// trained one simply gets more done.
+fn test_skill_does_not_make_anybody_tireless() {
+    p = pal();
+    pw = field();
+    bl_p = build_layer_empty();
+    bl_k = build_layer_empty();
+    order_place(p, pw.pw, bl_p, 2, 0, BUILD_GROUND, as_u8(10));
+    order_place(p, pw.pw, bl_k, 2, 0, BUILD_GROUND, as_u8(10));
+
+    plain = helper_new(2, 0);
+    keen  = helper_new(2, 0);
+    keen.skills.build = 5;
+
+    // ⚠ Through the WORK SITE, because `crew_work_units` is pure: it
+    // answers what a tick is worth and the site is what tires anybody.
+    plain_did = helper_build(plain, p, bl_p, TICK_STEP_UNITS);
+    keen_did  = helper_build(keen,  p, bl_k, TICK_STEP_UNITS);
+
+    assert(order_spent(bl_k, 2, 0) > order_spent(bl_p, 2, 0)
+           && endurance_spent(plain.endurance) == endurance_spent(keen.endurance)
+           && endurance_spent(keen.endurance) == TICK_STEP_UNITS,
+           "same tiredness, more done: untrained={order_spent(bl_p, 2, 0)} trained={order_spent(bl_k, 2, 0)} tired_by {endurance_spent(plain.endurance)}/{endurance_spent(keen.endurance)}");
+}
+
+// ─── It reaches the game ────────────────────────────────────────
+
+// @DRY-118 — a tired builder is slower at the same wall
+fn test_a_tired_builder_is_slower() {
+    p = pal();
+    fresh_t = 0;
+    tired_t = 0;
+
+    for tb_spent in [0, ENDURANCE_POOL_UNITS] {
+        tb_s = field();
+        tb_ps = play_state_new();
+        play_set_mode(tb_ps, tb_s, true);
+        tb_h = helper_new(2, 0);
+        tb_h.endurance.spent = tb_spent;
+        tb_ps.wave.crew += [tb_h];
+        order_place(p, tb_s.pw, tb_ps.wave.orders, 2, 0, BUILD_GROUND, as_u8(9));
+
+        tb_t = 0;
+        while tb_t < 200 && order_at(tb_ps.wave.orders, 2, 0) {
+            play_ticks(tb_ps, tb_s, 1);
+            tb_t += 1;
+        }
+        if tb_spent == 0 { fresh_t = tb_t; } else { tired_t = tb_t; }
+    }
+
+    assert(fresh_t == 15 && tired_t > fresh_t && tired_t < 200,
+           "a spent crew member still builds, just slowly: fresh={fresh_t} spent={tired_t}");
+}
+
+// ⚠⚠ **And a spent crew member is SLOW, never useless** — the cliff
+// `PROGRESSION.md` refuses.  Without a floor the wall above would never
+// finish at all.
+fn test_a_spent_crew_member_still_finishes() {
+    p = pal();
+    s = field();
+    ps = play_state_new();
+    play_set_mode(ps, s, true);
+    h = helper_new(2, 0);
+    h.endurance.spent = ENDURANCE_POOL_UNITS;
+    ps.wave.crew += [h];
+    order_place(p, s.pw, ps.wave.orders, 2, 0, BUILD_GROUND, as_u8(9));
+    play_ticks(ps, s, 200);
+    assert(lookup_painted(s.pw, 2, 0) == as_wall_kind(p),
+           "the wall goes up in the end: {lookup_painted(s.pw, 2, 0)}");
+}
+
+// ─── Rest ───────────────────────────────────────────────────────
+
+// @DRY-119 — a crew member with nothing to do recovers
+fn test_an_idle_crew_member_recovers() {
+    s = field();
+    ps = play_state_new();
+    play_set_mode(ps, s, true);
+    h = helper_new(5, 5);
+    h.endurance.spent = ENDURANCE_POOL_UNITS;
+    ps.wave.crew += [h];
+
+    before = endurance_spent((ps.wave.crew[0] ?? Helper { }).endurance);
+    play_ticks(ps, s, 30);
+    after = endurance_spent((ps.wave.crew[0] ?? Helper { }).endurance);
+
+    assert(before == ENDURANCE_POOL_UNITS && after < before,
+           "standing about is how you get it back: {before} -> {after}");
+}
+
+// ⚠⚠ **But WORKING outpaces the rest**, which is the whole reason the
+// rest pass can run unconditionally with nothing to co-ordinate.
+fn test_working_outpaces_the_rest() {
+    p = pal();
+    s = field();
+    ps = play_state_new();
+    play_set_mode(ps, s, true);
+    ps.wave.crew += [helper_new(2, 0)];
+    // A wall_high is 20 s of work, so there is something to keep at.
+    order_place(p, s.pw, ps.wave.orders, 2, 0, BUILD_GROUND, as_u8(10));
+
+    play_ticks(ps, s, 20);
+    worked = endurance_spent((ps.wave.crew[0] ?? Helper { }).endurance);
+
+    assert(worked > 0 && worked < 20 * TICK_STEP_UNITS,
+           "a worker tires, and by less than the raw time because rest never stops: {worked} of {20 * TICK_STEP_UNITS}");
+}
+
+// ─── ⚠⚠ The corpus cannot reach it ──────────────────────────────
+
+// **THE ASSERTION THE 687 MEASUREMENTS REST ON.**  A crew member
+// working flat out needs hundreds of ticks to reach the tired
+// threshold, and the longest base the corpus plays falls at 321
+// (`@M005`).  ⚠ It is a fact about the CONTENT being short, not about
+// the mechanic being off — so if a base ever gets long enough, this
+// goes red and says the clocks are about to move.
+fn test_no_base_in_the_corpus_can_tire_anybody() {
+    // Net cost of a tick of continuous work: spent, less the rest that
+    // every tick returns.
+    net = TICK_STEP_UNITS - TICK_STEP_UNITS / ENDURANCE_REST_DIVISOR;
+    ticks_to_tire = ENDURANCE_FRESH_UNITS / net;
+    assert(net > 0 && ticks_to_tire > 400,
+           "a flat-out crew member must outlast any base the corpus can build (321 ticks): {ticks_to_tire} ticks to the threshold");
+}
+
+// ⚠ And the reading that proves it end to end: a helper kept busy for
+// two hundred ticks — most of the longest base in the repo — is still
+// at full rate.
+//
+// ⚠⚠ **Seven `wall_high` orders, and the number is forced**: a helper
+// that is given no destination never MOVES, so the only work it can
+// ever reach is its own hex and the six around it.  The first version
+// of this test laid thirteen orders down a column, the helper finished
+// the three within reach, rested for the remaining two hundred and
+// fifty ticks, and read **zero spent** — a fixture that measured a crew
+// member with nothing to do.
+fn test_a_long_stretch_of_work_leaves_the_crew_fresh() {
+    p = pal();
+    s = field();
+    ps = play_state_new();
+    play_set_mode(ps, s, true);
+    ps.wave.crew += [helper_new(2, 0)];
+
+    tf_home = Hex { q: 2, r: 0 };
+    order_place(p, s.pw, ps.wave.orders, 2, 0, BUILD_GROUND, as_u8(10));
+    for tf_d in 0..6 {
+        tf_n = lat_neighbour(tf_home, tf_d);
+        order_place(p, s.pw, ps.wave.orders, tf_n.q, tf_n.r, BUILD_GROUND, as_u8(10));
+    }
+    tf_placed = order_count(ps.wave.orders);
+
+    play_ticks(ps, s, 200);
+    h = ps.wave.crew[0] ?? Helper { };
+
+    assert(tf_placed == 7 && endurance_spent(h.endurance) > 100000000
+           && endurance_factor(h.endurance) == 1.0,
+           "two hundred ticks of work is still full rate: placed={tf_placed} spent={endurance_spent(h.endurance)} of {ENDURANCE_FRESH_UNITS} factor={endurance_factor(h.endurance)}");
+}
+
+// ─── The state ──────────────────────────────────────────────────
+
+// ⚠ `Helper` gained a field, and `compare.loft`'s list is
+// HAND-MAINTAINED — without a row there two crews at different
+// tiredness read as identical.
+fn test_state_diff_sees_the_endurance() {
+    a = wave_state_empty();
+    b = wave_state_empty();
+    a.crew += [helper_new(1, 0)];
+    b.crew += [helper_new(1, 0)];
+    same = state_diff(a, b);
+    endurance_work((a.crew[0] ?? Helper { }).endurance, 500000);
+    differs = state_diff(a, b);
+    assert(same == "" && differs.contains("endurance"),
+           "how tired somebody is, is part of the state: none='{same}' differs='{differs}'");
+}
+
+// ⚠ And the default is RESTED — [loft#914] again, and the direction it
+// has to fall in: storing what is LEFT would make every partial literal
+// a crew member who is already exhausted.
+fn test_a_fresh_helper_is_rested() {
+    h = helper_new(0, 0);
+    partial = Helper { q: 1, r: 1 };
+    assert(endurance_spent(h.endurance) == 0
+           && endurance_spent(partial.endurance) == 0
+           && endurance_factor(partial.endurance) == 1.0,
+           "nobody arrives tired: {endurance_spent(h.endurance)}");
+}

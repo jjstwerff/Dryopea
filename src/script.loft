@@ -1249,7 +1249,7 @@ fn is_author_cmd(name: text) -> boolean {
     name == "tower" || name == "object" || name == "spent"
     || name == "player" || name == "member" || name == "pending"
     || name == "cursor" || name == "flag" || name == "order"
-    || name == "skill"
+    || name == "skill" || name == "tired"
 }
 
 // Read an on/off word.  -1 when it is neither, so a caller can refuse.
@@ -1487,6 +1487,27 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         sa_sh.skills.build  = sa_sb ?? 0;
         sa_sh.skills.repair = sa_sr ?? 0;
         sa_sh.skills.scout  = sa_ss ?? 0;
+        return "";
+    }
+
+    // How TIRED a crew member is, in seconds of work spent (BACKLOG C2).
+    //
+    // ⚠ Seconds on the page and base units in the record, like every
+    // other clock a `.keys` file writes.  ⚠ A verb of its own rather
+    // than a sixth argument on `member`: that one says what a helper's
+    // CONDITION is in the world, and this says what is left in them.
+    if sa_cmd == "tired" {
+        if sa_argc != 2 { return "tired needs <i> <seconds-spent>"; }
+        sa_ti = (tok[1] ?? "") as integer?;
+        if sa_ti == null { return "tired: <i> must be an integer"; }
+        sa_tin = sa_ti ?? 0;
+        if sa_tin < 0 || sa_tin >= len(run.play.wave.crew) {
+            return "tired: no helper {sa_tin} — the crew is {len(run.play.wave.crew)} strong";
+        }
+        sa_ts = (tok[2] ?? "") as float?;
+        if sa_ts == null { return "tired: <seconds-spent> must be a number"; }
+        sa_th = run.play.wave.crew[sa_tin] ?? Helper { };
+        sa_th.endurance.spent = clock_units_from_seconds(sa_ts ?? 0.0);
         return "";
     }
 

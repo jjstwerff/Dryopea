@@ -43,6 +43,7 @@ use carry;
 use build;
 use errand;
 use skill;
+use endure;
 use waves;
 use fixstep;
 
@@ -1976,6 +1977,15 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
         wt_hsalv = helper_salvage(wt_hs, state.heights, TICK_SECONDS);
         if wt_hsalv.metres > 0.0 {
             wallet_earn(state.wallet, loot_rate(wt_hsalv.source) * wt_hsalv.metres);
+            // ⚠ Clearing a heap is WORK and tires like any other
+            // (BACKLOG C2) — but it is not scaled by endurance, and
+            // that is deliberate: `salvage_at` is the PLAYER's rule on
+            // the player's chassis (`vehicle.loft`), shared so the two
+            // read one implementation, and giving the crew's copy a
+            // second rate would be the second door plan 13 V2 deleted.
+            // A tired crew member clears a heap just as fast and is
+            // slower at the two jobs that are theirs alone.
+            endurance_work(wt_hs.endurance, TICK_STEP_UNITS);
         }
     }
 
@@ -2008,6 +2018,17 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     // call to a local panics the parser
     // ([loft#918](https://github.com/loft-lang/loft/issues/918)).
     wave_repair(state, mw, TICK_STEP_UNITS);
+
+    // ⚠⚠ **Everybody recovers a little, every tick** (BACKLOG C2), and
+    // working simply outpaces it — which is what lets the three jobs
+    // above spend independently with nothing to co-ordinate.
+    //
+    // ⚠ After all three, so a tick's rest can never be spent by a job
+    // that had not run yet; and before the deaths, so a crew member
+    // wrecked this tick has already had the tick they worked in.
+    for wt_hr in state.crew {
+        if wt_hr.alive { endurance_rest(wt_hr.endurance, TICK_STEP_UNITS); }
+    }
 
     wave_deaths(state);
 
@@ -2342,9 +2363,18 @@ fn wave_repair(state: WaveState, mw: const MarkerWorld,
             // route to winning by personal power and `DESIGN.md` § 8's
             // noncombatant pilot is what did not move.  The crew get
             // better at working; nobody gets better at flying.
-            if tower_repair_tick(state.towers, wr_ht.q, wr_ht.r,
-                                 skill_work_units(wr_h.skills.repair, elapsed)) {
-                wr_done += 1;
+            //
+            // ⚠⚠ **Asked BEFORE the work, so nobody tires repairing
+            // nothing** (BACKLOG C2).  `crew_work_units` used to spend
+            // endurance itself and is an ARGUMENT here, so every helper
+            // in the roster was charged a tick of repair whether or not
+            // there was a black tower within reach.
+            if tower_repairable(state.towers, wr_ht.q, wr_ht.r) {
+                endurance_work(wr_h.endurance, elapsed);
+                if tower_repair_tick(state.towers, wr_ht.q, wr_ht.r,
+                                     crew_work_units(wr_h, wr_h.skills.repair, elapsed)) {
+                    wr_done += 1;
+                }
             }
         }
         wr_ci += 1;

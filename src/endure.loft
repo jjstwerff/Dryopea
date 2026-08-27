@@ -1,0 +1,166 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// ENDURANCE — work spends it, rest restores it.
+//
+// BACKLOG C2, `@X113`.  The seed notes: *"individual humans can have
+// skills and different pool levels.  So they need rest/sleep."*
+//
+// ⚠ **The crew-side of the tower's charge.**  `DESIGN.md` § 7 gives a
+// tower a budget that decays per shot and only a player standing at it
+// can refill; this is the same shape for a person, and it is what makes
+// a long sortie cost something besides the permit window
+// (`EXPLORATION.md` § X2d).
+//
+// ── ⚠⚠ A tired person works LESS, and never stops ───────────────
+//
+// `PROGRESSION.md` § A shape worth considering says it in one line —
+// *a tired person works less, therefore practises less, therefore
+// learns less* — and that is the whole mechanic.  ⚠ **Not a cliff**:
+// the same section refuses a hard cap because *once it is hit, the
+// rest of the sortie teaches nothing*, so the pool bottoms out at a
+// FLOOR rather than at zero and a spent crew member is slow rather
+// than useless.
+//
+// ── ⚠⚠ Skill makes you PRODUCTIVE, not TIRELESS ─────────────────
+//
+// A work door spends the **raw elapsed** — the time the person put in —
+// and never the scaled output.  So a trained builder gets more done for
+// the same tiredness, and training never makes anybody able to work
+// longer.  ⚠ Spending the output instead would make skill pay twice and
+// make an untrained crew member tire slower than a trained one for the
+// same wall, which is backwards.
+//
+// ── Rest is CONTINUOUS, which is why nothing has to co-ordinate ─
+//
+// ⚠⚠ Every alive crew member recovers a little every tick, and working
+// outpaces it.  The alternative — *restore only somebody who did no
+// work this tick* — needs a flag or a snapshot, because a helper's
+// three jobs (salvage, build, repair) resolve at three different points
+// in `wave_tick` and any one of them may be the one that worked.  ⚠ A
+// per-tick scratch flag on a person is a second fact about the same
+// tick, and this file exists to avoid one.
+//
+// ⚠ So the net is what tunes it: work costs `elapsed`, rest returns a
+// THIRD of it, and a crew member working flat out therefore spends two
+// thirds of every tick's worth.
+//
+// ── ⚠⚠ The numbers are CHOSEN, and today's bases cannot reach them ─
+//
+// The seed note gives no figures — the only source there is — so the
+// pool is sized from the design's own sortie instead:
+// `EXPLORATION.md` § X2d wants a 15-25 minute permit window, and
+// **today's longest base falls at 321 ticks ≈ 3.5 minutes** (`@M005`).
+// A crew member working flat out reaches the tired threshold after
+// ~675 ticks, so **no scenario in the corpus can reach it** — which is
+// why 687 gate measurements did not move, and it is a fact about the
+// content being short rather than about the mechanic being off.
+//
+// ⚠ `MATERIALS.md` § The crew are people makes *living quarters* the
+// building that restores faster.  It is not built, so the rest rate is
+// one constant here and the quarters are its multiplier when they land.
+
+use fixstep;
+
+// A full pool, in the clock's base units of work — ten minutes.
+pub const ENDURANCE_POOL_UNITS: integer = 1800000000;
+
+// How much may be spent before it starts to tell.
+//
+// ⚠⚠ **The flat region is the point**: you work at full rate until you
+// are genuinely tired, which is both how endurance feels and what
+// keeps a three-minute base from measuring a fatigue curve nobody
+// designed it around.
+pub const ENDURANCE_FRESH_UNITS: integer = 900000000;
+
+// What a spent crew member still manages, as a share of their best.
+//
+// ⚠ Not zero: `PROGRESSION.md` refuses the cliff, and a crew member who
+// could do nothing at all would be a wreck the player cannot retrieve.
+pub const ENDURANCE_TIRED_FLOOR: float = 0.25;
+
+// Rest returns this fraction of every tick — one third.
+//
+// ⚠ An integer DIVISOR rather than a float share, so the arithmetic is
+// exact at every tick length (`plans/26`'s rule, and `@M049` is what
+// ignoring it costs).
+pub const ENDURANCE_REST_DIVISOR: integer = 3;
+
+// One crew member's endurance.
+//
+// ⚠ It stores what has been SPENT, like every other ledger in the repo
+// (`damage.loft` § DAMAGE TAKEN, `wallet.loft` § points SPENT) — and
+// here [loft#914] makes it load-bearing: a partial `Helper { … }`
+// literal must read as **rested**, and it does, because 0 spent is a
+// full pool.  Storing what is LEFT would make every partial literal a
+// crew member who is already exhausted.
+pub struct Endurance {
+    spent: integer,
+}
+
+// Factory: fully rested, which is how everybody arrives.
+pub fn endurance_new() -> Endurance {
+    Endurance { spent: 0 }
+}
+
+// How much of the pool has gone.
+pub fn endurance_spent(e: const Endurance) -> integer {
+    e.spent
+}
+
+// What is left of it.
+pub fn endurance_left(e: const Endurance) -> integer {
+    max(ENDURANCE_POOL_UNITS - e.spent, 0)
+}
+
+// What this crew member's work is worth right now, as a share of their
+// best — 1.0 while fresh, falling to `ENDURANCE_TIRED_FLOOR` when the
+// pool is gone.
+//
+// ⚠ **Exactly 1.0 through the whole fresh region**, and that early
+// return is the guard: a float ramp that happened to start at 1.0
+// would round somewhere and move a clock nobody touched.
+//
+// Example: @DRY-117
+pub fn endurance_factor(e: const Endurance) -> float {
+    if e.spent <= ENDURANCE_FRESH_UNITS { return 1.0; }
+    ef_span = ENDURANCE_POOL_UNITS - ENDURANCE_FRESH_UNITS;
+    if ef_span <= 0 { return ENDURANCE_TIRED_FLOOR; }
+    ef_over = min(e.spent - ENDURANCE_FRESH_UNITS, ef_span);
+    ef_t = (ef_over as float) / (ef_span as float);
+    1.0 - ef_t * (1.0 - ENDURANCE_TIRED_FLOOR)
+}
+
+// Put `units` of work in, and tire by exactly that much.
+//
+// ⚠⚠ **The RAW elapsed, never the scaled output** — see § Skill makes
+// you PRODUCTIVE, not TIRELESS.
+//
+// Example: @DRY-117
+pub fn endurance_work(e: Endurance, units: integer) {
+    if units <= 0 { return; }
+    e.spent = min(e.spent + units, ENDURANCE_POOL_UNITS);
+}
+
+// Recover a tick's worth.  ⚠ Called for every alive crew member every
+// tick — working simply outpaces it.
+//
+// Example: @DRY-119
+pub fn endurance_rest(e: Endurance, elapsed: integer) {
+    if elapsed <= 0 { return; }
+    e.spent = max(e.spent - elapsed / ENDURANCE_REST_DIVISOR, 0);
+}
+
+// Scale a tick's work by how tired this crew member is.
+//
+// ⚠ The door the work sites apply LAST, over `skill_work_units`: skill
+// says how much a person gets done per second, endurance says how much
+// of the second they still have in them.
+//
+// Example: @DRY-118
+pub fn endurance_scale(e: const Endurance, units: integer) -> integer {
+    if units <= 0 { return units; }
+    ef = endurance_factor(e);
+    if ef >= 1.0 { return units; }
+    (units as float * ef) as integer
+}

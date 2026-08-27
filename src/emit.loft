@@ -195,6 +195,12 @@ fn emit_movers(state: const WaveState) -> text {
                           + (if em2_h.alive { "on" } else { "off" })
                           + " {em2_bk} {em2_h.taken} "
                           + "{clock_seconds_from_units(timer_left(em2_h.recover))}\n";
+        // ⚠ Tiredness only when there is any (BACKLOG C2) — a rested
+        // crew is every crew the corpus has.
+        if endurance_spent(em2_h.endurance) != 0 {
+            em2_out = em2_out + "tired {em2_i} "
+                              + "{clock_seconds_from_units(endurance_spent(em2_h.endurance))}\n";
+        }
         // ⚠ Skills only when there are any (BACKLOG C1), so the 36
         // captured scenarios emit exactly what they did — an untrained
         // crew is every crew the game has ever had.

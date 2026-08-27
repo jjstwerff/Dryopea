@@ -62,6 +62,7 @@ use vehicle;
 use fixstep;
 use build;
 use skill;
+use endure;
 
 // ─── The numbers ────────────────────────────────────────────────
 //
@@ -143,6 +144,11 @@ pub struct Helper {
     taken:   float,     // damage ABSORBED, never HP remaining
     recover: Timer,     // the recovery clock; unarmed when not in it
 
+    // How much this crew member has left in them (BACKLOG C2).
+    //
+    // ⚠ Stored as SPENT, so a partial literal reads as RESTED.
+    endurance: Endurance,
+
     // What this crew member is good at (BACKLOG C1).
     //
     // ⚠ On the HELPER rather than in a table beside the roster,
@@ -156,7 +162,7 @@ pub struct Helper {
 pub fn helper_new(q: integer, r: integer) -> Helper {
     Helper { q: q, r: r, to_q: q, to_r: r, alive: true,
              bank: bank_new(), taken: 0.0, recover: timer_new(),
-             skills: skills_new() }
+             skills: skills_new(), endurance: endurance_new() }
 }
 
 // Point a helper at a hex.  It drives there over the next ticks.
@@ -384,7 +390,7 @@ pub fn helper_salvage(h: const Helper, hl: HeightLayer,
 // touching this function.
 //
 // Example: @DRY-101, @DRY-115
-pub fn helper_build(h: const Helper, pal: vector<GroundType>, bl: BuildLayer,
+pub fn helper_build(h: Helper, pal: vector<GroundType>, bl: BuildLayer,
                     elapsed: integer) -> BuildWork {
     if !h.alive { return BuildWork { q: h.q, r: h.r, spent: 0, finished: false }; }
 
@@ -395,6 +401,34 @@ pub fn helper_build(h: const Helper, pal: vector<GroundType>, bl: BuildLayer,
     //
     // ⚠ Bound to a local, per `helper_salvage` above — loft#880.
     hb_got = build_at(pal, bl, Hex { q: h.q, r: h.r },
-                      skill_work_units(h.skills.build, elapsed));
+                      crew_work_units(h, h.skills.build, elapsed));
+    // ⚠ Tired by the RAW elapsed, and only when a site actually took
+    // the work — `build_at` answers 0 when nothing was in reach.
+    if hb_got.spent > 0 { endurance_work(h.endurance, elapsed); }
     hb_got
+}
+
+// ─── What a crew member's tick of work is worth ─────────────────
+
+// How much work this person puts in over `elapsed`, skill and tiredness
+// both.
+//
+// ⚠⚠ **The ONE composition, and the order is a statement**: SKILL says
+// how much they get done per second, ENDURANCE says how much of the
+// second they still have in them.  Two sites applying them in different
+// orders would disagree by a rounding nobody could find.
+//
+// ⚠⚠ **It does NOT tire anybody** — it answers what a tick of their
+// time is worth, and the CALLER tires them once it knows work actually
+// landed.  ⚠ The first version spent here, and it was wrong in a way
+// the gate caught: `crew_work_units` is evaluated as an ARGUMENT to
+// `tower_repair_tick`, so a helper standing nowhere near a black tower
+// tired from repairing nothing — **1.67x a tick's worth per tick**,
+// because build and repair both charged them.  *You tire from work you
+// actually did.*
+//
+// Example: @DRY-118
+pub fn crew_work_units(h: const Helper, level: integer, elapsed: integer) -> integer {
+    if !h.alive { return 0; }
+    endurance_scale(h.endurance, skill_work_units(level, elapsed))
 }

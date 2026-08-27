@@ -1528,6 +1528,42 @@ src/
                    ⚠ DETECTION IS NOT REACH: `salvage_at` and
                    `cargo_take` ask what can be ACTED on; this asks
                    what is KNOWN about, at a different distance
+  endure.loft      ENDURANCE — work spends it, rest restores it
+                   (BACKLOG C2, @X113) — ENDURANCE_POOL_UNITS /
+                   _FRESH_UNITS / _TIRED_FLOOR / _REST_DIVISOR,
+                   Endurance { spent } on Helper, endurance_factor /
+                   _work / _rest / _scale.  The crew-side of the tower's
+                   charge.
+                   ⚠ A TIRED PERSON WORKS LESS AND NEVER STOPS —
+                   PROGRESSION.md refuses the cliff, so the pool bottoms
+                   out at a FLOOR and a spent crew member is slow rather
+                   than useless.
+                   ⚠⚠ REST IS CONTINUOUS: every alive crew member
+                   recovers a third of every tick and working outpaces
+                   it.  That is what lets the three jobs (salvage,
+                   build, repair) spend independently with nothing to
+                   co-ordinate — they resolve at three different points
+                   in `wave_tick`, and "restore only somebody who did
+                   no work" needs a per-tick scratch flag on a person.
+                   ⚠⚠ SKILL MAKES YOU PRODUCTIVE, NOT TIRELESS: a site
+                   tires by the RAW elapsed and never by the scaled
+                   output, so a trained builder gets more done for the
+                   same tiredness and training never makes anybody able
+                   to work longer.
+                   ⚠⚠ YOU TIRE FROM WORK YOU ACTUALLY DID.
+                   `helper.loft::crew_work_units` is PURE for exactly
+                   this reason: it is evaluated as an ARGUMENT to
+                   `tower_repair_tick`, so spending inside it charged
+                   every helper a tick of repair whether or not a black
+                   tower was in reach — 1.67x a tick's worth per tick,
+                   caught by the gate.
+                   ⚠ Stored as SPENT, so [loft#914]'s partial literal
+                   reads as RESTED.
+                   ⚠ Sized from the design's own sortie (@M055): ~675
+                   ticks to tire against a corpus whose longest base is
+                   321, so 687 measurements did not move — and the
+                   arithmetic is ASSERTED, so a base that gets long
+                   enough goes red before the clocks do
   font.loft        THE FONT — the ONE seam to graphics::draw_text
                    (BACKLOG B1) — TEXT_FONT_FILE, Font { handle, path,
                    loaded }, font_load / font_load_from / font_ready /

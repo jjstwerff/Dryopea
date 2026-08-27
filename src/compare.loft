@@ -50,6 +50,7 @@ use height;
 use damage;
 use build;
 use skill;
+use endure;
 use tower;
 use wallet;
 use vehicle;
@@ -133,6 +134,9 @@ fn crew_diff(a: const WaveState, b: const WaveState) -> text {
         }
         if bank_progress(cd_x.bank) != bank_progress(cd_y.bank) {
             return "crew[{cd_i}].bank: {bank_progress(cd_x.bank)} vs {bank_progress(cd_y.bank)}";
+        }
+        if endurance_spent(cd_x.endurance) != endurance_spent(cd_y.endurance) {
+            return "crew[{cd_i}].endurance: {endurance_spent(cd_x.endurance)} vs {endurance_spent(cd_y.endurance)}";
         }
         if cd_x.skills.build != cd_y.skills.build
            || cd_x.skills.repair != cd_y.skills.repair
