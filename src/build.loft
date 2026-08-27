@@ -107,12 +107,32 @@ pub const BUILD_WALL_HIGH_UNITS: integer = 60000000;
 // wall, which is what makes a tower a decision rather than a reflex.
 pub const BUILD_TOWER_UNITS:     integer = 90000000;
 
+// What one hex of TRENCH owes, in base units (BACKLOG C5) — 10 s,
+// exactly a `wall`'s.
+//
+// ⚠⚠ **CHOSEN, and it is chosen to be EQUAL rather than derived.**
+// `numbers.json` has no trench row — the case `docs/PROGRESSION.md`
+// § P2 says to push back on and then choose in the open.  Equal is the
+// choice because it makes the player's question *what does it DO*
+// rather than *what does it cost*: a wall hex and a trench hex are the
+// same 1.5 m of ground moved, one piled up and one taken away, and the
+// two answer different threats (`moat.loft` § THE DEPTH IS THE MOAT'S
+// COST).  A price difference would decide that trade with arithmetic
+// instead of with the map.
+//
+// ⚠ It is a LITERAL rather than `= BUILD_WALL_UNITS`, matching its
+// three siblings above — and deliberately, because the day one of the
+// two moves the other must be looked at rather than dragged along.
+pub const BUILD_MOAT_UNITS:      integer = 30000000;
+
 pub const BUILD_WALL_SECONDS: float =
     (BUILD_WALL_UNITS as float) / (CLOCK_UNITS_PER_SECOND as float);
 pub const BUILD_WALL_HIGH_SECONDS: float =
     (BUILD_WALL_HIGH_UNITS as float) / (CLOCK_UNITS_PER_SECOND as float);
 pub const BUILD_TOWER_SECONDS: float =
     (BUILD_TOWER_UNITS as float) / (CLOCK_UNITS_PER_SECOND as float);
+pub const BUILD_MOAT_SECONDS: float =
+    (BUILD_MOAT_UNITS as float) / (CLOCK_UNITS_PER_SECOND as float);
 
 // What a tower beacon costs, in wallet points — `numbers.json`
 // § tower.order_cost_points.
@@ -170,12 +190,25 @@ pub fn build_layer_empty() -> BuildLayer {
 // ⚠ It asks by KIND rather than by hex because an order's hex is still
 // grass — there is nothing painted there to read.
 //
-// Example: @DRY-098
+// Example: @DRY-098, @DRY-131
 pub fn order_work_units(pal: vector<GroundType>, what: u8, kind: u8) -> integer {
     if what == BUILD_TOWER { return BUILD_TOWER_UNITS; }
     owu_e = pal[kind as integer] ?? GroundType {};
     if owu_e.name == "wall"      { return BUILD_WALL_UNITS; }
     if owu_e.name == "wall_high" { return BUILD_WALL_HIGH_UNITS; }
+    // ⚠⚠ **`water` is a thing that can be BUILT, and it is the only
+    // buildable kind that goes DOWN** (BACKLOG C5).  The trench is an
+    // ordinary ground order — same queue, same work loop, same erase
+    // rule, same resolve — and `build_resolve` paints it like any other,
+    // which is why a moat needed no second layer.
+    //
+    // ⚠ **`rapids` and `waterfall` are NOT here on purpose.**  Their
+    // drops are 3 and 8 against a boost that climbs 3.0, so ordering one
+    // would let a player dig a hole they could never leave.
+    // `moat.loft` § Why `water` and only `water` may be dug has the
+    // argument; the refusal lives here because `order_work_units` is
+    // already the list of what may be built at all.
+    if owu_e.name == "water"     { return BUILD_MOAT_UNITS; }
     0
 }
 
@@ -449,4 +482,22 @@ pub fn as_wall_kind(pal: vector<GroundType>) -> u8 {
     awk_i = palette_index_of(pal, "wall");
     if awk_i < 0 { return 0 as u8; }
     awk_i as u8? ?? 0
+}
+
+// The palette index the TRENCH trail lays (BACKLOG C5).
+//
+// ⚠ `as_wall_kind`'s shape and for its reason: by NAME, because a
+// hard-coded `1` is a second definition of what `water` is.
+//
+// ⚠⚠ **The trail lays the SHALLOW water, and unlike its sibling that
+// is not a deferred choice — it is the only one that is safe.**  A
+// `rapids` or `waterfall` trench is deeper than the player's own boost
+// climbs, so a second key offering them would offer a soft-lock.
+// `moat.loft` § Why `water` and only `water` may be dug.
+//
+// Example: @DRY-133
+pub fn as_moat_kind(pal: vector<GroundType>) -> u8 {
+    amk_i = palette_index_of(pal, "water");
+    if amk_i < 0 { return 0 as u8; }
+    amk_i as u8? ?? 0
 }

@@ -74,8 +74,8 @@ critical path is **4, the SCRAMBLE**.
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1566 green**, ~320 s on a busy box, 117 files |
-| scenarios | `scripts/validate.sh` | **38 scripts, 745 measurements**, ~20 s |
+| tests | `scripts/test.sh` | **1586 green**, ~320 s on a busy box, 118 files |
+| scenarios | `scripts/validate.sh` | **39 scripts, 766 measurements**, ~20 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
 
 ⚠ `scripts/test.sh` is the canonical runner — **never `loft test` directly**
@@ -155,6 +155,18 @@ thing it names.
   `can_step(n, a)`: the sweep runs outward and the enemy walks inward.
 - ⚠ **You attack what you could STAND on and cannot climb** — an enemy at the
   water's edge besieges nothing.
+- ⚠⚠ **`walk_vehicle` IS READ BY NOTHING, so WATER STOPS EVERYBODY** (`@D006`,
+  BACKLOG C5) — the palette says the vehicle and the crew hover over water and
+  cliffs, and no code reads that column: `can_climb` refuses a step whose
+  *either* end fails `hex_walkable`, which answers `walk_ground`.  A hover-climb
+  drive stops **one hex short of flat sea** and a 3.0 m boost does not cross a
+  1 m ditch.  ⚠ A moat is therefore an absolute SYMMETRIC barrier, and the first
+  thing the player can build that they cannot get back over.
+- ⚠⚠ **A PILE IS A SURFACE ONLY ONCE IT CLEARS THE WATER** (`src/moat.loft`) —
+  `hex_ground`'s threshold is the hex's own DEPTH, not zero, which is what gives
+  the palette's `drop` a job: `water`'s 1 m swallows **two bodies**.  ⚠ On land
+  and on the sea the depth is 0.0, so it is the old `rise > 0` unchanged
+  everywhere anybody has ever painted.
 - ⚠ **ONE AI, per-class DATA** — a design rule, not an accident.  A class that
   needs its own mover has broken it; the four small robots cost one row each.
 - ⚠ **Blocked by a COMPANION → step beside; blocked by the GROUND → stand and
@@ -491,6 +503,7 @@ source of truth and the listing is a navigational summary of it.
 | `endure.loft` | **ENDURANCE — work spends it, rest restores it**.  ⚠ A tired person works LESS and never stops |
 | `jammer.loft` | **THE JAMMER SWITCH — turning your own core off**.  ⚠ It stops the SUPPLY and never the SIEGE |
 | `trap.loft` | **A TRAP THAT DOES NOT AUTOMATICALLY RESET** — placed in advance, fires ONCE, re-armed by a standing vehicle.  ⚠ The trigger is a CROSSING, never a standing position |
+| `moat.loft` | **A MOAT — the one hex whose surface is BELOW the ground around it**, the palette's `drop` read at last.  ⚠⚠ Its depth decides ONE thing: how much it takes to FILL |
 | `font.loft` | **THE FONT — the ONE seam to `graphics::draw_text`**.  ⚠ The path is ABSOLUTE and that is enforced at the door |
 | `picker.loft` / `hud.loft` / `editor_mode.loft` / `chunks.loft` / `history.loft` | palette UI, HUD (⚠ and **the ONE number the game shows** — the wallet), the mode flag, the dirty-chunk set, undo/redo |
 | `spawn.loft` | **the tick** — `WaveState`, `wave_tick`, enemy movement, targeting, deaths, the schedule, `TICK_SECONDS` |
@@ -737,7 +750,9 @@ docs/           ⚠ **listed once, in § Documentation index below** — a
                 second copy of this listing is the one that drifts, and this
                 one had grown three EXPLORATION.md rows saying three things.
 
-PROBLEMS.md             — dryopea-internal bugs (@D-prefixed; ⚠ @D002 open — `cam.zoom`
+PROBLEMS.md             — dryopea-internal bugs (@D-prefixed; ⚠ @D002 and @D006 open —
+                          `walk_vehicle` is read by NOTHING, so the vehicle and the crew
+                          are stopped by flat sea exactly as a robot is, and `cam.zoom`
                           changes no pixel; @D001, @D003, @D004 and @D005 fixed — the
                           player truncated its movement and froze under a 250 ms tick
                           until plan 26 L2 gave it a bank, and ⚠⚠ HALF OF EVERY BOX in
@@ -1015,6 +1030,8 @@ names; most of them exist because somebody did it without reading.
 | Give a mover a climb that changes while it lives | `src/passable.loft::can_climb` |
 | Ask what a hex's SURFACE is (vs what is painted on it) | `src/passable.loft::hex_ground`; `hex_surface_index` for the palette index |
 | Raise a hex at runtime (bodies, broken walls) | `src/height.loft` — the rubble LAYER, never a repaint |
+| Dig a MOAT, or ask what water's `drop` is for | `src/moat.loft` — ⚠⚠ **the depth decides ONE thing: how much it takes to FILL** |
+| Ask whether the player or the crew can cross water | ⚠⚠ **No — at any depth, boosting or not** (`@D006`); `walk_vehicle` is read by nothing |
 | Ask whether a hex is free of enemies | `src/occupancy.loft` |
 | Ask who on the PLAYER's side is standing on a hex | `src/occupancy.loft::blocker_at` |
 | Ask what STARTS the wave list | `src/spawn.loft::wave_provoke_step` — ⚠ two thresholds, 10 and 12 |
@@ -1026,6 +1043,7 @@ names; most of them exist because somebody did it without reading.
 | Add ambient life, or ask why a robot walks past instead of at you | `src/errand.loft` — ⚠⚠ **the bubble takes the errand, ONE WAY** |
 | Turn the core OFF, or ask what the jammer switch costs | `src/jammer.loft` — ⚠⚠ **it stops the SUPPLY and never the SIEGE** |
 | Place a TRAP, or ask why re-arming one costs a trip | `src/trap.loft` — ⚠⚠ **a plate fired once is worth LESS than no plate**; the mechanic is the trip back (`@M057`) |
+| Judge whether a TRENCH is worth digging | `@M058` — ⚠⚠ **it buys the whole run and EARNS NOTHING**: 378 ticks against a wall's 174, on the opening 200 points |
 | Advance the GAME | `src/play.loft` — ⚠ never call `wave_tick` directly, and never spell a count as `n * TICK_SECONDS` |
 | Ask whether a session is LIVE, or start one | `src/play.loft::play_mode` — ⚠ it gates the CLOCK, never the seam |
 | Advance the game by TIME, or change the tick's length | `fixstep::clock_advance` / `clock_step`; `TICK_STEP_UNITS` in `spawn.loft` |

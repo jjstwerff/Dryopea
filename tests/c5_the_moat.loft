@@ -1,0 +1,503 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// BACKLOG C5 — a moat.
+//
+// ⚠⚠ **The claim: a trench is the one hex whose surface is BELOW the
+// ground around it, and the depth is what stops it being free.**
+//
+// ── ⚠⚠ WHAT THE PROBE KILLED, AND WHY THIS FILE IS SHAPED SO ────
+//
+// The gate this feature was designed around **could not fail, and a
+// second one was FALSE**, and finding out which was which is most of
+// what is written down here.
+//
+//   ⚠ *A robot cannot cross a moat* — **vacuous**.  Every water kind
+//     has carried `walk_ground: false` since plan 01, so `can_stand`
+//     has refused water since plan 11 F1b and goes on refusing it with
+//     the depth deleted.  It is kept, and labelled, because it is the
+//     mechanic's payload — but it measures nothing about the drop.
+//   ⚠⚠ *The depth is the cost, because the crew HOVER and fall in* —
+//     **false**.  `can_climb` refuses a step whose either end fails
+//     `hex_walkable`, and that reads `walk_ground` for everybody, so
+//     `walk_vehicle` is read by NOTHING and the player has never been
+//     able to enter water at all.  § What the probe killed keeps the
+//     reading that says so, because a claim this file was built on
+//     being wrong is worth a test rather than a deletion.
+//
+// What survived is one live consequence and one drawn one, and every
+// assertion about the drop here is against one of them:
+//
+//   ⚠⚠ **the WATERLINE** — a pile is a surface only once it clears the
+//     water, so the depth is *how much a moat swallows*.  ⚠ Its control
+//     is the same pile on `sea`, whose drop is 0: that one IS a surface,
+//     which is what says the threshold is the depth and not a constant;
+//   ⚠ **the picture** — a bank draws down into a trench.
+//
+// ── And what is new that is not the drop ────────────────────────
+//
+//   ⚠ **a trench is an ORDER** — same queue, same work, same resolve,
+//     and `water` is the only water kind that may be ordered;
+//   ⚠ **two trail modes, one trail** — and each seeds the hex the
+//     player stands on, or a band cannot be sealed (`@X272`).
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SEA:       integer = 0;
+const WATER:     integer = 1;
+const RAPIDS:    integer = 2;
+const WATERFALL: integer = 3;
+const GRASS:     integer = 5;
+const WALL:      integer = 9;
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+fn pal() -> vector<GroundType> { load_palette(PALETTE) }
+fn entry(i: integer) -> GroundType { pal()[i] ?? GroundType {} }
+
+// A strip of grass to drive along, with one hex of `kind` in the middle
+// of it at (0, 0).
+//
+// ⚠ Painted the whole way, because an unpainted hex is sea — a driving
+// test that runs out of ground measures the edge of the world.
+fn strip(kind: integer) -> PaintedWorld {
+    s_pw = painted_empty();
+    for s_q in -4..=4 {
+        paint(s_pw, s_q, 0, as_u8(GRASS));
+    }
+    paint(s_pw, 0, 0, as_u8(kind));
+    s_pw
+}
+
+// ─── The drop, read ─────────────────────────────────────────────
+
+// @DRY-128 — the palette's own 0-1-3-8, in metres
+fn test_the_drop_is_a_depth() {
+    assert(moat_depth(entry(SEA))       == 0.0, "sea:       {moat_depth(entry(SEA))}");
+    assert(moat_depth(entry(WATER))     == 1.0, "water:     {moat_depth(entry(WATER))}");
+    assert(moat_depth(entry(RAPIDS))    == 3.0, "rapids:    {moat_depth(entry(RAPIDS))}");
+    assert(moat_depth(entry(WATERFALL)) == 8.0, "waterfall: {moat_depth(entry(WATERFALL))}");
+}
+
+// ⚠ Land and structures have a NULL drop, and a null is not a zero
+// until something says so — `moat_depth`'s `?? 0` is what says it.
+fn test_nothing_but_water_has_a_depth() {
+    assert(moat_depth(entry(GRASS)) == 0.0, "grass: {moat_depth(entry(GRASS))}");
+    assert(moat_depth(entry(WALL))  == 0.0, "wall:  {moat_depth(entry(WALL))}");
+    assert(moat_depth(entry(GROUND_RUBBLE)) == 0.0,
+           "rubble: {moat_depth(entry(GROUND_RUBBLE))}");
+}
+
+// ⚠⚠ **The load-bearing zero.**  An unpainted world is sea, so a scale
+// of any size leaves every world that existed before this at exactly
+// the height it was — which is why 745 gate measurements did not move.
+fn test_an_unpainted_world_is_still_flat() {
+    tuw_pal = pal();
+    tuw_pw  = painted_empty();
+    tuw_hl  = height_layer_empty();
+    assert(hex_height(tuw_pal, tuw_pw, tuw_hl, 0, 0) == 0.0,
+           "unpainted: {hex_height(tuw_pal, tuw_pw, tuw_hl, 0, 0)}");
+    assert(!moat_at(tuw_pal, tuw_pw, 0, 0),
+           "and the sea is not a moat, or every hex on the map would be one");
+}
+
+// The height rule reads it, and a structure still goes UP — the two
+// terms point opposite ways and no kind carries both.
+fn test_the_two_terms_point_opposite_ways() {
+    tot_pal = pal();
+    tot_hl  = height_layer_empty();
+    assert(hex_height(tot_pal, strip(WATER), tot_hl, 0, 0) == -1.0,
+           "a trench: {hex_height(tot_pal, strip(WATER), tot_hl, 0, 0)}");
+    assert(hex_height(tot_pal, strip(WALL), tot_hl, 0, 0) == 3.0,
+           "a wall:   {hex_height(tot_pal, strip(WALL), tot_hl, 0, 0)}");
+    assert(hex_height(tot_pal, strip(GRASS), tot_hl, 0, 0) == 0.0,
+           "grass:    {hex_height(tot_pal, strip(GRASS), tot_hl, 0, 0)}");
+}
+
+// ─── ⚠⚠ What the probe killed ──────────────────────────────────
+
+// How far a mover of `climb` gets driving east along a strip whose
+// middle hex is `kind`, given `hexes` of allowance.
+//
+// ⚠ `drive_along` is the shared chassis: the player and every helper
+// use it, so one probe answers for both and the two cannot drift.
+fn drove_to(kind: integer, climb: float, hexes: integer) -> integer {
+    dt_at = drive_along(pal(), strip(kind), height_layer_empty(),
+                        Hex { q: -3, r: 0 }, Hex { q: 3, r: 0 }, hexes, climb);
+    dt_at.q
+}
+
+// @DRY-129 — ⚠⚠ **`walk_vehicle` is read by NOTHING**, and this is the
+// reading that says so.  The design intends the vehicle and the crew to
+// HOVER — every water kind carries `walk_vehicle: true` — but
+// `can_climb` refuses a step whose either end fails `hex_walkable`, and
+// that answers `walk_ground`.  So a hovering mover stops one hex SHORT
+// of flat sea at height 0.0, and always has.
+//
+// ⚠ It is pinned rather than fixed: making the vehicle read
+// `walk_vehicle` is a change to the ONE passability rule and to what
+// every existing map means, not a line in a moat file.
+fn test_water_stops_the_player_and_the_crew_at_any_depth() {
+    assert(drove_to(SEA, CLIMB_VEHICLE, 6) == -1,
+           "a hovering mover stops one hex short of FLAT sea: "
+           + "{drove_to(SEA, CLIMB_VEHICLE, 6)}");
+    assert(drove_to(WATER, CLIMB_VEHICLE, 6) == -1,
+           "and stops in exactly the same place at a trench: "
+           + "{drove_to(WATER, CLIMB_VEHICLE, 6)}");
+    // ⚠⚠ The half that matters to a player: boost is `docs/PLAYING.md`'s
+    // *"only way out of a base you have sealed"*, and against water it
+    // buys NOTHING — a climb cannot answer a surface question.
+    assert(drove_to(WATER, VEHICLE_BOOST_CLIMB_METRES, 6) == -1,
+           "and a boost does not lift you over it: "
+           + "{drove_to(WATER, VEHICLE_BOOST_CLIMB_METRES, 6)}");
+    // The control that says the drive itself works.
+    assert(drove_to(GRASS, CLIMB_VEHICLE, 6) == 3,
+           "CONTROL — the same drive over grass crosses: "
+           + "{drove_to(GRASS, CLIMB_VEHICLE, 6)}");
+}
+
+// ─── ⚠⚠ The WATERLINE — what the depth actually decides ─────────
+
+// The surface at (0, 0) after `metres` of debris is piled into a hex of
+// `kind`, as a palette index.
+fn surface_after(kind: integer, metres: float) -> integer {
+    sa_pal = pal();
+    sa_pw  = strip(kind);
+    sa_hl  = height_layer_empty();
+    height_raise(sa_hl, 0, 0, metres, as_u8(RUBBLE_WRECKAGE));
+    hex_surface_index(sa_pal, sa_pw, sa_hl, 0, 0)
+}
+
+// @DRY-130 — ⚠⚠ **a pile under the waterline is not a surface**, and
+// the CONTROL is the identical pile on `sea`, whose drop is 0.  That
+// pair is what says the threshold is the hex's own DEPTH rather than a
+// constant zero — delete the depth from `hex_ground` and the control
+// stays green while the first two lines go red.
+fn test_a_pile_is_a_surface_only_above_the_water() {
+    assert(surface_after(WATER, 0.5) == WATER,
+           "half a body in a metre of water is still water: "
+           + "{surface_after(WATER, 0.5)}");
+    assert(surface_after(WATER, 1.0) == WATER,
+           "and a pile exactly AT the waterline has not cleared it: "
+           + "{surface_after(WATER, 1.0)}");
+    assert(surface_after(WATER, 1.5) == GROUND_RUBBLE,
+           "three half-metre bodies clear it: {surface_after(WATER, 1.5)}");
+    assert(surface_after(SEA, 0.5) == GROUND_RUBBLE,
+           "CONTROL — the same pile on drop-0 sea IS a surface: "
+           + "{surface_after(SEA, 0.5)}");
+}
+
+// The same claim where it bites: what a ROBOT may stand on.
+//
+// ⚠ `docs/GROUND_TYPES.md` § rubble calls *"rubble on water is somewhere
+// to stand"* the thing that dissolves the sea trap, and this does not
+// touch it — sea is drop 0, so a broken wall's heap over a breach is a
+// surface exactly as it was.  What moved is a hex somebody DUG.
+fn test_two_bodies_do_not_bridge_a_trench_and_three_do() {
+    ttb_pal = pal();
+    ttb_pw  = strip(WATER);
+    ttb_hl  = height_layer_empty();
+    height_raise(ttb_hl, 0, 0, BODY_HEIGHT_METRES * 2.0, as_u8(RUBBLE_WRECKAGE));
+    assert(!can_stand(ttb_pal, ttb_pw, ttb_hl, ENEMY_KIND_REGULAR as u8, 0, 0),
+           "two bodies fill it to the brim and no further");
+    height_raise(ttb_hl, 0, 0, BODY_HEIGHT_METRES, as_u8(RUBBLE_WRECKAGE));
+    assert(can_stand(ttb_pal, ttb_pw, ttb_hl, ENEMY_KIND_REGULAR as u8, 0, 0),
+           "the third stands proud of the water, and it is ground again");
+    assert(can_step(ttb_pal, ttb_pw, ttb_hl, ENEMY_KIND_REGULAR as u8,
+                    Hex { q: -1, r: 0 }, Hex { q: 0, r: 0 }),
+           "and a robot walks onto it");
+}
+
+// ⚠⚠ **WHAT THE PLAYER MAY DIG IS PRICED IN BODIES, as arithmetic
+// rather than as a comment.**  A trench is removable only by filling
+// it past its waterline, so the depth the trail lays has to be one a
+// handful of bodies could clear — `water`'s two.  Deepen the orderable
+// trench and this goes red before a player digs one nothing can undo.
+fn test_the_orderable_trench_is_two_bodies_deep() {
+    tdo_pal  = pal();
+    tdo_kind = as_moat_kind(tdo_pal) as integer;
+    assert(tdo_kind == WATER, "the trail lays `water`: {tdo_kind}");
+    tdo_bodies = moat_depth(entry(tdo_kind)) / BODY_HEIGHT_METRES;
+    assert(tdo_bodies == 2.0,
+           "and it swallows two bodies before it is ground again: {tdo_bodies}");
+    // The control: the kinds NOT offered are the ones that price out.
+    assert(moat_depth(entry(WATERFALL)) / BODY_HEIGHT_METRES == 16.0,
+           "a waterfall trench would want sixteen: "
+           + "{moat_depth(entry(WATERFALL)) / BODY_HEIGHT_METRES}");
+}
+
+// ─── What a moat does to the ENEMY, and what it does not ────────
+
+// ⚠⚠ **This one is VACUOUS about the depth and says so.**  It is here
+// because it is the mechanic's payload, and its own control is the
+// point: `walk_ground` is what refuses the robot, so the assertion
+// holds at any depth — including zero.  It measures that water still
+// blocks, never that the trench does.
+fn test_nothing_on_legs_stands_in_water_at_any_depth() {
+    tnl_pal = pal();
+    tnl_hl  = height_layer_empty();
+    for tnl_k in [SEA, WATER, RAPIDS, WATERFALL] {
+        assert(!can_stand(tnl_pal, strip(tnl_k), tnl_hl,
+                          ENEMY_KIND_REGULAR as u8, 0, 0),
+               "a robot cannot stand on kind {tnl_k}");
+        assert(!can_stand(tnl_pal, strip(tnl_k), tnl_hl,
+                          ENEMY_KIND_INSECT as u8, 0, 0),
+               "nor can an insect — which a 3 m `wall` does not manage");
+    }
+}
+
+// ⚠⚠ **A moat has nothing to chew**, which is the other half of what
+// makes it not a wall: a besieger's target lands no damage, so the
+// barrier never wears through.  ⚠ The cost of that is in
+// `moat.loft` § It does not fill — a base nothing reaches earns nothing.
+fn test_a_moat_is_not_a_structure() {
+    tam_pal = pal();
+    assert(!structure_breakable(tam_pal, strip(WATER), 0, 0),
+           "a trench cannot be broken");
+    assert(structure_breakable(tam_pal, strip(WALL), 0, 0),
+           "CONTROL — a wall in the same spot can");
+}
+
+// ─── The trench as an ORDER ─────────────────────────────────────
+
+// @DRY-131 — `water` owes a wall's ten seconds; the deeper two owe
+// nothing, which is `order_fault`'s way of refusing them
+fn test_only_water_can_be_dug() {
+    tow_pal = pal();
+    assert(order_work_units(tow_pal, BUILD_GROUND, as_u8(WATER)) == BUILD_MOAT_UNITS,
+           "water: {order_work_units(tow_pal, BUILD_GROUND, as_u8(WATER))}");
+    assert(BUILD_MOAT_UNITS == BUILD_WALL_UNITS,
+           "and it is a wall's price, chosen: {BUILD_MOAT_UNITS} vs {BUILD_WALL_UNITS}");
+    assert(order_work_units(tow_pal, BUILD_GROUND, as_u8(RAPIDS)) == 0,
+           "rapids cannot be ordered");
+    assert(order_work_units(tow_pal, BUILD_GROUND, as_u8(WATERFALL)) == 0,
+           "nor a waterfall");
+    assert(order_work_units(tow_pal, BUILD_GROUND, as_u8(SEA)) == 0,
+           "nor the sea itself");
+}
+
+// The doorstep is the one `build.loft` already had — you cannot dig
+// into water, a cliff, a heap, or something already standing.
+fn test_a_trench_needs_diggable_ground() {
+    tnd_pal = pal();
+    tnd_bl  = build_layer_empty();
+    assert(order_fault(tnd_pal, strip(GRASS), tnd_bl, 0, 0,
+                       BUILD_GROUND, as_u8(WATER)) == "",
+           "grass takes a trench");
+    assert(order_fault(tnd_pal, strip(WATER), tnd_bl, 0, 0,
+                       BUILD_GROUND, as_u8(WATER)) != "",
+           "a trench cannot be dug in a trench");
+    assert(order_fault(tnd_pal, strip(WALL), tnd_bl, 0, 0,
+                       BUILD_GROUND, as_u8(WATER)) != "",
+           "nor through a wall");
+}
+
+// One order, ten helper-seconds, and the hex is water — the whole path
+// through the queue that already existed.
+fn test_the_crew_dig_it_out() {
+    ted_pal = pal();
+    ted_pw  = strip(GRASS);
+    ted_mw  = marker_empty();
+    ted_bl  = build_layer_empty();
+    assert(order_place(ted_pal, ted_pw, ted_bl, 0, 0,
+                       BUILD_GROUND, as_moat_kind(ted_pal)),
+           "the order is accepted");
+    assert(build_resolve(ted_pal, ted_pw, ted_mw, ted_bl) == 0,
+           "and nothing appears before the work is done");
+    order_spend(ted_pal, ted_bl, 0, 0, BUILD_MOAT_UNITS);
+    assert(build_resolve(ted_pal, ted_pw, ted_mw, ted_bl) == 1,
+           "one trench dug");
+    assert(moat_at(ted_pal, ted_pw, 0, 0), "and the hex is a moat");
+    assert(hex_height(ted_pal, ted_pw, height_layer_empty(), 0, 0) == -1.0,
+           "a metre down: {hex_height(ted_pal, ted_pw, height_layer_empty(), 0, 0)}");
+}
+
+// ─── The two trail modes ────────────────────────────────────────
+
+// A live session with the vehicle parked at (0, 0) on a grass strip.
+fn session(ps: PlayState, s: EditorState) {
+    s.pw            = strip(GRASS);
+    s.picker.palette = pal();
+    vehicle_place(ps.wave.player, 0, 0);
+}
+
+// @DRY-132 — ⚠ each mode seeds the hex the player is STANDING on
+// (`@X272`), and turning one on turns the other off: one trail, one
+// payload, and never a frame where both are live
+fn test_the_two_modes_are_exclusive() {
+    ttm_ps = play_state_new();
+    ttm_s  = editor_state_new(PALETTE);
+    session(ttm_ps, ttm_s);
+
+    play_set_painting(ttm_ps, ttm_s, true);
+    assert(play_painting(ttm_ps) && !play_digging(ttm_ps), "wall paint on");
+    assert(order_kind(ttm_ps.wave.orders, 0, 0) == as_wall_kind(pal()),
+           "and the standing hex is seeded as a wall");
+
+    order_erase(ttm_ps.wave.orders, 0, 0);
+    play_set_digging(ttm_ps, ttm_s, true);
+    assert(play_digging(ttm_ps) && !play_painting(ttm_ps),
+           "digging on turns wall paint off");
+    assert(order_kind(ttm_ps.wave.orders, 0, 0) == as_moat_kind(pal()),
+           "and the standing hex is seeded as a trench");
+
+    play_set_painting(ttm_ps, ttm_s, true);
+    assert(play_painting(ttm_ps) && !play_digging(ttm_ps),
+           "and back the other way");
+}
+
+// A fresh session digs nothing — [loft#914]'s silent default on a
+// partial `PlayState` literal has to be the way the game already
+// worked.
+fn test_a_session_opens_with_the_spade_down() {
+    tas_ps = play_state_new();
+    assert(!play_digging(tas_ps), "a new session is not digging");
+    tas_partial = PlayState { ticks: 0 };
+    assert(!play_digging(tas_partial),
+           "and neither is one written as a partial literal");
+}
+
+// The trail lays what the mode says, over every hex the vehicle
+// crossed — the same walk, the same skip, the same erase.
+fn test_the_trail_lays_a_trench() {
+    ttl_ps = play_state_new();
+    ttl_s  = editor_state_new(PALETTE);
+    session(ttl_ps, ttl_s);
+
+    play_set_digging(ttl_ps, ttl_s, true);
+    vehicle_drive(ttl_ps.wave.player, 3, 0);
+    play_ticks_over(ttl_ps, ttl_s, 2);
+
+    ttl_n = 0;
+    for ttl_q in 0..=3 {
+        if order_at(ttl_ps.wave.orders, ttl_q, 0) { ttl_n += 1; }
+        if order_at(ttl_ps.wave.orders, ttl_q, 0) {
+            assert(order_kind(ttl_ps.wave.orders, ttl_q, 0) == as_moat_kind(pal()),
+                   "({ttl_q}, 0) is ordered as a trench");
+        }
+    }
+    assert(ttl_n == 4, "four hexes ordered, seed included: {ttl_n}");
+}
+
+// Play `n` ticks with a core on the map, so the vehicle actually moves.
+fn play_ticks_over(ps: PlayState, s: EditorState, n: integer) {
+    place_marker(s.mw, -4, 0, MARKER_KIND_TARGET as u8, 0 as u8);
+    play_ticks(ps, s, n);
+}
+
+// ─── What the picture does with it ──────────────────────────────
+
+// ⚠ The mesher needs no case for a hole: `ground_side_faces` draws a
+// quad wherever a hex stands above its neighbour, so the BANK draws
+// down into the trench and the trench draws nothing.  The gate is that
+// the geometry MOVED — an empty mesh folds to 0, so the reading carries
+// its own floor (`mesh_crc.loft`).
+fn test_the_ground_mesh_sees_the_hole() {
+    tgm_flat = strip_crc(GRASS);
+    tgm_dug  = strip_crc(WATER);
+    assert(tgm_flat != 0, "the flat mesh is not empty: {tgm_flat}");
+    assert(tgm_dug  != 0, "nor is the dug one: {tgm_dug}");
+    assert(tgm_flat != tgm_dug,
+           "and digging changed the geometry: {tgm_flat} vs {tgm_dug}");
+}
+
+// The whole tile that holds (0, 0), every kind in it, folded to one
+// integer — `tests/25_m2`'s own probe, borrowed.
+fn strip_crc(kind: integer) -> integer {
+    sc_pal = pal();
+    sc_pw  = strip(kind);
+    sc_hl  = height_layer_empty();
+    sc_m   = mesh("tile");
+    for sc_k in ground_chunk_kinds(sc_pal, sc_pw, sc_hl, 0, 0) {
+        ground_chunk_mesh(sc_m, sc_pal, sc_pw, sc_hl, 0, 0, sc_k);
+    }
+    mesh_crc(sc_m)
+}
+
+// ─── ⚠⚠ What a moat is WORTH, and what it costs ─────────────────
+//
+// The third of `plans/27` § C5's pair — `a-base-nobody-builds`,
+// `a-base-the-player-builds` and `a-base-behind-a-moat` are the same
+// file one token apart, so every difference between the three readings
+// is the thing that token names and can be nothing else
+// (`plans/12` § B7's rule).
+//
+// ⚠⚠ **And the trade is the reading, not the clock.**  A wall buys 44
+// ticks the player is PAID for; a trench buys the whole run and pays
+// nothing, because nothing that cannot reach you can die.  A gate that
+// read only the clock would call the trench strictly better.
+
+const SHOTS: text = "shots";
+const IDLE:  text = "tests/scripts/a-base-nobody-builds.keys";
+const BUILT: text = "tests/scripts/a-base-the-player-builds.keys";
+const MOAT:  text = "tests/scripts/a-base-behind-a-moat.keys";
+
+fn test_the_three_scenarios_are_on_disk() {
+    for tts_p in [IDLE, BUILT, MOAT] {
+        assert(file(tts_p).exists(),
+               "{tts_p} is missing — every test below would pass against an empty file");
+    }
+}
+
+// @DRY-133 — ⚠⚠ THE READING.  Time bought, income given up: the base
+// behind a trench is still standing after 378 ticks where the walled
+// one fell at 174, and its wallet has not moved off the opening 200.
+fn test_a_trench_buys_the_run_and_earns_nothing() {
+    tat_is = editor_state_new(PALETTE);
+    tat_bs = editor_state_new(PALETTE);
+    tat_ms = editor_state_new(PALETTE);
+
+    tat_i = script_run_file(tat_is, IDLE,  SHOTS);
+    tat_b = script_run_file(tat_bs, BUILT, SHOTS);
+    tat_m = script_run_file(tat_ms, MOAT,  SHOTS);
+    assert(tat_i.ok, "a-base-nobody-builds: {script_describe(tat_i)}");
+    assert(tat_b.ok, "a-base-the-player-builds: {script_describe(tat_b)}");
+    assert(tat_m.ok, "a-base-behind-a-moat: {script_describe(tat_m)}");
+
+    // ⚠ Pinned, because a scenario with its measurements deleted still
+    // reports ok.
+    assert(tat_m.checks == 21,
+           "behind-a-moat made {tat_m.checks} measurements, expected 21");
+
+    // ⚠⚠ ONE assertion carrying every reading, because the three rows
+    // are ONE claim about one subject and loft abandons a function at
+    // its first failed assertion (`tests/26_l0`'s shape).
+    assert(tat_i.play.ticks == 130
+           && tat_b.play.ticks == 174
+           && tat_m.play.ticks > 300
+           && wallet_left(tat_i.play.wave.wallet) <= 0.0
+           && wallet_left(tat_b.play.wave.wallet) <= 0.0
+           && wallet_left(tat_m.play.wave.wallet) == WALLET_STARTING_POINTS,
+           "nothing={tat_i.play.ticks} ticks / {wallet_left(tat_i.play.wave.wallet)} pt, "
+           + "wall={tat_b.play.ticks} / {wallet_left(tat_b.play.wave.wallet)}, "
+           + "trench={tat_m.play.ticks} / {wallet_left(tat_m.play.wave.wallet)} "
+           + "— a trench must outlast a wall AND earn nothing");
+}
+
+// ⚠⚠ **The control the clock cannot give**: the wave STOPPED rather
+// than went round or chewed through.  A wall ends the run four hexes
+// broken (`tests/27_c5`); a trench ends it whole, with the whole wave
+// alive on the far bank and nothing to attack.
+fn test_the_wave_stopped_at_the_bank_with_nothing_to_bite() {
+    tws_s = editor_state_new(PALETTE);
+    tws_r = script_run_file(tws_s, MOAT, SHOTS);
+    assert(tws_r.ok, "it runs: {script_describe(tws_r)}");
+
+    tws_water = as_moat_kind(tws_s.picker.palette);
+    tws_left  = 0;
+    for tws_i in -2..3 {
+        if lookup_painted(tws_s.pw, 5, tws_i) == tws_water { tws_left += 1; }
+    }
+    assert(tws_left == 5,
+           "all five hexes of trench are still there — there is nothing to chew: "
+           + "{tws_left} of 5");
+
+    tws_alive = 0;
+    for tws_e in tws_r.play.wave.enemies {
+        if tws_e.alive { tws_alive += 1; }
+    }
+    assert(tws_alive == 13,
+           "and the whole wave is alive, which is why nothing was earned: {tws_alive}");
+}

@@ -80,6 +80,7 @@ use lattice;
 use palette;
 use painted;
 use height;
+use moat;
 
 // ─── Enemy classes ──────────────────────────────────────────────
 //
@@ -318,12 +319,20 @@ pub fn painted_kind_name(pal: vector<GroundType>, pw: PaintedWorld,
     pkn_e.name
 }
 
-// How tall the AUTHORED structure at a hex is, in metres, with no
-// runtime on it — 0.0 for every terrain type, which is what flat
-// ground IS.
+// How high the AUTHORED ground at a hex stands, in metres, with no
+// runtime on it — 0.0 for land, which is what flat ground IS.
 //
-// ⚠ The `?? 0.0` is load-bearing, not defensive noise.
-// `height_override` is `null` for every non-structure —
+// ⚠⚠ **Two terms, and they point OPPOSITE WAYS.**  A structure stands
+// UP by its `height_override` and water sits DOWN by its `drop`
+// (`moat.loft`), so this is a sum rather than a lookup — and no palette
+// entry can contribute both, because `palette.json` gives every
+// structure a null `drop` and every water kind a null `height_override`.
+// ⚠ The subtraction is what makes a moat a HOLE: `can_step` is
+// asymmetric, so a mover falls in for free and climbs out only within
+// its limit (§ It is asymmetric, and that is the physics).
+//
+// ⚠ The two `?? 0.0` / `?? 0` guards are load-bearing, not defensive
+// noise.  Both fields are `null` on the kinds that do not use them —
 // `palette.json` writes it that way — and a null height compares
 // `<= climb` as TRUE, so an unguarded read gives the right answer
 // for terrain by accident and would keep giving it until loft's
@@ -332,23 +341,40 @@ pub fn painted_kind_name(pal: vector<GroundType>, pw: PaintedWorld,
 pub fn painted_height_of(pal: vector<GroundType>, pw: PaintedWorld,
                          q: integer, r: integer) -> float {
     pho_e = painted_ground(pal, pw, q, r);
-    pho_e.height_override ?? 0.0
+    (pho_e.height_override ?? 0.0) - moat_depth(pho_e)
 }
 
 // The SURFACE at a hex — what an enemy standing there is standing on.
 //
-// Rubble wherever the layer carries a pile, the painted kind
+// Rubble wherever the layer's pile CLEARS the ground, the painted kind
 // everywhere else.  A palette missing the `rubble` entry falls back to
 // the painted kind rather than to an all-default `GroundType`: a
 // modder who shortened the palette gets the map they painted, not a
 // world nothing can walk on.
+//
+// ── ⚠⚠ A PILE UNDER THE WATERLINE IS NOT A SURFACE (BACKLOG C5) ──
+//
+// The threshold is the hex's own DEPTH (`moat.loft`), not zero: half a
+// metre of debris in a metre of water is still water, and standing on
+// it is standing in the moat.  ⚠ **On land the two are the same
+// sentence** — `moat_depth` is 0.0 for every land kind, every structure
+// and the sea itself, so this is `height_piled`'s `rise > 0` unchanged
+// wherever anybody has ever painted, which is why 745 gate
+// measurements did not move.
+//
+// ⚠⚠ **It is what gives the drop a job.**  Without it a trench flips to
+// walkable rubble at the first grain of spoil however deep it is, so
+// the palette's 1-3-8 would decide nothing; with it, the depth is
+// exactly *how much a moat swallows before it is ground again* — which
+// is `docs/MATERIALS.md`'s *"a trench allowed to fill"* as arithmetic.
+// Example: @DRY-130
 fn hex_ground(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
               q: integer, r: integer) -> GroundType {
-    if height_piled(hl, q, r) {
+    hg_painted = painted_ground(pal, pw, q, r);
+    if height_rise(hl, q, r) > moat_depth(hg_painted) {
         hg_rubble = pal[GROUND_RUBBLE];
         if hg_rubble != null { return hg_rubble; }
     }
-    hg_painted = painted_ground(pal, pw, q, r);
     hg_painted
 }
 
@@ -377,10 +403,12 @@ pub fn hex_ground_name(pal: vector<GroundType>, pw: PaintedWorld, hl: const Heig
 // piling debris onto one would LOWER it.
 pub fn hex_surface_index(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
                          q: integer, r: integer) -> integer {
-    // Guarded exactly as `hex_ground` guards it: a palette too short to
-    // hold `rubble` gives back the map that was painted rather than a
-    // kind the renderer has no colour for.
-    if height_piled(hl, q, r) {
+    // Guarded exactly as `hex_ground` guards it, and thresholded exactly
+    // as `hex_ground` thresholds it (§ A PILE UNDER THE WATERLINE): a
+    // palette too short to hold `rubble` gives back the map that was
+    // painted rather than a kind the renderer has no colour for, and a
+    // half-submerged pile still draws as water.
+    if height_rise(hl, q, r) > moat_depth_at(pal, pw, q, r) {
         hsi_rubble = pal[GROUND_RUBBLE];
         if hsi_rubble != null { return GROUND_RUBBLE; }
     }
@@ -479,6 +507,12 @@ pub fn sight_first_block(pal: vector<GroundType>, pw: PaintedWorld, hl: const He
 // The day a class reads `walk_vehicle` instead, this gains a kind and
 // both of those go red — which is the warning, and is why it is
 // written as a claim here rather than left implicit in a signature.
+// ⚠⚠ **And it is what the VEHICLE reads too**, which is not what the
+// palette suggests: every water kind carries `walk_vehicle: true` and
+// nothing reads that field, so a hovering mover is stopped by flat sea
+// exactly as a robot is (BACKLOG C5).
+//
+// Example: @DRY-129
 pub fn hex_walkable(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
                     q: integer, r: integer) -> boolean {
     // ⚠ Bound to a local, NOT `hex_ground(...).walk_ground` — reading a

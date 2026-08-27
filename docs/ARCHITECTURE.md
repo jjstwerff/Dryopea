@@ -1676,6 +1676,59 @@ src/
                    hex the wave comes through and the crew member is
                    wrecked; two hexes out it never gets through its own
                    gate at all
+  moat.loft        A MOAT — the one hex whose surface is BELOW the
+                   ground around it (BACKLOG C5, @X282) —
+                   MOAT_METRES_PER_DROP, moat_depth / moat_depth_at /
+                   moat_at; and elsewhere, `passable.loft`'s two new
+                   readings of it, `build.loft::BUILD_MOAT_UNITS` +
+                   `as_moat_kind`, and `play.loft`'s second trail mode.
+                   ⚠ It is the palette's `drop` READ — sea 0, water 1,
+                   rapids 3, waterfall 8, carried since plan 01 and read
+                   by nothing until now (plans/25 § M2 open question 3).
+                   ⚠ NOT plan 02's solver: this is the LOCAL reading —
+                   one hex, its own drop, no drainage chain — and a
+                   river stays flat until plan 02 grows the term a
+                   chain rather than replacing it.
+                   ⚠⚠ A PROBE FALSIFIED THIS FILE'S HEADLINE BEFORE IT
+                   SHIPPED.  It was designed as *the depth is the COST,
+                   because the crew and the player HOVER and fall in* —
+                   and `walk_vehicle` is read by NOTHING (@D006):
+                   `can_climb` refuses a step whose either end fails
+                   `hex_walkable`, which answers `walk_ground` for
+                   everybody.  So nobody has ever been able to enter
+                   water, an EMPTY moat is an absolute symmetric
+                   barrier at any depth, and the drop's whole job is
+                   the WATERLINE.
+                   ⚠⚠ A PILE IS A SURFACE ONLY ONCE IT CLEARS THE
+                   WATER (`passable.loft::hex_ground`), so the depth is
+                   how much a moat SWALLOWS — water's 1 m is two bodies
+                   at BODY_HEIGHT_METRES, the same one-to-two band
+                   § Why a robot climbs 2.0 m lands on for a ramp onto
+                   a wall.  Without it the drop decides nothing: a
+                   trench would flip to walkable rubble at the first
+                   grain however deep it was.  ⚠ On land moat_depth is
+                   0.0, so it is `height_piled`'s `rise > 0` unchanged
+                   everywhere anybody has ever painted — which is why
+                   745 gate measurements did not move.
+                   ⚠⚠ `water` and ONLY `water` may be ORDERED, and it
+                   is a removability rule: a waterfall trench wants
+                   SIXTEEN bodies and nothing in the game can put them
+                   there, so the player could dig a barrier nothing can
+                   undo.  order_work_units is the refusal, because the
+                   list of what may be built at all was already there.
+                   ⚠ The trench costs a wall's 10 s deliberately —
+                   equal, so the choice is about what it DOES.
+                   ⚠⚠ AND NOTHING FILLS ONE YET: a moat has no HP so
+                   `structure_breakable` is false, and nothing can die
+                   in one, so the waterline rule is correct and
+                   unexercised by the runtime.  Besiegers shovelling a
+                   trench shut is BACKLOG C9.
+                   ⚠⚠ WHAT IT IS WORTH IS THE WHOLE RUN, AND IT EARNS
+                   NOTHING (@M058): 378 ticks still standing against a
+                   wall's 174 and a bare base's 130 — on exactly the
+                   opening 200 points, 13 robots alive, ZERO targets.
+                   A wave that cannot reach you cannot die, and salvage
+                   is the only income
   font.loft        THE FONT — the ONE seam to graphics::draw_text
                    (BACKLOG B1) — TEXT_FONT_FILE, Font { handle, path,
                    loaded }, font_load / font_load_from / font_ready /

@@ -83,14 +83,26 @@ palette right; everything downstream is cheap.
 >   *intended starting point*, not load-bearing constants.
 > - **Drainage** seeds set water height = 0 + the cumulative
 >   `drop` along the chain.  A river is a chain of water hexes
->   in increasing drop.
+>   in increasing drop.  ⚠⚠ **The CHAIN is still plan 02's;
+>   the LOCAL reading shipped 2026-08-27** (BACKLOG C5,
+>   [`../src/moat.loft`](../src/moat.loft)): a water hex sits
+>   `drop` metres BELOW the ground around it, one hex at a time,
+>   which is what makes a moat a hole.  The two agree wherever a
+>   chain is one hex long, and plan 02 grows the term a chain
+>   rather than replacing it.
 > - **Walkable (ground)** for `steep_rock` is the impassable
 >   gate that funnels ground mobs through gaps — the same gate
 >   that blocks them from climbing a built wall.
 > - **Walkable (vehicle)** is true even for `steep_rock` and
 >   `waterfall` because the floating vehicle hovers above
 >   terrain; per-agent-type traversal is the design (DESIGN.md
->   § Systems #4).
+>   § Systems #4).  ⚠⚠ **THIS COLUMN IS READ BY NOTHING**
+>   (`@D006`, found 2026-08-27): `passable.loft::can_climb`
+>   refuses a step whose either end fails `hex_walkable`, and
+>   that answers `walk_ground` for every caller — so the vehicle
+>   and the crew are stopped by flat sea exactly as a robot is,
+>   and a 3.0 m boost does not cross a 1 m ditch.  The column
+>   states the design; the code has never implemented it.
 > - **Buildable** is gated by both type and slope.  Towers,
 >   walls, and bridges can be placed on land types only, and
 >   only where slope is below the build threshold.  `steep_rock`
@@ -413,6 +425,15 @@ no branch for debris.
 
 Three things about it are load-bearing:
 
+- ⚠⚠ **A pile is a SURFACE only once it clears the water**
+  (BACKLOG C5).  The threshold `hex_ground` compares against is
+  the hex's own **depth**, not zero: half a metre of debris in a
+  metre of water is still water.  On land — and on the `sea`,
+  whose drop is 0 — that is the old *any pile at all*, unchanged.
+  ⚠ It is what gives the water sub-palette's `drop` a job, and it
+  is `MATERIALS.md`'s *"a trench allowed to fill with water"* as
+  arithmetic: `water` swallows **two** bodies before it is ground
+  again, `waterfall` sixteen.
 - **It is a LAYER over the map, never a repaint.**  The painted
   ground underneath is untouched, so clearing a pile restores
   exactly what was authored with nothing to reconstruct.

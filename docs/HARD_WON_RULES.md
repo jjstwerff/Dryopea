@@ -76,6 +76,50 @@ it (`@M019`).
 always a walkable surface, so an enemy at the water's edge besieges
 nothing.
 
+⚠⚠ **`walk_vehicle` IS READ BY NOTHING, SO WATER STOPS EVERYBODY —
+INCLUDING THE PLAYER** (`@D006`, BACKLOG C5, 2026-08-27).
+`examples/palette.json` marks every water and cliff kind
+`walk_vehicle: true`, and [`GROUND_TYPES.md`](GROUND_TYPES.md) § The
+master palette states the intent outright — *"the floating vehicle
+hovers above terrain; per-agent-type traversal is the design"*.  **No
+code reads that column.**  `passable.loft::can_climb` refuses a step
+whose *either* end fails `hex_walkable`, and `hex_walkable` answers
+`walk_ground` for every caller; `vehicle.loft::drive_along` — the shared
+chassis the player and every helper use — asks `can_climb`.  Measured: a
+hover-climb drive east along a painted strip stops **one hex short of a
+`sea` tile whose height is 0.0**, and raising the climb to the boost's
+3.0 m stops it in exactly the same place.
+
+⚠⚠ **And the lesson is about the PROBE, not about the field.**  BACKLOG
+C5's whole feature was designed around *the depth is what stops a moat
+being free, because the crew HOVER and fall in* — a coherent story,
+supported by the palette, by the design document, and by the field's own
+name, and **false**.  ⚠ It cost a twelve-line probe to find out before a
+line of the feature shipped, and it would have cost a shipped mechanic
+to find out afterwards.  *A field that exists is not a field that is
+read*, and the cheapest way to tell is to drive the thing.
+
+⚠ It is PINNED rather than fixed.  `passable.loft` § Where the climb
+limits come from already predicts the change — *"the day a class reads
+`walk_vehicle` instead, this gains a kind and both of those go red"* —
+`tests/11_f6` pins *one climb ⇒ one distance field* on a class's whole
+contribution being its climb, and giving the vehicle a second movement
+axis changes what every authored map means (an island base becomes
+drivable).  BACKLOG C10.
+
+⚠⚠ **A PILE IS A SURFACE ONLY ONCE IT CLEARS THE WATER** (BACKLOG C5,
+`src/moat.loft`).  `hex_ground`'s threshold is the hex's own **depth**,
+not zero — half a metre of debris in a metre of water is still water.
+⚠ That is what gives the palette's `drop` a job at all: without it a
+trench flips to walkable rubble at the first grain however deep it is,
+so the 0-1-3-8 progression would decide nothing.  With it the depth is
+*how much a moat swallows* — `water`'s metre is **two bodies** at
+`BODY_HEIGHT_METRES`, the same one-to-two band § Why a robot climbs
+2.0 m lands on for a body ramp onto a `wall`, which is why neither
+mechanic needed a constant of its own.  ⚠ On land and on the `sea` the
+depth is 0.0, so it is the old `rise > 0` unchanged everywhere anybody
+has ever painted — 745 gate measurements did not move.
+
 ⚠ **ONE AI, per-class DATA — and it is a design rule, not an accident.**
 *Bosses are not special in their AI; their size and their options are
 different, and that is what makes them special events* (project owner,

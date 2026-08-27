@@ -1,0 +1,131 @@
+# a-base-behind-a-moat — BACKLOG C5, and it is the THIRD of a triple.
+#
+# `a-base-nobody-builds.keys`, `a-base-the-player-builds.keys` and this
+# file are the same file except for ONE token on one line:
+#
+#     paint off   →   nobody builds        falls at 130
+#     paint on    →   a five-hex WALL      falls at 174   (`@M050`)
+#     dig on      →   a five-hex TRENCH    ⚠⚠ does not fall at all
+#
+# Same ground, same core, same spawn, same wave list, same crew, same
+# drive, same number of ticks spent before the wave — so every
+# difference below is the trench's and can be nothing else
+# (`plans/12` § B7's rule).
+#
+# ── ⚠⚠ What it costs, and the scenario says all three ────────────
+#
+# A wall is a barrier you may walk along; a trench is a CUT, and the
+# reading is that it cuts EVERYTHING:
+#
+#   1. **the wave stops and never gets through** — water is not a
+#      surface (`walk_ground: false`), so nothing on legs enters one,
+#      and it has no HP, so there is nothing to chew.  The base does not
+#      fall inside 300 ticks where the walled one fell at 174;
+#   2. ⚠⚠ **and it earns NOTHING** — nothing that cannot reach you can
+#      die, so no body drops, no heap is collected, and the wallet is
+#      still on exactly its opening 200.  A wall's 174 ticks are ticks
+#      the player was PAID for; these are not.  ⚠ That is `@M056`'s
+#      jammer trade one mechanic over: time bought, income given up;
+#   3. ⚠⚠ **and the player cannot get back over it.**  `docs/PLAYING.md`
+#      calls boost *"the only way out of a base you have sealed"* and
+#      that is true of WALLS, whose tops are walkable — a climb cannot
+#      answer a surface question, so a 3.0 m boost does not cross a 1 m
+#      ditch.  The drive east at the end goes nowhere.
+#
+# ⚠ **The crew dug themselves in**, which is the same rule from the
+# inside: they stood on the line to work it, and a helper on a finished
+# trench is on it for the run.
+
+echo behind a moat: a trench drawn by driving, dug by the crew
+
+do toggle_mode
+
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+do cycle_kind
+do cycle_kind
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 11 0
+marker 11 0 spawn 3
+
+count markers 2 2
+do toggle_mode
+
+palette 5
+drag -3 -2 12 -2
+drag -3 -1 12 -1
+drag -3 0 12 0
+drag -3 1 12 1
+drag -3 2 12 2
+count painted 80 80
+
+# The crew, sitting on the line the player is about to draw.
+crew 5 -1
+crew 5 1
+
+# ── The dig ─────────────────────────────────────────────────────
+park 5 -2
+dig on
+drive 5 2
+tick 6
+count orders 5 5
+dig off
+
+# Park clear of the line so the trail is not rubbed out, and let the
+# crew work.  A trench owes a wall's 10 s a hex — `build.loft`
+# § BUILD_MOAT_UNITS chose that so the player's question is what it
+# DOES rather than what it costs — so 50 helper-seconds over two
+# helpers is 25 s, the same 45-tick window the wall version uses.
+drive 0 0
+tick 50
+count orders 0 0
+count painted 80 80
+# ⚠⚠ The whole band, hex by hex — a barrier with ONE gap in it buys
+# nothing at all (`plans/12` § B7 measured a gate at +1 tick), so
+# *five* is the number that matters rather than *some*.
+kind 5 -2 water
+kind 5 -1 water
+kind 5 0 water
+kind 5 1 water
+kind 5 2 water
+
+# ⚠ The crew are in it.  They stood on the line to dig it and a helper
+# on finished water cannot leave — the cost, stated where it happens.
+helper 0 5 -1
+helper 1 5 1
+
+
+# ── The waves — identical to `an-undefended-base` ───────────────
+wave 5
+count alive 5 5
+
+tick 22
+wave 8
+count alive 13 13
+
+# ── The clock, and what it was bought with ──────────────────────
+#
+# ⚠⚠ **300 ticks and the base is still standing**, against 174 for the
+# wall and 130 for nothing — and the wallet has not moved off its
+# opening 200, because nothing that cannot reach you ever dies.
+tick 300
+ticks 375 385
+wallet 200 200
+count alive 13 13
+# Stopped at the far bank, one hex east of the trench, attacking
+# nothing: a moat has no HP, so the siege has nowhere to bite.
+count targets 0 0
+
+# ⚠⚠ And the player cannot follow them.  Point the vehicle at the
+# spawn and give it ten ticks — thirty hexes of allowance — and it is
+# still on the near side.
+drive 11 0
+tick 10
+vehicle 4 0
+
+snap c5_a_base_behind_a_moat

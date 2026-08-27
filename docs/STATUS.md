@@ -101,3 +101,25 @@ underneath is untouched, so clearing restores exactly what was authored.
 That is what dissolves the sea trap: the painted layer is sea-default, so
 a breach that ERASED its hex would be *less* passable than the wall it
 replaced, while "the wall broke" asserted true.
+
+⚠⚠ **A MOAT IS A HEX THE CREW DUG, AND ITS DEPTH IS THE PALETTE'S OWN
+`drop`** (BACKLOG C5, [`src/moat.loft`](../src/moat.loft), `@X282`).
+Press **F** and every hex you drive over is ordered as a trench, at a
+wall's 10 s each; the crew dig it, and it becomes `water` — 1 m below
+the ground around it, which is the first time anything read the drop
+`examples/palette.json` has carried since plan 01.
+
+⚠⚠ **The depth decides ONE thing: how much it takes to FILL.**  A pile
+is a surface only once it clears the water
+([`src/passable.loft`](../src/passable.loft) § A PILE UNDER THE
+WATERLINE), so `water`'s metre swallows exactly two bodies.  On land the
+threshold is 0.0, so it is the old `rise > 0` everywhere anybody has
+ever painted — 745 gate measurements did not move.
+
+⚠⚠ **A probe falsified the feature's headline before it shipped**:
+`walk_vehicle` is read by NOTHING (`@D006`), so the player and the crew
+have never been able to enter water at any depth, boosting or not.  An
+empty moat is an absolute symmetric barrier the day it is dug — which
+is why a trench is **worth the whole run and earns nothing** (`@M058`):
+378 ticks still standing against a wall's 174 and a bare base's 130, on
+exactly the opening 200 points.

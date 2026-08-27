@@ -78,6 +78,7 @@ const KEY_K:     integer = 107;   // 'k' — cycle marker kind
 const KEY_P:     integer = 112;   // 'p' — edit ↔ play (plan 19 P3)
 const KEY_Q:     integer = 113;   // 'q' — wall paint (plan 27 C3)
 const KEY_J:     integer = 106;   // 'j' — the jammer switch (BACKLOG C3)
+const KEY_F:     integer = 102;   // 'f' — the trench trail (BACKLOG C5)
 
 // ─── One row of the table ───────────────────────────────────────
 
@@ -194,6 +195,22 @@ pub fn editor_actions() -> vector<EditorAction> {
     // about it.  ⚠ `numbers.json` § `input.wall_paint_toggle` has said
     // `Q` since before there was anything to bind it to.
     ea += [act("paint_wall", KEY_Q, CTRL_FORBIDDEN)];
+
+    // ⚠⚠ **THE TRENCH TRAIL — the same affordance as the row above it,
+    // laying the other thing** (BACKLOG C5).  `@X139` makes the key
+    // table a BUDGET and asks for an argument, and it is this: a moat
+    // is a **cut**, not a barrier you may walk along.  A wall can be
+    // broken and rebuilt; a trench can only be filled, and the crew who
+    // hover 0.4 m fall into one and stay there — so a player who meant
+    // *wall* and pressed once too many on a CYCLE would partition their
+    // own base.  Two modes, two keys, and pressing either turns the
+    // other off (`play.loft::play_set_digging`).
+    //
+    // ⚠ **F, beside Q**, because the two are one affordance and the
+    // hand that holds WASD reaches both.  ⚠ `numbers.json` § `input`
+    // has no trench row to inherit one from — the case
+    // `docs/PROGRESSION.md` § P2 says to choose in the open.
+    ea += [act("dig", KEY_F, CTRL_FORBIDDEN)];
 
     // ⚠⚠ **THE JAMMER SWITCH — the second key that is not a position**
     // (BACKLOG C3), and the argument `@X139` demands for a new row is
@@ -473,6 +490,7 @@ pub fn editor_input_from(
         eif_i.in_boost       = action_on(src, "boost",       eif_ctrl);
         eif_i.in_carry       = action_on(src, "carry",       eif_ctrl);
         eif_i.in_paint_wall  = action_on(src, "paint_wall",  eif_ctrl);
+        eif_i.in_dig         = action_on(src, "dig",         eif_ctrl);
         eif_i.in_toggle_jammer = action_on(src, "toggle_jammer", eif_ctrl);
     } else {
         eif_i.in_pan_north = pan_due && action_on(src, "pan_north", eif_ctrl);

@@ -2288,6 +2288,23 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         return "";
     }
 
+    // The TRENCH trail, as a STATE (BACKLOG C5) — `paint`'s shape and
+    // for `paint`'s reason: a script says what it WANTS, so a reader
+    // can tell what a line does without replaying the file to find out
+    // which way the flag was pointing.  ⚠ The KEY is a toggle, and
+    // `play_actions` owns it.
+    //
+    // ⚠ It goes through `play_set_digging`, which is the ONE door — so
+    // a script gets the standing-hex seed a player gets, and cannot lay
+    // a band the player could not seal (`@X272`).
+    if sc_cmd == "dig" {
+        if sc_argc != 1 { return "dig needs <on|off>"; }
+        sc_dg = on_off(tok[1] ?? "");
+        if sc_dg < 0 { return "dig: <on|off>, not '{tok[1] ?? ""}'"; }
+        play_set_digging(run.play, s, sc_dg == 1);
+        return "";
+    }
+
     // The jammer switch, as a STATE (BACKLOG C3) — `paint`'s shape and
     // for `paint`'s reason: a scenario says what it WANTS, so a reader
     // can tell what a line does without replaying the file.  The KEY is

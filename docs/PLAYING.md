@@ -95,17 +95,24 @@ played frame never pans and an edited one never drives.
 | key | action | what it does |
 |---|---|---|
 | `W` `A` `S` `D` | `drive_north` `drive_west` `drive_south` `drive_east` | drive, at 3 hexes/sec |
-| `Shift` | `boost` | 6 hexes/sec for 2 s, then 5 s of cooldown — and it climbs **3.0 m** where a rolling vehicle climbs 0.4.  ⚠ The only way out of a base you have sealed |
+| `Shift` | `boost` | 6 hexes/sec for 2 s, then 5 s of cooldown — and it climbs **3.0 m** where a rolling vehicle climbs 0.4.  ⚠ The only way out of a base you have sealed **with walls** — a climb cannot answer water, so it does not cross a trench (`F`) |
 | `E` | `carry` | pick up / put down.  **One key**, resolved on what your hands hold; dropping at the core delivers.  ⚠⚠ **Pressed at the core with empty hands it BUYS A TOWER BEACON for 100 points** — carry it to where you want the tower, press `E` again to plant it, and the crew raise it over 30 s.  ⚠ The points leave the wallet at PICKUP, so a beacon in your hands *is* the hundred points; a drop somewhere illegal leaves it on the ground rather than refunding you |
 | `Q` | `paint_wall` | ⚠⚠ **wall paint on / off — this is how you BUILD.**  With it on, every hex you drive over is ordered as a wall; drive over one again and the outline is rubbed out.  Your crew raise them, **10 s of one helper's time per hex** — two helpers on one site take half as long.  ⚠ You cannot order a wall on water, on a cliff, on a heap or on something already standing.  ⚠ An outline a helper has **started** can no longer be rubbed out |
+| `F` | `dig` | ⚠⚠ **trench on / off — the other trail, and it lays a MOAT.**  Same affordance as `Q`: every hex you drive over is ordered, drive over one again and the outline is rubbed out, your crew dig it at **10 s a hex** — exactly a wall's price.  ⚠⚠ **A moat is a CUT, not a barrier you may walk along**: nothing on legs can stand in water, so it stops robots AND insects where a low wall stops only robots, and there is nothing there to chew — but ⚠⚠ **it stops YOU too, and `Shift` does not answer it**: nothing crosses water, at any climb, so a trench you have closed is closed to you for the run.  Leave a gap, exactly as you must with a wall.  ⚠ It is also the first thing you can build that you cannot un-build — the crew who dug it are standing in it.  ⚠ Turning it on turns `Q` off, and the reverse |
 | `J` | `toggle_jammer` | ⚠⚠ **the jammer switch — turn your own core off.**  Only works while you are **at the core**; pressing it anywhere else does nothing.  With the core dark **no wave is sent and no list is armed**, ambient robots cross the bubble without losing their signal — and **salvage pays you nothing**.  ⚠⚠ It stops the SUPPLY, never the SIEGE: everything already cut off is still walking to your core, so it is not a panic button.  You can still clear heaps with it off, you are just working for free
 
-⚠⚠ **`Q` is the one key here that is not a place you drive to**, and
-that is deliberate rather than an oversight — `DESIGN.md` § 11 calls it
-*"an acknowledged exception to the spatial principle"*.  Everything else
-in play mode happens because of where you are; this changes what driving
-MEANS.  It is also the key you are most likely never to find, which is
-why the vehicle is meant to tint red while it is on.
+⚠⚠ **`Q` and `F` are the two keys here that are not a place you drive
+to**, and that is deliberate rather than an oversight — `DESIGN.md` § 11
+calls it *"an acknowledged exception to the spatial principle"*.
+Everything else in play mode happens because of where you are; these
+change what driving MEANS.  They are also the keys you are most likely
+never to find, which is why the vehicle is meant to tint while one is
+on.
+
+⚠ **They are two keys rather than one that cycles**, and the reason is
+what they cost you if you get it wrong: a wall can be broken and rebuilt,
+and a trench can only be filled in.  One press too many on a cycle would
+partition your own base.
 
 ⚠ **`J` is half a place**: the switch only answers at the core, so
 driving there is the reach — but a toggle cannot BE a position, because

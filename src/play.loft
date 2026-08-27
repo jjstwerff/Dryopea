@@ -168,6 +168,22 @@ pub struct PlayState {
     // the `.keys` vocabulary all stay exactly as total as they were.
     painting: boolean,
 
+    // Is the player laying a TRENCH trail (BACKLOG C5)?
+    //
+    // ⚠ `painting`'s sibling, here for `painting`'s reason: which mode
+    // the player happens to be holding is a property of the SESSION at
+    // the controls, and the orders the trail laid are the base.
+    //
+    // ⚠⚠ **The two are MUTUALLY EXCLUSIVE and the doors enforce it**,
+    // because one trail lays one thing: a frame in which both were on
+    // would have to pick, and whichever it picked would be a rule
+    // living in `play_trail` rather than in the affordance.
+    //
+    // ⚠ Stored as *digging*, so [loft#914]'s silent default on a
+    // partial `PlayState` literal is **not digging** — the way the game
+    // worked before this field existed.
+    digging: boolean,
+
     // Is this session LIVE — the game running, or the map being edited?
     // Plan 19 P3.  ⚠ See § The mode is remembered by the SESSION for why
     // it is here and not a local in `main()`.
@@ -203,6 +219,10 @@ pub fn play_state_new() -> PlayState {
         // that can be right: a session that started painting would lay
         // a wall along wherever the player first drove.
         painting: false,
+        // ⚠ And with the trench mode off, for the same reason and one
+        // sharper: a session that started digging would cut its own
+        // crew off along wherever the player first drove.
+        digging:  false,
         cam:      camera_rig_new(),
     }
 }
@@ -271,6 +291,19 @@ pub fn play_painting(ps: const PlayState) -> boolean {
     ps.painting
 }
 
+// Order `kind` on the hex the vehicle is standing on — the seed both
+// trail modes lay when they come on (`@X272`).
+//
+// ⚠ It is a plain `order_place`, never the trail's toggle, so switching
+// a mode on can only ADD: a player who flicks the key twice over their
+// own outline does not rub it out.  ⚠ An order the ground refuses is
+// simply not laid — `order_place` asks `order_fault` itself.
+fn play_seed_order(ps: PlayState, s: EditorState, kind: u8) {
+    if !vehicle_present(ps.wave.player) { return; }
+    order_place(s.picker.palette, s.pw, ps.wave.orders,
+                ps.wave.player.q, ps.wave.player.r, BUILD_GROUND, kind);
+}
+
 // Turn wall paint on or off.
 //
 // ⚠⚠ **Switching it ON orders the hex the player is standing on**, and
@@ -294,10 +327,43 @@ pub fn play_set_painting(ps: PlayState, s: EditorState, on: boolean) {
     if on == ps.painting { return; }
     ps.painting = on;
     if !on { return; }
-    if !vehicle_present(ps.wave.player) { return; }
-    order_place(s.picker.palette, s.pw, ps.wave.orders,
-                ps.wave.player.q, ps.wave.player.r,
-                BUILD_GROUND, as_wall_kind(s.picker.palette));
+    // ⚠ **One trail lays one thing** — see `PlayState.digging`.
+    ps.digging = false;
+    play_seed_order(ps, s, as_wall_kind(s.picker.palette));
+}
+
+// Is the player laying a trench trail (BACKLOG C5)?
+//
+// ⚠ `play_painting`'s sibling — the read door, so nothing outside this
+// file touches the field.
+pub fn play_digging(ps: const PlayState) -> boolean {
+    ps.digging
+}
+
+// Turn the trench trail on or off (BACKLOG C5).
+//
+// ⚠⚠ **`play_set_painting`'s shape, including the standing-hex seed,
+// and the seed matters here for the SAME reason** (`@X272`): the trail
+// toggles every hex ENTERED and the player never enters the one they
+// are already on, so without it a band of trench keeps its first row
+// open however carefully the player drives — and `plans/12` § B7
+// measured a barrier with one gap in it at **+1 tick**.
+//
+// ⚠⚠ **The seed digs a hole under the player's own vehicle, and that
+// is honest rather than a hazard to guard against.**  A trench takes
+// 10 s of a helper's time to become water, by which point the player
+// has driven on; if they have not, they hover 0.4 m over a 1 m hole and
+// need a boost — which is the mechanic working, not misfiring.
+//
+// ⚠ **Turning this on turns wall paint off**, and the reverse.  Two
+// modes, one trail.
+// Example: @DRY-132
+pub fn play_set_digging(ps: PlayState, s: EditorState, on: boolean) {
+    if on == ps.digging { return; }
+    ps.digging = on;
+    if !on { return; }
+    ps.painting = false;
+    play_seed_order(ps, s, as_moat_kind(s.picker.palette));
 }
 
 // How much of a frame's elapsed time the GAME gets.
@@ -493,6 +559,15 @@ fn play_actions(ps: PlayState, s: EditorState, input: const EditorInput) {
         play_set_painting(ps, s, !ps.painting);
     }
 
+    // ── The trench trail (BACKLOG C5) ───────────────────────────
+    //
+    // ⚠ The row above it, laying the other thing.  Edge-triggered for
+    // the same reason, and each door turns the other mode off — so the
+    // player is never in both and the trail never has to choose.
+    if input.in_dig && !ps.prev.in_dig {
+        play_set_digging(ps, s, !ps.digging);
+    }
+
     if input.in_carry && !ps.prev.in_carry {
         // ⚠ The core is needed by BOTH halves since plan 27 C4: a drop
         // may be a delivery there, and a take may be BUYING a beacon
@@ -547,7 +622,8 @@ fn play_one_tick(ps: PlayState, s: EditorState, at: Hex) {
     ps.ticks += 1;
 }
 
-// Lay the wall trail over the ground the vehicle just crossed.
+// Lay the trail over the ground the vehicle just crossed — a WALL the
+// crew raise, or a TRENCH they dig (BACKLOG C5).
 //
 // ⚠⚠ **It walks `lat_line` from where the vehicle STOOD to where it
 // now stands, and that is not a flourish**: at 3 hex/s over a 2/3 s
@@ -568,10 +644,16 @@ fn play_one_tick(ps: PlayState, s: EditorState, at: Hex) {
 //
 // Example: @DRY-103
 fn play_trail(ps: PlayState, s: EditorState, from: const Hex) {
-    if !ps.painting { return; }
+    if !ps.painting && !ps.digging { return; }
     if !vehicle_present(ps.wave.player) { return; }
     pt_to = Hex { q: ps.wave.player.q, r: ps.wave.player.r };
-    pt_kind = as_wall_kind(s.picker.palette);
+    // ⚠⚠ **ONE trail, two payloads** (BACKLOG C5) — the walk, the skip,
+    // the erase and the refusal are all the same, and the mode decides
+    // only WHAT is laid.  A second trail function would be the whole of
+    // this one copied to change one argument, and the two would then be
+    // free to disagree about sealing.
+    pt_kind = if ps.digging { as_moat_kind(s.picker.palette) }
+              else          { as_wall_kind(s.picker.palette) };
     // ⚠⚠ **The hex it STARTED on is skipped**, exactly as
     // `vehicle.loft::drive_along` skips it — and here the reason is
     // sharper than saving a step: the previous tick already ordered

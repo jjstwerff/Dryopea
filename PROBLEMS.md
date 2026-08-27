@@ -331,6 +331,56 @@ Severity tiers:
   placement that mirrored a part would be caught too.  It goes RED
   against the pre-fix emitter naming 72 of 144.
 
+### @D006 — `walk_vehicle` is read by nothing, so the hovering movers cannot cross water
+
+- **Status:** OPEN.  Found and PINNED 2026-08-27 (BACKLOG C5), not fixed —
+  the fix is a change to the ONE passability rule and to what every
+  existing map means, which is not a line in a moat file.
+- **Severity:** Medium, and it went up the day the player could BUILD
+  water.  A trench the player closes is closed to them for the run, and
+  boost cannot answer it.
+- **Found while:** BACKLOG C5, probing the claim the moat feature was
+  designed around — *the depth is what stops the moat being free,
+  because the crew HOVER and fall in*.  The probe falsified it, which is
+  the whole reason it was written before the feature.
+- **Repro:** drive east along a painted grass strip whose middle hex is
+  `sea` (height **0.0**), with `CLIMB_VEHICLE` and six hexes of
+  allowance.  The mover stops **one hex short of it**.  Raise the climb
+  to `VEHICLE_BOOST_CLIMB_METRES` (3.0) and it stops in the same place.
+- **Expected:** [`docs/GROUND_TYPES.md`](docs/GROUND_TYPES.md) § The
+  master palette says *"Walkable (vehicle) is true even for `steep_rock`
+  and `waterfall` because the floating vehicle hovers above terrain;
+  per-agent-type traversal is the design"*, and every water and cliff
+  kind carries `walk_vehicle: true` in
+  [`examples/palette.json`](examples/palette.json).
+- **Observed:** `passable.loft::can_climb` refuses a step whose *either*
+  end fails `hex_walkable`, and `hex_walkable` answers `walk_ground` for
+  every caller.  `vehicle.loft::drive_along` — the shared chassis the
+  player and every helper use — asks `can_climb`, so **`walk_vehicle` is
+  read by no code in the tree**.  The vehicle is stopped by flat sea and
+  by `steep_rock` exactly as a robot is.
+- **⚠ Why it is not simply a bug to fix here:** `passable.loft`
+  § Where the climb limits come from already predicts it —
+  *"The day a class reads `walk_vehicle` instead, this gains a kind and
+  both of those go red"* — and `tests/11_f6_height_step.loft` pins
+  **one climb ⇒ one distance field** on the strength of a class's whole
+  contribution being its climb.  Giving the vehicle a second movement
+  axis changes what every authored map means (an island base becomes
+  drivable) and is a decision about the SIMULATION, not a patch.
+- **⚠ What it costs today:** the vehicle cannot cross a one-hex ditch or
+  reach an island, and BACKLOG C5's trench is the first thing the player
+  can build that they cannot get back over.
+  [`docs/PLAYING.md`](docs/PLAYING.md) says so in the row that offers it,
+  and [`src/moat.loft`](src/moat.loft) § And the hazard the same probe
+  exposed carries the argument for recording it rather than guarding it.
+- **Test:** [`tests/c5_the_moat.loft`](tests/c5_the_moat.loft)
+  `test_water_stops_the_player_and_the_crew_at_any_depth` — the reading,
+  with the control that says the drive itself works (the same drive over
+  grass crosses).  ⚠ It pins the CURRENT behaviour, so it is the test
+  that must be rewritten when this is fixed rather than the one that
+  proves the fix.
+
+
 ## See also
 
 - [`QUESTIONS_FOR_LOFT.md`](QUESTIONS_FOR_LOFT.md) — problems

@@ -1,0 +1,187 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// A MOAT — the one hex whose surface is BELOW the ground around it.
+//
+// BACKLOG C5.  `docs/MATERIALS.md` § Defensive structures calls a moat
+// *"a trench allowed to fill with water"* and names it the cheapest of
+// the three because *"a moat is a trench plus the drop the palette
+// already has"*.  This file is that drop, read.
+//
+// ── The invariant ───────────────────────────────────────────────
+//
+// > **A water hex sits `drop` metres BELOW the ground around it, and
+// > every rule already in the tree reads that depth.**
+//
+// Nothing else here.  The trench is an ORDER like any other
+// (`build.loft`), the trail that lays one is `play.loft`'s, and the
+// waterline it becomes is `passable.loft::hex_ground`'s.  What was
+// missing was the number, and `examples/palette.json` has carried it
+// since plan 01: **sea 0, water 1, rapids 3, waterfall 8**, and until
+// now nothing read it (`plans/25` § M2 open question 3 names the gap).
+//
+// ── ⚠⚠ WHAT WAS PROBED FIRST, AND WHAT IT KILLED ───────────────
+//
+// This file was designed around a claim that a probe FALSIFIED before a
+// line of it shipped, and the corrected version is smaller and truer.
+//
+// **The wrong version**: *water already stops robots, so the depth is
+// what stops the moat being free — it also stops the player's own crew,
+// who HOVER.*  Every water kind carries `walk_vehicle: true`, the crew
+// and the vehicle drive through `drive_along`, and `drive_along` asks
+// `can_climb` — so a hovering mover looked like the one thing a depth
+// could bite.
+//
+// ⚠⚠ **`walk_vehicle` IS READ BY NOTHING.**  `can_climb` refuses a step
+// whose either end fails `hex_walkable`, and `hex_walkable` answers
+// `walk_ground` for everybody — so **the player and the crew have never
+// been able to enter water at all**, at any depth, boosting or not.
+// Measured, not reasoned: a hover-climb drive east across a painted
+// strip stops one hex SHORT of a `sea` tile whose height is 0.0
+// (`tests/c5_the_moat.loft` § What the probe killed keeps the reading).
+//
+// So a moat is an absolute, symmetric barrier the day it is dug, and
+// the depth changes nothing about who may cross an EMPTY one.  ⚠ The
+// two consequences that survive are the two this file is for:
+//
+//   ⚠⚠ **what it takes to FILL** — `passable.loft::hex_ground` reads
+//     the depth as its waterline, so a pile is a surface only once it
+//     clears the water.  Without that the drop decides nothing: a
+//     trench would flip to walkable rubble at the first grain of spoil
+//     however deep it was.  ⚠ **This is the whole of what the number
+//     buys**, and it is `docs/MATERIALS.md`'s *"a trench allowed to
+//     fill with water"* said as arithmetic;
+//   ⚠ **what it LOOKS like** — `ground_mesh.loft` draws a quad wherever
+//     a hex stands above its neighbour, so a bank draws down into a
+//     trench with no case written for holes.  A moat at 0.0 would be a
+//     flat blue tile.
+//
+// ── ⚠ And the hazard the same probe exposed ─────────────────────
+//
+// ⚠⚠ **A player who rings themselves in a trench cannot get out — and
+// unlike a wall, BOOST does not answer it.**  `docs/PLAYING.md` calls
+// boost *"the only way out of a base you have sealed"*, and that is
+// true of walls, whose tops are walkable; water is not a surface at any
+// height, so a 3.0 m climb buys nothing against a 1 m ditch.
+//
+// That is recorded rather than guarded, and on the design's own
+// grounds: `docs/GROUND_TYPES.md` § Entrances already makes *you MUST
+// leave a gap, or accept what follows* the rule for walls, and `@X247`
+// wants an irreversible decision at the moment the player knows least.
+// A trench is that rule with teeth.  ⚠ It is the FIRST thing the player
+// can build that they cannot cross back over, so `docs/PLAYING.md` says
+// so in the row that offers it.
+//
+// ── Why `water` and only `water` may be dug ─────────────────────
+//
+// ⚠ `rapids` (3 m) and `waterfall` (8 m) are terrain a MAP AUTHOR
+// paints and not orders the player may place.  The reason is the
+// waterline above: a trench 8 m deep swallows sixteen bodies before it
+// is ground again, which is not a barrier the game has any way to
+// remove — where `water`'s 1 m is two.  ⚠ `build.loft::as_moat_kind`
+// is where that lands, and `order_work_units` is what refuses the other
+// two: the list of what may be built at all was already there.
+//
+// ── What this file deliberately does NOT do ─────────────────────
+//
+// ⚠ **It is not plan 02's solver.**  `docs/GROUND_TYPES.md` § The water
+// sub-palette reads `drop` as CUMULATIVE along a drainage chain — a
+// river's height ABOVE the sea, integrated upstream — and `plans/25`
+// § M2 rightly calls that a decision about the whole simulation.  This
+// is the LOCAL reading: one hex, its own drop, no chain and no
+// neighbours.  The two agree wherever a chain is one hex long, which is
+// what a moat is; a river remains flat until plan 02 says otherwise,
+// and gains its profile by this term growing a chain rather than by
+// anything here being replaced.
+//
+// ⚠⚠ **AND NOTHING FILLS ONE YET, which is the honest limit of this.**
+// A moat has no HP, so `structure_breakable` is false and a besieger
+// targeting one lands nothing — enemies stack against the bank and
+// stand there.  Nothing dies IN a trench either, because nothing can be
+// in one, so no body falls in.  The waterline rule is therefore
+// **correct and unexercised by the runtime**: it is what `raise` in a
+// `.keys` file meets, and what the first thing that fills a moat will
+// meet.
+//
+// ⚠ That is not a stalemate the design has to fear — a base nothing
+// reaches is a base where nothing dies, so there is no salvage, and
+// salvage is the run's only income.  A player who rings themselves in
+// has bought time they cannot spend, which is `@M056`'s jammer trade
+// one mechanic over.  ⚠ *Besiegers shovelling a trench shut* is the
+// follow-on that would close it, and it is a BACKLOG row with its
+// argument here rather than a gap nobody wrote down.
+
+use palette;
+use painted;
+
+// How many metres of depth one unit of palette `drop` is worth.
+//
+// ⚠⚠ **CHOSEN, and said to be chosen** — the rule `docs/PROGRESSION.md`
+// § P2 states for any number a feature needs: check it exists first, and
+// where it does not, choose it in the open.  `GROUND_TYPES.md` says the
+// drop values are *"dimensionless and tunable"*, so the scale is this
+// file's to pick.  **1.0 is picked against the one thing the depth
+// decides — how much it takes to FILL** (§ WHAT WAS PROBED FIRST) —
+// priced in bodies, at `damage.loft::BODY_HEIGHT_METRES` = 0.5 m each:
+//
+//   | drop | depth | bodies to clear the waterline |
+//   |------|-------|-------------------------------|
+//   | sea 0       | 0 m | ⚠ none — the world's flat default, so nothing moves |
+//   | water 1     | 1 m | **2** — the trench the player may dig |
+//   | rapids 3    | 3 m | 6 |
+//   | waterfall 8 | 8 m | 16 — ⚠ authored terrain, and never an order |
+//
+// ⚠ Two is the number that makes the trench a real barrier and a
+// removable one, and it is the same *one to two bodies* band that
+// `passable.loft` § Why a robot climbs 2.0 m lands on for a body ramp
+// onto a `wall` — the two mechanics agree about what a small pile is
+// worth, which is why neither needed a constant of its own.
+//
+// ⚠ **The first row is the load-bearing one.**  Sea is the sparse
+// world's implicit default — an unpainted hex IS sea (`passable.loft`
+// § Unpainted is SEA) — so a scale of any size leaves every existing
+// world at exactly the height it was.  That is what let this land
+// without moving one of the 745 gate measurements.
+pub const MOAT_METRES_PER_DROP: float = 1.0;
+
+// How deep this ground type is, in metres — 0.0 for anything that is
+// not water.
+//
+// ⚠ It takes the ENTRY rather than a palette and a hex, so that
+// `passable.loft` can ask it with the entry it has already looked up
+// and no consumer pays for a second lookup.  ⚠ It also keeps this file
+// off `PaintedWorld` for the height rule, which is what lets
+// `passable.loft` import it without a cycle.
+//
+// ⚠ **`?? 0` is load-bearing, exactly as `painted_height_of`'s
+// `?? 0.0` is**: `drop` is `null` for every land type and every
+// structure — `palette.json` writes it that way — and a null compares
+// as TRUE against a climb, so an unguarded read would give the right
+// answer for grass by accident.  Say the zero.
+// Example: @DRY-128
+pub fn moat_depth(e: const GroundType) -> float {
+    (e.drop ?? 0) as float * MOAT_METRES_PER_DROP
+}
+
+// How deep the hex at (q, r) is, in metres — 0.0 on land, on a
+// structure, and on the sea.
+//
+// ⚠ An index no palette entry answers for is 0.0 rather than a guess,
+// the same miss value `painted_ground` chooses for the same reason.
+pub fn moat_depth_at(pal: vector<GroundType>, pw: const PaintedWorld,
+                     q: integer, r: integer) -> float {
+    mda_i = lookup_painted(pw, q, r) as integer;
+    if mda_i < 0 || mda_i >= len(pal) { return 0.0; }
+    moat_depth(pal[mda_i] ?? GroundType {})
+}
+
+// Is there a moat at (q, r) — a hex sunk below the ground around it?
+//
+// ⚠ **The SEA is not one, and that is the whole distinction**: an
+// unpainted world is sea at drop 0, so this is false everywhere nobody
+// painted.  A predicate that answered *is this water* would be true for
+// the entire map.
+pub fn moat_at(pal: vector<GroundType>, pw: const PaintedWorld,
+               q: integer, r: integer) -> boolean {
+    moat_depth_at(pal, pw, q, r) > 0.0
+}
