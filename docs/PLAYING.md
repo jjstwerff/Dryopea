@@ -98,6 +98,7 @@ played frame never pans and an edited one never drives.
 | `Shift` | `boost` | 6 hexes/sec for 2 s, then 5 s of cooldown — and it climbs **3.0 m** where a rolling vehicle climbs 0.4.  ⚠ The only way out of a base you have sealed |
 | `E` | `carry` | pick up / put down.  **One key**, resolved on what your hands hold; dropping at the core delivers.  ⚠⚠ **Pressed at the core with empty hands it BUYS A TOWER BEACON for 100 points** — carry it to where you want the tower, press `E` again to plant it, and the crew raise it over 30 s.  ⚠ The points leave the wallet at PICKUP, so a beacon in your hands *is* the hundred points; a drop somewhere illegal leaves it on the ground rather than refunding you |
 | `Q` | `paint_wall` | ⚠⚠ **wall paint on / off — this is how you BUILD.**  With it on, every hex you drive over is ordered as a wall; drive over one again and the outline is rubbed out.  Your crew raise them, **10 s of one helper's time per hex** — two helpers on one site take half as long.  ⚠ You cannot order a wall on water, on a cliff, on a heap or on something already standing.  ⚠ An outline a helper has **started** can no longer be rubbed out |
+| `J` | `toggle_jammer` | ⚠⚠ **the jammer switch — turn your own core off.**  Only works while you are **at the core**; pressing it anywhere else does nothing.  With the core dark **no wave is sent and no list is armed**, ambient robots cross the bubble without losing their signal — and **salvage pays you nothing**.  ⚠⚠ It stops the SUPPLY, never the SIEGE: everything already cut off is still walking to your core, so it is not a panic button.  You can still clear heaps with it off, you are just working for free
 
 ⚠⚠ **`Q` is the one key here that is not a place you drive to**, and
 that is deliberate rather than an oversight — `DESIGN.md` § 11 calls it
@@ -105,6 +106,13 @@ that is deliberate rather than an oversight — `DESIGN.md` § 11 calls it
 in play mode happens because of where you are; this changes what driving
 MEANS.  It is also the key you are most likely never to find, which is
 why the vehicle is meant to tint red while it is on.
+
+⚠ **`J` is half a place**: the switch only answers at the core, so
+driving there is the reach — but a toggle cannot BE a position, because
+parking beside the core would flip it every frame.  ⚠ Nothing in the
+world tells you it is there yet; that is meant to be the crew's job
+(`PROGRESSION.md` § P2f) and a core that LOOKS dark (`DESIGN.md`
+§ Two surface signals), and neither is built.
 
 ⚠ **The editor's mouse still works while the clock runs**, and the
 simulation sees it — measured: a `wall_high` painted mid-run makes the

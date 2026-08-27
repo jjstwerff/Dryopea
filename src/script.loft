@@ -2215,6 +2215,23 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         return "";
     }
 
+    // The jammer switch, as a STATE (BACKLOG C3) — `paint`'s shape and
+    // for `paint`'s reason: a scenario says what it WANTS, so a reader
+    // can tell what a line does without replaying the file.  The KEY is
+    // a toggle and `play_actions` owns it.
+    //
+    // ⚠ **It AUTHORS and never simulates** — no vehicle is needed and
+    // no position is checked, unlike `wave_jammer_switch`, which is the
+    // player's door and refuses away from the core.  The same split
+    // `tower` keeps: a scenario states the world, a key earns it.
+    if sc_cmd == "jammer" {
+        if sc_argc != 1 { return "jammer needs <on|off>"; }
+        sc_jw = on_off(tok[1] ?? "");
+        if sc_jw < 0 { return "jammer: <on|off>, not '{tok[1] ?? ""}'"; }
+        jammer_set(run.play.wave.jammer, sc_jw == 1);
+        return "";
+    }
+
     if sc_cmd == "boost" {
         if sc_argc != 0 { return "boost takes no arguments"; }
         if !vehicle_present(run.play.wave.player) {

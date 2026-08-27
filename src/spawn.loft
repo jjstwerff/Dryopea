@@ -44,6 +44,7 @@ use build;
 use errand;
 use skill;
 use endure;
+use jammer;
 use waves;
 use fixstep;
 
@@ -473,10 +474,11 @@ pub struct Enemy {
     // the core, and a partial `Enemy { … }` literal must go on meaning
     // that.
     //
-    // ⚠ It is cleared — never set — by `enemy_step`: a robot that
-    // enters the scrambler bubble has lost its link and is one of the
+    // ⚠ It is cleared — never set — by `wave_cutoff`: a robot that is
+    // inside the scrambler bubble has lost its link and is one of the
     // wave, and it never goes back (`errand.loft` § The bubble is the
-    // whole mechanic).
+    // whole mechanic).  ⚠ And only while the core is JAMMING (BACKLOG
+    // C3) — a dark core cuts nobody off.
     errand:  boolean,
 }
 
@@ -564,6 +566,7 @@ pub struct WaveState {
     schedule:    WaveSchedule,
     orders:      BuildLayer,
     traffic:     Traffic,
+    jammer:      Jammer,
 }
 
 // Factory: a fresh wave state with no enemies, a cursor at 0, the
@@ -581,6 +584,7 @@ pub fn wave_state_empty() -> WaveState {
         schedule: wave_schedule_new(),
         orders:  build_layer_empty(),
         traffic: traffic_new(),
+        jammer:  jammer_new(),
     }
 }
 
@@ -829,18 +833,21 @@ fn enemy_step(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
         return;
     }
 
-    // ⚠⚠ **Inside the bubble a robot has lost its errand** (BACKLOG
-    // B4).  `SETTING.md` § Why waves happen: the scrambler cuts its
-    // link, it can no longer hear the AI driving it, and from here on
-    // it is one of the accreting wave.  **One way only** — walking back
-    // out does not restore a signal the core is still jamming, and a
-    // robot that recovered its errand would wander off mid-siege.
+    // ⚠⚠ **The CUT is not here any more** (BACKLOG C3).  Taking a
+    // robot's errand used to be one line of this function, on the
+    // strength of its being the same test the mode above turns on.  It
+    // now lives in `wave_cutoff`, which the tick runs over the whole
+    // roster BEFORE anybody moves — because the switch that decides
+    // whether robots are cut off at all is on `WaveState`, and a mover
+    // that reached for it would need the jammer threaded through
+    // `enemy_tick` and thirty call sites.
     //
-    // ⚠ Cleared HERE rather than at the spawn, because this is the one
-    // site that knows where the boundary is — and it is the same test
-    // the mode above turns on, so the two can never disagree about
-    // which robots are lost.
-    e.errand = false;
+    // ⚠ The two agree by construction rather than by proximity: the
+    // sweep asks `enemy_in_bubble` at the top of the tick and this
+    // function asks it before the enemy has moved, so both read the
+    // same position.  `tests/c3_the_jammer.loft`'s
+    // `test_the_cut_lands_on_the_tick_the_robot_arrives` is what holds
+    // that.
 
     // ── Engage: follow the field (plan 11 F5) ───────────────────
     //
@@ -1116,6 +1123,43 @@ fn enemy_move_to(e: Enemy, q: integer, r: integer, occ: Occupancy) {
 // `>= disable_radius`: the hex the radius names is in.
 pub fn enemy_in_bubble(e: const Enemy, core: Hex) -> boolean {
     lat_distance(core, Hex { q: e.q, r: e.r }) <= SCRAMBLER_BUBBLE_RADIUS
+}
+
+// Take the errand off every robot the bubble has caught this tick, and
+// answer how many that was (BACKLOG B4, moved here by C3).
+//
+// `SETTING.md` § Why waves happen: the scrambler cuts a robot's link,
+// it can no longer hear the AI driving it, and from here on it is one
+// of the accreting wave.  **One way only** — walking back out does not
+// restore a signal the core is still jamming, and a robot that
+// recovered its errand would wander off mid-siege.
+//
+// ⚠⚠ **The jammer is the whole condition** (BACKLOG C3).  A dark core
+// cuts nobody off, which is what makes *turn it off and the waves stop*
+// true of traffic as well as of the authored list: the road goes on
+// being used and the robots on it go on their way.
+//
+// ⚠ **Before anybody moves**, which is what makes it the same reading
+// `enemy_step` used to take for itself: a mover tests the bubble at the
+// position it starts the tick on, and so does this.  A sweep placed
+// after the movers would cut a robot a whole tick early.
+//
+// ⚠ It sweeps enemies that are STANDING or banked short of a step too,
+// where the old inline version could only reach one that was taking a
+// hex this tick.  That is a correction rather than a side effect: what
+// cuts a robot off is being inside the bubble, not walking while there.
+//
+// Example: @DRY-124
+pub fn wave_cutoff(state: WaveState, core: Hex) -> integer {
+    if !jammer_on(state.jammer) { return 0; }
+    wc_n = 0;
+    for wc_e in state.enemies {
+        if wc_e.errand && wc_e.alive && enemy_in_bubble(wc_e, core) {
+            wc_e.errand = false;
+            wc_n += 1;
+        }
+    }
+    wc_n
 }
 
 // One step along the enemy's heading, if the hex it would enter is one
@@ -1856,13 +1900,37 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     // arriving mid-tick is seen by the NEXT one — the same rule a body
     // and a breach follow, and what keeps "who is where" a single
     // answer for the whole tick.
-    wave_provoke_step(state, mw, core);
-    wave_schedule_step(state, mw, core);
+    // ⚠⚠ **And the JAMMER is in front of BOTH** (BACKLOG C3).  A wave
+    // is *"the gradual accretion of individual cut-off robots"*
+    // (`SETTING.md` § Why waves happen), so a core that is not jamming
+    // cuts nobody off and there is nothing to accrete: no list arms and
+    // no wave goes out.  ⚠ It PAUSES rather than cancels — the lull is
+    // spent inside `wave_schedule_step`, so a list switched off
+    // mid-run picks up where it stopped.
+    //
+    // ⚠ One guard at the one caller rather than a copy inside each,
+    // because *the wave system does not run* is a single statement and
+    // `play_one_tick` is the only way into this function.
+    if jammer_on(state.jammer) {
+        wave_provoke_step(state, mw, core);
+        wave_schedule_step(state, mw, core);
+    }
 
     // ⚠ **Ambient traffic goes out with the schedule** (BACKLOG B4) and
     // for the same reason: a robot that sets out this tick is one this
     // tick's fields, occupancy and move order already know about.
+    //
+    // ⚠⚠ **NOT behind the jammer guard above** (BACKLOG C3): traffic is
+    // the robots' own business and the core has nothing to do with it
+    // starting.  What the core decides is whether crossing the bubble
+    // COSTS them their link, which is `wave_cutoff` below.
     wave_traffic_step(state, mw, core);
+
+    // ⚠ **The bubble takes its robots here, before anybody moves** —
+    // see `wave_cutoff`.  After the spawners, so a robot that sets out
+    // this tick onto a marker already inside the bubble is one of the
+    // wave from its first tick rather than from its second.
+    wave_cutoff(state, core);
 
     // Everything the tick reads is fixed before anybody moves: the
     // fields, where everyone stands, and the order they act in.
@@ -1953,9 +2021,16 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     // unattended: a run with nobody in it clears nothing and so earns
     // nothing.  Bound to a local rather than nested, per `flow.loft`
     // § A struct cannot ride home on two tail calls.
+    // ⚠⚠ **Priced through the JAMMER** (BACKLOG C3), which is the
+    // switch's other half: a dark core pays nothing for what is
+    // cleared, while the clearing itself still happens — a kill zone
+    // that bodies are ramping shut has to stay openable, or the switch
+    // would be a trap rather than a decision.
     wt_salv = vehicle_salvage(state.player, state.heights, TICK_SECONDS);
     if wt_salv.metres > 0.0 {
-        wallet_earn(state.wallet, loot_rate(wt_salv.source) * wt_salv.metres);
+        wallet_earn(state.wallet,
+                    jammer_loot_rate(state.jammer, wt_salv.source)
+                    * wt_salv.metres);
     }
 
     // ⚠ **The crew's work is the player's work and pays into the same
@@ -1976,7 +2051,9 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     for wt_hs in state.crew {
         wt_hsalv = helper_salvage(wt_hs, state.heights, TICK_SECONDS);
         if wt_hsalv.metres > 0.0 {
-            wallet_earn(state.wallet, loot_rate(wt_hsalv.source) * wt_hsalv.metres);
+            wallet_earn(state.wallet,
+                        jammer_loot_rate(state.jammer, wt_hsalv.source)
+                        * wt_hsalv.metres);
             // ⚠ Clearing a heap is WORK and tires like any other
             // (BACKLOG C2) — but it is not scaled by endurance, and
             // that is deliberate: `salvage_at` is the PLAYER's rule on
@@ -2469,6 +2546,35 @@ pub fn wave_provoke_step(state: WaveState, mw: const MarkerWorld,
     if wave_schedule_running(state.schedule) { return false; }
     if !wave_provoked(state, mw, core) { return false; }
     wave_schedule_begin(state.schedule);
+    true
+}
+
+// ─── The jammer switch (BACKLOG C3) ─────────────────────────────
+
+// Flip the core's jamming, if the player is standing at the core.
+// Answers whether the switch moved.
+//
+// ⚠ **Position-locked, like every other thing the core does for you.**
+// `beacon_buy` asks the same `CARGO_REACH_HEXES` of the same core hex,
+// and for the same reason: `@X099` puts humans on the ground because
+// the jammer forbids operating anything remotely, and a core you could
+// switch off from the far side of the map would be the first exception
+// to the sentence the whole game is built on.
+//
+// ⚠ It takes an owner nowhere and reads `state.player`, unlike
+// `wave_take` / `wave_drop`: a helper is not allowed to do this.  The
+// crew do the WORK (`DESIGN.md` § 9); ending the run's income is the
+// player's decision and nobody else's.
+//
+// ⚠ A dead or absent vehicle refuses rather than switching, the same
+// guard `wave_carrier_ready` puts in front of a pickup.
+//
+// Example: @DRY-121
+pub fn wave_jammer_switch(state: WaveState, core: const Hex) -> boolean {
+    if !vehicle_present(state.player) { return false; }
+    if lat_distance(Hex { q: state.player.q, r: state.player.r }, core)
+       > CARGO_REACH_HEXES { return false; }
+    jammer_toggle(state.jammer);
     true
 }
 

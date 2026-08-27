@@ -177,6 +177,15 @@ pub struct EditorInput {
     // keeps true.
     in_paint_wall: boolean,
 
+    // J — the jammer switch (BACKLOG C3).
+    //
+    // ⚠ A PLAY field like the four above it.  ⚠ It is a key rather than
+    // a position because a toggle cannot be one: standing at the core
+    // is already what makes the switch REACHABLE, and a switch that
+    // flipped on presence alone would flap every frame you parked
+    // there.  `spawn.loft::wave_jammer_switch` owns the position half.
+    in_toggle_jammer: boolean,
+
     // ── The SHELL's half (plan 19 P3) ──
     //
     // ⚠⚠ **Neither seam reads this one.**  `editor_step` does not and
@@ -243,6 +252,7 @@ pub fn editor_input_empty() -> EditorInput {
         in_boost:          false,
         in_carry:          false,
         in_paint_wall:     false,
+        in_toggle_jammer:  false,
         in_toggle_play:    false,
     }
 }
@@ -285,6 +295,7 @@ pub fn editor_input_copy(ic: const EditorInput) -> EditorInput {
         in_boost:          ic.in_boost,
         in_carry:          ic.in_carry,
         in_paint_wall:     ic.in_paint_wall,
+        in_toggle_jammer:  ic.in_toggle_jammer,
         in_toggle_play:    ic.in_toggle_play,
     }
 }

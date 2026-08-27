@@ -348,8 +348,9 @@ fn test_every_action_is_bound_to_a_real_key() {
         tea_n += 1;
     }
 
-    assert(tea_n == 34,
-           "2 modifiers + 13 editor actions + 7 PLAY actions (plan 19 P2, plan 27 C3) "
+    assert(tea_n == 35,
+           "2 modifiers + 13 editor actions + 8 PLAY actions (plan 19 P2, plan 27 C3, "
+           + "BACKLOG C3) "
            + "+ 1 SHELL action (plan 19 P3) + 11 palette hotkeys — "
            + "`rubble` has none");
 }
@@ -364,11 +365,16 @@ fn test_every_action_is_bound_to_a_real_key() {
 fn test_rebinding_moves_the_key_and_the_old_one_goes_dead() {
     trb_src = input_source_new();
 
-    // Move `toggle_mode` from Tab to 'j'.
+    // Move `toggle_mode` from Tab to 'g'.
+    //
+    // ⚠ It has to be a key the real table does not use, or the rebound
+    // action shares a code with a live one and this test stops saying
+    // what it means.  'j' was that key until BACKLOG C3 put the jammer
+    // switch on it.
     trb_actions: vector<EditorAction> = [];
     for trb_a in editor_actions() {
         if trb_a.ea_name == "toggle_mode" {
-            trb_keys: vector<integer> = [106];   // 'j'
+            trb_keys: vector<integer> = [103];   // 'g'
             trb_actions += [EditorAction {
                 ea_name: "toggle_mode", ea_keys: trb_keys,
                 ea_ctrl: CTRL_IGNORED, ea_palette: -1,
@@ -380,7 +386,7 @@ fn test_rebinding_moves_the_key_and_the_old_one_goes_dead() {
     input_source_rebind(trb_src, trb_actions);
 
     trb_kb = keyboard_empty();
-    trb_kb[106] = true;
+    trb_kb[103] = true;
     input_source_feed(trb_src, trb_kb, 0.0, 0.0, 0, 0);
     trb_new = editor_input_from(trb_src, Hex { q: 0, r: 0 }, false, false, false);
     assert(trb_new.in_toggle_mode, "the new key toggles the mode");

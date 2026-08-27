@@ -1,0 +1,133 @@
+# a-core-switched-off — BACKLOG C3, and the control is another file.
+#
+# ⚠⚠ **This is `a-base-that-plays-its-list.keys` with ONE line added.**
+# Same ground, same two towers, same wall with the same gate, same
+# four-wave list, same poke, same drive home.  The line is `jammer off`,
+# thrown from the core the moment wave 1 is on its way — and the base
+# that played four waves plays ONE.
+#
+# ⚠ That is the whole of C3: the core IS the jammer (`SETTING.md` § The
+# recruitment), a wave is *"the gradual accretion of individual cut-off
+# robots"*, and a core that is not jamming cuts nobody off.  No list
+# advances, so nothing else ever comes.
+#
+# ⚠⚠ **And it stops the SUPPLY, never the SIEGE.**  Wave 1 is already
+# cut off and losing an errand is one way, so the twelve robots already
+# walking do not turn round: they arrive, they are fought, and they are
+# what the wallet below was spent on.  A switch that emptied the map
+# would have retired the SCRAMBLE.
+#
+# ⚠ The price is in the wallet, and it is not the drain — it is the
+# INCOME.  Three waves' worth of bodies were never killed because they
+# were never sent, and with the core dark nothing cleared would have
+# paid anyway.  `tests/c3_the_jammer.loft` § What the switch is worth is
+# the controlled pair; this is the half you can look at.
+
+echo a core switched off: the list stops at one wave and nothing else comes
+
+do toggle_mode
+
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+do cycle_kind
+click 1 0
+click 1 2
+click 1 -2
+marker 1 0 tower
+marker 1 2 tower
+
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 18 0
+marker 18 0 spawn 3
+
+count markers 5 5
+do toggle_mode
+
+palette 5
+drag -3 -2 20 -2
+drag -3 -1 20 -1
+drag -3 0 20 0
+drag -3 1 20 1
+drag -3 2 20 2
+count painted 120 120
+
+# The wall, with (6, 0) left open — the gate a crew member can plug.
+palette 9
+click 6 -2
+click 6 -1
+click 6 1
+click 6 2
+kind 6 0 grass
+kind 6 1 wall
+
+crew 6 0
+helper 0 6 0
+roster 1 1
+park 0 0
+
+# The mission's list, armed.  Nothing has poked it.
+schedule 12 12 12 12
+waves 0 0
+count alive 0 0
+
+# ── The poke ────────────────────────────────────────────────────
+#
+# ⚠ It has to happen BEFORE the switch: with the core dark nothing is
+# being cut off, so there is nothing to provoke and the list would never
+# arm at all.  Turning the jammer off is a decision about a run that has
+# started.
+drive 18 0
+tick 10
+vehicle 18 0
+waves 1 1
+count alive 12 12
+
+# ── The drive home, in front of them ────────────────────────────
+drive 0 0
+tick 10
+vehicle 0 0
+
+# ── ⚠⚠ The switch ───────────────────────────────────────────────
+#
+# One line.  Everything below is what it changes.
+jammer off
+
+# ── Wave 1 still arrives, and is still fought ───────────────────
+#
+# ⚠ The twelve are already cut off, so the switch does nothing for them
+# and the base has the same fight it always had.
+tick 60
+waves 1 1
+
+# ── And nothing else ever comes ─────────────────────────────────
+#
+# ⚠⚠ Five hundred ticks.  `a-base-that-plays-its-list.keys` reads
+# `waves 4 4` here and finishes with `wallet 20.0 80.0`; this one is
+# stuck at one, and the difference is a single line of script.
+tick 500
+waves 1 1
+count alive 0 0
+roster 1 1
+
+# ── ⚠⚠ And the price: EXACTLY the two hundred it landed with ────
+#
+# ⚠ Twelve robots died on this wall and half a metre of one of them is
+# still lying at (7, -1) — ten points of salvage, on the ground, with a
+# crew member and a vehicle in the base.  Not one point of it can be
+# collected, because `jammer_loot_rate` answers 0.0 while the core is
+# dark.
+#
+# ⚠⚠ **The wallet has not moved in either direction**, which is what
+# *"a downside on both sides"* looks like from inside a run: nothing
+# came for the core, so nothing was drained, and nothing was paid for
+# either.  The control finishes at 20-80 having fought four waves and
+# been paid for them.
+wallet 200.0 200.0
+pile 7 -1 0.5 0.5
+
+snap c3_a_core_switched_off

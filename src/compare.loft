@@ -422,6 +422,13 @@ pub fn state_diff(a: const WaveState, b: const WaveState) -> text {
     if sd_d != "" { return sd_d; }
     sd_o = orders_diff(a.orders, b.orders);
     if sd_o != "" { return sd_o; }
+    // ⚠ The core's own switch (BACKLOG C3).  Two runs are not in the
+    // same state when one of them has stopped sending waves and paying
+    // for salvage — and it is read through `jammer_on` rather than off
+    // the field, the rule that file's § The field stores OFF states.
+    if jammer_on(a.jammer) != jammer_on(b.jammer) {
+        return "jammer: {jammer_on(a.jammer)} vs {jammer_on(b.jammer)}";
+    }
     // ⚠ The RATE and the carry both: two runs whose roads are equally
     // busy but part-way to different next robots are not in the same
     // state, and the carry is what says when the next one sets out.

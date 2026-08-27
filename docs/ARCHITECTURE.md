@@ -1471,10 +1471,14 @@ src/
                    would silt the map up rather than cross it — and
                    nothing ever STARTED one the wave schedule had not.
                    ⚠⚠ THE BUBBLE TAKES THE ERRAND, ONE WAY.  Cleared in
-                   `spawn.loft::enemy_step` at the same test the
-                   steering mode turns on, so the two cannot disagree
+                   `spawn.loft::wave_cutoff`, which sweeps the roster
+                   before anybody moves — the same position a mover
+                   would test for itself, so the two cannot disagree
                    about which robots are lost; walking back out does
                    not restore a signal the core is still jamming.
+                   ⚠ It was one line of `enemy_step` until BACKLOG C3,
+                   which needed the JAMMER to gate it — and the jammer
+                   is on WaveState, where a mover cannot reach it.
                    ⚠ DEPARTING IS NOT DYING — no body, no salvage, no
                    payment.  A robot that walked on was never the
                    player's to kill, and routing it through
@@ -1564,6 +1568,49 @@ src/
                    321, so 687 measurements did not move — and the
                    arithmetic is ASSERTED, so a base that gets long
                    enough goes red before the clocks do
+  jammer.loft      THE JAMMER SWITCH — turning your own core off
+                   (BACKLOG C3) — Jammer { off }, jammer_new /
+                   jammer_on / jammer_set / jammer_toggle /
+                   jammer_loot_rate; and in `spawn.loft`,
+                   `wave_cutoff` and `wave_jammer_switch`.
+                   ⚠ THE CORE IS THE JAMMER (SETTING.md § The
+                   recruitment), so it does three things and the
+                   fiction makes them one: it CUTS a robot off, which
+                   is why there are waves at all, which is why there is
+                   anything to salvage.
+                   ⚠⚠ IT STOPS THE SUPPLY AND NEVER THE SIEGE.  Losing
+                   an errand is one way (@X276), so everything already
+                   cut off is still walking to the core — a player who
+                   hits the switch with a wave on the perimeter has
+                   bought nothing for that wave.  A switch that emptied
+                   the map would have retired the SCRAMBLE.
+                   ⚠⚠ THE SALVAGE STOPS AS INCOME, NEVER AS WORK.
+                   `height_clear` is untouched, so a kill zone bodies
+                   are ramping shut stays openable and the cost is the
+                   points.  It is also why toggling cannot be farmed:
+                   both effects are CONTINUOUS, so being paid means
+                   leaving it on while you work.
+                   ⚠⚠ THE FIELD STORES `off`, and that is [loft#914]:
+                   a boolean defaults to false, so storing `on` would
+                   make every partial WaveState literal in the repo
+                   land with the core DARK — no waves, no income, and
+                   a green suite over a game nobody plays.  Every
+                   reader asks `jammer_on` and never the field.
+                   ⚠ jammer_loot_rate is the ONE door the salvage
+                   income goes through; `spawn.loft` pays the player
+                   and the crew at two sites, and the way two copies of
+                   one rule drift is a crew still being paid after the
+                   core went dark.
+                   ⚠ wave_jammer_switch is POSITION-LOCKED to the core
+                   (@X099), reads `state.player` and takes no owner —
+                   the crew do the work, ending the run's income is the
+                   player's decision.
+                   ⚠ It decides no END GAME: DESIGN.md § Shutting down
+                   the scrambler gives the switch a second job — the
+                   swarm coordinated and pointed at the ancient ones,
+                   the bubble as a LURE — and tier 3 does not exist, so
+                   the only thing the off state can be priced against
+                   today is the player's own base (@M056)
   font.loft        THE FONT — the ONE seam to graphics::draw_text
                    (BACKLOG B1) — TEXT_FONT_FILE, Font { handle, path,
                    loaded }, font_load / font_load_from / font_ready /

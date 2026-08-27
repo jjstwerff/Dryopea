@@ -276,6 +276,37 @@ and their fellow servants *"answer to stones, not radio"*
 tier 3.  The entire cost falls on your relationship with the
 faction you are choosing to help.
 
+##### ⚠⚠ The SWITCH is built; the end game is not  `@X280`
+
+**BACKLOG C3, 2026-08-27** — [`src/jammer.loft`](../src/jammer.loft).
+A player standing at the core presses **J** and the core stops
+jamming; a scenario says `jammer off`.  What ships is the half
+today's content can price:
+
+- **no list arms and no wave goes out**, because a wave is the
+  accretion of cut-off robots and a dark core cuts nobody off;
+- **ambient traffic crosses the bubble intact**, keeping its
+  errand and going on its way;
+- **and salvage pays nothing** — the heap still clears, so a kill
+  zone that bodies are ramping shut stays openable and the cost
+  is the points.
+
+⚠⚠ **It stops the SUPPLY and never the SIEGE**, and that is what
+keeps § The scramble the answer to being overrun.  Losing an
+errand is one way, so every robot already cut off is still
+walking to the core.  A player who hits the switch with a wave on
+the perimeter has bought nothing for that wave and given up the
+salvage they were about to collect from it.
+
+⚠ Measured (`@M056`): ninety ticks of one base, the switch thrown
+at tick 20 — **three waves become one, and 290 points become
+230**.  The sixty are six robots that were never killed because
+they were never sent.
+
+⚠ What is NOT built is everything above this line: the swarm does
+not become coordinated, because there is no tier 3 for it to be
+pointed at, and the bubble is not yet a lure.
+
 ##### ⚠⚠ But it is not an off-switch — the scrambler changes JOB
 
 Owner, 2026-08-14: *"players can still use their scramblers, for

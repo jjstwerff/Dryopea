@@ -1,0 +1,156 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE JAMMER SWITCH — turning your own core off.
+//
+// BACKLOG C3.  The core IS the jammer (`SETTING.md` § The recruitment:
+// *"we can provide you with a multi-frequency radio jammer.  That will
+// prevent this AI from coordinating the individual robots"*), and until
+// now it was a fact about the world rather than a thing the player
+// touches.  This is the switch.
+//
+// ── ⚠⚠ What the jammer actually DOES, mechanically ──────────────
+//
+// Three things, and the fiction makes them one act:
+//
+//   ⚠ **it CUTS a robot off** — a robot that enters the bubble loses
+//     its errand and is one of the accreting wave (`errand.loft` § The
+//     bubble is the whole mechanic);
+//   ⚠ **so it is why there are waves at all** — `SETTING.md` § Why
+//     waves happen calls a wave *"the gradual accretion of individual
+//     cut-off robots"*;
+//   ⚠ **and it is why there is anything to salvage** — the pay is
+//     *"any interesting materials that the AI used to build these
+//     robots"*, which arrive as bodies in front of a wall.
+//
+// So the switch has a downside on BOTH sides, which is what
+// `DESIGN.md` § What kind of game this is asks of a mechanic: *does
+// this put something in the player's hands at a moment when using it
+// costs them something?*  Leave it on and the waves keep coming; turn
+// it off and your only income stops.
+//
+// ── ⚠⚠ It is NOT a panic button, and that is the whole balance ──
+//
+// **Turning it off stops the SUPPLY and never the SIEGE.**  Losing an
+// errand is one way (`@X276`), so every robot already cut off is still
+// cut off, still walking to the core, still chewing the wall it stopped
+// at.  A player who hits the switch with a wave on the perimeter has
+// bought nothing for this wave and given up the salvage they were about
+// to collect from it.
+//
+// ⚠ That is what keeps `ROADMAP.md`'s item 4, the SCRAMBLE, the answer
+// to being overrun.  A switch that made the wave walk away would have
+// retired the mechanic the game is named after.
+//
+// ── ⚠⚠ Clearing still CLEARS; it just pays nothing ──────────────
+//
+// The salvage stops as INCOME, never as work.  A player must still be
+// able to open a kill zone that bodies are ramping shut
+// (`ENEMY_MOVEMENT.md` § Bodies are terrain) — taking that away would
+// make the switch a trap rather than a decision.  So `jammer_loot_rate`
+// answers 0.0 and `height_clear` is untouched: you can tidy up with the
+// core off, you are just working for free.
+//
+// ⚠ Which is also why toggling cannot be farmed.  Both effects are
+// CONTINUOUS: switching on for one tick to bank a heap earns one tick's
+// worth, and clearing a heap takes many.  To be paid you have to leave
+// it on while you work, which is exactly the decision.
+//
+// ── ⚠⚠ The field stores OFF, and that is [loft#914] ─────────────
+//
+// A struct literal that omits a field takes that field's default
+// SILENTLY, and a `boolean` defaults to `false`.  Store *on* and every
+// `WaveState { … }` written anywhere in the repo would land with the
+// core DARK — no waves, no income, and a suite full of scenarios
+// measuring a game nobody plays.  Store *off* and the silent default is
+// the way the game already worked.
+//
+// Same argument `wallet.loft` § Points SPENT, not points left makes for
+// its ledger and `errand.loft` makes for `Enemy.errand`: **the neutral
+// value has to be today's game.**
+//
+// ── What this does NOT decide ───────────────────────────────────
+//
+// ⚠ **The end game.**  `DESIGN.md` § Shutting down the scrambler gives
+// this switch a second job — the swarm becomes coordinated and turns on
+// the ancient ones, and the same device becomes a LURE deciding where
+// they fight.  None of that is here: tier 3 does not exist, so the only
+// thing the off state can be priced against today is the player's own
+// base, and that is what `tests/c3_the_jammer.loft` measures.
+//
+// ⚠ **Anything diegetic.**  `DESIGN.md` § Two surface signals gives the
+// core a top colour and a bottom pulse; a dark core is what a player
+// should SEE, and nothing here draws.
+
+use wallet;
+
+// One core's jamming, as a switch.
+//
+// ⚠ A struct rather than a bare boolean on `WaveState`, for the reason
+// `Wallet` is one: the field name and its polarity are a trap (§ The
+// field stores OFF), so the rule lives in one place with the doors that
+// state it the right way round.
+pub struct Jammer {
+    off: boolean,
+}
+
+// Factory: a core doing its job.
+//
+// ⚠ Named `_new` and not `_empty`, the distinction `wallet_new` draws:
+// an "empty jammer" is the opposite of what this returns.
+pub fn jammer_new() -> Jammer {
+    Jammer { off: false }
+}
+
+// Is the core jamming?
+//
+// ⚠⚠ **Every reader asks THIS and never the field.**  `off` is stored
+// so the silent default lands on today's game; `on` is what the rules
+// are written in, and mixing the two is a sign error nothing would
+// catch — a suite where the waves never come is green.
+//
+// Example: @DRY-120, @DRY-122
+pub fn jammer_on(j: const Jammer) -> boolean {
+    !j.off
+}
+
+// Switch it on or off outright.
+//
+// ⚠ A SET rather than a toggle, and `script.loft`'s `paint on` / `paint
+// off` gives the reason: a scenario says what it WANTS, so a reader can
+// tell what a line does without replaying the file to find out which
+// way the flag was pointing.  The TOGGLE below is the player's
+// affordance and is a different verb on purpose.
+pub fn jammer_set(j: Jammer, on: boolean) {
+    j.off = !on;
+}
+
+// Flip it, and answer the state it is now in.
+//
+// ⚠ It answers the NEW state rather than the old one, because the one
+// caller that matters is a key press and what a player wants to know is
+// what they just did.
+//
+// Example: @DRY-121
+pub fn jammer_toggle(j: Jammer) -> boolean {
+    j.off = !j.off;
+    !j.off
+}
+
+// What a metre of this rubble is worth, given the state of the core.
+//
+// ⚠⚠ **The ONE door the salvage income goes through** (`spawn.loft`'s
+// two payment sites, the player's and the crew's).  Writing the guard
+// at each of them instead would be two copies of one rule, and the way
+// they drift is a crew that goes on being paid after the core went
+// dark.
+//
+// ⚠ It wraps `wallet.loft::loot_rate` rather than replacing it: what a
+// SOURCE is worth is still that file's table, and this only says
+// whether anybody is paying today.
+//
+// Example: @DRY-123
+pub fn jammer_loot_rate(j: const Jammer, source: integer) -> float {
+    if !jammer_on(j) { return 0.0; }
+    loot_rate(source)
+}

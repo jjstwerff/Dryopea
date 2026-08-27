@@ -508,6 +508,25 @@ fn play_actions(ps: PlayState, s: EditorState, input: const EditorInput) {
             }
         }
     }
+
+    // ── The jammer switch (BACKLOG C3) ──────────────────────────
+    //
+    // ⚠ Edge-triggered for the reason every toggle here is: a held J
+    // would switch the core on and off once a frame.
+    //
+    // ⚠⚠ **A SEPARATE key from E rather than another meaning of it.**
+    // E at the core already buys a beacon, and that branch fires
+    // whenever the wallet can afford one — so a jammer folded into the
+    // carry chain would be unreachable for as long as the player had a
+    // hundred points, which is most of a run.  An ambiguous press that
+    // resolves on how rich you are is not a context-resolved key.
+    if input.in_toggle_jammer && !ps.prev.in_toggle_jammer {
+        pa_jcore = play_core(s.mw);
+        if pa_jcore.0 == 1 {
+            wave_jammer_switch(ps.wave,
+                               Hex { q: pa_jcore.1, r: pa_jcore.2 });
+        }
+    }
 }
 
 // ─── The tick ───────────────────────────────────────────────────

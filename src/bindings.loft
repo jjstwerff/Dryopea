@@ -77,6 +77,7 @@ const KEY_H:     integer = 104;   // 'h' — recentre camera
 const KEY_K:     integer = 107;   // 'k' — cycle marker kind
 const KEY_P:     integer = 112;   // 'p' — edit ↔ play (plan 19 P3)
 const KEY_Q:     integer = 113;   // 'q' — wall paint (plan 27 C3)
+const KEY_J:     integer = 106;   // 'j' — the jammer switch (BACKLOG C3)
 
 // ─── One row of the table ───────────────────────────────────────
 
@@ -193,6 +194,21 @@ pub fn editor_actions() -> vector<EditorAction> {
     // about it.  ⚠ `numbers.json` § `input.wall_paint_toggle` has said
     // `Q` since before there was anything to bind it to.
     ea += [act("paint_wall", KEY_Q, CTRL_FORBIDDEN)];
+
+    // ⚠⚠ **THE JAMMER SWITCH — the second key that is not a position**
+    // (BACKLOG C3), and the argument `@X139` demands for a new row is
+    // that a toggle cannot BE a position: parking at the core would
+    // flip it every frame.  ⚠ What the key still costs is the position
+    // half — `wave_jammer_switch` refuses unless the vehicle is at the
+    // core — so the reach that `@X261`'s house rule asks for is driving
+    // there, and pressing J anywhere else does nothing at all.
+    //
+    // ⚠ Its discoverability is genuinely unpaid: nothing in the world
+    // says the core has a switch.  `@X255`'s debrief — *a person being
+    // wasted* — is the channel the design already reserves for exactly
+    // this, and `DESIGN.md` § Two surface signals is the diegetic half
+    // (a dark core should LOOK dark).  Neither is built.
+    ea += [act("toggle_jammer", KEY_J, CTRL_FORBIDDEN)];
 
     // ── The SHELL (plan 19 P3) ──────────────────────────────────
     //
@@ -457,6 +473,7 @@ pub fn editor_input_from(
         eif_i.in_boost       = action_on(src, "boost",       eif_ctrl);
         eif_i.in_carry       = action_on(src, "carry",       eif_ctrl);
         eif_i.in_paint_wall  = action_on(src, "paint_wall",  eif_ctrl);
+        eif_i.in_toggle_jammer = action_on(src, "toggle_jammer", eif_ctrl);
     } else {
         eif_i.in_pan_north = pan_due && action_on(src, "pan_north", eif_ctrl);
         eif_i.in_pan_south = pan_due && action_on(src, "pan_south", eif_ctrl);

@@ -1,0 +1,472 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// BACKLOG C3 — the jammer switch.
+//
+// ⚠⚠ **The claim: turning your own core off stops the waves AND the
+// salvage, and stops the SUPPLY without stopping the SIEGE.**
+//
+// Three readings carry it, and each has a control that a wrong
+// implementation would fail:
+//
+//   ⚠ **the waves stop** — with a control that says the same base sends
+//     waves when the core is lit, or the gate is satisfied by a base
+//     where nothing was going to happen anyway;
+//   ⚠ **the salvage stops as INCOME and not as WORK** — the heap must
+//     still CLEAR, or the switch is a trap rather than a decision;
+//   ⚠⚠ **and it is not a panic button** — a wave already inside the
+//     bubble goes on draining the wallet with the core dark.  That is
+//     what keeps `ROADMAP.md`'s item 4, the SCRAMBLE, the answer to
+//     being overrun.
+//
+// ⚠ Plus the one thing [loft#914] can silently undo: a `WaveState`
+// written as a partial literal must land on a core that IS jamming.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+
+// Far enough out to be worth poking (12) and to spawn from (10).
+const FAR: integer = 14;
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+fn pal() -> vector<GroundType> { load_palette(PALETTE) }
+fn core() -> Hex { Hex { q: 0, r: 0 } }
+
+// A band from the far marker to the core, wide enough to drive on and
+// to walk a wave down.
+fn band() -> PaintedWorld {
+    b_pw = painted_empty();
+    for b_r in -2..=2 {
+        for b_q in -3..=(FAR + 2) { paint(b_pw, b_q, b_r, as_u8(GRASS)); }
+    }
+    b_pw
+}
+
+// A band that reaches PAST the scrambler bubble, so a robot can walk
+// into it from outside.
+//
+// ⚠ It has to be painted the whole way: an unpainted hex is sea, and a
+// robot on an errand that can go no further DEPARTS — so a short band
+// deletes the subject of the reading rather than failing it.
+fn long_band() -> PaintedWorld {
+    l_pw = painted_empty();
+    for l_r in -2..=2 {
+        for l_q in -3..=(SCRAMBLER_BUBBLE_RADIUS + 4) {
+            paint(l_pw, l_q, l_r, as_u8(GRASS));
+        }
+    }
+    l_pw
+}
+
+fn spawn_far() -> MarkerWorld {
+    s_mw = marker_empty();
+    place_marker(s_mw, FAR, 0, MARKER_KIND_SPAWN as u8, 3 as u8);
+    s_mw
+}
+
+// A run with a two-wave list, ARMED and not running — a mission before
+// anybody has poked anything, with the player parked on the marker so
+// the poke lands on the first tick.
+fn armed(on: boolean) -> WaveState {
+    a_s = wave_state_empty();
+    a_s.schedule = wave_schedule_of([2, 2], INTER_WAVE_DELAY_SECONDS);
+    vehicle_place(a_s.player, FAR, 0);
+    jammer_set(a_s.jammer, on);
+    a_s
+}
+
+fn play(state: WaveState, pw: PaintedWorld, mw: MarkerWorld, n: integer) {
+    p_pal = pal();
+    for _ in 0..n { wave_tick(state, p_pal, pw, mw, core()); }
+}
+
+// ⚠ READ-ONLY: a struct returned from a function is a COPY (loft#894).
+fn purse(state: WaveState) -> Wallet { state.wallet }
+
+// ─── The switch itself ──────────────────────────────────────────
+
+// @DRY-120 — a core is jamming until somebody turns it off
+fn test_a_fresh_core_is_jamming() {
+    j = jammer_new();
+    assert(jammer_on(j), "a new jammer is on");
+    jammer_set(j, false);
+    assert(!jammer_on(j), "and `jammer_set` can say otherwise");
+    jammer_set(j, true);
+    assert(jammer_on(j), "both ways: {jammer_on(j)}");
+}
+
+// ⚠⚠ **[loft#914], and it is the whole reason the field stores OFF.**
+// A struct literal that omits a field takes that field's default
+// silently, and a `boolean` defaults to `false`.  Store *on* and every
+// `WaveState { … }` in the repo would land with the core DARK: no
+// waves, no income, and a suite full of scenarios measuring a game
+// nobody plays — green, because a base where nothing happens breaks no
+// assertion that was written about a base where something does.
+fn test_a_partial_literal_lands_on_a_jamming_core() {
+    bare: WaveState = WaveState { };
+    assert(jammer_on(bare.jammer),
+           "the silent default is TODAY'S GAME: {jammer_on(bare.jammer)}");
+    fresh = wave_state_empty();
+    assert(jammer_on(fresh.jammer), "and so is the factory");
+}
+
+// @DRY-121 — the switch answers at the core and nowhere else
+//
+// ⚠ `@X099` is the reason: the jammer forbids operating anything
+// remotely, so a core you could switch off from across the map would be
+// the first exception to the sentence the whole game is built on.
+fn test_the_switch_needs_the_player_at_the_core() {
+    tsn_s = wave_state_empty();
+    assert(!wave_jammer_switch(tsn_s, core()),
+           "no vehicle, no switch");
+    assert(jammer_on(tsn_s.jammer), "and nothing moved");
+
+    vehicle_place(tsn_s.player, 6, 0);
+    assert(!wave_jammer_switch(tsn_s, core()),
+           "six hexes away is not at the core");
+    assert(jammer_on(tsn_s.jammer), "still nothing moved");
+
+    vehicle_place(tsn_s.player, 1, 0);
+    assert(wave_jammer_switch(tsn_s, core()) && !jammer_on(tsn_s.jammer),
+           "standing on the footprint flips it: {jammer_on(tsn_s.jammer)}");
+    assert(wave_jammer_switch(tsn_s, core()) && jammer_on(tsn_s.jammer),
+           "and flips it back");
+}
+
+// ─── ⚠⚠ The waves stop ──────────────────────────────────────────
+
+// @DRY-122 — a dark core arms no list and sends no wave; a lit one does
+//
+// ⚠⚠ **One function, two runs, and the ONLY difference is the switch.**
+// The lit half is the control this reading cannot do without: without
+// it, "no waves arrived" is satisfied by a marker nobody could provoke,
+// a list nobody armed, or a band nothing can walk down.
+fn test_a_dark_core_sends_no_wave_and_a_lit_one_does() {
+    tdc_pw = band();
+    tdc_mw = spawn_far();
+
+    lit = armed(true);
+    play(lit, tdc_pw, tdc_mw, 12);
+
+    dark = armed(false);
+    play(dark, tdc_pw, tdc_mw, 12);
+
+    assert(wave_schedule_running(lit.schedule) && wave_schedule_sent(lit.schedule) > 0
+           && len(lit.enemies) > 0,
+           "the control base plays its list: running={wave_schedule_running(lit.schedule)} "
+           + "sent={wave_schedule_sent(lit.schedule)} robots={len(lit.enemies)}");
+    assert(!wave_schedule_running(dark.schedule)
+           && wave_schedule_sent(dark.schedule) == 0
+           && len(dark.enemies) == 0,
+           "and the dark one arms nothing and sends nothing: "
+           + "running={wave_schedule_running(dark.schedule)} "
+           + "sent={wave_schedule_sent(dark.schedule)} robots={len(dark.enemies)}");
+}
+
+// ⚠ It PAUSES rather than cancels.  The lull is spent inside
+// `wave_schedule_step`, so a list switched off mid-run picks up where
+// it stopped rather than starting over or being lost.
+fn test_switching_back_on_resumes_the_list() {
+    tsb_pw = band();
+    tsb_mw = spawn_far();
+    tsb_s  = armed(false);
+
+    play(tsb_s, tsb_pw, tsb_mw, 30);
+    assert(wave_schedule_sent(tsb_s.schedule) == 0,
+           "thirty ticks of nothing: {wave_schedule_sent(tsb_s.schedule)}");
+
+    jammer_set(tsb_s.jammer, true);
+    play(tsb_s, tsb_pw, tsb_mw, 2);
+
+    assert(wave_schedule_running(tsb_s.schedule)
+           && wave_schedule_sent(tsb_s.schedule) == 1
+           && len(tsb_s.enemies) == 2,
+           "and it starts the moment the core comes back: "
+           + "sent={wave_schedule_sent(tsb_s.schedule)} robots={len(tsb_s.enemies)}");
+}
+
+// ─── ⚠⚠ The salvage stops as INCOME, never as WORK ──────────────
+
+// @DRY-123 — a dark core clears the heap and pays nothing for it
+//
+// ⚠⚠ **Both halves matter.**  A player must still be able to open a
+// kill zone that bodies are ramping shut (`ENEMY_MOVEMENT.md` § Bodies
+// are terrain); taking that away would make the switch a trap.  What it
+// costs is the points.
+fn test_a_dark_core_clears_the_heap_and_pays_nothing() {
+    tdp_pw = band();
+
+    lit = wave_state_empty();
+    height_raise(lit.heights, 6, 0, 1.0, as_u8(RUBBLE_WRECKAGE));
+    vehicle_place(lit.player, 7, 0);
+    play(lit, tdp_pw, marker_empty(), 10);
+
+    dark = wave_state_empty();
+    jammer_set(dark.jammer, false);
+    height_raise(dark.heights, 6, 0, 1.0, as_u8(RUBBLE_WRECKAGE));
+    vehicle_place(dark.player, 7, 0);
+    play(dark, tdp_pw, marker_empty(), 10);
+
+    assert(height_rise(lit.heights, 6, 0) == 0.0
+           && wallet_left(purse(lit)) == WALLET_STARTING_POINTS + 20.0,
+           "the control collects two bodies' worth: {wallet_left(purse(lit))}");
+    assert(height_rise(dark.heights, 6, 0) == 0.0,
+           "the dark run clears exactly the same heap: "
+           + "{height_rise(dark.heights, 6, 0)} m left");
+    assert(wallet_left(purse(dark)) == WALLET_STARTING_POINTS,
+           "and was paid nothing for it: {wallet_left(purse(dark))}");
+}
+
+// ⚠ The crew are paid through the same door.  Written separately
+// because `spawn.loft` pays the player and the crew at two sites, and
+// the way two copies of one rule drift is a crew that goes on being
+// paid after the core went dark.
+fn test_the_crew_are_not_paid_either() {
+    tcp_pw = band();
+    tcp_s  = wave_state_empty();
+    jammer_set(tcp_s.jammer, false);
+    height_raise(tcp_s.heights, 6, 0, 1.0, as_u8(RUBBLE_WRECKAGE));
+    tcp_s.crew += [helper_new(7, 0)];
+
+    play(tcp_s, tcp_pw, marker_empty(), 10);
+
+    assert(height_rise(tcp_s.heights, 6, 0) == 0.0,
+           "a helper clears it: {height_rise(tcp_s.heights, 6, 0)} m");
+    assert(wallet_left(purse(tcp_s)) == WALLET_STARTING_POINTS,
+           "for nothing: {wallet_left(purse(tcp_s))}");
+}
+
+// ⚠ And the rate door itself, both ways — the one place the guard
+// lives, so it is worth reading directly rather than only through a
+// played base.
+fn test_the_rate_door_answers_zero_only_when_dark() {
+    on  = jammer_new();
+    off = jammer_new();
+    jammer_set(off, false);
+
+    assert(jammer_loot_rate(on, RUBBLE_WRECKAGE) == loot_rate(RUBBLE_WRECKAGE)
+           && jammer_loot_rate(on, RUBBLE_CARGO) == loot_rate(RUBBLE_CARGO)
+           && loot_rate(RUBBLE_WRECKAGE) > 0.0,
+           "a lit core pays `wallet.loft`'s own table: "
+           + "{jammer_loot_rate(on, RUBBLE_WRECKAGE)}");
+    assert(jammer_loot_rate(off, RUBBLE_WRECKAGE) == 0.0
+           && jammer_loot_rate(off, RUBBLE_CARGO) == 0.0,
+           "and a dark one pays nothing for anything: "
+           + "{jammer_loot_rate(off, RUBBLE_CARGO)}");
+}
+
+// ─── ⚠⚠ It stops the SUPPLY, never the SIEGE ────────────────────
+
+// ⚠⚠ **The balance, and the reading this file most needs.**  A player
+// who hits the switch with a wave on the perimeter has bought nothing
+// for THIS wave: losing an errand is one way (`@X276`), so every robot
+// already cut off is still walking to the core and still draining the
+// wallet.  A switch that made them walk away would have retired the
+// mechanic the game is named after.
+fn test_the_switch_stops_the_supply_and_not_the_siege() {
+    tss_pw = band();
+
+    // Four robots, already cut off, already standing on the core.
+    tss_s = wave_state_empty();
+    jammer_set(tss_s.jammer, false);
+    for tss_i in 0..4 {
+        tss_s.enemies += [Enemy { q: 0, r: tss_i - 2,
+                                  kind: as_u8(ENEMY_KIND_REGULAR),
+                                  heading: 3 as u8, alive: true }];
+    }
+
+    before = wallet_left(purse(tss_s));
+    play(tss_s, tss_pw, marker_empty(), 30);
+    after = wallet_left(purse(tss_s));
+
+    assert(len(tss_s.enemies) == 4,
+           "nobody wandered off: {len(tss_s.enemies)}");
+    assert(after < before,
+           "and the core is still being bled with the jammer off: "
+           + "{before} -> {after}");
+}
+
+// ─── ⚠⚠ The cut, and the jammer is its whole condition ──────────
+
+// @DRY-124 — a dark core takes nobody's errand
+//
+// ⚠⚠ **The same road is scenery or a wave, and now the SWITCH decides
+// as well as the geography** — `@M053`'s pair, run again with the base
+// sitting on the road both times and only the core changing.
+fn test_a_dark_core_takes_nobodys_errand() {
+    tdt_pw = band();
+    tdt_mw = marker_empty();
+
+    lit  = wave_state_empty();
+    dark = wave_state_empty();
+    jammer_set(dark.jammer, false);
+    // Deep inside the bubble (25) from the first tick, heading west at
+    // the core.
+    lit.enemies  += [Enemy { q: 10, r: 0, kind: as_u8(ENEMY_KIND_REGULAR),
+                             heading: 3 as u8, alive: true, errand: true }];
+    dark.enemies += [Enemy { q: 10, r: 0, kind: as_u8(ENEMY_KIND_REGULAR),
+                             heading: 3 as u8, alive: true, errand: true }];
+
+    play(lit,  tdt_pw, tdt_mw, 3);
+    play(dark, tdt_pw, tdt_mw, 3);
+
+    assert(len(lit.enemies) == 1 && len(dark.enemies) == 1,
+           "both are still there to be asked about");
+    assert(!(lit.enemies[0] ?? Enemy { }).errand,
+           "a jamming core takes the errand");
+    assert((dark.enemies[0] ?? Enemy { }).errand,
+           "and a dark one leaves the robot on its business: "
+           + "{(dark.enemies[0] ?? Enemy { }).errand}");
+}
+
+// ⚠ **The cut moved out of `enemy_step` and into `wave_cutoff`, and the
+// tick it lands on did not move**: the sweep reads the roster before
+// anybody has taken a step, which is the position a mover would have
+// tested for itself.  A sweep placed after the movers cuts a robot a
+// whole tick early, and this is what would see it.
+fn test_the_cut_lands_on_the_tick_the_robot_arrives() {
+    tcl_pw = long_band();
+    tcl_s  = wave_state_empty();
+
+    // One hex OUTSIDE the bubble, walking west into it at 1.5 hex/s —
+    // so it is still on its business after one tick and cut after two.
+    tcl_s.enemies += [Enemy { q: SCRAMBLER_BUBBLE_RADIUS + 1, r: 0,
+                              kind: as_u8(ENEMY_KIND_REGULAR),
+                              heading: 3 as u8, alive: true, errand: true }];
+
+    assert((tcl_s.enemies[0] ?? Enemy { }).errand, "it starts on its business");
+    play(tcl_s, tcl_pw, marker_empty(), 1);
+    step1 = tcl_s.enemies[0] ?? Enemy { };
+    assert(step1.errand && len(tcl_s.enemies) == 1,
+           "the tick it walks IN, it is still on its own business — the "
+           + "sweep read where it STARTED: at q={step1.q} errand={step1.errand}");
+    play(tcl_s, tcl_pw, marker_empty(), 1);
+    step2 = tcl_s.enemies[0] ?? Enemy { };
+    assert(!step2.errand && lat_distance(Hex { q: step2.q, r: step2.r }, core())
+                            <= SCRAMBLER_BUBBLE_RADIUS,
+           "and cut on the tick it is inside: at q={step2.q} errand={step2.errand}");
+}
+
+// ⚠ The sweep reaches a robot that is STANDING at its marker, where the
+// old inline version could only reach one taking a hex this tick.  That
+// is a correction rather than a side effect: what cuts a robot off is
+// being inside the bubble, not walking while there.
+fn test_a_standing_robot_inside_the_bubble_is_cut() {
+    tsr_pw = band();
+    tsr_s  = wave_state_empty();
+    tsr_s.enemies += [Enemy { q: 10, r: 0, kind: as_u8(ENEMY_KIND_REGULAR),
+                              heading: 3 as u8, alive: true, errand: true }];
+    timer_arm((tsr_s.enemies[0] ?? Enemy { }).stand, PRE_WALK_UNITS);
+
+    play(tsr_s, tsr_pw, marker_empty(), 1);
+    tsr_e = tsr_s.enemies[0] ?? Enemy { };
+    assert(enemy_standing(tsr_e) && tsr_e.q == 10,
+           "it has not moved: standing={enemy_standing(tsr_e)} q={tsr_e.q}");
+    assert(!tsr_e.errand,
+           "and it is cut off anyway: errand={tsr_e.errand}");
+}
+
+// ─── ⚠⚠ What the switch is WORTH ────────────────────────────────
+
+// One base, one difference: the switch thrown at tick `off_at`.
+//
+// ⚠ **Two towers, and they are what makes the reading a LOOP rather
+// than a stopwatch.**  A wave only comes when the last one is cleared
+// (`wave_schedule_due`), and a wave only pays when something killed it
+// — so with no towers the list stops at wave 1 and the wallet never
+// moves, and both halves of the claim are unmeasurable at once.
+//
+// ⚠ The list is STARTED outright rather than provoked, which frees the
+// vehicle to stand in the kill zone and collect.
+fn worth(off_at: integer, horizon: integer) -> WaveState {
+    w_pal = pal();
+    w_pw  = long_band();
+    w_mw  = spawn_far();
+    place_marker(w_mw, 1,  0, MARKER_KIND_TOWER as u8, 0 as u8);
+    place_marker(w_mw, 1, -2, MARKER_KIND_TOWER as u8, 0 as u8);
+    w_s   = wave_state_empty();
+    w_s.schedule = wave_schedule_of([4, 4, 4], INTER_WAVE_DELAY_SECONDS);
+    wave_schedule_begin(w_s.schedule);
+    vehicle_place(w_s.player, 13, 0);
+
+    for w_t in 0..horizon {
+        if w_t == off_at { jammer_set(w_s.jammer, false); }
+        wave_tick(w_s, w_pal, w_pw, w_mw, core());
+    }
+    w_s
+}
+
+// ⚠⚠ **THE NUMBER — the switch bought TWO WAVES and cost SIXTY POINTS.**
+// Ninety ticks of the same base, the switch thrown at tick 20:
+//
+//   |            | waves sent | points |
+//   |------------|-----------:|-------:|
+//   | never off  |          3 |    290 |
+//   | off at 20  |          1 |    230 |
+//
+// The sixty points are six robots that were never killed because they
+// were never sent, collected at ten points a body — so the cost is not
+// a separate economy, it is **the wave you did not fight**.
+//
+// ⚠ Both halves in one assertion, `tests/26_l0`'s rule: loft abandons
+// at the first failed assertion, so four separate counts would leave
+// three of them unmaintained decoration.
+//
+// ⚠ Pinned EXACTLY rather than as a band.  A run whose numbers drift is
+// a run whose meaning has changed, and the message carries every
+// reading so the new one is on screen when it does.
+fn test_what_the_switch_is_worth() {
+    never = worth(1000, 90);
+    early = worth(20, 90);
+
+    n_sent = wave_schedule_sent(never.schedule);
+    e_sent = wave_schedule_sent(early.schedule);
+    n_left = wallet_left(purse(never));
+    e_left = wallet_left(purse(early));
+
+    assert(n_sent == 3 && e_sent == 1 && n_left == 290.0 && e_left == 230.0,
+           "switching off at tick 20 stops the list and stops the pay: "
+           + "waves {n_sent} -> {e_sent}, points {n_left} -> {e_left}");
+}
+
+// ─── The state ──────────────────────────────────────────────────
+
+// ⚠⚠ `WaveState` gained a field, and `compare.loft`'s list is
+// HAND-MAINTAINED — without a row there, two runs that differ only in
+// whether the core is jamming read as identical, and every capture gate
+// in `plans/18` is green over a state it cannot see.
+fn test_state_diff_sees_the_jammer() {
+    a = wave_state_empty();
+    b = wave_state_empty();
+    assert(state_diff(a, b) == "", "two fresh runs agree");
+
+    jammer_set(a.jammer, false);
+    assert(state_diff(a, b) != "",
+           "and a dark core is a different state: '{state_diff(a, b)}'");
+
+    jammer_set(b.jammer, false);
+    assert(state_diff(a, b) == "", "two dark ones agree again");
+}
+
+// ⚠ And the emitter writes it, or a captured situation replays with the
+// core back on — which would restart the waves in a fixture that was
+// captured with them stopped.
+fn test_the_emitter_writes_a_dark_core() {
+    tew_pal = pal();
+    tew_pw  = band();
+    lit  = wave_state_empty();
+    dark = wave_state_empty();
+    jammer_set(dark.jammer, false);
+
+    lit_keys  = emit_keys(tew_pal, tew_pw, marker_empty(), lit, "c3");
+    dark_keys = emit_keys(tew_pal, tew_pw, marker_empty(), dark, "c3");
+
+    assert(!lit_keys.contains("jammer"),
+           "a lit core writes no line — every fixture in the tree would carry one");
+    assert(dark_keys.contains("jammer off"),
+           "and a dark one says so");
+}
