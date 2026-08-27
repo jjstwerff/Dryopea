@@ -61,6 +61,7 @@ use passable;
 use vehicle;
 use fixstep;
 use build;
+use skill;
 
 // ─── The numbers ────────────────────────────────────────────────
 //
@@ -141,12 +142,21 @@ pub struct Helper {
     bank:    Bank,      // banked ground, always under a whole hex
     taken:   float,     // damage ABSORBED, never HP remaining
     recover: Timer,     // the recovery clock; unarmed when not in it
+
+    // What this crew member is good at (BACKLOG C1).
+    //
+    // ⚠ On the HELPER rather than in a table beside the roster,
+    // because the roster slot is already this person's identity for
+    // the whole run — two containers keyed by the same index are two
+    // facts that can disagree about who is who.
+    skills:  Skills,
 }
 
 // Factory: a helper standing at (q, r) with nothing banked.
 pub fn helper_new(q: integer, r: integer) -> Helper {
     Helper { q: q, r: r, to_q: q, to_r: r, alive: true,
-             bank: bank_new(), taken: 0.0, recover: timer_new() }
+             bank: bank_new(), taken: 0.0, recover: timer_new(),
+             skills: skills_new() }
 }
 
 // Point a helper at a hex.  It drives there over the next ticks.
@@ -373,12 +383,18 @@ pub fn helper_salvage(h: const Helper, hl: HeightLayer,
 // `helper_salvage` writes, and the reason H3 can down a helper without
 // touching this function.
 //
-// Example: @DRY-101
+// Example: @DRY-101, @DRY-115
 pub fn helper_build(h: const Helper, pal: vector<GroundType>, bl: BuildLayer,
                     elapsed: integer) -> BuildWork {
     if !h.alive { return BuildWork { q: h.q, r: h.r, spent: 0, finished: false }; }
 
+    // ⚠⚠ **`build` scales the helper-seconds and nothing else**
+    // (BACKLOG C1, `@X112`): the site, the reach, the order it picks
+    // and what appears are all unchanged — a trained builder simply
+    // puts more of the tick into the hole.
+    //
     // ⚠ Bound to a local, per `helper_salvage` above — loft#880.
-    hb_got = build_at(pal, bl, Hex { q: h.q, r: h.r }, elapsed);
+    hb_got = build_at(pal, bl, Hex { q: h.q, r: h.r },
+                      skill_work_units(h.skills.build, elapsed));
     hb_got
 }

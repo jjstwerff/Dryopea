@@ -49,6 +49,7 @@ use lattice;
 use height;
 use damage;
 use build;
+use skill;
 use tower;
 use wallet;
 use vehicle;
@@ -132,6 +133,11 @@ fn crew_diff(a: const WaveState, b: const WaveState) -> text {
         }
         if bank_progress(cd_x.bank) != bank_progress(cd_y.bank) {
             return "crew[{cd_i}].bank: {bank_progress(cd_x.bank)} vs {bank_progress(cd_y.bank)}";
+        }
+        if cd_x.skills.build != cd_y.skills.build
+           || cd_x.skills.repair != cd_y.skills.repair
+           || cd_x.skills.scout != cd_y.skills.scout {
+            return "crew[{cd_i}].skills: {cd_x.skills.build}/{cd_x.skills.repair}/{cd_x.skills.scout} vs {cd_y.skills.build}/{cd_y.skills.repair}/{cd_y.skills.scout}";
         }
         if cd_x.taken != cd_y.taken {
             return "crew[{cd_i}].taken: {cd_x.taken} vs {cd_y.taken}";

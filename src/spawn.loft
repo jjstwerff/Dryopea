@@ -42,6 +42,7 @@ use helper;
 use carry;
 use build;
 use errand;
+use skill;
 use waves;
 use fixstep;
 
@@ -2335,7 +2336,14 @@ fn wave_repair(state: WaveState, mw: const MarkerWorld,
         if wr_h.alive && carrier_free(state, BLOCKER_CREW + wr_ci) {
             wr_hat = Hex { q: wr_h.q, r: wr_h.r };
             wr_ht  = repair_target(state, mw, wr_hat);
-            if tower_repair_tick(state.towers, wr_ht.q, wr_ht.r, elapsed) {
+            // ⚠⚠ **`repair` scales the crew's standing clock** (BACKLOG
+            // C1, `@X112`) — and only the CREW's: the player's branch
+            // above spends `elapsed` flat, because `@X119` forbids a
+            // route to winning by personal power and `DESIGN.md` § 8's
+            // noncombatant pilot is what did not move.  The crew get
+            // better at working; nobody gets better at flying.
+            if tower_repair_tick(state.towers, wr_ht.q, wr_ht.r,
+                                 skill_work_units(wr_h.skills.repair, elapsed)) {
                 wr_done += 1;
             }
         }

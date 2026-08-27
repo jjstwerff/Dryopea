@@ -1488,6 +1488,46 @@ src/
                    so [loft#914]'s silent default lands on the way the
                    game already worked — which is why 679 gate
                    measurements did not move
+  skill.loft       CREW SKILLS — build, repair, scout (BACKLOG C1) —
+                   SKILL_EFFECT_SPAN / _HALF, Skills { build, repair,
+                   scout } on Helper, skill_factor, skill_work_units,
+                   and the DETECTION rule (DETECT_BASE_HEXES,
+                   NOTICE_HEAP_BASE_HEXES, NOTICE_CARGO_HEXES,
+                   NOTICE_INTERNAL_HEXES, detect_radius, notice_of_heap,
+                   detect_sees).
+                   ⚠ A skill SCALES A NUMBER THAT ALREADY EXISTS
+                   (@X112) — `build` the helper-seconds DESIGN.md § 13
+                   calls the bottleneck, `repair` the standing clock
+                   `tower_repair_tick` runs.  No skill adds a mechanism.
+                   ⚠ THE CREW HAVE SKILLS AND THE PLAYER DOES NOT
+                   (@X119, DESIGN.md § 8): the pilot's own repair is a
+                   flat 30 ticks whatever skills exist.
+                   ⚠⚠ LEVEL 0 IS BIT-FOR-BIT THE OLD GAME, and the
+                   guard for it lives in `skill_factor` — a second one
+                   in `skill_work_units` was written first and DELETED,
+                   because removing it left the whole gate green: an
+                   exact 1.0 multiplied and truncated is already the
+                   identity.  Its real job is the NEGATIVE level, which
+                   answers −0.5 without it.
+                   ⚠ THE CURVE IS CHOSEN AND SAYS SO —
+                   `archive/gameplay.data` names the twelve skills and
+                   gives no numbers at all — so the gate asserts
+                   PROPERTIES (exactly 1.0 untrained, rising,
+                   saturating below its span) and tuning the constants
+                   moves no test.  Shape is @X189's: no ceiling on the
+                   LEVEL, a diminishing return on the EFFECT.
+                   ⚠⚠ DETECTION IS TWO RADII THAT INTERACT AND THE
+                   SUBJECT OWNS HALF (@X277, owner 2026-08-27): ground
+                   items, what is in the ground, what grows on it,
+                   salvage — and an INTERNAL (brain, motors, weapons)
+                   with the shortest radius in the design.  So a trained
+                   scout notices QUIETER things rather than further
+                   ones.  ⚠ Nothing produces internals yet
+                   (MATERIALS.md is design, not built), so that row is
+                   the ruling recorded ahead of its producer.
+                   ⚠ DETECTION IS NOT REACH: `salvage_at` and
+                   `cargo_take` ask what can be ACTED on; this asks
+                   what is KNOWN about, at a different distance
   font.loft        THE FONT — the ONE seam to graphics::draw_text
                    (BACKLOG B1) — TEXT_FONT_FILE, Font { handle, path,
                    loaded }, font_load / font_load_from / font_ready /

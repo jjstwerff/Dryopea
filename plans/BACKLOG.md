@@ -42,7 +42,7 @@ runs and a game you can sit down with.**
 
 | # | What | Size | Why |
 |---|---|---|---|
-| **C1** | **Helper skills: `build`, `repair`, `scout`** | M | ⚠ `@X112` — each **scales a constant that already exists** (helper-seconds, the 20 s standing clock, the detection radius), so each lands alone with a gate that already measures it |
+| **C1** | ✅ **DONE 2026-08-27** — [`src/skill.loft`](../src/skill.loft), `skill <i> <build> <repair> <scout>` | M | ⚠⚠ **Two of the three scaled a constant that existed; the third did NOT.**  `build` (helper-seconds) and `repair` (the standing clock) landed as `@X112` predicted — **a wall goes from 15 ticks to 10 at level 5** (`@M054`).  ⚠⚠ **`scout` had no number to scale**: there is no detection radius anywhere in `src/` or `numbers.json`, which is the case `@X112` itself says to push back on.  The owner ruled what it is (`@X277`): **two radii that INTERACT, and the SUBJECT owns half** — a heap announces itself, the motors inside a wreck do not, so a trained scout notices *quieter* things rather than seeing further.  ⚠ The curve is CHOSEN and says so — the archive names the twelve skills and gives no numbers.  ⚠ Level 0 is bit-for-bit the old game, so 687 measurements did not move |
 | **C2** | **Endurance pools** (`@X113`) | S | Work spends, rest restores — the crew-side of the tower's charge, and what makes quarters a building |
 | **C3** | **The jammer switch** (`@X102`'s seed) | S | ⚠ Turning the core off stops the waves **and** the salvage — a decision with a downside on both sides, over a bubble that already exists |
 | **C4** | **Traps that do not auto-reset** (`@X108`) | S | Place in advance, fire once, then **drive out mid-wave to re-arm** — mechanically a black tower restored by a standing vehicle |

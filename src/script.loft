@@ -1249,6 +1249,7 @@ fn is_author_cmd(name: text) -> boolean {
     name == "tower" || name == "object" || name == "spent"
     || name == "player" || name == "member" || name == "pending"
     || name == "cursor" || name == "flag" || name == "order"
+    || name == "skill"
 }
 
 // Read an on/off word.  -1 when it is neither, so a caller can refuse.
@@ -1459,6 +1460,36 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
     }
 
     // One crew member's condition — what `crew` and `send` do not reach.
+    // A crew member's SKILLS (BACKLOG C1).
+    //
+    // ⚠ A verb of its own rather than three more arguments on
+    // `member`: that one already takes five and says what a helper's
+    // CONDITION is, where this says what they are GOOD AT.  ⚠ Its
+    // three arguments are the three skills `BACKLOG C1` builds, in the
+    // order `Skills` declares them.
+    if sa_cmd == "skill" {
+        if sa_argc != 4 {
+            return "skill needs <i> <build> <repair> <scout>";
+        }
+        sa_si = (tok[1] ?? "") as integer?;
+        if sa_si == null { return "skill: <i> must be an integer"; }
+        sa_sin = sa_si ?? 0;
+        if sa_sin < 0 || sa_sin >= len(run.play.wave.crew) {
+            return "skill: no helper {sa_sin} — the crew is {len(run.play.wave.crew)} strong";
+        }
+        sa_sb = (tok[2] ?? "") as integer?;
+        sa_sr = (tok[3] ?? "") as integer?;
+        sa_ss = (tok[4] ?? "") as integer?;
+        if sa_sb == null || sa_sr == null || sa_ss == null {
+            return "skill: <build>, <repair> and <scout> must be whole numbers";
+        }
+        sa_sh = run.play.wave.crew[sa_sin] ?? Helper { };
+        sa_sh.skills.build  = sa_sb ?? 0;
+        sa_sh.skills.repair = sa_sr ?? 0;
+        sa_sh.skills.scout  = sa_ss ?? 0;
+        return "";
+    }
+
     if sa_cmd == "member" {
         if sa_argc != 5 {
             return "member needs <i> <on|off> <progress> <taken> <recover>";

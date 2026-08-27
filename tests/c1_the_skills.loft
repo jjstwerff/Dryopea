@@ -1,0 +1,267 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// BACKLOG C1 — crew skills: build, repair, scout.
+//
+// ⚠⚠ **The claim: a skill scales a number that already exists, and an
+// untrained crew member is EXACTLY the game as it was.**  That second
+// half is what the 687 gate measurements rest on, and it is asserted
+// here rather than hoped for.
+//
+// ⚠ The three skills are gated in the order they cost: `build` and
+// `repair` against clocks the repo already measures, and `scout`
+// against the detection rule the owner specified on 2026-08-27 — two
+// radii that INTERACT, where the subject owns half of it.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+fn pal() -> vector<GroundType> { load_palette(PALETTE) }
+
+fn field() -> EditorState {
+    s = editor_state_new(PALETTE);
+    for f_q in -8..9 {
+        for f_r in -6..7 { paint(s.pw, f_q, f_r, as_u8(5)); }
+    }
+    place_marker(s.mw, 0, 0, MARKER_KIND_TARGET, as_u8(0));
+    s
+}
+
+// ─── The curve ──────────────────────────────────────────────────
+
+// @DRY-113 — untrained is EXACTLY 1.0, and the return diminishes
+//
+// ⚠ The PROPERTIES rather than the constants: `SKILL_EFFECT_SPAN` and
+// `_HALF` are chosen (`archive/gameplay.data` names the twelve skills
+// and gives no numbers at all), so tuning them must move no test.
+fn test_the_curve_starts_at_one_and_saturates() {
+    zero = skill_factor(0);
+    neg  = skill_factor(-3);
+    one  = skill_factor(1);
+    five = skill_factor(5);
+    ten  = skill_factor(10);
+    huge = skill_factor(1000);
+    ceiling = 1.0 + SKILL_EFFECT_SPAN;
+
+    assert(zero == 1.0 && neg == 1.0
+           && one > zero && five > one && ten > five
+           && huge < ceiling
+           && (ten - five) < (five - zero),
+           "untrained is exactly one, and each level buys less than the last: 0={zero} 1={one} 5={five} 10={ten} 1000={huge} ceiling={ceiling}");
+}
+
+// ⚠⚠ **THE ASSERTION THE WHOLE CORPUS RESTS ON.**  At level 0 the work
+// door returns its elapsed UNCHANGED — by an early return, not by a
+// multiply that happens to be the identity.  A float round-trip here
+// would be off by one somewhere and move a clock nobody touched.
+fn test_an_untrained_crew_member_is_exactly_the_old_game() {
+    exact = true;
+    for tu_e in [1, 7, 2000000, 3000000, 999999] {
+        if skill_work_units(0, tu_e) != tu_e { exact = false; }
+    }
+    assert(exact && skill_work_units(0, TICK_STEP_UNITS) == TICK_STEP_UNITS,
+           "level 0 must be the identity on every elapsed, bit for bit");
+}
+
+// ─── build ──────────────────────────────────────────────────────
+
+// @DRY-115 — a trained builder finishes sooner, and by the curve
+//
+// ⚠ `numbers.json` § wall.build_time_wall is 10 s = 15 ticks for an
+// untrained helper (plan 27 C2).  A skill scales the helper-seconds and
+// nothing else: the site, the reach and what appears are unchanged.
+fn test_a_trained_builder_finishes_sooner() {
+    p = pal();
+    plain = 0;
+    skilled = 0;
+
+    for tb_lvl in [0, 5] {
+        tb_s = field();
+        tb_ps = play_state_new();
+        play_set_mode(tb_ps, tb_s, true);
+        tb_h = helper_new(2, 0);
+        tb_h.skills.build = tb_lvl;
+        tb_ps.wave.crew += [tb_h];
+        order_place(p, tb_s.pw, tb_ps.wave.orders, 2, 0, BUILD_GROUND, as_u8(9));
+
+        tb_t = 0;
+        while tb_t < 100 && order_at(tb_ps.wave.orders, 2, 0) {
+            play_ticks(tb_ps, tb_s, 1);
+            tb_t += 1;
+        }
+        if tb_lvl == 0 { plain = tb_t; } else { skilled = tb_t; }
+    }
+
+    assert(plain == 15 && skilled == 10 && skilled < plain,
+           "level 5 is 1.5x the helper-seconds, so 15 ticks becomes 10: untrained={plain} skilled={skilled}");
+}
+
+// ⚠ The control: the skill changes the CLOCK and nothing else.  A wall
+// still appears, on the same hex, and the order is still gone.
+fn test_the_skill_changes_the_clock_and_nothing_else() {
+    p = pal();
+    s = field();
+    ps = play_state_new();
+    play_set_mode(ps, s, true);
+    h = helper_new(2, 0);
+    h.skills.build = 5;
+    ps.wave.crew += [h];
+    order_place(p, s.pw, ps.wave.orders, 2, 0, BUILD_GROUND, as_u8(9));
+    play_ticks(ps, s, 20);
+
+    assert(lookup_painted(s.pw, 2, 0) == as_wall_kind(p)
+           && order_count(ps.wave.orders) == 0,
+           "the same wall on the same hex: kind={lookup_painted(s.pw, 2, 0)} orders={order_count(ps.wave.orders)}");
+}
+
+// ─── repair ─────────────────────────────────────────────────────
+
+// @DRY-116 — a trained mechanic brings a black tower back sooner
+fn test_a_trained_mechanic_repairs_sooner() {
+    p = pal();
+    plain = 0;
+    skilled = 0;
+
+    for tr_lvl in [0, 5] {
+        tr_s = field();
+        place_marker(tr_s.mw, 4, 0, MARKER_KIND_TOWER, as_u8(0));
+        tr_ps = play_state_new();
+        play_set_mode(tr_ps, tr_s, true);
+        tr_h = helper_new(4, 0);
+        tr_h.skills.repair = tr_lvl;
+        tr_ps.wave.crew += [tr_h];
+        // Black: the whole magazine spent.
+        tower_bank(tr_ps.wave.towers, 4, 0, 0.0);
+        (tr_ps.wave.towers.cells[4, 0] ?? TowerCharge { }).shots = TOWER_SHOT_BUDGET;
+
+        tr_t = 0;
+        while tr_t < 100 && tower_black(tr_ps.wave.towers, 4, 0) {
+            play_ticks(tr_ps, tr_s, 1);
+            tr_t += 1;
+        }
+        if tr_lvl == 0 { plain = tr_t; } else { skilled = tr_t; }
+    }
+
+    assert(plain > 0 && skilled > 0 && skilled < plain,
+           "a trained mechanic is quicker on the same 20 s clock: untrained={plain} skilled={skilled}");
+}
+
+// ⚠⚠ **The PLAYER's repair is untouched**, and that is `@X119`: the
+// crew get better at working, nobody gets better at flying.  Two runs
+// where only the player repairs read the same clock whatever skills are
+// lying around.
+fn test_the_players_repair_is_not_a_skill() {
+    p = pal();
+    s = field();
+    place_marker(s.mw, 4, 0, MARKER_KIND_TOWER, as_u8(0));
+    ps = play_state_new();
+    play_set_mode(ps, s, true);
+    vehicle_place(ps.wave.player, 4, 0);
+    tower_bank(ps.wave.towers, 4, 0, 0.0);
+    (ps.wave.towers.cells[4, 0] ?? TowerCharge { }).shots = TOWER_SHOT_BUDGET;
+
+    tp_t = 0;
+    while tp_t < 100 && tower_black(ps.wave.towers, 4, 0) {
+        play_ticks(ps, s, 1);
+        tp_t += 1;
+    }
+    // 20 s at 2/3 s a tick = 30 ticks, and no skill can move it.
+    assert(tp_t == 30,
+           "the pilot repairs at the designed rate and no other: {tp_t}");
+}
+
+// ─── scout: two radii, and they INTERACT ────────────────────────
+
+// @DRY-114 — the SUBJECT owns half the detection
+//
+// ⚠⚠ Owner, 2026-08-27: *"all these can have a detection radius of
+// their own that interact with the helper/players detection radius"*.
+// So a LOUD subject is found by anybody and a QUIET one waits for
+// somebody who is looking — and neither radius alone is the answer.
+fn test_the_subject_owns_half_the_detection() {
+    plain = skills_new();
+    here = Hex { q: 0, r: 0 };
+    // Untrained reach is 3, so at 5 hexes only a subject that announces
+    // itself from 2 or more is known about.
+    far = Hex { q: 5, r: 0 };
+
+    loud  = detect_sees(here, far, plain, 2);
+    quiet = detect_sees(here, far, plain, NOTICE_INTERNAL_HEXES);
+    none  = detect_sees(here, far, plain, 0);
+
+    assert(loud && !quiet && !none && detect_radius(plain) == DETECT_BASE_HEXES,
+           "the same seeker at the same distance: loud={loud} internal={quiet} silent={none} reach={detect_radius(plain)}");
+}
+
+// ⚠⚠ **What a trained scout buys is noticing QUIETER things** — the
+// same internal, at the same distance, that an untrained eye misses.
+// That is the reading `MATERIALS.md` § What a wreck yields needs:
+// knowing what is inside a wreck before driving to it.
+fn test_a_trained_scout_notices_what_an_untrained_one_misses() {
+    plain = skills_new();
+    keen  = skills_new();
+    keen.scout = 5;
+
+    here = Hex { q: 0, r: 0 };
+    at   = Hex { q: 5, r: 0 };
+
+    missed = detect_sees(here, at, plain, NOTICE_INTERNAL_HEXES);
+    found  = detect_sees(here, at, keen,  NOTICE_INTERNAL_HEXES);
+
+    assert(!missed && found && detect_radius(keen) > detect_radius(plain),
+           "a brain inside a wreck five hexes off: untrained={missed} trained={found} reach {detect_radius(plain)} -> {detect_radius(keen)}");
+}
+
+// ⚠ An INTERNAL is the shortest radius in the design, and a heap is
+// among the loudest — which is the owner's ruling as an ordering rather
+// than as two numbers.
+fn test_an_internal_is_quieter_than_a_heap() {
+    assert(NOTICE_INTERNAL_HEXES < NOTICE_CARGO_HEXES
+           && NOTICE_CARGO_HEXES <= NOTICE_HEAP_BASE_HEXES
+           && notice_of_heap(3.0) > notice_of_heap(1.0)
+           && notice_of_heap(0.0) == 0,
+           "a brain is quieter than a wreck is quieter than a heap: internal={NOTICE_INTERNAL_HEXES} cargo={NOTICE_CARGO_HEXES} heap={notice_of_heap(1.0)}/{notice_of_heap(3.0)}");
+}
+
+// ⚠ Detection is NOT reach.  `salvage_at` acts within one hex; a heap
+// is KNOWN about from much further, and the two answer different
+// questions on purpose.
+fn test_detection_is_not_reach() {
+    plain = skills_new();
+    here = Hex { q: 0, r: 0 };
+    at   = Hex { q: 4, r: 0 };
+    assert(detect_sees(here, at, plain, notice_of_heap(2.0))
+           && lat_distance(here, at) > VEHICLE_SALVAGE_REACH_HEXES,
+           "known about at {lat_distance(here, at)} hexes, reachable at {VEHICLE_SALVAGE_REACH_HEXES}");
+}
+
+// ─── The state ──────────────────────────────────────────────────
+
+// ⚠⚠ `Helper` gained a field, and `compare.loft`'s list is
+// HAND-MAINTAINED — without a row there two crews with different
+// skills read as identical and every capture gate in `plans/18` is
+// green over a state it cannot see.
+fn test_state_diff_sees_the_skills() {
+    a = wave_state_empty();
+    b = wave_state_empty();
+    a.crew += [helper_new(1, 0)];
+    b.crew += [helper_new(1, 0)];
+    same = state_diff(a, b);
+    (a.crew[0] ?? Helper { }).skills.repair = 4;
+    differs = state_diff(a, b);
+    assert(same == "" && differs.contains("skills"),
+           "the crew's skills are part of the state: none='{same}' differs='{differs}'");
+}
+
+// ⚠ And the default is what protects every scenario written before C1.
+fn test_a_fresh_helper_is_untrained() {
+    h = helper_new(0, 0);
+    partial = Helper { q: 1, r: 1 };
+    assert(h.skills.build == 0 && h.skills.repair == 0 && h.skills.scout == 0
+           && partial.skills.build == 0,
+           "nobody starts trained: {h.skills.build}/{h.skills.repair}/{h.skills.scout}");
+}

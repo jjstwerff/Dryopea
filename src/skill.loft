@@ -1,0 +1,202 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// CREW SKILLS — build, repair, scout.
+//
+// BACKLOG C1.  ⚠⚠ **A skill SCALES A NUMBER THAT ALREADY EXISTS**
+// (`@X112`), so no skill here introduces a mechanism: `build` scales
+// the helper-seconds `DESIGN.md` § 13 already calls the bottleneck,
+// `repair` the standing clock `tower_repair_tick` already runs.
+//
+// ⚠ **The crew have skills and the PLAYER does not.**  `@X111` makes
+// the crew CHARACTERS; `@X119` forbids *a route to winning by personal
+// power*, and `DESIGN.md` § 8's noncombatant player is what did not
+// move.  The crew get better at WORKING — nobody gets better at
+// flying, and the player's own repair rate is untouched.
+//
+// ⚠ Identity is the ROSTER SLOT, which `spawn.loft` already keeps
+// stable for the whole run (*"helper 2 is helper 2"*), so a skill is a
+// field on `Helper` rather than a table keyed beside the crew — two
+// containers that can disagree about who is who.
+//
+// ── ⚠⚠ Level 0 is EXACTLY today's game ──────────────────────────
+//
+// Every level defaults to 0, and `skill_factor` answers **exactly
+// 1.0** there — so `skill_work_units` gives its `elapsed` back
+// unchanged for every integer a tick can hold.  [loft#914]'s silent
+// default therefore lands on the way the game already worked, which is
+// why 687 gate measurements did not move.
+//
+// ⚠ **The guard is in ONE place**, and finding out which took
+// falsifying both: a second early return in `skill_work_units` could
+// be deleted with the whole gate still green, because an exact 1.0
+// multiplied and truncated is already the identity.  The mechanism is
+// `skill_factor`'s, so the guard is `skill_factor`'s.
+//
+// ── The curve is CHOSEN, and says so ────────────────────────────
+//
+// ⚠⚠ **`archive/gameplay.data` names the twelve skills and gives no
+// numbers at all** — no level range, no effect size.  So the shape here
+// is a decision rather than a recovered value, and the gate asserts its
+// PROPERTIES (starts at exactly 1, rises, and saturates below its span)
+// rather than the constants, so tuning them moves no test.
+//
+// ⚠ The shape is `@X189`'s: **no ceiling on the LEVEL, a diminishing
+// return on the EFFECT**, which is what keeps a veteran and a fresh
+// hire from ever converging while stopping a skill from running away.
+// `BACKLOG E1` owes the measurement of how fast a level is earned;
+// this file owns only what a level is worth.
+
+use lattice;
+use fixstep;
+
+// What a fully-saturated skill is worth, over an untrained one.
+//
+// ⚠ 1.0 = *twice the work*, which is the largest span that leaves an
+// untrained crew member useful rather than a passenger.
+pub const SKILL_EFFECT_SPAN: float = 1.0;
+
+// The level at which HALF the span has been earned.
+//
+// ⚠ It is the curve's only other number, and it is what makes the
+// return diminish: level 5 buys +50%, level 10 buys +67%, and no level
+// ever reaches +100%.
+pub const SKILL_EFFECT_HALF: float = 5.0;
+
+// One crew member's skills.
+//
+// ⚠ Three fields for the three skills `BACKLOG C1` names, and a fourth
+// costs a field — `@X112`'s *the layer lands one skill at a time*.
+// The other nine of `PROGRESSION.md` § The twelve skills are absent
+// because none of them has a number to scale yet, which is the test
+// that file sets for adding one.
+pub struct Skills {
+    build:  integer,
+    repair: integer,
+    scout:  integer,
+}
+
+// Factory: untrained, which is every crew member the game has ever had.
+pub fn skills_new() -> Skills {
+    Skills { build: 0, repair: 0, scout: 0 }
+}
+
+// What one level of a skill multiplies its number by.
+//
+// ⚠ Exactly 1.0 at level 0, rising and saturating below
+// `1 + SKILL_EFFECT_SPAN`.  ⚠ A negative level reads as untrained
+// rather than as a penalty: there is no such thing as worse than
+// never having done it.
+//
+// Example: @DRY-113
+pub fn skill_factor(level: integer) -> float {
+    if level <= 0 { return 1.0; }
+    sf_l = level as float;
+    1.0 + SKILL_EFFECT_SPAN * sf_l / (sf_l + SKILL_EFFECT_HALF)
+}
+
+// How much work `elapsed` of a crew member's time is worth at `level`.
+//
+// ⚠⚠ **The ONE door for build and repair alike**, because they are the
+// same statement — *this person gets more done per second* — and two
+// scalings would drift the moment one of them grew a cap.
+//
+// ⚠⚠ **Level 0 returns `elapsed` unchanged because `skill_factor`
+// answers exactly 1.0 there** — and the guard that says so lives in
+// `skill_factor`, not here.  ⚠ An early return here as well was
+// written first and DELETED: removing it left the whole gate green,
+// because multiplying by an exact 1.0 and truncating is already the
+// identity for every integer a tick can hold.  *An epsilon whose
+// removal leaves the suite green is a guard that cannot fire*
+// (`CLAUDE.md` § Timers and epsilons), and two guards for one rule is
+// the one that stops being maintained.
+//
+// Example: @DRY-113, @DRY-116
+pub fn skill_work_units(level: integer, elapsed: integer) -> integer {
+    if elapsed <= 0 { return elapsed; }
+    (elapsed as float * skill_factor(level)) as integer
+}
+
+// ─── Detection: two radii, and they INTERACT ────────────────────
+//
+// Owner, 2026-08-27, on what `scout`'s *detection radius* actually
+// detects:
+//
+// > *"this is not so much a detection of enemies/mobs but of on the
+// > ground items or analysis of what is in the ground, growing on the
+// > ground, salvagable items, all these can have a detection radius of
+// > their own that interact with the helper/players detection radius."*
+//
+// > *"If an internal structure of a mob can be salvaged (brain, motors,
+// > weapons) can have a short radius of itself."*
+//
+// ⚠⚠ **So detection is not one radius but two, and the SUBJECT owns
+// half of it.**  A heap of debris announces itself from a distance; the
+// motors inside a wreck do not.  What a skilled scout buys is not
+// *seeing further* but **noticing quieter things** — the subject's own
+// radius is what decides which.
+//
+// ⚠ That is what gives it a purpose that is not invented:
+// `MATERIALS.md` § What a wreck yields makes salvage composition a
+// READOUT — *miners at the wall means diamonds after* — and knowing
+// what is inside a wreck **before driving to it** is that readout made
+// spatial.  ⚠⚠ It is also what `MATERIALS.md` § The governing rule
+// needs: *materials have weight and are somewhere else, so getting one
+// is a trip*, and a trip you can choose is only a decision if you know
+// what is at the end of it.
+//
+// ⚠ **Detection is not REACH.**  `salvage_at` and `cargo_take` ask
+// whether a thing can be ACTED on; this asks whether it is KNOWN
+// about, and the two answer at different distances on purpose.
+
+// How far an untrained crew member notices anything, in hexes.
+pub const DETECT_BASE_HEXES: integer = 3;
+
+// What a heap of debris announces from — its own radius, and it grows
+// with the pile, because a bigger heap is a more obvious thing.
+//
+// ⚠ Off `height_rise`'s metres, which the runtime already keeps: a
+// subject's notice radius should come off what the subject already is,
+// or it is a second description of the same object.
+pub const NOTICE_HEAP_BASE_HEXES: integer = 2;
+
+// What a loose object on the ground announces from.
+pub const NOTICE_CARGO_HEXES: integer = 2;
+
+// ⚠⚠ **What an INTERNAL announces from — a brain, a motor, a weapon
+// still inside a wreck** (owner, 2026-08-27).  Deliberately the
+// shortest radius in the file: it is inside something, so only standing
+// close or a trained eye finds it.
+//
+// ⚠ **Nothing produces internals yet** — `MATERIALS.md` is design and
+// not built, so this row is the owner's ruling recorded ahead of its
+// producer.  It is a constant rather than a comment because the rule
+// below already reads it, and a number nobody can call is a number that
+// drifts.
+pub const NOTICE_INTERNAL_HEXES: integer = 1;
+
+// How far this crew member's own senses reach.
+//
+// Example: @DRY-114
+pub fn detect_radius(sk: const Skills) -> integer {
+    (DETECT_BASE_HEXES as float * skill_factor(sk.scout)) as integer
+}
+
+// How far a heap `metres` deep announces itself.
+pub fn notice_of_heap(metres: float) -> integer {
+    if metres <= 0.0 { return 0; }
+    NOTICE_HEAP_BASE_HEXES + (metres as integer)
+}
+
+// ⚠⚠ **THE RULE, and it is one line: the two radii ADD.**  A subject is
+// known about when the gap between them has closed — so a loud subject
+// is found by anybody and a quiet one waits for somebody who is
+// looking.  ⚠ Neither side alone is the answer, which is the whole of
+// the owner's ruling.
+//
+// Example: @DRY-114
+pub fn detect_sees(from: const Hex, at: const Hex,
+                   sk: const Skills, notice: integer) -> boolean {
+    if notice < 0 { return false; }
+    lat_distance(from, at) <= detect_radius(sk) + notice
+}
