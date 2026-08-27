@@ -1,0 +1,110 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 27 phase C5 — is a wall the PLAYER drew worth anything?
+//
+// ⚠⚠ **The whole of `plans/27` is inert without this reading.**
+// C0-C3 built a mechanic; this asks whether the base is better for it,
+// which is the question `plans/12` § B7 asks of every defence and the
+// only one that says whether the work was worth doing.
+//
+// ⚠ Two scenarios, ONE token apart — `paint off` against `paint on`.
+// Same ground, same core, same spawn, same wave list, same crew, same
+// drive, same ticks spent before the wave.  § B7's rule, and its
+// § Invariant gate names the failure this guards: *equal times = the
+// scenario measures nothing, whatever it draws*.
+//
+// ⚠⚠ **This is also `@X022` made measurable for the first time.**  The
+// design says the pre-wave window is a BUDGET split between looking and
+// building; until C3 there was nothing to spend it on, so the claim
+// rested on argument.  The ticks the player spends drawing are free
+// because the wave list does not start until a spawn marker is poked.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SHOTS:   text = "shots";
+
+const IDLE:  text = "tests/scripts/a-base-nobody-builds.keys";
+const BUILT: text = "tests/scripts/a-base-the-player-builds.keys";
+
+// The two clocks, in game-ticks.  ⚠ Each is also pinned by a `ticks`
+// band inside its own `.keys` file — a second reading of the same
+// number rather than a second source of truth, and it is here because
+// the comparison needs both at once.
+const IDLE_TICKS:  integer = 130;
+const BUILT_TICKS: integer = 174;
+
+fn test_both_scenarios_are_on_disk() {
+    for tb_p in [IDLE, BUILT] {
+        assert(file(tb_p).exists(),
+               "{tb_p} is missing — every test below would pass against an empty file");
+    }
+}
+
+// ⚠⚠ THE PHASE'S GATE.
+fn test_a_wall_the_player_drew_buys_the_base_time() {
+    // ⚠ A session each: two scenarios sharing an `EditorState` would
+    // share a painted world, and the second's clock would be measured
+    // against the first's wall.
+    tw_is = editor_state_new(PALETTE);
+    tw_bs = editor_state_new(PALETTE);
+
+    tw_i = script_run_file(tw_is, IDLE,  SHOTS);
+    tw_b = script_run_file(tw_bs, BUILT, SHOTS);
+
+    assert(tw_i.ok, "a-base-nobody-builds: {script_describe(tw_i)}");
+    assert(tw_b.ok, "a-base-the-player-builds: {script_describe(tw_b)}");
+
+    // ⚠ Pinned counts: a scenario with its measurements deleted still
+    // reports ok, so the gate has to say how many it expected.
+    assert(tw_i.checks == 10, "nobody-builds made {tw_i.checks} measurements, expected 10");
+    assert(tw_b.checks == 15, "the-player-builds made {tw_b.checks} measurements, expected 15");
+
+    tw_gain = tw_b.play.ticks - tw_i.play.ticks;
+    assert(tw_i.play.ticks == IDLE_TICKS && tw_b.play.ticks == BUILT_TICKS
+           && tw_gain > 30,
+           "a wall the player drew must buy the base real time: idle={tw_i.play.ticks} built={tw_b.play.ticks} gain={tw_gain}");
+}
+
+// ⚠⚠ THE CONTROL, and it is the one this pair could most easily fail
+// vacuously on: the two runs must differ because a WALL went up, not
+// because one of them wandered off and did something else.
+//
+// ⚠ **The wall is asserted inside the `.keys` file, not here**, and the
+// reason is the moment: by the time the base has fallen the wave has
+// CHEWED THROUGH most of it, so a check after the run reads a wall that
+// is mostly gone.  `a-base-the-player-builds.keys` asserts all five
+// hexes with `kind` at the point construction finishes and the wave has
+// not yet arrived.  This pins the COUNT, because a scenario with its
+// measurements deleted still reports ok.
+fn test_the_scenarios_still_make_the_measurements_they_claim() {
+    tsc_is = editor_state_new(PALETTE);
+    tsc_bs = editor_state_new(PALETTE);
+    tsc_i = script_run_file(tsc_is, IDLE,  SHOTS);
+    tsc_b = script_run_file(tsc_bs, BUILT, SHOTS);
+    assert(tsc_i.ok && tsc_b.ok, "both run");
+    assert(tsc_i.checks == 10 && tsc_b.checks == 15,
+           "the built run makes FIVE more measurements — the five `kind` lines that say the wall seals: idle={tsc_i.checks} built={tsc_b.checks}");
+}
+
+// ⚠⚠ **And the wall was ATTACKED rather than walked around** — which is
+// what makes the +44 ticks a defence rather than a detour.  By the end
+// of the run only ONE of the five hexes is still standing: the wave
+// chewed through four of them.  A wave that had found a way round would
+// have left all five.
+fn test_the_wave_chewed_through_it_rather_than_going_round() {
+    tc_s = editor_state_new(PALETTE);
+    tc_r = script_run_file(tc_s, BUILT, SHOTS);
+    assert(tc_r.ok, "it runs: {script_describe(tc_r)}");
+
+    tc_wall = as_wall_kind(tc_s.picker.palette);
+    tc_left = 0;
+    for tc_i in -2..3 {
+        if lookup_painted(tc_s.pw, 5, tc_i) == tc_wall { tc_left = tc_left + 1; }
+    }
+    assert(tc_left > 0 && tc_left < 5,
+           "the wall must be part broken at the end — all five standing means the wave went round, none means it was never there: standing={tc_left} of 5");
+}

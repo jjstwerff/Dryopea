@@ -9,7 +9,13 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**Active — C0-C3 shipped; C4 and C5 open.**
+**Active — C0-C3 and C5 shipped; C4 (the beacon ferry) is the one phase
+left.**
+
+⚠⚠ **The player can build.**  `make play SCRIPT=…`, press **P**, press
+**Q**, and every hex you drive over is ordered as a wall your crew then
+raise.  Measured worth: **+44 ticks on a base that otherwise falls at
+130** (`@M050`).  ⚠ What the wallet still buys is nothing — that is C4.
 
 Walls and towers are placed in the **editor**.  The player cannot make a
 base, and the wallet buys nothing.  This plan builds the missing verb:
@@ -93,7 +99,7 @@ break at an end; it is not cheaper to build there.
 | **C2** ✅ | one helper finishes a wall in **15 ticks** (10.0 s); two in **8**, four in **4**; `wall_high` in **30**; on completion `lookup_painted` answers `wall` and `can_step` **refuses** the hex | work is helper-seconds and nothing else — N helpers are N times as fast, exactly | a helper out of reach adds **zero**; a wrecked helper adds **zero**; a run with **no crew** builds nothing |
 | **C3** ✅ | driving Q-on across the field orders **every hex entered** (12 of 12, one gap — the hex it started on); driving back rubs out the middle and leaves **the two ends**; a hex a helper has **started** survives | the trail toggles on ENTRY, along the path actually taken | the endpoint-only version reads **6 laid, 7 gaps** — the wall with holes |
 | **C4** | beacon pickup at the core debits **100**; a drop on a legal site leaves a tower order owing **300** | points are spent at PICKUP and a failed deposit does not refund | a pickup with < 100 points is refused; a drop off-site keeps the beacon |
-| **C5** | a base whose player builds during the recon window outlives the same base whose player does not | `@X022`'s *pre-wave window is a budget* is a measurable claim | the control run must differ **only** in the build |
+| **C5** ✅ | **130 ticks against 174** — the pair is ONE token apart (`paint off` / `paint on`) | `@X022`'s *pre-wave window is a budget* is a measurable claim | the wave must CHEW THROUGH the wall (1 of 5 hexes left standing), or the gain is a detour rather than a defence |
 
 ## Phases
 
@@ -103,8 +109,8 @@ break at an end; it is not cheaper to build there.
 | **C1** — the order record + its layer + `.keys` authoring + `order_fault` | M | `tests/27_c1_the_order.loft`; `state_diff` + emit round-trip | **Shipped** |
 | **C2** — helpers build it, and the structure appears | M | `tests/27_c2_construction.loft`; N-helpers-N-times; `can_step` flips | **Shipped** |
 | **C3** — wall paint (Q): the trail lays orders, re-driving erases | M | `tests/27_c3_wall_paint.loft` | **Shipped** |
-| **C4** — the beacon ferry: 100 points, carry, drop, tower | M | `tests/27_c4_the_beacon.loft` | Open |
-| **C5** — the measurement: does building buy a base anything? | S | `scripts/validate.sh` scenarios, `plans/12` § B7 shape | Open |
+| **C4** — the beacon ferry: 100 points, carry, drop, tower | M | `tests/27_c4_the_beacon.loft` | **Open — and it needs a decision first, see § Open questions 4** |
+| **C5** — the measurement: does building buy a base anything? | S | `tests/27_c5_the_wall_is_worth_it.loft` + the scenario pair | **Shipped** |
 
 ## What this plan does NOT build
 
@@ -133,6 +139,18 @@ break at an end; it is not cheaper to build there.
    C2: no.**  A site is an intent — no height, no passability, and an
    enemy walks over it.  The alternative (a half-height obstacle) is a
    mechanic rather than a detail, and nothing in the design asks for it.
+4. ⚠⚠ **`BuildOrder.kind` is a PALETTE INDEX, and a tower is not a
+   palette kind.**  C4 needs an order whose completion places a MARKER
+   rather than painting ground, and the record as C1 shipped it cannot
+   say that.  The candidates: a `what` discriminant on `BuildOrder`
+   (`BUILD_GROUND` / `BUILD_TOWER`), which keeps one queue, one work
+   rule, one erase rule and one resolve stage and costs **one branch in
+   each of `order_work_units`, `order_fault` and `build_resolve`**; or a
+   separate `TowerOrder`, which duplicates all four.  ⚠ The shared part
+   really is shared — a site, work owed, helpers converging,
+   erase-until-committed, resolve at the consequence stage — so the
+   discriminant looks right, but it is a change to a shipped record and
+   wants deciding rather than discovering mid-phase.
 3. **What happens to an order the wave overruns?**  It is a record on a
    hex enemies are standing on.  C2's answer is that it simply waits;
    whether an enemy should *destroy* one is `ROBOT_ECONOMY.md`'s builder
@@ -150,6 +168,13 @@ break at an end; it is not cheaper to build there.
   ⚠ Three further claims probed TRUE (`buildable` exists and is unread,
   the work owed is already a number, a wall closes a step) and a fourth is
   the § The invariant refusal, measured: a lone stub is **15**, not 100.
+- **C5** — `@M050`, `@X272`.  ⚠⚠ **+44 ticks, a third of the base's
+  life**, from a pair one token apart.  ⚠⚠ **And the measurement caught a
+  defect in the mechanic before it shipped**: a five-row band could not
+  be SEALED, because the trail never orders the hex the player is
+  standing on — and `plans/12` § B7 already priced a wall with one gate
+  at **+1 tick**.  `play_set_painting` seeds it, at ONE door, because the
+  key and the script both set the mode.
 - **C3** — `@X270`, `@X271`.  ⚠⚠ **The trail walks `lat_line` and skips
   the hex it started on**, which fixes two things at once: a vehicle
   crosses two hexes a tick so the endpoint alone leaves gaps, and the

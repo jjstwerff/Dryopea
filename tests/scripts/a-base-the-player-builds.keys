@@ -1,0 +1,99 @@
+# a-base-the-player-builds — plan 27 C5, and it is HALF A PAIR.
+#
+# `a-base-nobody-builds.keys` and `a-base-the-player-builds.keys` are
+# the same file except for ONE token: `paint off` against `paint on`.
+# Same ground, same core, same spawn, same wave list, same crew, same
+# drive, same number of ticks spent before the wave — so the difference
+# in the clock is the WALL and can be nothing else.
+#
+# ⚠ That is `plans/12` § B7's rule, and § Invariant gate names the
+# failure it guards: *equal times = the scenario measures nothing,
+# whatever it draws*.
+#
+# ── What the player does ────────────────────────────────────────
+#
+# Parks at (5, -2), presses paint, and drives to (5, 2) — which orders
+# FIVE hexes: the one it was standing on when the mode came on, plus the
+# four it enters.  That is the band's whole walkable height, so the wall
+# SEALS; `plans/12` § B7 measured that one with a gate in it buys
+# nothing at all.  Two helpers sit on the line and raise them —
+# `numbers.json` § wall.build_time_wall is 10 s a hex for one helper, so
+# five hexes is 50 helper-seconds and the pair need 25 s.
+#
+# ⚠⚠ **The recon window is what pays for it** (`@X022`): the wave list
+# does not start until the player pokes a spawn marker, so the ticks
+# spent building are free — which is the design claim this pair makes
+# measurable for the first time.
+
+echo the player builds: a wall drawn by driving, raised by the crew
+
+do toggle_mode
+
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+do cycle_kind
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 11 0
+marker 11 0 spawn 3
+
+count markers 2 2
+do toggle_mode
+
+palette 5
+drag -3 -2 12 -2
+drag -3 -1 12 -1
+drag -3 0 12 0
+drag -3 1 12 1
+drag -3 2 12 2
+count painted 80 80
+
+# The crew, sitting on the line the player is about to draw.
+crew 5 -1
+crew 5 1
+
+# ── The build (or not) ──────────────────────────────────────────
+park 5 -2
+paint on
+drive 5 2
+tick 6
+count orders 5 5
+paint off
+
+# Park clear of the line so the trail is not rubbed out, and let the
+# crew work.  60 helper-seconds over two helpers is 30 s = 45 ticks.
+drive 0 0
+tick 50
+count orders 0 0
+count painted 80 80
+# ⚠⚠ The whole band, hex by hex — because a wall with ONE gap in it
+# buys nothing at all (`plans/12` § B7 measured a gate at +1 tick), so
+# *five* is the number that matters rather than *some*.
+kind 5 -2 wall
+kind 5 -1 wall
+kind 5 0 wall
+kind 5 1 wall
+kind 5 2 wall
+
+
+# ── The waves — identical to `an-undefended-base` ───────────────
+wave 5
+count alive 5 5
+
+tick 22
+wave 8
+count alive 13 13
+
+# ── The clock ───────────────────────────────────────────────────
+#
+# ⚠⚠ **130 against 174 — the wall the player DREW is worth +44 ticks,
+# a third of the base's life** (`@M050`).  Same ground, same core, same
+# spawn, same wave list, same crew, same drive, same ticks spent — one
+# token apart.
+fall 900
+ticks 170 178
+snap c5_a_base_the_player_builds

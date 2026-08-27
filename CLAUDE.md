@@ -60,16 +60,18 @@ MAP=starter_01` opens one of the three AUTHORED maps in `maps/` (BACKLOG A2,
 2026-08-27); `SCRIPT=<name>` opens any of the 36 `.keys` files in
 `tests/scripts/` + `tests/gl/` as a live starting position, cut at its first
 `tick` (`@X263`).  Bare `make play` opens the empty default slot.
-⚠⚠ **The player still cannot BUILD** ([`plans/ROADMAP.md`](plans/ROADMAP.md)
-§ The critical path, item 3 — the biggest missing mechanic, and it gates three
-finished designs).
+⚠⚠ **The player CAN now build walls** ([`plans/27`](plans/27-building/README.md)
+C3): press **Q** and every hex you drive over is ordered, and the crew raise it
+— **+44 ticks on a base that otherwise falls at 130** (`@M050`).  ⚠ What the
+wallet still buys is **nothing**: a tower needs the beacon ferry (`plans/27`
+C4) and a seventh crew member needs an order, and neither is built.
 
 ### The three gates, and their numbers
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1434 green**, ~320 s on a busy box, 105 files |
-| scenarios | `scripts/validate.sh` | **33 scripts, 654 measurements**, ~14 s |
+| tests | `scripts/test.sh` | **1477 green**, ~320 s on a busy box, 110 files |
+| scenarios | `scripts/validate.sh` | **35 scripts, 679 measurements**, ~14 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
 
 ⚠ `scripts/test.sh` is the canonical runner — **never `loft test` directly**

@@ -394,6 +394,7 @@ fn script_action_is_play(name: text) -> boolean {
     name == "drive_north" || name == "drive_south"
  || name == "drive_east"  || name == "drive_west"
  || name == "boost"       || name == "carry"
+ || name == "paint_wall"
 }
 
 fn script_press(p: ScriptPhys, keys: const vector<integer>) {
@@ -619,7 +620,7 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
     sm_a4   = tok[4] ?? "";
 
     if sm_cmd == "count" {
-        if sm_argc != 3 { return "count needs <painted|markers|alive> <lo> <hi>"; }
+        if sm_argc != 3 { return "count needs <painted|markers|alive|orders|targets> <lo> <hi>"; }
         sm_lo = sm_a2 as integer?;
         sm_hi = sm_a3 as integer?;
         if sm_lo == null || sm_hi == null { return "count: <lo> and <hi> must be integers"; }
@@ -631,6 +632,16 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         }
         if sm_a1 == "alive" {
             return measure_int(run, "count alive", alive_count(run.play.wave), sm_lo ?? 0, sm_hi ?? 0);
+        }
+        // Build orders still standing (plan 27 C5).  ⚠ It counts what
+        // is UNFINISHED: a completed order is painted and removed, so a
+        // base that finished its wall reads ZERO here and the wall
+        // itself shows up in `count painted`.  The pair is what tells
+        // *the crew are still working* from *the crew are done*.
+        if sm_a1 == "orders" {
+            return measure_int(run, "count orders",
+                               order_count(run.play.wave.orders),
+                               sm_lo ?? 0, sm_hi ?? 0);
         }
         // ⚠ **The anti-collapse measurement** (plan 11 F7).  How many
         // DISTINCT hexes the wave is attacking — the set, not the
@@ -2098,6 +2109,23 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
     // that quietly did not happen would leave every assertion after it
     // measuring an unboosted run.  Same argument `hp` makes for
     // refusing a hex with nothing breakable on it.
+    // Wall paint, as a STATE rather than a keypress (plan 27 C3).
+    //
+    // ⚠⚠ **`paint on` / `paint off`, not a toggle**, and the reason is
+    // the same one `19-P2` gives for spelling *stop* as
+    // `vehicle_drive(v, v.q, v.r)`: a script says what it WANTS, so a
+    // reader can tell what a line does without replaying the file to
+    // find out which way the flag was pointing.  ⚠ The KEY is still a
+    // toggle — that is the player's affordance, and `play_actions` owns
+    // it.
+    if sc_cmd == "paint" {
+        if sc_argc != 1 { return "paint needs <on|off>"; }
+        sc_pw = on_off(tok[1] ?? "");
+        if sc_pw < 0 { return "paint: <on|off>, not '{tok[1] ?? ""}'"; }
+        play_set_painting(run.play, s, sc_pw == 1);
+        return "";
+    }
+
     if sc_cmd == "boost" {
         if sc_argc != 0 { return "boost takes no arguments"; }
         if !vehicle_present(run.play.wave.player) {

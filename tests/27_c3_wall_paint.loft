@@ -100,11 +100,14 @@ fn test_the_trail_has_no_gaps() {
     }
     moved = here.q - (-6);
     start = order_at(ps.wave.orders, -6, 0);
-    // ⚠ The ONE gap is the hex it started on, which is skipped by
-    // design: the trail orders every hex ENTERED, and you do not enter
-    // the one you are already standing on.
-    assert(moved >= 4 && gaps == 1 && !start && laid == moved,
-           "every hex ENTERED is ordered and only the starting hex is not: crossed={moved} laid={laid} gaps={gaps} start_ordered={start}");
+    // ⚠⚠ **NO gaps at all**, and it takes both halves to get there: the
+    // trail orders every hex ENTERED, and `play_set_painting` orders the
+    // one the player was standing ON when the mode came on.  Without the
+    // seed the first hex is missing — and a wall with one gap in it buys
+    // nothing (`plans/12` § B7 measured a gate at +1 tick), so a mechanic
+    // that cannot seal its own first row is a mechanic that does not work.
+    assert(moved >= 4 && gaps == 0 && start && laid == moved + 1,
+           "every hex the player covered is ordered, the standing one included: crossed={moved} laid={laid} gaps={gaps} start_ordered={start}");
 }
 
 // The control that makes the reading above mean something: paint mode
@@ -133,15 +136,15 @@ fn test_re_driving_erases_the_outline() {
     play_ticks(ps, s, 6);
     after_back = order_count(ps.wave.orders);
 
-    // ⚠⚠ TWO survive, and both follow from *toggle on ENTRY* rather
-    // than contradicting it: the hex the player turned around on is the
-    // return trip's STARTING hex and is skipped, and the hex they came
-    // back to was never ordered on the way out, so entering it lays one.
-    // The six between them are rubbed out.
+    // ⚠ ONE survives, and it follows from *toggle on ENTRY*: the hex the
+    // player turned around on is the return trip's STARTING hex, and you
+    // do not enter the one you are already standing on.  Everything else
+    // the outward trip laid — the seeded starting hex included — is
+    // rubbed out.
     turn = order_at(ps.wave.orders, 0, 0);
     home = order_at(ps.wave.orders, -6, 0);
-    assert(after_out == 6 && after_back == 2 && turn && home,
-           "driving back rubs out the middle and leaves the two ends: out={after_out} back={after_back} turn={turn} home={home}");
+    assert(after_out == 7 && after_back == 1 && turn && !home,
+           "driving back rubs out everything it re-enters and leaves the hex it turned on: out={after_out} back={after_back} turn={turn} home={home}");
 }
 
 // ⚠⚠ …but NOT one a helper has started.  *Construction commits the
@@ -165,9 +168,9 @@ fn test_re_driving_does_not_erase_what_the_crew_has_started() {
     vehicle_drive(ps.wave.player, -6, 0);
     play_ticks(ps, s, 6);
 
-    // ⚠ Three: the committed hex, plus the two endpoints § the test
-    // above explains.  The four other outlines are gone.
-    assert(order_at(ps.wave.orders, -3, 0) && order_count(ps.wave.orders) == 3,
+    // ⚠ Two: the committed hex, plus the hex the player turned around on
+    // — which § the test above explains.  Everything else is gone.
+    assert(order_at(ps.wave.orders, -3, 0) && order_count(ps.wave.orders) == 2,
            "the committed hex survives the rub-out: left={order_count(ps.wave.orders)} committed={order_at(ps.wave.orders, -3, 0)}");
 }
 

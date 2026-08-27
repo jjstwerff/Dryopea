@@ -271,6 +271,35 @@ pub fn play_painting(ps: const PlayState) -> boolean {
     ps.painting
 }
 
+// Turn wall paint on or off.
+//
+// ⚠⚠ **Switching it ON orders the hex the player is standing on**, and
+// that is not a convenience — it is what makes a wall SEALABLE.  The
+// trail toggles every hex ENTERED and you do not enter the one you are
+// already on (§ `play_trail`), so without this seed a five-row band
+// leaves its first row open however carefully the player drives — and
+// `plans/12` § B7 measured that a wall with a gap in it buys **nothing
+// at all**.  The player would be drawing a wall that cannot work.
+//
+// ⚠ It is a no-op when the mode is already what is asked, so holding
+// the key or repeating `paint on` in a script does not re-seed.
+//
+// ⚠⚠ **The ONE door**, which is why it exists at all: the KEY toggles
+// through `play_actions` and a `.keys` file says `paint on` outright,
+// and a seed written into only one of them is a wall the player can
+// seal and a script cannot.
+//
+// Example: @DRY-103
+pub fn play_set_painting(ps: PlayState, s: EditorState, on: boolean) {
+    if on == ps.painting { return; }
+    ps.painting = on;
+    if !on { return; }
+    if !vehicle_present(ps.wave.player) { return; }
+    order_place(s.picker.palette, s.pw, ps.wave.orders,
+                ps.wave.player.q, ps.wave.player.r,
+                as_wall_kind(s.picker.palette));
+}
+
 // How much of a frame's elapsed time the GAME gets.
 //
 // ⚠ **This is the whole of what the mode does to the clock**, and it is
@@ -461,7 +490,7 @@ fn play_actions(ps: PlayState, s: EditorState, input: const EditorInput) {
     // is why it needs a key at all and why `@X140` calls it the sharpest
     // discoverability hazard in the design.
     if input.in_paint_wall && !ps.prev.in_paint_wall {
-        ps.painting = !ps.painting;
+        play_set_painting(ps, s, !ps.painting);
     }
 
     if input.in_carry && !ps.prev.in_carry {
