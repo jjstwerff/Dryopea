@@ -1,0 +1,289 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 27 phase C2 — the crew build it, and the structure appears.
+//
+// ⚠⚠ **The claim: work is helper-seconds and nothing else, and a
+// finished order becomes ground the simulation and the window both
+// agree about.**
+//
+// ⚠ The reading that carries the phase is `N helpers are N times as
+// fast`, EXACTLY — the same shape `plans/14` H2 uses for salvage.  It
+// is only observable because a builder picks the MOST ADVANCED order in
+// reach: a crew that spread out would finish nothing sooner and the
+// gate would read the same for both.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+fn pal() -> vector<GroundType> { load_palette(PALETTE) }
+
+fn ground() -> PaintedWorld {
+    g = painted_empty();
+    for g_q in -8..9 {
+        for g_r in -8..9 { paint(g, g_q, g_r, as_u8(5)); }
+    }
+    g
+}
+
+// Tick a crew of `n` helpers, all standing on (0, 0), until the order
+// there is gone.  Answers the tick count.
+fn ticks_to_build(p: vector<GroundType>, pw: PaintedWorld, bl: BuildLayer,
+                  n: integer, at: const Hex, site: const Hex,
+                  cap: integer) -> integer {
+    ttb_crew: vector<Helper> = [];
+    for ttb_i in 0..n { ttb_crew += [helper_new(at.q, at.r)]; }
+    ttb_t = 0;
+    while ttb_t < cap {
+        ttb_t = ttb_t + 1;
+        for ttb_h in ttb_crew {
+            helper_build(ttb_h, p, bl, TICK_STEP_UNITS);
+        }
+        build_resolve(p, pw, bl);
+        if !order_at(bl, site.q, site.r) { return ttb_t; }
+    }
+    -1
+}
+
+// ─── The work ───────────────────────────────────────────────────
+
+// @DRY-101 — one helper raises a wall in the time the design promises
+//
+// ⚠ `numbers.json` § `wall.build_time_wall` is **10 s**, and
+// `TICK_SECONDS` is 2/3 s, so 100 HP at 10 HP/s is **15 ticks**.
+fn test_one_helper_builds_a_wall_in_the_designed_time() {
+    p = pal();
+    pw = ground();
+    bl = build_layer_empty();
+    order_place(p, pw, bl, 0, 0, as_u8(9));
+
+    t = ticks_to_build(p, pw, bl, 1, Hex { q: 0, r: 0 }, Hex { q: 0, r: 0 }, 200);
+    secs = t as float * TICK_SECONDS;
+
+    assert(t == 15 && secs >= 10.0 && secs < 10.0 + TICK_SECONDS,
+           "one helper must finish a wall in the designed 10 s: ticks={t} seconds={secs}");
+}
+
+// ⚠⚠ THE PHASE'S HEADLINE.  Two helpers are exactly twice as fast, and
+// four are four times — the same claim `plans/14` H2 makes for salvage,
+// and the reason `build_at` picks the most ADVANCED order rather than
+// the nearest.
+fn test_n_helpers_are_n_times_as_fast() {
+    p = pal();
+    one  = 0;
+    two  = 0;
+    four = 0;
+
+    pw1 = ground(); bl1 = build_layer_empty();
+    order_place(p, pw1, bl1, 0, 0, as_u8(9));
+    one = ticks_to_build(p, pw1, bl1, 1, Hex { q: 0, r: 0 }, Hex { q: 0, r: 0 }, 200);
+
+    pw2 = ground(); bl2 = build_layer_empty();
+    order_place(p, pw2, bl2, 0, 0, as_u8(9));
+    two = ticks_to_build(p, pw2, bl2, 2, Hex { q: 0, r: 0 }, Hex { q: 0, r: 0 }, 200);
+
+    pw4 = ground(); bl4 = build_layer_empty();
+    order_place(p, pw4, bl4, 0, 0, as_u8(9));
+    four = ticks_to_build(p, pw4, bl4, 4, Hex { q: 0, r: 0 }, Hex { q: 0, r: 0 }, 200);
+
+    assert(one == 15 && two == 8 && four == 4,
+           "helper-seconds is the bottleneck and it divides: 1={one} 2={two} 4={four} (15 / 7.5 / 3.75 ticks, rounded up)");
+}
+
+// A `wall_high` owes twice the work, so it takes twice as long — the
+// whole of `numbers.json` § build_time_wall_high, with no second rule.
+fn test_wall_high_takes_twice_as_long() {
+    p = pal();
+    pw = ground();
+    bl = build_layer_empty();
+    order_place(p, pw, bl, 0, 0, as_u8(10));
+    t = ticks_to_build(p, pw, bl, 1, Hex { q: 0, r: 0 }, Hex { q: 0, r: 0 }, 200);
+    assert(t == 30,
+           "wall_high is 200 HP at 10 HP/s = 20 s = 30 ticks: {t}");
+}
+
+// ─── Reach ──────────────────────────────────────────────────────
+
+// A helper builds what it stands on or beside, and nothing further —
+// `DESIGN.md` § Position triggers, the same rule that makes a parked
+// vehicle repair a tower.
+fn test_a_helper_builds_within_reach_and_no_further() {
+    p = pal();
+    pw = ground();
+    bl = build_layer_empty();
+    order_place(p, pw, bl, 0, 0, as_u8(9));      // under it
+    order_place(p, pw, bl, 1, 0, as_u8(9));      // beside it
+    order_place(p, pw, bl, 5, 0, as_u8(9));      // out of reach
+
+    near = helper_new(1, 0);
+    far  = helper_new(-6, 0);
+    helper_build(near, p, bl, TICK_STEP_UNITS);
+    helper_build(far,  p, bl, TICK_STEP_UNITS);
+
+    own  = order_spent(bl, 1, 0);
+    away = order_spent(bl, 5, 0);
+    assert(own > 0 && away == 0,
+           "a helper builds in reach and nowhere else: on_its_hex={own} far_site={away}");
+}
+
+// ⚠ It picks the MOST ADVANCED site in reach, so a crew converges and
+// half-built walls do not accumulate.  A wall that is 90% built stops
+// nothing.
+fn test_a_builder_finishes_what_is_started() {
+    p = pal();
+    pw = ground();
+    bl = build_layer_empty();
+    order_place(p, pw, bl, 0, 0, as_u8(9));
+    order_place(p, pw, bl, 1, 0, as_u8(9));
+    order_spend(p, bl, 1, 0, clock_units_from_seconds(5.0));            // this one is half done
+
+    h = helper_new(0, 0);
+    helper_build(h, p, bl, TICK_STEP_UNITS);
+
+    fresh   = order_spent(bl, 0, 0);
+    started = order_spent(bl, 1, 0);
+    assert(fresh == 0 && started > clock_units_from_seconds(5.0),
+           "the started site gets the work: fresh={fresh} started={started}");
+}
+
+// A wrecked helper builds nothing — the same sentence `helper_salvage`
+// writes.
+fn test_a_wrecked_helper_builds_nothing() {
+    p = pal();
+    pw = ground();
+    bl = build_layer_empty();
+    order_place(p, pw, bl, 0, 0, as_u8(9));
+
+    h = helper_new(0, 0);
+    helper_wreck(h);
+    helper_build(h, p, bl, TICK_STEP_UNITS);
+
+    assert(order_spent(bl, 0, 0) == 0,
+           "a downed helper is not a builder: {order_spent(bl, 0, 0)}");
+}
+
+// ─── The structure appears ──────────────────────────────────────
+
+// @DRY-102 — a finished order becomes GROUND, and closes a step
+//
+// ⚠ The order is REMOVED as well as painted: an order left standing on
+// a hex that now holds a wall would fail `order_fault`'s own
+// `buildable` test for ever.
+fn test_a_finished_order_becomes_ground_that_stops_a_robot() {
+    p = pal();
+    pw = ground();
+    bl = build_layer_empty();
+    hl = height_layer_empty();
+    k = as_u8(ENEMY_KIND_REGULAR);
+    from = Hex { q: 0, r: 0 };
+    to   = Hex { q: 1, r: 0 };
+
+    order_place(p, pw, bl, 1, 0, as_u8(9));
+    open_before = can_step(p, pw, hl, k, from, to);
+    kind_before = lookup_painted(pw, 1, 0);
+
+    ticks_to_build(p, pw, bl, 1, Hex { q: 0, r: 0 }, Hex { q: 1, r: 0 }, 200);
+
+    assert(open_before && kind_before == as_u8(5)
+           && lookup_painted(pw, 1, 0) == as_u8(9)
+           && !can_step(p, pw, hl, k, from, to)
+           && !order_at(bl, 1, 0) && order_count(bl) == 0,
+           "the wall must exist and stop a robot, and the order must be gone: kind={lookup_painted(pw, 1, 0)} open_after={can_step(p, pw, hl, k, from, to)} orders={order_count(bl)}");
+}
+
+// ⚠ Nothing appears until `build_resolve`, so a helper later in the
+// roster cannot build against a wall an earlier one just raised — the
+// tick's *consequences land last* rule, which is what keeps roster
+// order out of the result.
+fn test_nothing_appears_until_the_consequence_stage() {
+    p = pal();
+    pw = ground();
+    bl = build_layer_empty();
+    order_place(p, pw, bl, 0, 0, as_u8(9));
+    order_spend(p, bl, 0, 0, clock_units_from_seconds(9.5));
+
+    h = helper_new(0, 0);
+    helper_build(h, p, bl, TICK_STEP_UNITS);        // crosses 100
+
+    mid = lookup_painted(pw, 0, 0);
+    n = build_resolve(p, pw, bl);
+    after = lookup_painted(pw, 0, 0);
+
+    assert(mid == as_u8(5) && n == 1 && after == as_u8(9),
+           "the work and the appearing are two stages: during={mid} resolved={n} after={after}");
+}
+
+// ─── The window agrees (the `@M048` fix) ────────────────────────
+
+// ⚠⚠ A structure the simulation has and the window does not is the
+// defect `@M048` measured.  `mesh_watch_dirty` reads the painted layer
+// since C2, so a wall raised by the crew is one dirty hex.
+fn test_the_renderer_sees_the_wall_the_crew_raised() {
+    p = pal();
+    pw = ground();
+    bl = build_layer_empty();
+    hl = height_layer_empty();
+
+    w = mesh_watch_new();
+    mesh_watch_note(w, pw, hl);
+    assert(len(mesh_watch_dirty(w, pw, hl)) == 0, "nothing has happened yet");
+
+    order_place(p, pw, bl, 1, 1, as_u8(9));
+    ticks_to_build(p, pw, bl, 1, Hex { q: 1, r: 1 }, Hex { q: 1, r: 1 }, 200);
+
+    dirty = mesh_watch_dirty(w, pw, hl);
+    tiles = len(mesh_watch_tiles(w, pw, hl));
+    assert(len(dirty) == 1 && (dirty[0] ?? Hex { }).q == 1 && tiles > 0,
+           "the crew's wall must reach the renderer: dirty={len(dirty)} tiles={tiles}");
+}
+
+// ─── Through the tick ───────────────────────────────────────────
+
+// ⚠ The whole thing, driven by `wave_tick` rather than by calling the
+// pieces — because the phase's claim is about the GAME, and a gate that
+// only exercises the functions cannot see a wiring mistake in the tick.
+fn test_a_crew_builds_a_wall_over_a_played_run() {
+    p = pal();
+    s = editor_state_new(PALETTE);
+    for tb_q in -8..9 {
+        for tb_r in -8..9 { paint(s.pw, tb_q, tb_r, as_u8(5)); }
+    }
+    place_marker(s.mw, 0, 0, MARKER_KIND_TARGET, as_u8(0));
+
+    ps = play_state_new();
+    play_set_mode(ps, s, true);
+    ps.wave.crew += [helper_new(3, 0)];
+    order_place(p, s.pw, ps.wave.orders, 3, 0, as_u8(9));
+
+    before = lookup_painted(s.pw, 3, 0);
+    play_ticks(ps, s, 20);
+    after = lookup_painted(s.pw, 3, 0);
+
+    assert(before == as_u8(5) && after == as_u8(9) && order_count(ps.wave.orders) == 0,
+           "a played run must raise the wall: before={before} after={after} orders_left={order_count(ps.wave.orders)}");
+}
+
+// ⚠ And a run with NO crew builds nothing, which is what makes the
+// reading above about the crew rather than about the clock.
+fn test_a_run_with_no_crew_builds_nothing() {
+    p = pal();
+    s = editor_state_new(PALETTE);
+    for tn_q in -8..9 {
+        for tn_r in -8..9 { paint(s.pw, tn_q, tn_r, as_u8(5)); }
+    }
+    place_marker(s.mw, 0, 0, MARKER_KIND_TARGET, as_u8(0));
+
+    ps = play_state_new();
+    play_set_mode(ps, s, true);
+    order_place(p, s.pw, ps.wave.orders, 3, 0, as_u8(9));
+
+    play_ticks(ps, s, 40);
+
+    assert(lookup_painted(s.pw, 3, 0) == as_u8(5) && order_count(ps.wave.orders) == 1
+           && order_spent(ps.wave.orders, 3, 0) == 0,
+           "nobody builds an order nobody is standing at: kind={lookup_painted(s.pw, 3, 0)} done={order_spent(ps.wave.orders, 3, 0)}");
+}

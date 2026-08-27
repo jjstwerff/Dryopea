@@ -104,7 +104,10 @@ pub const PLAY_SKY: integer = 0x0e1622;
 // ⚠ A record of its own rather than `height.loft`'s `HexRise`: this is
 // the RENDERER's memory of the simulation, and giving it the
 // simulation's type would invite somebody to hand one to the other.
-struct MeshSeen { q: integer, r: integer, metres: float }
+// ⚠ It remembers the KIND as well as the rise, because plan 27 C2
+// gave the run a terrain change that moves no rubble — see
+// `mesh_watch_dirty`.
+struct MeshSeen { q: integer, r: integer, metres: float, kind: u8 }
 
 // What the renderer has already baked into the ground.
 //
@@ -152,19 +155,51 @@ pub fn mesh_watch_reset(w: MeshWatch) {
 // — which is `ground_gl.loft`'s own *"clear a kind a tile no longer
 // holds"* rule one layer out.
 //
+// ⚠⚠ **It reads the PAINTED layer as well as the piles, and plan 27 C2
+// is why.**  `@X095` used to justify diffing the height layer alone
+// with *every terrain change a tick can make moves the height layer* —
+// true while a body raised its hex, a breach raised masonry BEFORE it
+// repainting, and salvage lowered a pile.  **BUILDING is a terrain
+// change that moves the painted layer and NOT the height layer**, so
+// that invariant is falsified (`@M048`: 0 dirty hexes against a tile
+// checksum that moved).
+//
+// ⚠ The replacement is WIDER and simpler: *the renderer notices any
+// change to the ground it draws*.  It needs no claim about what the
+// simulation is allowed to do, which is what made the old one fragile
+// — it was one new mechanic away from being wrong, and building was
+// that mechanic.
+//
 // Example: @DRY-065, @DRY-066
-pub fn mesh_watch_dirty(w: const MeshWatch, hl: const HeightLayer) -> vector<Hex> {
+pub fn mesh_watch_dirty(w: const MeshWatch, pw: const PaintedWorld,
+                        hl: const HeightLayer) -> vector<Hex> {
     mwd_out: vector<Hex> = [];
+    mwd_hit: hash<Hex[q, r]> = [];
     for mwd_c in hl.cells {
         mwd_s = w.seen[mwd_c.q, mwd_c.r];
-        if mwd_s == null || mwd_s.metres != mwd_c.metres {
+        if mwd_s == null || mwd_s.metres != mwd_c.metres
+           || mwd_s.kind != lookup_painted(pw, mwd_c.q, mwd_c.r) {
             mwd_out += [Hex { q: mwd_c.q, r: mwd_c.r }];
+            mwd_hit += [Hex { q: mwd_c.q, r: mwd_c.r }];
         }
     }
-    for mwd_p in w.seen {
-        if hl.cells[mwd_p.q, mwd_p.r] == null {
-            mwd_out += [Hex { q: mwd_p.q, r: mwd_p.r }];
+    for mwd_g in pw.painted {
+        if mwd_hit[mwd_g.q, mwd_g.r] != null { continue; }
+        mwd_t = w.seen[mwd_g.q, mwd_g.r];
+        if mwd_t == null || mwd_t.kind != mwd_g.kind
+           || mwd_t.metres != height_rise(hl, mwd_g.q, mwd_g.r) {
+            mwd_out += [Hex { q: mwd_g.q, r: mwd_g.r }];
+            mwd_hit += [Hex { q: mwd_g.q, r: mwd_g.r }];
         }
+    }
+    // ⚠ The VANISHED direction, and it is the easy half to forget: a
+    // pile the player cleared and a hex painted back to sea both leave
+    // no entry to walk, so a sweep of what exists NOW would go on
+    // drawing them.
+    for mwd_p in w.seen {
+        if hl.cells[mwd_p.q, mwd_p.r] != null { continue; }
+        if pw.painted[mwd_p.q, mwd_p.r] != null { continue; }
+        mwd_out += [Hex { q: mwd_p.q, r: mwd_p.r }];
     }
     mwd_out
 }
@@ -178,9 +213,10 @@ pub fn mesh_watch_dirty(w: const MeshWatch, hl: const HeightLayer) -> vector<Hex
 // that appears only after something died near a chunk boundary.
 //
 // Example: @DRY-066
-pub fn mesh_watch_tiles(w: const MeshWatch, hl: const HeightLayer) -> vector<ChunkKey> {
+pub fn mesh_watch_tiles(w: const MeshWatch, pw: const PaintedWorld,
+                        hl: const HeightLayer) -> vector<ChunkKey> {
     mwt_seen: hash<ChunkKey[ck]> = [];
-    for mwt_h in mesh_watch_dirty(w, hl) {
+    for mwt_h in mesh_watch_dirty(w, pw, hl) {
         for mwt_k in mesh_chunks_touched(mwt_h.q, mwt_h.r) {
             mwt_seen += [ChunkKey { ck: mwt_k.ck, cx: mwt_k.cx, cy: mwt_k.cy }];
         }
@@ -199,10 +235,22 @@ pub fn mesh_watch_tiles(w: const MeshWatch, hl: const HeightLayer) -> vector<Chu
 // `mesh_watch_dirty` makes.
 //
 // Example: @DRY-065
-pub fn mesh_watch_note(w: MeshWatch, hl: const HeightLayer) {
+pub fn mesh_watch_note(w: MeshWatch, pw: const PaintedWorld,
+                       hl: const HeightLayer) {
     w.seen = [];
+    for mwn_g in pw.painted {
+        w.seen += [MeshSeen { q: mwn_g.q, r: mwn_g.r,
+                              metres: height_rise(hl, mwn_g.q, mwn_g.r),
+                              kind: mwn_g.kind }];
+    }
+    // ⚠ A pile can stand on a hex the paint does not store — sea is
+    // ABSENCE (`painted.loft`), and a body falls on it just the same —
+    // so the union needs both walks and this one must not overwrite a
+    // row the paint already wrote.
     for mwn_c in hl.cells {
-        w.seen += [MeshSeen { q: mwn_c.q, r: mwn_c.r, metres: mwn_c.metres }];
+        if pw.painted[mwn_c.q, mwn_c.r] != null { continue; }
+        w.seen += [MeshSeen { q: mwn_c.q, r: mwn_c.r, metres: mwn_c.metres,
+                              kind: lookup_painted(pw, mwn_c.q, mwn_c.r) }];
     }
     w.built = true;
 }
@@ -279,13 +327,13 @@ pub fn play_view_sync(w: MeshWatch, gg: GroundGl, eg: EntityGl,
         ground_gl_upload_chunks(gg, pal, s.pw, ps.wave.heights, pvs_all);
         pvs_n = len(pvs_all);
     } else {
-        pvs_t = mesh_watch_tiles(w, ps.wave.heights);
+        pvs_t = mesh_watch_tiles(w, s.pw, ps.wave.heights);
         if len(pvs_t) > 0 {
             ground_gl_upload_chunks(gg, pal, s.pw, ps.wave.heights, pvs_t);
             pvs_n = len(pvs_t);
         }
     }
-    mesh_watch_note(w, ps.wave.heights);
+    mesh_watch_note(w, s.pw, ps.wave.heights);
 
     // ⚠⚠ **THE ROSTER MOVES ON TICKS AND NOT ON FRAMES**, so it is
     // uploaded on a tick boundary — measured at **11 ms** for a base

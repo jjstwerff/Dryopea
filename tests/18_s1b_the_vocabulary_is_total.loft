@@ -76,7 +76,7 @@ fn test_every_field_of_the_state_is_reachable() {
         // the runtime layers
         + "raise 5 1 1.5 carapace\n"
         + "damage 6 0 25\n"
-        + "order 2 2 wall_high 30\n"
+        + "order 2 2 wall_high 3\n"
         + "tower 4 0 12 0.4 6.0 off\n"
         + "spent 30\n"
         // the movers
@@ -113,7 +113,8 @@ fn test_every_field_of_the_state_is_reachable() {
     // `orders` left empty on both sides compares equal and proves
     // nothing, and this file's own comment is what says so.
     tef_want.orders.cells[2, 2] =
-        BuildOrder { q: 2, r: 2, kind: as_u8(10), done: 30.0 };
+        BuildOrder { q: 2, r: 2, kind: as_u8(10),
+                     spent: clock_units_from_seconds(3.0) };
 
     tower_bank(tef_want.towers, 4, 0, 0.0);
     tef_wc = tef_want.towers.cells[4, 0];

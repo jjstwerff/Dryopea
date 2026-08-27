@@ -20,7 +20,7 @@
 // ⚠ Omitting the order at a NEW creator is LOUD — nothing appears — so
 // the two creators do not need a type to force the call.
 //
-// ── Work is what has been DONE, never what is LEFT ──────────────
+// ── Work is what has been SPENT, never what is LEFT ─────────────
 //
 // ⚠⚠ Same rule as `damage.loft` § DAMAGE TAKEN, `tower.loft` § Shots
 // FIRED and `wallet.loft` § points SPENT, and here it is [loft#914]
@@ -28,8 +28,40 @@
 // takes that field's default SILENTLY**.  Store work REMAINING and a
 // `BuildOrder { q: 1, r: 2, kind: … }` written anywhere is an order
 // that is **already finished** — it would paint a wall the moment
-// anything looked at it.  Store work DONE and the same partial literal
+// anything looked at it.  Store work SPENT and the same partial literal
 // is an order nobody has started, which is the truthful zero.
+//
+// ── And it is INTEGER base units, not a float ───────────────────
+//
+// ⚠⚠ **A float rate accumulated per tick comes up SHORT**, which is the
+// family `plans/26` spent a whole plan on (`@D003`, `@D004`).  Measured
+// here before it was fixed: at 10 HP/s over a 2/3 s tick a `wall_high`
+// took **31 ticks against a true 30**, because `10.0 * (2/3)` is not
+// exact and thirty of them fall just under 200.  The repo's answer is
+// integer base units, and it is the same answer here.
+//
+// ⚠ So an order owes a DURATION of helper time — which is what
+// `numbers.json` § `wall.build_time_wall` says in the first place
+// (*"one helper, one wall hex, 10 s"*).  The HP/s framing
+// (§ `helper.construction_tick_hp_per_second`) is the same arithmetic
+// said the other way round, and `tests/27_c0_probe.loft` asserts the
+// two agree.
+//
+// ── Why this is NOT a `fixstep::Timer` ──────────────────────────
+//
+// ⚠⚠ It is the obvious reuse and it was REFUSED on semantics, not on
+// taste: `timer_spend` **fires exactly once and then DISARMS**, so a
+// completed timer answers `timer_spent` = 0 and the progress is gone.
+// A build order has to stay readable after it completes — the tick
+// spends the work and `build_resolve` paints it later, at the
+// consequence stage — so a `Timer` here would need a second `done`
+// flag to remember what it deliberately forgot.  **A one-shot that
+// forgets and a progress bar that must not are two families**, and one
+// integer is the whole of the second one.
+//
+// ⚠ The TOTAL is derived from the kind rather than stored, so there is
+// no total to disagree with what is being built — `structure_max_hp`'s
+// own choice, one layer over.
 //
 // ── What the order does NOT say ─────────────────────────────────
 //
@@ -58,13 +90,29 @@ use painted;
 use palette;
 use damage;
 use lattice;
+use fixstep;
+
+// How long one helper takes over each structure, in the clock's base
+// units — `numbers.json` § `wall.build_time_wall` (10 s) and
+// § `wall.build_time_wall_high` (20 s).
+//
+// ⚠ LITERALS, because loft refuses a call in a const initialiser; the
+// seconds below are DERIVED so the two can never disagree
+// (`tick_timer.loft` makes the same choice for the same reason).
+pub const BUILD_WALL_UNITS:      integer = 30000000;
+pub const BUILD_WALL_HIGH_UNITS: integer = 60000000;
+
+pub const BUILD_WALL_SECONDS: float =
+    (BUILD_WALL_UNITS as float) / (CLOCK_UNITS_PER_SECOND as float);
+pub const BUILD_WALL_HIGH_SECONDS: float =
+    (BUILD_WALL_HIGH_UNITS as float) / (CLOCK_UNITS_PER_SECOND as float);
 
 // One ordered structure.
 pub struct BuildOrder {
-    q:    integer,
-    r:    integer,
-    kind: u8,       // palette index of what goes here
-    done: float,    // work already spent — see § Work is what has been DONE
+    q:     integer,
+    r:     integer,
+    kind:  u8,        // palette index of what goes here
+    spent: integer,   // helper time put in — see § Work is what has been SPENT
 }
 
 // Every order on the map.  Lives on `WaveState`, never saved: a map
@@ -79,21 +127,26 @@ pub fn build_layer_empty() -> BuildLayer {
     BuildLayer { cells: [] }
 }
 
-// How much work `kind` owes, in the same units `damage.loft` counts HP.
+// How much helper time `kind` owes, in base units — 0 for anything
+// that cannot be built.
 //
-// ⚠⚠ **The kind's UNBRACED figure, and that is a refusal** (`@M048`).
-// `structure_max_hp` scales by `brace_of`, so *the HP it will have*
-// would also handle bracing — elegantly, and wrongly: a lone stub
-// would owe **15** and build in 1.5 s where `DESIGN.md` § 13 says *one
-// helper, one wall hex, 10 s* flatly.  **A wall is cheaper to BREAK at
-// an end; it is not cheaper to BUILD there.**
+// ⚠⚠ **A flat figure per kind, and that is a refusal** (`@M048`).  The
+// tempting definition is *the HP it will have*, which would also handle
+// bracing for free — elegantly, and wrongly: `structure_max_hp` scales
+// by `brace_of`, so a lone stub would owe a sixth of a wall and go up
+// in 1.5 s where `DESIGN.md` § 13 says *one helper, one wall hex, 10 s*
+// flatly.  **A wall is cheaper to BREAK at an end; it is not cheaper to
+// BUILD there.**
 //
 // ⚠ It asks by KIND rather than by hex because an order's hex is still
 // grass — there is nothing painted there to read.
 //
 // Example: @DRY-098
-pub fn order_work_total(pal: vector<GroundType>, kind: u8) -> float {
-    structure_kind_hp(pal, kind)
+pub fn order_work_units(pal: vector<GroundType>, kind: u8) -> integer {
+    owu_e = pal[kind as integer] ?? GroundType {};
+    if owu_e.name == "wall"      { return BUILD_WALL_UNITS; }
+    if owu_e.name == "wall_high" { return BUILD_WALL_HIGH_UNITS; }
+    0
 }
 
 // Is there an order here?
@@ -108,13 +161,13 @@ pub fn order_kind(bl: const BuildLayer, q: integer, r: integer) -> u8 {
     if ok_c == null { 0 as u8 } else { ok_c.kind }
 }
 
-// Work spent here so far — 0.0 where nothing is ordered, which is also
-// what an untouched order reads.
+// Helper time spent here so far, in base units — 0 where nothing is
+// ordered, which is also what an untouched order reads.
 //
 // ⚠ The two are told apart by `order_at`, never by this number.
-pub fn order_done(bl: const BuildLayer, q: integer, r: integer) -> float {
+pub fn order_spent(bl: const BuildLayer, q: integer, r: integer) -> integer {
     od_c = bl.cells[q, r];
-    if od_c == null { 0.0 } else { od_c.done }
+    if od_c == null { 0 } else { od_c.spent }
 }
 
 // How many orders stand.
@@ -137,7 +190,7 @@ pub fn order_count(bl: const BuildLayer) -> integer {
 pub fn order_fault(pal: vector<GroundType>, pw: PaintedWorld,
                    bl: const BuildLayer, q: integer, r: integer,
                    kind: u8) -> text {
-    if order_work_total(pal, kind) <= 0.0 {
+    if order_work_units(pal, kind) <= 0 {
         of_want = pal[kind as integer] ?? GroundType {};
         return "`{of_want.name}` is not something that can be built";
     }
@@ -170,7 +223,7 @@ pub fn order_place(pal: vector<GroundType>, pw: PaintedWorld,
                    bl: BuildLayer, q: integer, r: integer,
                    kind: u8) -> boolean {
     if order_fault(pal, pw, bl, q, r, kind) != "" { return false; }
-    bl.cells[q, r] = BuildOrder { q: q, r: r, kind: kind, done: 0.0 };
+    bl.cells[q, r] = BuildOrder { q: q, r: r, kind: kind, spent: 0 };
     true
 }
 
@@ -186,7 +239,7 @@ pub fn order_place(pal: vector<GroundType>, pw: PaintedWorld,
 pub fn order_erase(bl: BuildLayer, q: integer, r: integer) -> boolean {
     oe_c = bl.cells[q, r];
     if oe_c == null { return false; }
-    if oe_c.done > 0.0 { return false; }
+    if oe_c.spent > 0 { return false; }
     bl.cells[q, r] = null;
     true
 }
@@ -201,15 +254,15 @@ pub fn order_erase(bl: BuildLayer, q: integer, r: integer) -> boolean {
 // ⚠ A spend on a hex with no order is a no-op rather than a fault: a
 // helper working on an order somebody erased this tick is a race the
 // caller should not have to spell.
-pub fn order_advance(pal: vector<GroundType>, bl: BuildLayer,
-                     q: integer, r: integer, amount: float) -> boolean {
+pub fn order_spend(pal: vector<GroundType>, bl: BuildLayer,
+                   q: integer, r: integer, units: integer) -> boolean {
     oa_c = bl.cells[q, r];
     if oa_c == null { return false; }
-    if amount <= 0.0 { return false; }
-    oa_total = order_work_total(pal, oa_c.kind);
-    oa_was = oa_c.done;
-    oa_c.done = oa_was + amount;
-    oa_was < oa_total && oa_c.done >= oa_total
+    if units <= 0 { return false; }
+    oa_total = order_work_units(pal, oa_c.kind);
+    oa_was = oa_c.spent;
+    oa_c.spent = oa_was + units;
+    oa_was < oa_total && oa_c.spent >= oa_total
 }
 
 // Has the order at (q, r) had all its work spent?
@@ -217,5 +270,96 @@ pub fn order_complete(pal: vector<GroundType>, bl: const BuildLayer,
                       q: integer, r: integer) -> boolean {
     oc_c = bl.cells[q, r];
     if oc_c == null { return false; }
-    oc_c.done >= order_work_total(pal, oc_c.kind)
+    oc_total = order_work_units(pal, oc_c.kind);
+    oc_total > 0 && oc_c.spent >= oc_total
+}
+
+// ─── The work (plan 27 C2) ──────────────────────────────────────
+
+// How far a builder reaches, in hexes — its own hex and the six around
+// it.
+//
+// ⚠ **Its own constant, though it equals `VEHICLE_SALVAGE_REACH_HEXES`
+// today.**  Clearing a heap and raising a wall are two rules that
+// happen to agree on a number; sharing the constant would make a change
+// to one silently change the other.  *Equality of value is evidence;
+// sameness of rule is the claim.*
+pub const BUILD_REACH_HEXES: integer = 1;
+
+// One builder's tick of construction.
+pub struct BuildWork {
+    q:        integer,
+    r:        integer,
+    spent:    integer,    // helper time put in — 0 when nothing was in reach
+    finished: boolean,    // did this spend complete the order?
+}
+
+// Work for one tick by a builder standing at `at`.
+//
+// ⚠⚠ **The MOST ADVANCED order in reach, not the nearest.**  A
+// half-built wall stops nothing, so finishing one is worth more than
+// starting three — and it is what makes *N helpers are N times as
+// fast* observable at all, because a crew that spread out would finish
+// nothing sooner.  `vehicle.loft::salvage_at` makes the same shape of
+// choice (the DEEPEST heap) for the same reason.
+//
+// ⚠ Ties keep the builder's OWN hex, then direction order — `>` rather
+// than `>=`, exactly as `salvage_at` does, so a scripted run repeats.
+//
+// ⚠ It SPENDS: like `salvage_at` it is the work, not a query.
+//
+// ⚠ `elapsed` is the tick's length in the clock's BASE UNITS, which is
+// what makes one helper-second one helper-second at every tick length
+// (`plans/26` L2's rule, and the reason this is not a float rate).
+//
+// Example: @DRY-101
+pub fn build_at(pal: vector<GroundType>, bl: BuildLayer, at: const Hex,
+                elapsed: integer) -> BuildWork {
+    ba_best = Hex { q: at.q, r: at.r };
+    ba_top  = -1;
+    if order_at(bl, at.q, at.r) { ba_top = order_spent(bl, at.q, at.r); }
+    for ba_d in 0..6 {
+        ba_n = lat_neighbour(at, ba_d);
+        if !order_at(bl, ba_n.q, ba_n.r) { continue; }
+        ba_done = order_spent(bl, ba_n.q, ba_n.r);
+        if ba_done > ba_top {
+            ba_top  = ba_done;
+            ba_best = ba_n;
+        }
+    }
+    if ba_top < 0 { return BuildWork { q: at.q, r: at.r, spent: 0, finished: false }; }
+
+    ba_fin = order_spend(pal, bl, ba_best.q, ba_best.r, elapsed);
+    BuildWork { q: ba_best.q, r: ba_best.r, spent: elapsed, finished: ba_fin }
+}
+
+// Paint every finished order and take it off the layer.  Answers how
+// many appeared.
+//
+// ⚠⚠ **The tick's CONSEQUENCE stage — `damage_resolve`'s sibling**, and
+// for the same reason it exists: work accumulates while the crew moves,
+// and the world changes once, at the end.  Painting inside the work
+// loop would let helper 2 build against a world helper 1 had already
+// changed, and would make the crew's roster order load-bearing.
+//
+// ⚠ A completed order is REMOVED rather than left at full: an order on
+// a hex that now holds a wall would fail `order_fault`'s own
+// `buildable` test for ever, which is a record that can never be acted
+// on again.
+//
+// Example: @DRY-101, @DRY-102
+pub fn build_resolve(pal: vector<GroundType>, pw: PaintedWorld,
+                     bl: BuildLayer) -> integer {
+    br_done: vector<BuildOrder> = [];
+    for br_c in bl.cells {
+        br_t = order_work_units(pal, br_c.kind);
+        if br_t > 0 && br_c.spent >= br_t {
+            br_done += [BuildOrder { q: br_c.q, r: br_c.r, kind: br_c.kind, spent: br_c.spent }];
+        }
+    }
+    for br_o in br_done {
+        paint(pw, br_o.q, br_o.r, br_o.kind);
+        bl.cells[br_o.q, br_o.r] = null;
+    }
+    len(br_done)
 }

@@ -47,11 +47,12 @@ fn test_an_order_on_buildable_ground_is_accepted() {
     fault = order_fault(p, pw, bl, 0, 0, as_u8(9));
     ok = order_place(p, pw, bl, 0, 0, as_u8(9));
     kind = order_kind(bl, 0, 0);
-    done = order_done(bl, 0, 0);
-    total = order_work_total(p, as_u8(9));
+    done = order_spent(bl, 0, 0);
+    total = order_work_units(p, as_u8(9));
     n = order_count(bl);
 
-    assert(fault == "" && ok && kind == as_u8(9) && done == 0.0 && total == 100.0 && n == 1,
+    assert(fault == "" && ok && kind == as_u8(9) && done == 0
+           && total == clock_units_from_seconds(10.0) && n == 1,
            "a wall ordered on grass must read back untouched: fault='{fault}' ok={ok} kind={kind} done={done} total={total} count={n}");
 }
 
@@ -60,10 +61,11 @@ fn test_an_order_on_buildable_ground_is_accepted() {
 // at 10 HP/s.
 fn test_wall_high_owes_twice_what_a_wall_owes() {
     p = pal();
-    low  = order_work_total(p, as_u8(9));
-    high = order_work_total(p, as_u8(10));
-    assert(low == 100.0 && high == 200.0 && high == low * 2.0,
-           "wall owes 100 and wall_high 200: wall={low} wall_high={high}");
+    low  = order_work_units(p, as_u8(9));
+    high = order_work_units(p, as_u8(10));
+    assert(low == clock_units_from_seconds(10.0)
+           && high == clock_units_from_seconds(20.0) && high == low * 2,
+           "wall owes 10 s of helper time and wall_high 20: wall={low} wall_high={high}");
 }
 
 // ⚠⚠ THE REFUSAL @M048 named, asserted where it can be seen.  A lone
@@ -73,10 +75,11 @@ fn test_the_work_owed_ignores_bracing() {
     p = pal();
     pw = ground();
     paint(pw, -5, -5, as_u8(9));         // an isolated stub
-    owed  = order_work_total(p, as_u8(9));
+    owed  = order_work_units(p, as_u8(9));
+    full  = structure_kind_hp(p, as_u8(9));
     braced = structure_max_hp(p, pw, -5, -5);
-    assert(owed == 100.0 && braced == 15.0,
-           "the work owed must ignore bracing, or a lone wall builds in 1.5 s: owed={owed} braced_hp={braced}");
+    assert(owed == clock_units_from_seconds(10.0) && full == 100.0 && braced == 15.0,
+           "the work owed is FLAT per kind while the HP it will have is braced down to a sixth — owed={owed} kind_hp={full} braced_hp={braced}");
 }
 
 // ─── The refusals ───────────────────────────────────────────────
@@ -139,7 +142,7 @@ fn test_an_untouched_order_erases_and_a_started_one_does_not() {
 
     order_place(p, pw, bl, 0, 0, as_u8(9));
     order_place(p, pw, bl, 1, 0, as_u8(9));
-    order_advance(p, bl, 1, 0, 0.5);        // somebody has started this one
+    order_spend(p, bl, 1, 0, clock_units_from_seconds(0.5));        // somebody has started this one
 
     fresh   = order_erase(bl, 0, 0);
     started = order_erase(bl, 1, 0);
@@ -159,13 +162,14 @@ fn test_completion_is_reported_exactly_once() {
     bl = build_layer_empty();
     order_place(p, pw, bl, 0, 0, as_u8(9));
 
-    a = order_advance(p, bl, 0, 0, 40.0);     // 40 / 100
-    b = order_advance(p, bl, 0, 0, 40.0);     // 80 / 100
-    c = order_advance(p, bl, 0, 0, 40.0);     // 120 / 100 — crosses
-    d = order_advance(p, bl, 0, 0, 40.0);     // already over
-    done = order_done(bl, 0, 0);
+    step = clock_units_from_seconds(4.0);
+    a = order_spend(p, bl, 0, 0, step);     // 4 s of 10
+    b = order_spend(p, bl, 0, 0, step);     // 8 s
+    c = order_spend(p, bl, 0, 0, step);     // 12 s — crosses
+    d = order_spend(p, bl, 0, 0, step);     // already over
+    done = order_spent(bl, 0, 0);
 
-    assert(!a && !b && c && !d && order_complete(p, bl, 0, 0) && done == 160.0,
+    assert(!a && !b && c && !d && order_complete(p, bl, 0, 0) && done == step * 4,
            "exactly the crossing spend reports completion: 40={a} 80={b} 120={c} 160={d} done={done}");
 }
 
@@ -177,12 +181,12 @@ fn test_a_spend_with_no_order_is_a_no_op() {
     bl = build_layer_empty();
     order_place(p, pw, bl, 0, 0, as_u8(9));
 
-    nowhere = order_advance(p, bl, 9, 9, 10.0);
-    zero    = order_advance(p, bl, 0, 0, 0.0);
-    neg     = order_advance(p, bl, 0, 0, -5.0);
+    nowhere = order_spend(p, bl, 9, 9, TICK_STEP_UNITS);
+    zero    = order_spend(p, bl, 0, 0, 0);
+    neg     = order_spend(p, bl, 0, 0, -5);
 
-    assert(!nowhere && !zero && !neg && order_done(bl, 0, 0) == 0.0 && order_count(bl) == 1,
-           "a spend with no order does nothing: nowhere={nowhere} zero={zero} neg={neg} done={order_done(bl, 0, 0)}");
+    assert(!nowhere && !zero && !neg && order_spent(bl, 0, 0) == 0 && order_count(bl) == 1,
+           "a spend with no order does nothing: nowhere={nowhere} zero={zero} neg={neg} done={order_spent(bl, 0, 0)}");
 }
 
 // ─── The zero ───────────────────────────────────────────────────
@@ -194,9 +198,9 @@ fn test_a_spend_with_no_order_is_a_no_op() {
 fn test_a_partial_order_literal_reads_as_unstarted() {
     p = pal();
     partial = BuildOrder { q: 1, r: 2, kind: as_u8(9) };
-    total = order_work_total(p, partial.kind);
-    assert(partial.done == 0.0 && partial.done < total,
-           "an omitted `done` must read as unstarted, not as finished: done={partial.done} total={total}");
+    total = order_work_units(p, partial.kind);
+    assert(partial.spent == 0 && partial.spent < total,
+           "an omitted `spent` must read as unstarted, not as finished: spent={partial.spent} total={total}");
 }
 
 // A fresh layer is empty, and an empty layer answers every question
@@ -204,7 +208,7 @@ fn test_a_partial_order_literal_reads_as_unstarted() {
 fn test_an_empty_layer_answers_nothing_everywhere() {
     bl = build_layer_empty();
     assert(order_count(bl) == 0 && !order_at(bl, 0, 0) && order_kind(bl, 0, 0) == 0 as u8
-           && order_done(bl, 0, 0) == 0.0,
+           && order_spent(bl, 0, 0) == 0,
            "an empty layer must not invent an order: count={order_count(bl)} at={order_at(bl, 0, 0)}");
 }
 
@@ -231,10 +235,10 @@ fn test_state_diff_sees_an_order() {
     order_place(p, pw, b.orders, 0, 0, as_u8(9));
     same1 = state_diff(a, b);
 
-    order_advance(p, b.orders, 0, 0, 5.0);
+    order_spend(p, b.orders, 0, 0, clock_units_from_seconds(5.0));
     done = state_diff(a, b);
 
-    assert(same0 == "" && missing != "" && kind.contains("kind") && same1 == "" && done.contains("done"),
+    assert(same0 == "" && missing != "" && kind.contains("kind") && same1 == "" && done.contains("spent"),
            "state_diff must see an order appear, change kind and change progress: none='{same0}' missing='{missing}' kind='{kind}' same='{same1}' done='{done}'");
 }
 
@@ -249,13 +253,13 @@ fn test_an_order_survives_emit_and_replay() {
     st = wave_state_empty();
     order_place(p, es.pw, st.orders, 1, 1, as_u8(9));
     order_place(p, es.pw, st.orders, 2, 1, as_u8(10));
-    order_advance(p, st.orders, 2, 1, 30.0);
+    order_spend(p, st.orders, 2, 1, clock_units_from_seconds(3.0));
 
     text_out = emit_keys(p, es.pw, es.mw, st, "27_c1");
     lines = 0;
     for tr_l in text_out.split('\n') {
         if tr_l.starts_with("order ") { lines = lines + 1; }
     }
-    assert(lines == 2 && text_out.contains("order 1 1 wall 0") && text_out.contains("order 2 1 wall_high 30"),
+    assert(lines == 2 && text_out.contains("order 1 1 wall 0") && text_out.contains("order 2 1 wall_high 3"),
            "both orders must be emitted by kind NAME with their progress: lines={lines}");
 }

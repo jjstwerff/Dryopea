@@ -1385,16 +1385,20 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
     // can reach an order whose ground later changed, and a scenario
     // that could not write it back would not round-trip.
     if sa_cmd == "order" {
-        if sa_argc != 4 { return "order needs <q> <r> <kind> <done>"; }
+        if sa_argc != 4 { return "order needs <q> <r> <kind> <seconds-spent>"; }
         sa_oq = (tok[1] ?? "") as integer?;
         sa_or = (tok[2] ?? "") as integer?;
         if sa_oq == null || sa_or == null { return "order: <q> and <r> must be whole numbers"; }
         sa_ok = palette_index_of(s.picker.palette, tok[3] ?? "");
         if sa_ok < 0 { return "order: unknown ground kind '{tok[3] ?? ""}'"; }
         sa_od = (tok[4] ?? "") as float?;
-        if sa_od == null { return "order: <done> must be a number"; }
+        if sa_od == null { return "order: <seconds-spent> must be a number"; }
+        // ⚠ SECONDS on the page and base UNITS in the record — the same
+        // conversion `tower`'s repair field makes, and for the same
+        // reason: a `.keys` file is written by a person.
         run.play.wave.orders.cells[sa_oq, sa_or] =
-            BuildOrder { q: sa_oq, r: sa_or, kind: sa_ok as u8? ?? 0, done: sa_od };
+            BuildOrder { q: sa_oq, r: sa_or, kind: sa_ok as u8? ?? 0,
+                         spent: clock_units_from_seconds(sa_od) };
         return "";
     }
 

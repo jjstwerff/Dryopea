@@ -87,17 +87,21 @@ fn world_crc(p: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer) -> 
 fn test_the_watch_sees_a_pile_arrive_change_and_vanish() {
     tw_w  = mesh_watch_new();
     tw_hl = height_layer_empty();
+    // ⚠ Sea everywhere: this test is about the PILES, and an empty paint
+    // is what keeps it measuring only them (plan 27 C2 gave the watch a
+    // second input).
+    tw_pw = painted_empty();
 
-    assert(len(mesh_watch_dirty(tw_w, tw_hl)) == 0,
+    assert(len(mesh_watch_dirty(tw_w, tw_pw, tw_hl)) == 0,
            "nothing has happened, so nothing is dirty");
 
     height_raise(tw_hl, 2, 1, 1.5, as_u8(RUBBLE_WRECKAGE));
-    tw_a = mesh_watch_dirty(tw_w, tw_hl);
+    tw_a = mesh_watch_dirty(tw_w, tw_pw, tw_hl);
     assert(len(tw_a) == 1 && (tw_a[0] ?? Hex { }).q == 2,
            "a body falling is one dirty hex: {len(tw_a)}");
 
-    mesh_watch_note(tw_w, tw_hl);
-    assert(len(mesh_watch_dirty(tw_w, tw_hl)) == 0,
+    mesh_watch_note(tw_w, tw_pw, tw_hl);
+    assert(len(mesh_watch_dirty(tw_w, tw_pw, tw_hl)) == 0,
            "…and once baked it is clean again");
 
     // A second body on the same hex: the entry is still there, and its
@@ -105,17 +109,17 @@ fn test_the_watch_sees_a_pile_arrive_change_and_vanish() {
     // clean, and the ramp stops growing on screen while it goes on
     // growing in the simulation.
     height_raise(tw_hl, 2, 1, 1.5, as_u8(RUBBLE_WRECKAGE));
-    assert(len(mesh_watch_dirty(tw_w, tw_hl)) == 1,
+    assert(len(mesh_watch_dirty(tw_w, tw_pw, tw_hl)) == 1,
            "a pile that GREW is dirty, though its hex was already piled");
-    mesh_watch_note(tw_w, tw_hl);
+    mesh_watch_note(tw_w, tw_pw, tw_hl);
 
     // And gone.
     height_clear(tw_hl, 2, 1);
-    tw_c = mesh_watch_dirty(tw_w, tw_hl);
+    tw_c = mesh_watch_dirty(tw_w, tw_pw, tw_hl);
     assert(len(tw_c) == 1 && (tw_c[0] ?? Hex { }).q == 2,
            "a pile that VANISHED is dirty: {len(tw_c)}");
-    mesh_watch_note(tw_w, tw_hl);
-    assert(len(mesh_watch_dirty(tw_w, tw_hl)) == 0, "and then clean");
+    mesh_watch_note(tw_w, tw_pw, tw_hl);
+    assert(len(mesh_watch_dirty(tw_w, tw_pw, tw_hl)) == 0, "and then clean");
 }
 
 // @DRY-066 — the tiles are the EDIT rule's, deduped
@@ -127,9 +131,10 @@ fn test_the_watch_sees_a_pile_arrive_change_and_vanish() {
 fn test_the_dirty_tiles_are_the_edit_rules() {
     td_w  = mesh_watch_new();
     td_hl = height_layer_empty();
+    td_pw = painted_empty();
     height_raise(td_hl, 0, 0, 1.0, as_u8(RUBBLE_WRECKAGE));
 
-    td_t = mesh_watch_tiles(td_w, td_hl);
+    td_t = mesh_watch_tiles(td_w, td_pw, td_hl);
     td_e = mesh_chunks_touched(0, 0);
     assert(len(td_t) == len(td_e) && len(td_t) > 0,
            "one hex reaches exactly the tiles an EDIT of it reaches: "
@@ -138,7 +143,7 @@ fn test_the_dirty_tiles_are_the_edit_rules() {
     // Two hexes in the same tile collapse to one set, which is what
     // makes a tick that kills five robots in one place cost one bake.
     height_raise(td_hl, 1, 0, 1.0, as_u8(RUBBLE_WRECKAGE));
-    td_t2 = mesh_watch_tiles(td_w, td_hl);
+    td_t2 = mesh_watch_tiles(td_w, td_pw, td_hl);
     assert(len(td_t2) >= len(td_t) && len(td_t2) < 2 * len(td_t),
            "two neighbouring deaths do not cost two full tile sets: "
            + "{len(td_t2)} vs {len(td_t)}");
@@ -244,7 +249,7 @@ fn test_the_maintained_ground_equals_a_cold_rebuild() {
                                  crc: tile_crc(tm_p, tm_s.pw, tm_ps.wave.heights,
                                                tm_k.cx, tm_k.cy) }];
     }
-    mesh_watch_note(tm_w, tm_ps.wave.heights);
+    mesh_watch_note(tm_w, tm_s.pw, tm_ps.wave.heights);
 
     tm_start = world_crc(tm_p, tm_s.pw, tm_ps.wave.heights);
     assert(tm_start != 0, "the world folds to something — an empty mesh folds to 0");
@@ -253,13 +258,13 @@ fn test_the_maintained_ground_equals_a_cold_rebuild() {
     tm_bakes = 0;
     for _ in 0..150 {
         play_ticks(tm_ps, tm_s, 1);
-        for tm_d in mesh_watch_tiles(tm_w, tm_ps.wave.heights) {
+        for tm_d in mesh_watch_tiles(tm_w, tm_s.pw, tm_ps.wave.heights) {
             tm_live += [TileCrcRow { ck: tm_d.ck, cx: tm_d.cx, cy: tm_d.cy,
                                      crc: tile_crc(tm_p, tm_s.pw, tm_ps.wave.heights,
                                                    tm_d.cx, tm_d.cy) }];
             tm_bakes += 1;
         }
-        mesh_watch_note(tm_w, tm_ps.wave.heights);
+        mesh_watch_note(tm_w, tm_s.pw, tm_ps.wave.heights);
     }
 
     // ⚠ The CONTROL, and it comes first: the world has to have MOVED,

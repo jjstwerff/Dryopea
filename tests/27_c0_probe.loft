@@ -14,9 +14,11 @@
 //   3. the work a wall owes is a number the repo already has
 //   4. a wall appearing actually changes where an enemy may walk
 //
-// ⚠ Claim 1 is the one worth having probed: it is FALSE, it fails
-// SILENTLY, and it would have been discovered as *"the simulation has
-// a wall and the screen does not"* three phases later.
+// ⚠ Claim 1 is the one worth having probed: it came back **FALSE**, it
+// failed SILENTLY, and it would otherwise have been discovered as *"the
+// simulation has a wall and the screen does not"* three phases later.
+// ⚠⚠ C2 fixed it, so the two tests below are now the REGRESSION and
+// `@M048` is the record of what they used to read.
 
 #cwd
 
@@ -56,36 +58,62 @@ fn tile_crc(p: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
 
 // ─── Claim 1 — the window will show it ──────────────────────────
 //
-// ⚠⚠ **FALSE, and silently.**  `play_view.loft`'s `MeshWatch` diffs a
-// snapshot of the HEIGHT LAYER (`mesh_watch_dirty` walks `hl.cells`),
-// which is the RUBBLE the runtime piles — it never looks at
-// `PaintedWorld`.  `@X095` is exact today only because *every terrain
-// change a tick can make moves the height layer*: a body raises its
-// hex, a breach raises masonry BEFORE it repaints, salvage lowers a
-// pile.
+// ⚠⚠ **IT WAS FALSE, AND SILENTLY — `@M048`.**  `MeshWatch` diffed a
+// snapshot of the HEIGHT LAYER only (`mesh_watch_dirty` walked
+// `hl.cells`), which is the RUBBLE the runtime piles.  `@X095` justified
+// that with *every terrain change a tick can make moves the height
+// layer* — true while a body raised its hex, a breach raised masonry
+// BEFORE it repainted, and salvage lowered a pile.
 //
-// **Building is the first terrain change that moves the painted layer
-// and NOT the height layer**, so it is precisely the case `@X095`
-// cannot see — and `tests/19_p6` names it in advance, as *"a repaint
-// with no rubble"*.
-fn test_a_structure_appearing_is_invisible_to_the_renderer() {
+// **Building is a terrain change that moves the painted layer and NOT
+// the height layer**, so it was precisely the case `@X095` could not
+// see: measured at **0 dirty hexes against a tile checksum that moved**,
+// and `tests/19_p6` had named it in advance as *"a repaint with no
+// rubble"*.
+//
+// ⚠⚠ **C2 fixed it, so this is now the REGRESSION** rather than the
+// finding: the watch reads the painted layer as well as the piles, and
+// the replacement rule needs no claim about what the simulation may do
+// — *the renderer notices any change to the ground it draws*.
+fn test_a_structure_appearing_is_visible_to_the_renderer() {
     p = pal();
     s = field();
     hl = height_layer_empty();
 
     // The renderer has baked the world as it stands.
     w = mesh_watch_new();
-    mesh_watch_note(w, hl);
+    mesh_watch_note(w, s.pw, hl);
     before = tile_crc(p, s.pw, hl, 0, 0);
+    clean = len(mesh_watch_dirty(w, s.pw, hl));
 
-    // A wall appears — exactly what a finished build order will do.
+    // A wall appears — exactly what a finished build order does.
     paint(s.pw, 1, 1, as_u8(9));
 
-    dirty = len(mesh_watch_dirty(w, hl));
+    dirty = mesh_watch_dirty(w, s.pw, hl);
     after = tile_crc(p, s.pw, hl, 0, 0);
 
-    assert(before != 0 && dirty == 0 && after != before,
-           "a structure appearing must be invisible to the watch for this phase to be the finding — dirty={dirty} (0 = the renderer sees nothing) crc before={before} after={after} (different = the picture is stale)");
+    assert(before != 0 && clean == 0 && len(dirty) == 1
+           && (dirty[0] ?? Hex { }).q == 1 && (dirty[0] ?? Hex { }).r == 1
+           && after != before,
+           "a structure appearing must be one dirty hex, at the hex it appeared on — clean={clean} dirty={len(dirty)} crc before={before} after={after}");
+}
+
+// ⚠ The other direction, which building also produces: a wall broken
+// back to ground is a repaint too, and a watch that only learned to see
+// *something arrived* would go on drawing the wall.
+fn test_a_structure_vanishing_is_visible_too() {
+    p = pal();
+    s = field();
+    hl = height_layer_empty();
+    paint(s.pw, 1, 1, as_u8(9));
+
+    w = mesh_watch_new();
+    mesh_watch_note(w, s.pw, hl);
+    paint(s.pw, 1, 1, as_u8(5));        // back to grass
+
+    dirty = mesh_watch_dirty(w, s.pw, hl);
+    assert(len(dirty) == 1 && (dirty[0] ?? Hex { }).q == 1,
+           "a repaint back to ground must be dirty as well: {len(dirty)}");
 }
 
 // The control that makes the reading above mean something: the watch is
@@ -97,12 +125,12 @@ fn test_but_the_watch_does_see_a_rubble_change() {
     hl = height_layer_empty();
 
     w = mesh_watch_new();
-    mesh_watch_note(w, hl);
+    mesh_watch_note(w, s.pw, hl);
     before = tile_crc(p, s.pw, hl, 0, 0);
 
     height_raise(hl, 1, 1, 1.0, as_u8(RUBBLE_MASONRY));
 
-    dirty = len(mesh_watch_dirty(w, hl));
+    dirty = len(mesh_watch_dirty(w, s.pw, hl));
     after = tile_crc(p, s.pw, hl, 0, 0);
 
     assert(dirty == 1 && after != before,

@@ -1942,6 +1942,19 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
         }
     }
 
+    // ⚠ **The crew's OTHER job** (plan 27 C2), beside the salvage and
+    // for the same reasons: it is work a helper does by BEING
+    // somewhere, it reads the layer as it stands when its turn comes —
+    // so a crew of N puts N bites into one site — and what it changes
+    // about the world belongs to tick N+1.
+    //
+    // ⚠ It only ACCUMULATES here.  Nothing appears until
+    // `build_resolve` below, which is why a helper later in the roster
+    // cannot build against a wall an earlier one just raised.
+    for wt_hb in state.crew {
+        helper_build(wt_hb, pal, state.orders, TICK_STEP_UNITS);
+    }
+
     // ⚠ **Upkeep takes its turn with the other work** (plan 17 T1),
     // beside the salvage and for the same reason: it is what a vehicle
     // does by BEING somewhere, and what it changes about the world
@@ -1961,6 +1974,19 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
 
     wave_deaths(state);
     damage_resolve(pal, pw, state.damage, state.heights);
+
+    // ⚠ **A finished structure appears HERE, with the deaths and the
+    // breaks** (plan 27 C2) — the same rule they follow, so the wall a
+    // crew completed this tick is walked into on tick N+1 and the
+    // enemies that already moved are not teleported out of it.
+    //
+    // ⚠ **After `damage_resolve`, and the order is load-bearing for one
+    // case**: a hex whose wall broke this tick becomes buildable ground
+    // this tick, and an order standing on it should raise a NEW wall
+    // rather than be painted over the old one's rubble.  Running the
+    // two the other way round would resolve a break onto a hex that had
+    // just been built, which is a wall destroyed before anybody saw it.
+    build_resolve(pal, pw, state.orders);
 
     // ⚠ **A destroyed vehicle is never a game-loss** (`DESIGN.md` § 8):
     // the player reappears inside the core, whole.  Resolved here with

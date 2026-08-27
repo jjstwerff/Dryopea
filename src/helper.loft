@@ -60,6 +60,7 @@ use height;
 use passable;
 use vehicle;
 use fixstep;
+use build;
 
 // ─── The numbers ────────────────────────────────────────────────
 //
@@ -348,4 +349,36 @@ pub fn helper_salvage(h: const Helper, hl: HeightLayer,
     // ⚠ Bound to a local, per `vehicle_salvage` — loft#880.
     hs_got = salvage_at(Hex { q: h.q, r: h.r }, hl, tick_seconds);
     hs_got
+}
+
+// ─── Construction (plan 27 C2) ──────────────────────────────────
+
+// Put one tick of work into the build order in reach — the crew's
+// other job, and the one `DESIGN.md` § 13 calls the bottleneck.
+//
+// ⚠⚠ **The crew build and the PLAYER does not**, which is the one
+// place this file is not *the player's chassis doing the player's
+// job*.  `DESIGN.md` § 11 § Wall paint splits it that way — the player
+// PAINTS the outline, helpers raise it — and § 13 prices walls at zero
+// points *because helper-seconds is the bottleneck*.  A player who
+// could build would delete that sentence, and with it the reason a
+// second crew member is worth 100 points.
+//
+// ⚠ No key and no assignment: `@X252` makes helpers semi-automatic by
+// default, so a helper standing beside a site works on it — the same
+// *position is the trigger* rule that makes a parked vehicle repair a
+// tower.
+//
+// ⚠ A wrecked helper builds nothing — the same sentence
+// `helper_salvage` writes, and the reason H3 can down a helper without
+// touching this function.
+//
+// Example: @DRY-101
+pub fn helper_build(h: const Helper, pal: vector<GroundType>, bl: BuildLayer,
+                    elapsed: integer) -> BuildWork {
+    if !h.alive { return BuildWork { q: h.q, r: h.r, spent: 0, finished: false }; }
+
+    // ⚠ Bound to a local, per `helper_salvage` above — loft#880.
+    hb_got = build_at(pal, bl, Hex { q: h.q, r: h.r }, elapsed);
+    hb_got
 }

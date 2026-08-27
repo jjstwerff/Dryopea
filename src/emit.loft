@@ -144,7 +144,8 @@ fn emit_layers(pal: vector<GroundType>, state: const WaveState) -> text {
     // a palette whose entries were reordered.
     for el_o in state.orders.cells {
         el_og = pal[el_o.kind as integer] ?? GroundType {};
-        el_out = el_out + "order {el_o.q} {el_o.r} " + el_og.name + " {el_o.done}\n";
+        el_out = el_out + "order {el_o.q} {el_o.r} " + el_og.name + " "
+                        + "{clock_seconds_from_units(el_o.spent)}\n";
     }
     for el_t in state.towers.cells {
         el_out = el_out + "tower {el_t.q} {el_t.r} {el_t.shots} "
@@ -397,7 +398,7 @@ fn crop_state(state: const WaveState, centre: const Hex,
     for cs_o in state.orders.cells {
         if in_crop(centre, radius, cs_o.q, cs_o.r) {
             cs_out.orders.cells[cs_o.q, cs_o.r] =
-                BuildOrder { q: cs_o.q, r: cs_o.r, kind: cs_o.kind, done: cs_o.done };
+                BuildOrder { q: cs_o.q, r: cs_o.r, kind: cs_o.kind, spent: cs_o.spent };
         }
     }
     // ⚠ A tower's cell goes with its MARKER, by the same predicate — a
