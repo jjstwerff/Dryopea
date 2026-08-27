@@ -1596,6 +1596,17 @@ src/
                    land with the core DARK — no waves, no income, and
                    a green suite over a game nobody plays.  Every
                    reader asks `jammer_on` and never the field.
+                   ⚠⚠ AND THE MOVER'S QUESTION CHANGED WITH IT.
+                   `enemy_step` asked `enemy_in_bubble`, because
+                   everything inside the bubble had been cut off by the
+                   time it moved — so INSIDE and CUT OFF were one
+                   question.  A dark core separates them, and the
+                   discriminant is now `enemy_engaged` (!errand &&
+                   in_bubble), which is bit-for-bit the old reading
+                   while the core is jamming because `wave_cutoff`
+                   sweeps at the top of every tick.  Without it a robot
+                   crossing a DARK bubble turns round and besieges, and
+                   every gate still passes.
                    ⚠ jammer_loot_rate is the ONE door the salvage
                    income goes through; `spawn.loft` pays the player
                    and the crew at two sites, and the way two copies of

@@ -820,15 +820,18 @@ pub fn enemy_tick(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
 fn enemy_step(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
               hl: const HeightLayer, f: const FlowField, desire: const FlowField,
               occ: Occupancy, blockers: const BlockerMap) {
-    // ── Which mode? The bubble decides (plan 11 F5b) ─────────────
+    // ── Which mode? Being CUT OFF decides (plan 11 F5b) ──────────
     //
     // `docs/ENEMY_MOVEMENT.md` § Two modes: outside the scrambler
     // bubble an enemy follows its spawn marker's heading; inside it,
-    // the field toward the core.  The boundary IS the handoff.
+    // the field toward the core.  The boundary IS the handoff — and
+    // since BACKLOG C3 the question is asked as `enemy_engaged`, which
+    // is the same reading while the core is jamming and the right one
+    // when it is not.
     //
     // The field carries the core it was built for, so the test needs
     // no extra parameter — which is why `FlowField` keeps it.
-    if !enemy_in_bubble(e, f.core) {
+    if !enemy_engaged(e, f.core) {
         enemy_walk_heading(e, pal, pw, hl, occ);
         return;
     }
@@ -1057,8 +1060,10 @@ pub fn enemy_target(e: const Enemy, pal: vector<GroundType>, pw: PaintedWorld,
     if enemy_standing(e) { return ent_here; }
 
     // Approach mode: the route is the heading, so the obstacle is the
-    // one hex ahead.
-    if !enemy_in_bubble(e, f.core) {
+    // one hex ahead.  ⚠ The same question the mover asks, and it has to
+    // be — a robot walking its heading that attacked what the FIELD put
+    // in front of it would chew a wall it was never routed at.
+    if !enemy_engaged(e, f.core) {
         ent_ahead = lat_neighbour(ent_here, e.heading as integer);
         if can_step(pal, pw, hl, e.kind, ent_here, ent_ahead) { return ent_here; }
         if !hex_walkable(pal, pw, hl, ent_ahead.q, ent_ahead.r) { return ent_here; }
@@ -1123,6 +1128,27 @@ fn enemy_move_to(e: Enemy, q: integer, r: integer, occ: Occupancy) {
 // `>= disable_radius`: the hex the radius names is in.
 pub fn enemy_in_bubble(e: const Enemy, core: Hex) -> boolean {
     lat_distance(core, Hex { q: e.q, r: e.r }) <= SCRAMBLER_BUBBLE_RADIUS
+}
+
+// Is this robot steering AT the core?
+//
+// ⚠⚠ **The discriminant is the ERRAND, and the bubble is what TAKES
+// it** (BACKLOG C3).  Before the jammer switch these were the same
+// question, because everything inside the bubble had been cut off by
+// the time it moved — so `enemy_step` asked the geometry directly.  A
+// core that is not jamming separates them: a robot crossing a dark
+// bubble on its business is INSIDE it and is not one of the wave.
+//
+// ⚠ It is bit-for-bit the old reading while the core is jamming, and
+// that is structural rather than lucky: `wave_cutoff` sweeps the roster
+// at the top of every tick, so a robot inside the bubble has already
+// lost its errand by the time anything asks this.
+//
+// ⚠ `enemy_in_bubble` stays the GEOMETRIC question and keeps its own
+// callers — where the boundary is, is a fact about the world, and
+// `tests/11_f5b_bubble_handoff.loft` asks it of a bare coordinate.
+pub fn enemy_engaged(e: const Enemy, core: Hex) -> boolean {
+    !e.errand && enemy_in_bubble(e, core)
 }
 
 // Take the errand off every robot the bubble has caught this tick, and
@@ -1367,8 +1393,8 @@ fn move_order(state: const WaveState, fields: const vector<ClassField>) -> vecto
 //
 // It is the same argument `wave_fields` makes about classes: a sweep
 // built for nobody is a cost in a profile nobody can explain.  Only an
-// enemy INSIDE the bubble with no route consults it — outside the
-// bubble is approach mode, which follows its heading and never asks.
+// enemy ENGAGED with no route consults it — a robot following its
+// heading is in approach mode and never asks.
 fn wave_needs_desire(state: const WaveState, fields: const vector<ClassField>) -> boolean {
     for wnd_e in state.enemies {
         if wnd_e.alive {
@@ -1379,7 +1405,7 @@ fn wave_needs_desire(state: const WaveState, fields: const vector<ClassField>) -
             wnd_climb = climb_limit(wnd_e.kind);
             for wnd_cf in fields {
                 if wnd_cf.climb == wnd_climb
-                    && enemy_in_bubble(wnd_e, wnd_cf.field.core)
+                    && enemy_engaged(wnd_e, wnd_cf.field.core)
                     && !flow_reachable(wnd_cf.field, wnd_e.q, wnd_e.r) {
                     return true;
                 }
@@ -1665,7 +1691,7 @@ fn wave_damage(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
 // `wallet.loft::nibble_in_reach`, one `lat_distance` per live enemy.
 // That is also why this pass is cheap enough not to show up in
 // `tests/11_f8_the_tick_budget.loft` — it is strictly less work per
-// enemy than the `enemy_in_bubble` the mover already does.
+// enemy than the `enemy_engaged` the mover already does.
 //
 // ⚠ **Summed, then drained ONCE.**  Not because N small drains would
 // arrive at a different number — the clamp is a `min`, so they would

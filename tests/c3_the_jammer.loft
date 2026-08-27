@@ -323,6 +323,41 @@ fn test_a_dark_core_takes_nobodys_errand() {
            + "{(dark.enemies[0] ?? Enemy { }).errand}");
 }
 
+// ⚠⚠ **And keeping the errand has to CHANGE something, or the reading
+// above is a flag nobody reads.**  Same road, same base, same robot:
+// with the core lit it turns and besieges, with the core dark it walks
+// its heading straight through and leaves the far side.
+//
+// ⚠ This is what `enemy_engaged` is for.  Before the switch, being
+// inside the bubble and being cut off were the same question — the
+// mover asked the geometry, and it was right because everything inside
+// had already been cut off.  A dark core separates them.
+fn test_a_dark_bubble_is_crossed_rather_than_converged_on() {
+    tdb_pw = long_band();
+    tdb_mw = marker_empty();
+
+    lit  = wave_state_empty();
+    dark = wave_state_empty();
+    jammer_set(dark.jammer, false);
+    // On the road, east of the core, heading EAST — away from it.  A
+    // cut-off robot turns round and walks back in; one on its business
+    // keeps going.
+    lit.enemies  += [Enemy { q: 10, r: 0, kind: as_u8(ENEMY_KIND_REGULAR),
+                             heading: 0 as u8, alive: true, errand: true }];
+    dark.enemies += [Enemy { q: 10, r: 0, kind: as_u8(ENEMY_KIND_REGULAR),
+                             heading: 0 as u8, alive: true, errand: true }];
+
+    play(lit,  tdb_pw, tdb_mw, 20);
+    play(dark, tdb_pw, tdb_mw, 20);
+
+    lit_q = (lit.enemies[0] ?? Enemy { }).q;
+    assert(len(lit.enemies) == 1 && lit_q < 10,
+           "a jamming core turns it round: q 10 -> {lit_q}");
+    assert(len(dark.enemies) == 0,
+           "and a dark one lets it finish the road and go on its way: "
+           + "{len(dark.enemies)} still on the map");
+}
+
 // ⚠ **The cut moved out of `enemy_step` and into `wave_cutoff`, and the
 // tick it lands on did not move**: the sweep reads the roster before
 // anybody has taken a step, which is the position a mover would have

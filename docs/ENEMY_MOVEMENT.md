@@ -40,6 +40,15 @@ outside the scrambler bubble an enemy follows its spawn marker's
 heading; inside it, the flow field toward the core.  The bubble
 boundary is the handoff.
 
+⚠⚠ **Since BACKLOG C3 the mover asks whether the robot is CUT OFF,
+not where it is** — `spawn.loft::enemy_engaged` is
+`!errand && enemy_in_bubble`.  While the core is jamming the two are
+the same reading, and structurally so: `wave_cutoff` sweeps the roster
+at the top of every tick, so anything inside the bubble has already
+lost its errand by the time the mover asks.  A core switched OFF
+separates them — a robot crossing a dark bubble on its business is
+inside it and is not one of the wave, and it walks straight through.
+
 **Passability has none, and it is a HEIGHT STEP — not a material.**
 An enemy may enter a neighbouring hex when
 

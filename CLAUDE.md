@@ -74,7 +74,7 @@ critical path is **4, the SCRAMBLE**.
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1546 green**, ~320 s on a busy box, 116 files |
+| tests | `scripts/test.sh` | **1547 green**, ~320 s on a busy box, 116 files |
 | scenarios | `scripts/validate.sh` | **37 scripts, 709 measurements**, ~14 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
 
@@ -132,7 +132,10 @@ thing it names.
   per tick, one field per climb limit; `enemy_tick` steps down it.  Two
   steering modes hand off at the **scrambler bubble** (a straight-line 25
   hexes, never a route length); an enemy with no route follows the DESIRE
-  field and besieges what it cannot climb.
+  field and besieges what it cannot climb.  ⚠⚠ Since BACKLOG C3 the mover
+  asks **`enemy_engaged`** — *cut off AND inside* — never the geometry
+  alone: they are one question only because `wave_cutoff` sweeps at the
+  top of every tick, and a DARK core separates them.
 - ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`), and the number is DERIVED:
   a single-hex body ramp onto a structure `H` high needs `H / 2`, so 2.0 is
   the interior of four constraints — `src/passable.loft` § Why a robot climbs

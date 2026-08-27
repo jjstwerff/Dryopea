@@ -28,6 +28,13 @@ the **scrambler bubble**: inside 25 hexes the field steers, outside it the
 spawn heading does.  An enemy with no route at all follows the DESIRE
 field instead and besieges what it cannot climb.
 
+⚠⚠ **The mover asks `enemy_engaged`, which is *cut off AND inside*,
+never the geometry alone** (BACKLOG C3).  They were one question until
+the core could be switched off, and `wave_cutoff`'s top-of-tick sweep is
+what keeps them one while it is jamming.  Read the bubble directly in a
+mover and a robot crossing a DARK bubble on its business turns round and
+besieges — silently, because with the jammer on every gate still passes.
+
 ⚠ **The bubble is a STRAIGHT-LINE distance, never a route length** — it is
 a jamming sphere, so an enemy with no route whatsoever is still inside it.
 
