@@ -1,0 +1,189 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 27 phase C0 — what BUILDING assumes, measured before it is built.
+//
+// ⚠⚠ **A design is a hypothesis.**  This phase builds nothing; it
+// probes the four claims the rest of the plan rests on, and the first
+// one comes back FALSE.
+//
+// The claims:
+//
+//   1. the window will show a structure the moment it appears
+//   2. the palette already says where a structure may go
+//   3. the work a wall owes is a number the repo already has
+//   4. a wall appearing actually changes where an enemy may walk
+//
+// ⚠ Claim 1 is the one worth having probed: it is FALSE, it fails
+// SILENTLY, and it would have been discovered as *"the simulation has
+// a wall and the screen does not"* three phases later.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn pal() -> vector<GroundType> {
+    load_palette(PALETTE)
+}
+
+// A flat grass field.  Nothing built, nothing piled.
+fn field() -> EditorState {
+    f = editor_state_new(PALETTE);
+    for f_q in -6..7 {
+        for f_r in -6..7 {
+            paint(f.pw, f_q, f_r, as_u8(5));
+        }
+    }
+    f
+}
+
+// One tile's whole geometry folded — `tests/19_p6`'s instrument, because
+// a COUNT cannot see a mesh with the right vertices in the wrong places.
+fn tile_crc(p: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+            cx: integer, cy: integer) -> integer {
+    tc_m = mesh("tile");
+    for tc_k in 0..len(p) {
+        ground_chunk_mesh(tc_m, p, pw, hl, cx, cy, tc_k);
+    }
+    mesh_crc(tc_m)
+}
+
+// ─── Claim 1 — the window will show it ──────────────────────────
+//
+// ⚠⚠ **FALSE, and silently.**  `play_view.loft`'s `MeshWatch` diffs a
+// snapshot of the HEIGHT LAYER (`mesh_watch_dirty` walks `hl.cells`),
+// which is the RUBBLE the runtime piles — it never looks at
+// `PaintedWorld`.  `@X095` is exact today only because *every terrain
+// change a tick can make moves the height layer*: a body raises its
+// hex, a breach raises masonry BEFORE it repaints, salvage lowers a
+// pile.
+//
+// **Building is the first terrain change that moves the painted layer
+// and NOT the height layer**, so it is precisely the case `@X095`
+// cannot see — and `tests/19_p6` names it in advance, as *"a repaint
+// with no rubble"*.
+fn test_a_structure_appearing_is_invisible_to_the_renderer() {
+    p = pal();
+    s = field();
+    hl = height_layer_empty();
+
+    // The renderer has baked the world as it stands.
+    w = mesh_watch_new();
+    mesh_watch_note(w, hl);
+    before = tile_crc(p, s.pw, hl, 0, 0);
+
+    // A wall appears — exactly what a finished build order will do.
+    paint(s.pw, 1, 1, as_u8(9));
+
+    dirty = len(mesh_watch_dirty(w, hl));
+    after = tile_crc(p, s.pw, hl, 0, 0);
+
+    assert(before != 0 && dirty == 0 && after != before,
+           "a structure appearing must be invisible to the watch for this phase to be the finding — dirty={dirty} (0 = the renderer sees nothing) crc before={before} after={after} (different = the picture is stale)");
+}
+
+// The control that makes the reading above mean something: the watch is
+// not simply broken.  A RUBBLE change — the kind `@X095` was written
+// for — is seen at once.
+fn test_but_the_watch_does_see_a_rubble_change() {
+    p = pal();
+    s = field();
+    hl = height_layer_empty();
+
+    w = mesh_watch_new();
+    mesh_watch_note(w, hl);
+    before = tile_crc(p, s.pw, hl, 0, 0);
+
+    height_raise(hl, 1, 1, 1.0, as_u8(RUBBLE_MASONRY));
+
+    dirty = len(mesh_watch_dirty(w, hl));
+    after = tile_crc(p, s.pw, hl, 0, 0);
+
+    assert(dirty == 1 && after != before,
+           "the watch must see a rubble change, or the probe above is measuring a broken watch rather than a blind spot: dirty={dirty} before={before} after={after}");
+}
+
+// ─── Claim 2 — the palette already says where ───────────────────
+//
+// ⚠ TRUE, and unread: `buildable` has been on `GroundType` since plan
+// 01 and no simulation code asks it.  C1 is its first consumer.
+fn test_the_palette_already_says_where_a_structure_may_go() {
+    p = pal();
+    yes = 0;
+    for tb_i in 0..len(p) {
+        tb_e = p[tb_i] ?? GroundType {};
+        if tb_e.buildable { yes = yes + 1; }
+    }
+    sea  = (p[0] ?? GroundType {}).buildable;
+    gras = (p[5] ?? GroundType {}).buildable;
+    stee = (p[8] ?? GroundType {}).buildable;
+    wall = (p[9] ?? GroundType {}).buildable;
+    assert(yes == 4 && !sea && gras && !stee && !wall,
+           "four kinds are buildable and they are the walkable land ones: count={yes} sea={sea} grass={gras} steep_rock={stee} wall={wall}");
+}
+
+// ─── Claim 3 — the work owed is a number the repo has ───────────
+//
+// ⚠⚠ `numbers.json`: `build_time_wall` 10 s x
+// `construction_tick_hp_per_second` 10 HP/s = **100**, which is
+// `wall_hp` exactly; and 20 x 10 = **200**, which is `wall_high_hp`
+// exactly.  So the work a structure owes is its kind's UNBRACED
+// figure, and C1 invents no constant.
+fn test_the_work_a_wall_owes_is_its_kinds_unbraced_hp() {
+    p = pal();
+    s = field();
+    paint(s.pw, 0, 0, as_u8(9));    // wall
+    paint(s.pw, 3, 3, as_u8(10));   // wall_high
+
+    low  = structure_base_hp(p, s.pw, 0, 0);
+    high = structure_base_hp(p, s.pw, 3, 3);
+
+    assert(low == 10.0 * 10.0 && high == 20.0 * 10.0,
+           "build_time x build_rate must equal the kind unbraced HP, or C1 has to invent a constant: wall={low} wall_high={high}");
+}
+
+// ⚠⚠ THE REFUSAL, and it is the reason the line above says UNBRACED.
+//
+// `structure_max_hp` scales by `brace_of`, so defining the work owed as
+// *the HP it will have* would ALSO handle bracing — which is the elegant
+// absorption this plan refuses.  An isolated stub would owe 15 and build
+// in 1.5 s where `DESIGN.md` says ten.  A wall is cheaper to BREAK at an
+// end; it is not cheaper to BUILD there.
+fn test_and_it_is_not_the_braced_figure() {
+    p = pal();
+    s = field();
+    paint(s.pw, 0, 0, as_u8(9));            // a lone stub, nothing beside it
+
+    base  = structure_base_hp(p, s.pw, 0, 0);
+    braced = structure_max_hp(p, s.pw, 0, 0);
+
+    assert(base == 100.0 && braced < base,
+           "a lone stub must have LESS max HP than its kind figure, or work = structure_max_hp reads the same as work = base and the refusal is untestable: base={base} braced={braced}");
+}
+
+// ─── Claim 4 — a wall changes where an enemy may walk ───────────
+//
+// ⚠ TRUE, and it is the whole point: without it a build order is a
+// decoration.  Grass to grass is a step; grass to a 3 m wall is not,
+// because a robot climbs 2.0 m.
+fn test_a_wall_appearing_changes_where_a_robot_may_walk() {
+    p = pal();
+    s = field();
+    hl = height_layer_empty();
+    k = as_u8(ENEMY_KIND_REGULAR);
+    from = Hex { q: 0, r: 0 };
+    to   = Hex { q: 1, r: 0 };
+
+    open = can_step(p, s.pw, hl, k, from, to);
+    paint(s.pw, 1, 0, as_u8(9));
+    shut = can_step(p, s.pw, hl, k, from, to);
+
+    assert(open && !shut,
+           "building a wall must close a step that was open, or an order changes nothing: before={open} after={shut}");
+}
