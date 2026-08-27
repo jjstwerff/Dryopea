@@ -35,6 +35,7 @@ fn ground() -> PaintedWorld {
 fn ticks_to_build(p: vector<GroundType>, pw: PaintedWorld, bl: BuildLayer,
                   n: integer, at: const Hex, site: const Hex,
                   cap: integer) -> integer {
+    ttb_mw = marker_empty();
     ttb_crew: vector<Helper> = [];
     for ttb_i in 0..n { ttb_crew += [helper_new(at.q, at.r)]; }
     ttb_t = 0;
@@ -43,7 +44,7 @@ fn ticks_to_build(p: vector<GroundType>, pw: PaintedWorld, bl: BuildLayer,
         for ttb_h in ttb_crew {
             helper_build(ttb_h, p, bl, TICK_STEP_UNITS);
         }
-        build_resolve(p, pw, bl);
+        build_resolve(p, pw, ttb_mw, bl);
         if !order_at(bl, site.q, site.r) { return ttb_t; }
     }
     -1
@@ -59,7 +60,7 @@ fn test_one_helper_builds_a_wall_in_the_designed_time() {
     p = pal();
     pw = ground();
     bl = build_layer_empty();
-    order_place(p, pw, bl, 0, 0, as_u8(9));
+    order_place(p, pw, bl, 0, 0, BUILD_GROUND, as_u8(9));
 
     t = ticks_to_build(p, pw, bl, 1, Hex { q: 0, r: 0 }, Hex { q: 0, r: 0 }, 200);
     secs = t as float * TICK_SECONDS;
@@ -79,15 +80,15 @@ fn test_n_helpers_are_n_times_as_fast() {
     four = 0;
 
     pw1 = ground(); bl1 = build_layer_empty();
-    order_place(p, pw1, bl1, 0, 0, as_u8(9));
+    order_place(p, pw1, bl1, 0, 0, BUILD_GROUND, as_u8(9));
     one = ticks_to_build(p, pw1, bl1, 1, Hex { q: 0, r: 0 }, Hex { q: 0, r: 0 }, 200);
 
     pw2 = ground(); bl2 = build_layer_empty();
-    order_place(p, pw2, bl2, 0, 0, as_u8(9));
+    order_place(p, pw2, bl2, 0, 0, BUILD_GROUND, as_u8(9));
     two = ticks_to_build(p, pw2, bl2, 2, Hex { q: 0, r: 0 }, Hex { q: 0, r: 0 }, 200);
 
     pw4 = ground(); bl4 = build_layer_empty();
-    order_place(p, pw4, bl4, 0, 0, as_u8(9));
+    order_place(p, pw4, bl4, 0, 0, BUILD_GROUND, as_u8(9));
     four = ticks_to_build(p, pw4, bl4, 4, Hex { q: 0, r: 0 }, Hex { q: 0, r: 0 }, 200);
 
     assert(one == 15 && two == 8 && four == 4,
@@ -100,7 +101,7 @@ fn test_wall_high_takes_twice_as_long() {
     p = pal();
     pw = ground();
     bl = build_layer_empty();
-    order_place(p, pw, bl, 0, 0, as_u8(10));
+    order_place(p, pw, bl, 0, 0, BUILD_GROUND, as_u8(10));
     t = ticks_to_build(p, pw, bl, 1, Hex { q: 0, r: 0 }, Hex { q: 0, r: 0 }, 200);
     assert(t == 30,
            "wall_high is 200 HP at 10 HP/s = 20 s = 30 ticks: {t}");
@@ -115,9 +116,9 @@ fn test_a_helper_builds_within_reach_and_no_further() {
     p = pal();
     pw = ground();
     bl = build_layer_empty();
-    order_place(p, pw, bl, 0, 0, as_u8(9));      // under it
-    order_place(p, pw, bl, 1, 0, as_u8(9));      // beside it
-    order_place(p, pw, bl, 5, 0, as_u8(9));      // out of reach
+    order_place(p, pw, bl, 0, 0, BUILD_GROUND, as_u8(9));      // under it
+    order_place(p, pw, bl, 1, 0, BUILD_GROUND, as_u8(9));      // beside it
+    order_place(p, pw, bl, 5, 0, BUILD_GROUND, as_u8(9));      // out of reach
 
     near = helper_new(1, 0);
     far  = helper_new(-6, 0);
@@ -137,8 +138,8 @@ fn test_a_builder_finishes_what_is_started() {
     p = pal();
     pw = ground();
     bl = build_layer_empty();
-    order_place(p, pw, bl, 0, 0, as_u8(9));
-    order_place(p, pw, bl, 1, 0, as_u8(9));
+    order_place(p, pw, bl, 0, 0, BUILD_GROUND, as_u8(9));
+    order_place(p, pw, bl, 1, 0, BUILD_GROUND, as_u8(9));
     order_spend(p, bl, 1, 0, clock_units_from_seconds(5.0));            // this one is half done
 
     h = helper_new(0, 0);
@@ -156,7 +157,7 @@ fn test_a_wrecked_helper_builds_nothing() {
     p = pal();
     pw = ground();
     bl = build_layer_empty();
-    order_place(p, pw, bl, 0, 0, as_u8(9));
+    order_place(p, pw, bl, 0, 0, BUILD_GROUND, as_u8(9));
 
     h = helper_new(0, 0);
     helper_wreck(h);
@@ -182,7 +183,7 @@ fn test_a_finished_order_becomes_ground_that_stops_a_robot() {
     from = Hex { q: 0, r: 0 };
     to   = Hex { q: 1, r: 0 };
 
-    order_place(p, pw, bl, 1, 0, as_u8(9));
+    order_place(p, pw, bl, 1, 0, BUILD_GROUND, as_u8(9));
     open_before = can_step(p, pw, hl, k, from, to);
     kind_before = lookup_painted(pw, 1, 0);
 
@@ -203,14 +204,15 @@ fn test_nothing_appears_until_the_consequence_stage() {
     p = pal();
     pw = ground();
     bl = build_layer_empty();
-    order_place(p, pw, bl, 0, 0, as_u8(9));
+    order_place(p, pw, bl, 0, 0, BUILD_GROUND, as_u8(9));
     order_spend(p, bl, 0, 0, clock_units_from_seconds(9.5));
 
     h = helper_new(0, 0);
     helper_build(h, p, bl, TICK_STEP_UNITS);        // crosses 100
 
     mid = lookup_painted(pw, 0, 0);
-    n = build_resolve(p, pw, bl);
+    tn_mw = marker_empty();
+    n = build_resolve(p, pw, tn_mw, bl);
     after = lookup_painted(pw, 0, 0);
 
     assert(mid == as_u8(5) && n == 1 && after == as_u8(9),
@@ -232,7 +234,7 @@ fn test_the_renderer_sees_the_wall_the_crew_raised() {
     mesh_watch_note(w, pw, hl);
     assert(len(mesh_watch_dirty(w, pw, hl)) == 0, "nothing has happened yet");
 
-    order_place(p, pw, bl, 1, 1, as_u8(9));
+    order_place(p, pw, bl, 1, 1, BUILD_GROUND, as_u8(9));
     ticks_to_build(p, pw, bl, 1, Hex { q: 1, r: 1 }, Hex { q: 1, r: 1 }, 200);
 
     dirty = mesh_watch_dirty(w, pw, hl);
@@ -257,7 +259,7 @@ fn test_a_crew_builds_a_wall_over_a_played_run() {
     ps = play_state_new();
     play_set_mode(ps, s, true);
     ps.wave.crew += [helper_new(3, 0)];
-    order_place(p, s.pw, ps.wave.orders, 3, 0, as_u8(9));
+    order_place(p, s.pw, ps.wave.orders, 3, 0, BUILD_GROUND, as_u8(9));
 
     before = lookup_painted(s.pw, 3, 0);
     play_ticks(ps, s, 20);
@@ -279,7 +281,7 @@ fn test_a_run_with_no_crew_builds_nothing() {
 
     ps = play_state_new();
     play_set_mode(ps, s, true);
-    order_place(p, s.pw, ps.wave.orders, 3, 0, as_u8(9));
+    order_place(p, s.pw, ps.wave.orders, 3, 0, BUILD_GROUND, as_u8(9));
 
     play_ticks(ps, s, 40);
 

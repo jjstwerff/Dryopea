@@ -128,11 +128,11 @@ fn test_a_delivered_wreck_starts_a_recovery() {
     tad_s = a_downed_crew_member();
     vehicle_place(tad_s.player, 6, 0);
 
-    assert(wave_take(tad_s, BLOCKER_PLAYER, marker_empty()) == 0, "the player picked the wreck up");
+    assert(wave_take(tad_s, BLOCKER_PLAYER, core(), marker_empty()) == 0, "the player picked the wreck up");
     assert(cargo_count(tad_s.cargo) == 1, "it is still in the world, being carried");
 
     vehicle_place(tad_s.player, 0, 0);
-    assert(wave_drop(tad_s, BLOCKER_PLAYER, core(), marker_empty()) == 0, "and delivered it");
+    assert(wave_drop(tad_s, BLOCKER_PLAYER, core(), marker_empty(), pal(), painted_empty()) == 0, "and delivered it");
 
     assert(cargo_count(tad_s.cargo) == 0,
            "the wreck has left the world: {cargo_count(tad_s.cargo)}");
@@ -154,9 +154,9 @@ fn test_recovery_takes_exactly_ninety_ticks() {
     trt_s  = a_downed_crew_member();
     trt_pw = band();
     vehicle_place(trt_s.player, 6, 0);
-    wave_take(trt_s, BLOCKER_PLAYER, marker_empty());
+    wave_take(trt_s, BLOCKER_PLAYER, core(), marker_empty());
     vehicle_place(trt_s.player, 0, 0);
-    wave_drop(trt_s, BLOCKER_PLAYER, core(), marker_empty());
+    wave_drop(trt_s, BLOCKER_PLAYER, core(), marker_empty(), pal(), painted_empty());
 
     trt_n   = 0;
     trt_pal = pal();
@@ -182,9 +182,9 @@ fn test_it_rejoins_whole_and_at_the_core() {
     helper_hurt(tir_s.crew[0] ?? Helper { }, HELPER_HP);
 
     vehicle_place(tir_s.player, 6, 0);
-    wave_take(tir_s, BLOCKER_PLAYER, marker_empty());
+    wave_take(tir_s, BLOCKER_PLAYER, core(), marker_empty());
     vehicle_place(tir_s.player, 0, 0);
-    wave_drop(tir_s, BLOCKER_PLAYER, core(), marker_empty());
+    wave_drop(tir_s, BLOCKER_PLAYER, core(), marker_empty(), pal(), painted_empty());
     play(tir_s, tir_pw, 90);
 
     tir_h = crew_of(tir_s, 0);
@@ -203,9 +203,9 @@ fn test_a_recovered_helper_goes_back_to_work() {
     height_raise(trw_s.heights, 1, 0, 4.0, as_u8(RUBBLE_WRECKAGE));
 
     vehicle_place(trw_s.player, 6, 0);
-    wave_take(trw_s, BLOCKER_PLAYER, marker_empty());
+    wave_take(trw_s, BLOCKER_PLAYER, core(), marker_empty());
     vehicle_place(trw_s.player, 0, 0);
-    wave_drop(trw_s, BLOCKER_PLAYER, core(), marker_empty());
+    wave_drop(trw_s, BLOCKER_PLAYER, core(), marker_empty(), pal(), painted_empty());
 
     // ⚠ The player is parked one hex from that heap, so it would clear
     // it on its own — drive it away first, or this measures the wrong
@@ -250,7 +250,7 @@ fn test_carrying_it_about_recovers_nobody() {
     tca_s  = a_downed_crew_member();
     tca_pw = band();
     vehicle_place(tca_s.player, 6, 0);
-    wave_take(tca_s, BLOCKER_PLAYER, marker_empty());
+    wave_take(tca_s, BLOCKER_PLAYER, core(), marker_empty());
     vehicle_drive(tca_s.player, 14, 0);
 
     play(tca_s, tca_pw, 100);
@@ -267,10 +267,10 @@ fn test_carrying_it_about_recovers_nobody() {
 fn test_a_drop_two_hexes_out_is_only_a_drop() {
     tdt_s  = a_downed_crew_member();
     vehicle_place(tdt_s.player, 6, 0);
-    wave_take(tdt_s, BLOCKER_PLAYER, marker_empty());
+    wave_take(tdt_s, BLOCKER_PLAYER, core(), marker_empty());
     vehicle_place(tdt_s.player, 2, 0);
 
-    assert(wave_drop(tdt_s, BLOCKER_PLAYER, core(), marker_empty()) == 0, "it was put down");
+    assert(wave_drop(tdt_s, BLOCKER_PLAYER, core(), marker_empty(), pal(), painted_empty()) == 0, "it was put down");
 
     assert(cargo_count(tdt_s.cargo) == 1,
            "and is still in the world: {cargo_count(tdt_s.cargo)}");
@@ -279,8 +279,8 @@ fn test_a_drop_two_hexes_out_is_only_a_drop() {
 
     // One hex closer and the same action retrieves.
     vehicle_place(tdt_s.player, 1, 0);
-    wave_take(tdt_s, BLOCKER_PLAYER, marker_empty());
-    assert(wave_drop(tdt_s, BLOCKER_PLAYER, core(), marker_empty()) == 0, "delivered from (1, 0)");
+    wave_take(tdt_s, BLOCKER_PLAYER, core(), marker_empty());
+    assert(wave_drop(tdt_s, BLOCKER_PLAYER, core(), marker_empty(), pal(), painted_empty()) == 0, "delivered from (1, 0)");
     assert(helper_recovering(crew_of(tdt_s, 0)), "and now it is recovering");
 }
 
@@ -295,13 +295,13 @@ fn test_a_crewmate_can_carry_one_home() {
     tcc_pw = band();
     tcc_s.crew += [helper_new(6, 0)];         // helper 1, alive, beside it
 
-    assert(wave_take(tcc_s, BLOCKER_CREW + 1, marker_empty()) == 0, "helper 1 picked it up");
+    assert(wave_take(tcc_s, BLOCKER_CREW + 1, core(), marker_empty()) == 0, "helper 1 picked it up");
 
     helper_drive(tcc_s.crew[1] ?? Helper { }, 0, 0);
     play(tcc_s, tcc_pw, 6);
     assert(crew_of(tcc_s, 1).q == 0, "and drove it home: q = {crew_of(tcc_s, 1).q}");
 
-    assert(wave_drop(tcc_s, BLOCKER_CREW + 1, core(), marker_empty()) == 0, "and delivered it");
+    assert(wave_drop(tcc_s, BLOCKER_CREW + 1, core(), marker_empty(), pal(), painted_empty()) == 0, "and delivered it");
     assert(helper_recovering(crew_of(tcc_s, 0)), "helper 0 is recovering");
     assert(crew_of(tcc_s, 1).alive, "and helper 1 is still standing");
 }
@@ -314,7 +314,7 @@ fn test_a_wreck_cannot_do_the_fetching() {
     helper_wreck(twc_s.crew[1] ?? Helper { });
 
     assert(!wave_carrier_ready(twc_s, BLOCKER_CREW + 1), "a wreck is not a carrier");
-    assert(wave_take(twc_s, BLOCKER_CREW + 1, marker_empty()) == CARGO_NONE,
+    assert(wave_take(twc_s, BLOCKER_CREW + 1, core(), marker_empty()) == CARGO_NONE,
            "and it picks nothing up");
     assert(cargo_count(twc_s.cargo) == 1, "the wreck is untouched");
 }
@@ -325,7 +325,7 @@ fn test_a_run_with_no_player_cannot_fetch() {
     trp_s = a_downed_crew_member();
 
     assert(!wave_carrier_ready(trp_s, BLOCKER_PLAYER), "there is no player");
-    assert(wave_take(trp_s, BLOCKER_PLAYER, marker_empty()) == CARGO_NONE, "so nothing is picked up");
+    assert(wave_take(trp_s, BLOCKER_PLAYER, core(), marker_empty()) == CARGO_NONE, "so nothing is picked up");
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -355,13 +355,13 @@ fn test_the_whole_arc_from_a_loss_to_a_full_roster() {
     assert(twa_s.player.q == 6, "and reached it: q = {twa_s.player.q}");
 
     // 3. Fetch, and drive home.
-    assert(wave_take(twa_s, BLOCKER_PLAYER, marker_empty()) == 0, "picked it up");
+    assert(wave_take(twa_s, BLOCKER_PLAYER, core(), marker_empty()) == 0, "picked it up");
     vehicle_drive(twa_s.player, 0, 0);
     play(twa_s, twa_pw, 4);
     assert(twa_s.player.q == 0, "carried it home: q = {twa_s.player.q}");
 
     // 4. Deliver, and wait it out.
-    assert(wave_drop(twa_s, BLOCKER_PLAYER, core(), marker_empty()) == 0, "delivered");
+    assert(wave_drop(twa_s, BLOCKER_PLAYER, core(), marker_empty(), pal(), painted_empty()) == 0, "delivered");
     assert(cargo_count(twa_s.cargo) == 0, "the wreck is gone from the world");
     play(twa_s, twa_pw, 90);
 

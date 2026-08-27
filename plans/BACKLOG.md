@@ -34,7 +34,7 @@ runs and a game you can sit down with.**
 | # | What | Size | Why |
 |---|---|---|---|
 | **B1** | ✅ **DONE 2026-08-27** — `assets/DejaVuSans-Bold.ttf` + [`src/font.loft`](../src/font.loft) | M | ⚠⚠ **Half the blocker was STALE**: `draw_text` already worked headless under `loft test` — measured at **1324 pixels** on the pinned `graphics` 0.5.2 (`@M047`).  The font half was real and is paid.  ⚠⚠ **The seam owns the ABSOLUTE path**, because a relative one means different things in 0.5.2 and 0.8.0, and a font that failed to load **draws in whatever font loaded first** rather than drawing nothing (`@X268`).  ⚠ The five designed things (`@X130`) are unblocked; the wallet stays seven-segment by CHOICE now.  ⚠⚠ **What the first consumer must know**: 774 of a glyph line's 1324 pixels are BLENDED, so text drawn into a classified frame breaks `@X077` and `@X092`.  Gated by `tests/b1_the_font_seam.loft` |
-| **B2** | ⚠⚠ **BUILDING** — wall paint (Q), the order record, helper construction, the wall appearing | **H** | ⚠⚠ `ROADMAP.md` § The critical path: **the biggest missing mechanic**, and it gates three finished designs (`@X022`, `@X024`, `@X019`).  ⚠ The design is complete — `DESIGN.md` § 11 § Wall paint, § 13's *helper-seconds is the bottleneck*, and `@X252` settles who builds |
+| **B2** | ✅ **DONE 2026-08-27** — [`plans/27`](27-building/README.md), C0-C5 | H | ⚠⚠ **The player can build.**  Press **Q** and every hex you drive over is ordered as a wall your crew raise; press **E** at the core and 100 points becomes a tower beacon to carry out and plant.  ⚠⚠ **Measured worth: +44 ticks on a base that otherwise falls at 130** (`@M050`) — and that is `@X022`'s *pre-wave window is a budget* made measurable for the first time.  ⚠ **Four findings the gates caught**: the renderer could not SEE a structure appear (`@M048`, and it retired `@X095`); a float build rate came up a tick short (`@M049`); a five-row band could not be SEALED (`@X272`); and a tower order had to refuse ERASURE or the wall trail destroys a paid-for beacon (`@X274`).  ⚠ Still unbuilt and deliberately out of scope: **helper orders**, the 8-walls wave trigger, bridges, and `@X252`'s *directed* helpers |
 | **B3** | **Per-planet persistence** | MH | ⚠⚠ The **sole** prerequisite of five multiplayer features (`@X182`), and wanted by Tier D's own inventory and chaining anyway |
 | **B4** | ⚠ **A mover for a robot going about its business** | M | ⚠⚠ **Every robot in the code is a WAVE** (`@X245`).  The opening needs ambient life, and this is the smallest slice of `ROBOT_ECONOMY.md` that provides it |
 
@@ -92,9 +92,13 @@ an order:
 - ~~**B1 has the widest blast radius of anything on the list.**~~  **B1 is
   done** (2026-08-27) — text draws headless, so the onboarding nudge, the
   debrief, crew chatter, `SETTING.md`'s delivery and faction feedback are
-  all unblocked.  ⚠ The widest-blast-radius item left is **B2 (BUILDING)**,
-  which `ROADMAP.md` § The critical path has always named the biggest
-  missing mechanic.
+  all unblocked.
+- ~~**B2 (BUILDING) is the biggest missing mechanic.**~~  **B2 is done**
+  (2026-08-27, [`plans/27`](27-building/README.md)) — so `@X022`, `@X024`
+  and `@X019` are no longer inert, and `ROADMAP.md` § The critical path
+  item **3** is closed.  ⚠ The next item on that path is **4, the
+  SCRAMBLE** — the run's ending, and the mechanic the game is named
+  after.  Its ingredients all shipped years of plans ago.
 
 ⚠ **Most of this is not a plan** (`README.md` § Pick the lightest
 workflow that fits).  Only **B2** is clearly multi-phase; the rest are

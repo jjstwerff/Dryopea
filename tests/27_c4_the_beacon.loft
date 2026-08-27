@@ -1,0 +1,263 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 27 phase C4 — the beacon ferry, and the first thing the wallet
+// has ever bought.
+//
+// ⚠⚠ **Points have been earned since `13-V3` and drained since
+// `12-B6`, and until this phase they bought NOTHING.**
+// `plans/ROADMAP.md` § Why BUILDING is the load-bearing gap names that
+// exactly: *"it is what the wallet is for … and neither exists"*.
+//
+// ⚠ The reading that carries the phase is not *a tower appeared*.  It
+// is that **a tower order and a wall order are one queue** — same work
+// loop, same crew, same resolve stage — while differing in the four
+// places they have to, and the fourth of those was found by probing
+// rather than by reading the design: **a tower order is not erasable,
+// or the wall trail destroys a beacon the player paid for.**
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+fn pal() -> vector<GroundType> { load_palette(PALETTE) }
+
+// A grass field with a core at the origin.
+fn session() -> EditorState {
+    s = editor_state_new(PALETTE);
+    for s_q in -10..11 {
+        for s_r in -10..11 { paint(s.pw, s_q, s_r, as_u8(5)); }
+    }
+    place_marker(s.mw, 0, 0, MARKER_KIND_TARGET, as_u8(0));
+    s
+}
+
+fn live(s: EditorState) -> PlayState {
+    ps = play_state_new();
+    play_set_mode(ps, s, true);
+    ps
+}
+
+fn core() -> Hex { Hex { q: 0, r: 0 } }
+
+// ─── Buying one ─────────────────────────────────────────────────
+
+// @DRY-105 — a beacon costs 100 points, and only at the core
+fn test_a_beacon_is_bought_at_the_core() {
+    s = session();
+    ps = live(s);
+    vehicle_place(ps.wave.player, 0, 0);
+
+    before = wallet_left(ps.wave.wallet);
+    got = wave_take(ps.wave, BLOCKER_PLAYER, core(), s.mw);
+    after = wallet_left(ps.wave.wallet);
+
+    assert(got != CARGO_NONE && cargo_carrying(ps.wave.cargo, BLOCKER_PLAYER)
+           && before == WALLET_STARTING_POINTS
+           && after == before - TOWER_ORDER_COST_POINTS,
+           "pressing at the core with empty hands buys a beacon: got={got} before={before} after={after}");
+}
+
+// ⚠ Away from the core there is nothing to buy — the same press does
+// nothing at all, which is what keeps the core the ONE place points
+// leave the wallet.
+fn test_a_beacon_cannot_be_bought_anywhere_else() {
+    s = session();
+    ps = live(s);
+    vehicle_place(ps.wave.player, 6, 0);
+
+    got = wave_take(ps.wave, BLOCKER_PLAYER, core(), s.mw);
+    assert(got == CARGO_NONE && !cargo_carrying(ps.wave.cargo, BLOCKER_PLAYER)
+           && wallet_left(ps.wave.wallet) == WALLET_STARTING_POINTS,
+           "six hexes out is not the core: got={got} left={wallet_left(ps.wave.wallet)}");
+}
+
+// ⚠ A wallet that cannot afford one is refused, and NOT drained — the
+// failure a `wallet_drain` before the check would produce is a player
+// who paid for nothing.
+fn test_a_wallet_that_cannot_afford_one_is_refused() {
+    s = session();
+    ps = live(s);
+    vehicle_place(ps.wave.player, 0, 0);
+    wallet_drain(ps.wave.wallet, WALLET_STARTING_POINTS - 1.0);
+
+    got = wave_take(ps.wave, BLOCKER_PLAYER, core(), s.mw);
+    assert(got == CARGO_NONE && wallet_left(ps.wave.wallet) == 1.0,
+           "one point short buys nothing and costs nothing: got={got} left={wallet_left(ps.wave.wallet)}");
+}
+
+// ─── Planting one ───────────────────────────────────────────────
+
+// @DRY-104 — a beacon dropped on legal ground becomes a tower ORDER
+fn test_a_dropped_beacon_becomes_a_tower_order() {
+    p = pal();
+    s = session();
+    ps = live(s);
+    vehicle_place(ps.wave.player, 0, 0);
+    wave_take(ps.wave, BLOCKER_PLAYER, core(), s.mw);
+
+    vehicle_place(ps.wave.player, 6, 0);
+    cargo_follow(ps.wave.cargo, BLOCKER_PLAYER, 6, 0);
+    wave_drop(ps.wave, BLOCKER_PLAYER, core(), s.mw, p, s.pw);
+
+    assert(order_at(ps.wave.orders, 6, 0)
+           && order_what(ps.wave.orders, 6, 0) == BUILD_TOWER
+           && !cargo_carrying(ps.wave.cargo, BLOCKER_PLAYER)
+           && order_work_units(p, BUILD_TOWER, 0 as u8) == clock_units_from_seconds(30.0),
+           "the beacon becomes an order owing 30 s: ordered={order_at(ps.wave.orders, 6, 0)} what={order_what(ps.wave.orders, 6, 0)} still_held={cargo_carrying(ps.wave.cargo, BLOCKER_PLAYER)}");
+}
+
+// ⚠⚠ **A refused drop KEEPS the beacon**, which is what makes
+// `numbers.json`'s *"failed deposit does not refund"* fair: nothing was
+// lost, so nothing needs giving back.  Dropped on a cliff it goes on
+// the ground, where the player can pick it up again.
+fn test_a_refused_drop_keeps_the_beacon() {
+    p = pal();
+    s = session();
+    paint(s.pw, 6, 0, as_u8(8));            // steep_rock — not buildable
+    ps = live(s);
+    vehicle_place(ps.wave.player, 0, 0);
+    wave_take(ps.wave, BLOCKER_PLAYER, core(), s.mw);
+
+    vehicle_place(ps.wave.player, 6, 0);
+    cargo_follow(ps.wave.cargo, BLOCKER_PLAYER, 6, 0);
+    wave_drop(ps.wave, BLOCKER_PLAYER, core(), s.mw, p, s.pw);
+
+    // Nothing ordered — but the beacon is on the ground, and one press
+    // picks it back up.
+    back = wave_take(ps.wave, BLOCKER_PLAYER, core(), s.mw);
+    assert(!order_at(ps.wave.orders, 6, 0) && back != CARGO_NONE
+           && cargo_carrying(ps.wave.cargo, BLOCKER_PLAYER)
+           && wallet_left(ps.wave.wallet) == WALLET_STARTING_POINTS - TOWER_ORDER_COST_POINTS,
+           "a cliff refuses the order and the beacon survives: ordered={order_at(ps.wave.orders, 6, 0)} recovered={back}");
+}
+
+// ⚠ A hex that already carries a marker is refused, so a beacon cannot
+// be planted on the core or on a tower that already stands.  The check
+// lives in `wave_drop` because a build layer has no marker world.
+fn test_a_marked_hex_refuses_a_beacon() {
+    p = pal();
+    s = session();
+    place_marker(s.mw, 6, 0, MARKER_KIND_TOWER, as_u8(0));
+    ps = live(s);
+    vehicle_place(ps.wave.player, 0, 0);
+    wave_take(ps.wave, BLOCKER_PLAYER, core(), s.mw);
+
+    vehicle_place(ps.wave.player, 6, 0);
+    cargo_follow(ps.wave.cargo, BLOCKER_PLAYER, 6, 0);
+    wave_drop(ps.wave, BLOCKER_PLAYER, core(), s.mw, p, s.pw);
+
+    assert(!order_at(ps.wave.orders, 6, 0),
+           "a tower already stands there: ordered={order_at(ps.wave.orders, 6, 0)}");
+}
+
+// ─── Raising one ────────────────────────────────────────────────
+
+// @DRY-106 — the crew raise it, and a TOWER MARKER appears
+//
+// ⚠ It is the same queue, the same `helper_build` and the same
+// `build_resolve` a wall goes through — the only thing `what` changes
+// is which of the two appears at the end.
+fn test_the_crew_raise_a_tower_and_a_marker_appears() {
+    p = pal();
+    s = session();
+    ps = live(s);
+    ps.wave.crew += [helper_new(6, 0)];
+    order_place(p, s.pw, ps.wave.orders, 6, 0, BUILD_TOWER, 0 as u8);
+
+    before = marker_kind(s.mw, 6, 0);
+    // 30 s at one helper = 45 ticks.
+    play_ticks(ps, s, 50);
+    after = marker_kind(s.mw, 6, 0);
+
+    assert(before != MARKER_KIND_TOWER && after == MARKER_KIND_TOWER
+           && order_count(ps.wave.orders) == 0
+           && lookup_painted(s.pw, 6, 0) == as_u8(5),
+           "a tower marker appears and the GROUND is untouched: before={before} after={after} orders={order_count(ps.wave.orders)} ground={lookup_painted(s.pw, 6, 0)}");
+}
+
+// ⚠ Three times a wall, which is what makes a tower a decision rather
+// than a reflex — `numbers.json` § tower.construction_time_helper.
+fn test_a_tower_takes_three_times_a_wall() {
+    p = pal();
+    low = order_work_units(p, BUILD_GROUND, as_u8(9));
+    twr = order_work_units(p, BUILD_TOWER, 0 as u8);
+    assert(low == clock_units_from_seconds(10.0)
+           && twr == clock_units_from_seconds(30.0) && twr == low * 3,
+           "wall 10 s, tower 30 s: wall={low} tower={twr}");
+}
+
+// ─── The branch the probe found ─────────────────────────────────
+
+// ⚠⚠ **A TOWER ORDER IS NOT ERASABLE, AND THIS IS WHY THE PHASE HAS A
+// FOURTH BRANCH.**  The wall trail rubs out any order it drives over
+// and a fresh order has nothing spent on it — so without the refusal a
+// player who drove across their own tower site in paint mode would
+// destroy a hundred points of beacon, silently.
+fn test_the_wall_trail_cannot_rub_out_a_tower_order() {
+    p = pal();
+    s = session();
+    ps = live(s);
+
+    // A tower ordered at (3, 0), untouched by anybody.
+    order_place(p, s.pw, ps.wave.orders, 3, 0, BUILD_TOWER, 0 as u8);
+    direct = order_erase(ps.wave.orders, 3, 0);
+
+    // …and the player drives straight over it with paint on.
+    vehicle_place(ps.wave.player, 0, 0);
+    play_set_painting(ps, s, true);
+    vehicle_drive(ps.wave.player, 6, 0);
+    play_ticks(ps, s, 6);
+
+    assert(!direct && order_at(ps.wave.orders, 3, 0)
+           && order_what(ps.wave.orders, 3, 0) == BUILD_TOWER,
+           "a paid-for beacon survives both an erase and the trail: erased={direct} still_there={order_at(ps.wave.orders, 3, 0)}");
+}
+
+// The control: a GROUND order in the same spot is rubbed out by the
+// same drive.  Without it the test above passes for a trail that erases
+// nothing at all.
+fn test_but_the_trail_does_rub_out_a_wall_order() {
+    p = pal();
+    s = session();
+    ps = live(s);
+    order_place(p, s.pw, ps.wave.orders, 3, 0, BUILD_GROUND, as_wall_kind(p));
+
+    vehicle_place(ps.wave.player, 0, 0);
+    play_set_painting(ps, s, true);
+    vehicle_drive(ps.wave.player, 6, 0);
+    play_ticks(ps, s, 6);
+
+    assert(!order_at(ps.wave.orders, 3, 0),
+           "the same drive must rub out a WALL order, or the test above proves nothing");
+}
+
+// ─── End to end ─────────────────────────────────────────────────
+
+// ⚠⚠ The whole ferry, driven by the game: buy at the core, carry out,
+// plant, and the crew raise it — **and the wallet is a hundred points
+// lighter for a tower that now exists.**
+fn test_the_ferry_end_to_end() {
+    p = pal();
+    s = session();
+    ps = live(s);
+    ps.wave.crew += [helper_new(6, 0)];
+    vehicle_place(ps.wave.player, 0, 0);
+
+    opening = wallet_left(ps.wave.wallet);
+    wave_take(ps.wave, BLOCKER_PLAYER, core(), s.mw);
+
+    vehicle_drive(ps.wave.player, 6, 0);
+    play_ticks(ps, s, 4);
+    wave_drop(ps.wave, BLOCKER_PLAYER, core(), s.mw, p, s.pw);
+    play_ticks(ps, s, 50);
+
+    assert(marker_kind(s.mw, 6, 0) == MARKER_KIND_TOWER
+           && order_count(ps.wave.orders) == 0
+           && cargo_count(ps.wave.cargo) == 0
+           && wallet_left(ps.wave.wallet) < opening,
+           "a tower bought, carried, planted and raised: marker={marker_kind(s.mw, 6, 0)} orders={order_count(ps.wave.orders)} wallet={wallet_left(ps.wave.wallet)} of {opening}");
+}

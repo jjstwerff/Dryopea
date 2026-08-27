@@ -1986,7 +1986,7 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     // rather than be painted over the old one's rubble.  Running the
     // two the other way round would resolve a break onto a hex that had
     // just been built, which is a wall destroyed before anybody saw it.
-    build_resolve(pal, pw, state.orders);
+    build_resolve(pal, pw, mw, state.orders);
 
     // ⚠ **A destroyed vehicle is never a game-loss** (`DESIGN.md` § 8):
     // the player reappears inside the core, whole.  Resolved here with
@@ -2450,7 +2450,8 @@ fn is_tower_marker(mw: const MarkerWorld, q: integer, r: integer) -> boolean {
     marker_kind(mw, q, r) == MARKER_KIND_TOWER
 }
 
-pub fn wave_take(state: WaveState, owner: integer, mw: const MarkerWorld) -> integer {
+pub fn wave_take(state: WaveState, owner: integer, core: Hex,
+                 mw: const MarkerWorld) -> integer {
     if !wave_carrier_ready(state, owner) { return CARGO_NONE; }
     if cargo_carrying(state.cargo, owner) { return CARGO_NONE; }
 
@@ -2473,7 +2474,12 @@ pub fn wave_take(state: WaveState, owner: integer, mw: const MarkerWorld) -> int
     // across two sites they drift, and the drift is a tower that stopped
     // firing with nothing to show for it.
     wtk_src = top_source(state, mw, wtk_at);
-    if !is_tower_marker(mw, wtk_src.q, wtk_src.r) { return CARGO_NONE; }
+    if !is_tower_marker(mw, wtk_src.q, wtk_src.r) {
+        // ⚠ Nothing to pick up and no top to pull: the last thing an
+        // empty-handed press can mean is *buy a beacon*, and only at
+        // the core.
+        return beacon_buy(state, owner, wtk_at, core);
+    }
 
     wtk_shots = tower_detach_top(state.towers, wtk_src.q, wtk_src.r);
     if wtk_shots < 0 { return CARGO_NONE; }
@@ -2482,6 +2488,32 @@ pub fn wave_take(state: WaveState, owner: integer, mw: const MarkerWorld) -> int
                           wtk_at.q, wtk_at.r);
     cargo_take(state.cargo, owner, wtk_at, CARGO_REACH_HEXES);
     wtk_new
+}
+
+// Buy a tower beacon at the core, if the carrier is standing there with
+// the points for one.  Answers the beacon, or `CARGO_NONE`.
+//
+// ⚠⚠ **The points are spent HERE, at pickup, and that is the design's
+// own choice** — `numbers.json` § tower.order_cost_points: *"debited
+// from the wallet when the player picks up a tower beacon at the core.
+// Failed deposit does not refund."*  So a beacon in the hands IS the
+// hundred points: losing it is losing them, which is what makes
+// carrying one across a live base a decision.
+//
+// ⚠ It is the LAST branch of `wave_take` for the same reason the loose
+// object is the first: an ambiguous press should do the harmless thing,
+// and this one spends.  A player standing at the core on top of a wreck
+// picks the wreck up.
+//
+// Example: @DRY-105
+fn beacon_buy(state: WaveState, owner: integer, at: const Hex,
+              core: const Hex) -> integer {
+    if lat_distance(at, core) > CARGO_REACH_HEXES { return CARGO_NONE; }
+    if wallet_left(state.wallet) < TOWER_ORDER_COST_POINTS { return CARGO_NONE; }
+    wallet_drain(state.wallet, TOWER_ORDER_COST_POINTS);
+    bb_new = cargo_spawn(state.cargo, CARGO_BEACON, 0, at.q, at.r);
+    cargo_take(state.cargo, owner, at, CARGO_REACH_HEXES);
+    bb_new
 }
 
 // Put down what this carrier is holding — DELIVERING it if where they
@@ -2494,7 +2526,8 @@ pub fn wave_take(state: WaveState, owner: integer, mw: const MarkerWorld) -> int
 // merely put them down.  Two verbs would let a script deposit at a
 // place the game would not.
 pub fn wave_drop(state: WaveState, owner: integer, core: Hex,
-                 mw: const MarkerWorld) -> integer {
+                 mw: const MarkerWorld, pal: vector<GroundType>,
+                 pw: PaintedWorld) -> integer {
     if !wave_carrier_ready(state, owner) { return CARGO_NONE; }
 
     wdr_at = wave_carrier_hex(state, owner);
@@ -2533,6 +2566,30 @@ pub fn wave_drop(state: WaveState, owner: integer, core: Hex,
                     return wdr_held;
                 }
             }
+        }
+    }
+
+    // ── A BEACON becomes a tower ORDER (plan 27 C4) ─────────────
+    //
+    // ⚠⚠ **The beacon's whole destination rule lives here**, because it
+    // needs the palette, the painted world, the orders already standing
+    // AND the markers — `carry.loft::cargo_destination_ok` can state
+    // none of that from `(kind, at, core)`.  It is § A top has TWO
+    // destinations taken one step further: a top could state one of
+    // its destinations there, a beacon can state neither.
+    //
+    // ⚠ **A refused drop keeps the beacon**, which is what makes
+    // *"failed deposit does not refund"* fair: nothing is lost, so
+    // nothing needs giving back.  The fall-through below sets it on the
+    // ground for the player to pick up again.
+    if wdr_held != CARGO_NONE {
+        wdr_b = cargo_get(state.cargo, wdr_held);
+        if wdr_b.kind == CARGO_BEACON
+           && !has_marker(mw, wdr_at.q, wdr_at.r)
+           && order_place(pal, pw, state.orders, wdr_at.q, wdr_at.r,
+                          BUILD_TOWER, 0 as u8) {
+            cargo_consume(state.cargo, wdr_held);
+            return wdr_held;
         }
     }
 

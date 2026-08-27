@@ -297,7 +297,7 @@ pub fn play_set_painting(ps: PlayState, s: EditorState, on: boolean) {
     if !vehicle_present(ps.wave.player) { return; }
     order_place(s.picker.palette, s.pw, ps.wave.orders,
                 ps.wave.player.q, ps.wave.player.r,
-                as_wall_kind(s.picker.palette));
+                BUILD_GROUND, as_wall_kind(s.picker.palette));
 }
 
 // How much of a frame's elapsed time the GAME gets.
@@ -494,14 +494,18 @@ fn play_actions(ps: PlayState, s: EditorState, input: const EditorInput) {
     }
 
     if input.in_carry && !ps.prev.in_carry {
-        if cargo_carrying(ps.wave.cargo, BLOCKER_PLAYER) {
-            pa_core = play_core(s.mw);
-            if pa_core.0 == 1 {
-                wave_drop(ps.wave, BLOCKER_PLAYER,
-                          Hex { q: pa_core.1, r: pa_core.2 }, s.mw);
+        // ⚠ The core is needed by BOTH halves since plan 27 C4: a drop
+        // may be a delivery there, and a take may be BUYING a beacon
+        // there.  One lookup, both branches.
+        pa_core = play_core(s.mw);
+        if pa_core.0 == 1 {
+            pa_hex = Hex { q: pa_core.1, r: pa_core.2 };
+            if cargo_carrying(ps.wave.cargo, BLOCKER_PLAYER) {
+                wave_drop(ps.wave, BLOCKER_PLAYER, pa_hex, s.mw,
+                          s.picker.palette, s.pw);
+            } else {
+                wave_take(ps.wave, BLOCKER_PLAYER, pa_hex, s.mw);
             }
-        } else {
-            wave_take(ps.wave, BLOCKER_PLAYER, s.mw);
         }
     }
 }
@@ -566,7 +570,7 @@ fn play_trail(ps: PlayState, s: EditorState, from: const Hex) {
             order_erase(ps.wave.orders, pt_h.q, pt_h.r);
         } else {
             order_place(s.picker.palette, s.pw, ps.wave.orders,
-                        pt_h.q, pt_h.r, pt_kind);
+                        pt_h.q, pt_h.r, BUILD_GROUND, pt_kind);
         }
     }
 }

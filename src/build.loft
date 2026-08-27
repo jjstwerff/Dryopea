@@ -92,6 +92,7 @@ use damage;
 use lattice;
 use fixstep;
 use save;
+use markers;
 
 // How long one helper takes over each structure, in the clock's base
 // units — `numbers.json` § `wall.build_time_wall` (10 s) and
@@ -102,17 +103,44 @@ use save;
 // (`tick_timer.loft` makes the same choice for the same reason).
 pub const BUILD_WALL_UNITS:      integer = 30000000;
 pub const BUILD_WALL_HIGH_UNITS: integer = 60000000;
+// `numbers.json` § tower.construction_time_helper — 30 s, three times a
+// wall, which is what makes a tower a decision rather than a reflex.
+pub const BUILD_TOWER_UNITS:     integer = 90000000;
 
 pub const BUILD_WALL_SECONDS: float =
     (BUILD_WALL_UNITS as float) / (CLOCK_UNITS_PER_SECOND as float);
 pub const BUILD_WALL_HIGH_SECONDS: float =
     (BUILD_WALL_HIGH_UNITS as float) / (CLOCK_UNITS_PER_SECOND as float);
+pub const BUILD_TOWER_SECONDS: float =
+    (BUILD_TOWER_UNITS as float) / (CLOCK_UNITS_PER_SECOND as float);
+
+// What a tower beacon costs, in wallet points — `numbers.json`
+// § tower.order_cost_points.
+//
+// ⚠⚠ **This is the FIRST thing the wallet has ever bought.**  Points
+// have been earned since `13-V3` and drained since `12-B6`, and
+// `ROADMAP.md` § Why BUILDING is the load-bearing gap names that as the
+// gap: *"it is what the wallet is for … and neither exists"*.
+//
+// ⚠ Spent at PICKUP, not at placement, and the design says so: *"failed
+// deposit does not refund"*.  A beacon in the hands IS the hundred
+// points.
+pub const TOWER_ORDER_COST_POINTS: float = 100.0;
+
+// What an order builds.
+//
+// ⚠ `BUILD_GROUND` is 0 so that [loft#914]'s silent default lands on
+// the common case: a `BuildOrder { q, r, kind: … }` written by hand is
+// a ground order, which is what it reads like.
+pub const BUILD_GROUND: u8 = 0;   // paint the hex with `kind`
+pub const BUILD_TOWER:  u8 = 1;   // place a tower marker on it
 
 // One ordered structure.
 pub struct BuildOrder {
     q:     integer,
     r:     integer,
-    kind:  u8,        // palette index of what goes here
+    what:  u8,        // BUILD_GROUND / BUILD_TOWER — how to read `kind`
+    kind:  u8,        // palette index, for BUILD_GROUND
     spent: integer,   // helper time put in — see § Work is what has been SPENT
 }
 
@@ -143,7 +171,8 @@ pub fn build_layer_empty() -> BuildLayer {
 // grass — there is nothing painted there to read.
 //
 // Example: @DRY-098
-pub fn order_work_units(pal: vector<GroundType>, kind: u8) -> integer {
+pub fn order_work_units(pal: vector<GroundType>, what: u8, kind: u8) -> integer {
+    if what == BUILD_TOWER { return BUILD_TOWER_UNITS; }
     owu_e = pal[kind as integer] ?? GroundType {};
     if owu_e.name == "wall"      { return BUILD_WALL_UNITS; }
     if owu_e.name == "wall_high" { return BUILD_WALL_HIGH_UNITS; }
@@ -160,6 +189,14 @@ pub fn order_at(bl: const BuildLayer, q: integer, r: integer) -> boolean {
 pub fn order_kind(bl: const BuildLayer, q: integer, r: integer) -> u8 {
     ok_c = bl.cells[q, r];
     if ok_c == null { 0 as u8 } else { ok_c.kind }
+}
+
+// What is ordered here — `BUILD_GROUND` on a hex with no order, which is
+// also what a ground order reads.  ⚠ Tell them apart with `order_at`.
+pub fn order_what(bl: const BuildLayer, q: integer, r: integer) -> u8 {
+    ow_c = bl.cells[q, r];
+    if ow_c == null { return BUILD_GROUND; }
+    ow_c.what
 }
 
 // Helper time spent here so far, in base units — 0 where nothing is
@@ -190,8 +227,8 @@ pub fn order_count(bl: const BuildLayer) -> integer {
 // Example: @DRY-099
 pub fn order_fault(pal: vector<GroundType>, pw: PaintedWorld,
                    bl: const BuildLayer, q: integer, r: integer,
-                   kind: u8) -> text {
-    if order_work_units(pal, kind) <= 0 {
+                   what: u8, kind: u8) -> text {
+    if order_work_units(pal, what, kind) <= 0 {
         of_want = pal[kind as integer] ?? GroundType {};
         return "`{of_want.name}` is not something that can be built";
     }
@@ -206,9 +243,18 @@ pub fn order_fault(pal: vector<GroundType>, pw: PaintedWorld,
         return "the ground at ({q}, {r}) is `{of_g.name}`, which is not buildable";
     }
     if order_at(bl, q, r) {
+        if order_what(bl, q, r) == BUILD_TOWER {
+            return "({q}, {r}) is already ordered as a tower";
+        }
         of_std = pal[order_kind(bl, q, r) as integer] ?? GroundType {};
         return "({q}, {r}) is already ordered as `{of_std.name}`";
     }
+    // ⚠⚠ **What is NOT asked here: is there already a MARKER on this
+    // hex.**  It needs the marker world, which a build layer has no
+    // business knowing about — so the tower's half lives in
+    // `spawn.loft::wave_drop`, where the markers are already in hand.
+    // That is exactly the split `carry.loft::cargo_destination_ok`
+    // makes for a tower TOP, and for the same reason.
     ""
 }
 
@@ -222,9 +268,9 @@ pub fn order_fault(pal: vector<GroundType>, pw: PaintedWorld,
 // Example: @DRY-098
 pub fn order_place(pal: vector<GroundType>, pw: PaintedWorld,
                    bl: BuildLayer, q: integer, r: integer,
-                   kind: u8) -> boolean {
-    if order_fault(pal, pw, bl, q, r, kind) != "" { return false; }
-    bl.cells[q, r] = BuildOrder { q: q, r: r, kind: kind, spent: 0 };
+                   what: u8, kind: u8) -> boolean {
+    if order_fault(pal, pw, bl, q, r, what, kind) != "" { return false; }
+    bl.cells[q, r] = BuildOrder { q: q, r: r, what: what, kind: kind, spent: 0 };
     true
 }
 
@@ -240,6 +286,14 @@ pub fn order_place(pal: vector<GroundType>, pw: PaintedWorld,
 pub fn order_erase(bl: BuildLayer, q: integer, r: integer) -> boolean {
     oe_c = bl.cells[q, r];
     if oe_c == null { return false; }
+    // ⚠⚠ **A TOWER order is never erasable**, and this branch is the
+    // one the probe found (§ One queue, two things to build).  The
+    // player paid 100 points at PICKUP and `numbers.json`
+    // § tower.order_cost_points says *"failed deposit does not
+    // refund"* — so without this line the wall trail, which erases any
+    // order it drives over, would destroy a beacon the player had just
+    // paid for, silently, by crossing their own tower site.
+    if oe_c.what == BUILD_TOWER { return false; }
     if oe_c.spent > 0 { return false; }
     bl.cells[q, r] = null;
     true
@@ -260,7 +314,7 @@ pub fn order_spend(pal: vector<GroundType>, bl: BuildLayer,
     oa_c = bl.cells[q, r];
     if oa_c == null { return false; }
     if units <= 0 { return false; }
-    oa_total = order_work_units(pal, oa_c.kind);
+    oa_total = order_work_units(pal, oa_c.what, oa_c.kind);
     oa_was = oa_c.spent;
     oa_c.spent = oa_was + units;
     oa_was < oa_total && oa_c.spent >= oa_total
@@ -271,7 +325,7 @@ pub fn order_complete(pal: vector<GroundType>, bl: const BuildLayer,
                       q: integer, r: integer) -> boolean {
     oc_c = bl.cells[q, r];
     if oc_c == null { return false; }
-    oc_total = order_work_units(pal, oc_c.kind);
+    oc_total = order_work_units(pal, oc_c.what, oc_c.kind);
     oc_total > 0 && oc_c.spent >= oc_total
 }
 
@@ -334,7 +388,7 @@ pub fn build_at(pal: vector<GroundType>, bl: BuildLayer, at: const Hex,
     BuildWork { q: ba_best.q, r: ba_best.r, spent: elapsed, finished: ba_fin }
 }
 
-// Paint every finished order and take it off the layer.  Answers how
+// Raise every finished order and take it off the layer.  Answers how
 // many appeared.
 //
 // ⚠⚠ **The tick's CONSEQUENCE stage — `damage_resolve`'s sibling**, and
@@ -348,18 +402,33 @@ pub fn build_at(pal: vector<GroundType>, bl: BuildLayer, at: const Hex,
 // `buildable` test for ever, which is a record that can never be acted
 // on again.
 //
-// Example: @DRY-101, @DRY-102
+// ⚠ **`what` decides which of the two things appears**, and it is the
+// only site that reads it that way — a tower is a MARKER and a wall is
+// PAINT, so the completion effect is the one place the two orders
+// genuinely part company.
+//
+// Example: @DRY-101, @DRY-102, @DRY-104, @DRY-106
 pub fn build_resolve(pal: vector<GroundType>, pw: PaintedWorld,
-                     bl: BuildLayer) -> integer {
+                     mw: MarkerWorld, bl: BuildLayer) -> integer {
     br_done: vector<BuildOrder> = [];
     for br_c in bl.cells {
-        br_t = order_work_units(pal, br_c.kind);
+        br_t = order_work_units(pal, br_c.what, br_c.kind);
         if br_t > 0 && br_c.spent >= br_t {
-            br_done += [BuildOrder { q: br_c.q, r: br_c.r, kind: br_c.kind, spent: br_c.spent }];
+            br_done += [BuildOrder { q: br_c.q, r: br_c.r, what: br_c.what,
+                                     kind: br_c.kind, spent: br_c.spent }];
         }
     }
     for br_o in br_done {
-        paint(pw, br_o.q, br_o.r, br_o.kind);
+        if br_o.what == BUILD_TOWER {
+            // ⚠ `place_marker` is the ONE dispatch (`markers.loft`), so a
+            // tower raised here is the same tower the editor places and
+            // a `.keys` file authors — there is no second way to make
+            // one, and a tower with no `TowerCharge` cell is a tower
+            // that has not fired yet rather than a broken one.
+            place_marker(mw, br_o.q, br_o.r, MARKER_KIND_TOWER, 0 as u8);
+        } else {
+            paint(pw, br_o.q, br_o.r, br_o.kind);
+        }
         bl.cells[br_o.q, br_o.r] = null;
     }
     len(br_done)

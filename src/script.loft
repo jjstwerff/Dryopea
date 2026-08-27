@@ -1400,15 +1400,25 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         sa_oq = (tok[1] ?? "") as integer?;
         sa_or = (tok[2] ?? "") as integer?;
         if sa_oq == null || sa_or == null { return "order: <q> and <r> must be whole numbers"; }
-        sa_ok = palette_index_of(s.picker.palette, tok[3] ?? "");
-        if sa_ok < 0 { return "order: unknown ground kind '{tok[3] ?? ""}'"; }
+        // ⚠ `tower` is a WORD here rather than a palette kind, because
+        // a tower is a marker (`tower.loft` § Where a tower comes from)
+        // — the same discriminant `emit.loft` writes back out.
+        sa_owhat = BUILD_GROUND;
+        sa_ok = 0;
+        if (tok[3] ?? "") == "tower" {
+            sa_owhat = BUILD_TOWER;
+        } else {
+            sa_ok = palette_index_of(s.picker.palette, tok[3] ?? "");
+            if sa_ok < 0 { return "order: unknown ground kind '{tok[3] ?? ""}' (or `tower`)"; }
+        }
         sa_od = (tok[4] ?? "") as float?;
         if sa_od == null { return "order: <seconds-spent> must be a number"; }
         // ⚠ SECONDS on the page and base UNITS in the record — the same
         // conversion `tower`'s repair field makes, and for the same
         // reason: a `.keys` file is written by a person.
         run.play.wave.orders.cells[sa_oq, sa_or] =
-            BuildOrder { q: sa_oq, r: sa_or, kind: sa_ok as u8? ?? 0,
+            BuildOrder { q: sa_oq, r: sa_or, what: sa_owhat as u8? ?? 0,
+                         kind: sa_ok as u8? ?? 0,
                          spent: clock_units_from_seconds(sa_od) };
         return "";
     }
@@ -2281,25 +2291,27 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
             return "{sc_cmd}: {sc_a1} cannot carry — no vehicle in the world, or a wreck";
         }
 
+        // ⚠ BOTH halves need the core since plan 27 C4 — a drop
+        // because the core is what makes it a DELIVERY, and a take
+        // because standing there and pressing with empty hands BUYS a
+        // tower beacon.  So `take` demands the same one target marker
+        // `drop` and `tick` do, rather than silently treating "no core"
+        // as "nothing to buy".
+        sc_dcore = script_core(s.mw);
+        if sc_dcore.0 != 1 {
+            return "{sc_cmd}: needs exactly ONE target marker, found {sc_dcore.0}";
+        }
+        sc_dhex = Hex { q: sc_dcore.1, r: sc_dcore.2 };
+
         if sc_cmd == "take" {
-            if wave_take(run.play.wave, sc_who, s.mw) == CARGO_NONE {
-                return "take: {sc_a1} picked nothing up — hands full, or nothing within {CARGO_REACH_HEXES} hex";
+            if wave_take(run.play.wave, sc_who, sc_dhex, s.mw) == CARGO_NONE {
+                return "take: {sc_a1} picked nothing up — hands full, nothing within {CARGO_REACH_HEXES} hex, or not enough points for a beacon";
             }
             return "";
         }
 
-        // ⚠ A drop needs the core, because the core is what makes it a
-        // DELIVERY — so `drop` demands the same one target marker a
-        // `tick` does, rather than silently treating "no core" as "no
-        // destination anywhere" and putting a rescued crew member down
-        // on the floor.
-        sc_dcore = script_core(s.mw);
-        if sc_dcore.0 != 1 {
-            return "drop: needs exactly ONE target marker to deliver to, found {sc_dcore.0}";
-        }
-        if wave_drop(run.play.wave, sc_who,
-                     Hex { q: sc_dcore.1, r: sc_dcore.2 },
-                     s.mw) == CARGO_NONE {
+        if wave_drop(run.play.wave, sc_who, sc_dhex, s.mw,
+                     s.picker.palette, s.pw) == CARGO_NONE {
             return "drop: {sc_a1} is not carrying anything";
         }
         return "";

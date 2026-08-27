@@ -284,13 +284,13 @@ fn gate_run(mode: integer, limit: integer) -> Outcome {
                 gr_stage = 1;
             } else if gr_stage == 1 && gr_s.player.q == GATE_Q
                       && gr_s.player.r == 0 {
-                if mode == FETCH { wave_take(gr_s, BLOCKER_PLAYER, gr_mw); }
+                if mode == FETCH { wave_take(gr_s, BLOCKER_PLAYER, core(), gr_mw); }
                 vehicle_drive(gr_s.player, 0, 0);
                 gr_stage = 2;
             } else if gr_stage == 2 && gr_s.player.q == 0
                       && gr_s.player.r == 0 {
                 if mode == FETCH {
-                    wave_drop(gr_s, BLOCKER_PLAYER, core(), gr_mw);
+                    wave_drop(gr_s, BLOCKER_PLAYER, core(), gr_mw, pal(), painted_empty());
                 }
                 gr_stage = 3;
             } else if gr_stage == 3 && mode == FETCH
@@ -434,11 +434,11 @@ fn donor_run(spare_q: integer, policy: integer, limit: integer) -> Outcome {
                 vehicle_drive(dr_s.player, spare_q, 0);
                 dr_stage = 1;
             } else if dr_stage == 1 && dr_s.player.q == spare_q {
-                wave_take(dr_s, BLOCKER_PLAYER, dr_mw);
+                wave_take(dr_s, BLOCKER_PLAYER, core(), dr_mw);
                 vehicle_drive(dr_s.player, FRONT_Q, 0);
                 dr_stage = 2;
             } else if dr_stage == 2 && dr_s.player.q == FRONT_Q {
-                wave_drop(dr_s, BLOCKER_PLAYER, core(), dr_mw);
+                wave_drop(dr_s, BLOCKER_PLAYER, core(), dr_mw, pal(), painted_empty());
                 dr_stage = 3;
             }
         }

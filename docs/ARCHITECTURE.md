@@ -1374,6 +1374,55 @@ src/
                    the lattice's; there is no y-flip here, because
                    the one sign inversion lives in the metre
                    conversion
+  build.loft       THE BUILD ORDER (plan 27) — BuildOrder { q, r, what,
+                   kind, spent } in a sparse BuildLayer on WaveState,
+                   plus order_place / order_fault / order_erase /
+                   order_spend / build_at / build_resolve.  The ONLY way
+                   a structure comes into existence during a run.
+                   ⚠ Work is stored as SPENT, never LEFT, in INTEGER
+                   base units.  [loft#914] is why the first: a partial
+                   literal must read as *nobody has started*, not as
+                   *already finished*.  @M049 is why the second: a float
+                   rate accumulated per tick made a wall_high take 31
+                   ticks against a true 30, which is @D003/@D004's
+                   family in a new mechanic.
+                   ⚠⚠ THE TOTAL IS A DURATION DERIVED FROM THE KIND —
+                   10 s a wall, 20 s a wall_high, 30 s a tower — and it
+                   is FLAT rather than `structure_max_hp`, which would
+                   also handle bracing and would build a lone stub in
+                   1.5 s (@M048).  A wall is cheaper to BREAK at an end;
+                   it is not cheaper to BUILD there.
+                   ⚠⚠ `fixstep::Timer` was REFUSED on semantics: it
+                   fires once and DISARMS, so a completed timer reports
+                   zero progress — and a build order is spent during the
+                   tick and raised at the consequence stage, so it must
+                   stay readable after it completes.  A one-shot that
+                   forgets and a progress bar that must not are two
+                   families.
+                   ⚠ `order_place` asks `order_fault` itself, so an
+                   illegal order cannot be placed by forgetting to
+                   check — `maps.loft::map_fault`'s shape.  `buildable`
+                   is the palette flag it finally reads, carried since
+                   plan 01 and consumed by nothing until now.
+                   ⚠⚠ ONE QUEUE, TWO THINGS TO BUILD (@X273): `what` is
+                   BUILD_GROUND or BUILD_TOWER, and it is read at
+                   exactly ONE site — `build_resolve`, where a tower
+                   places a MARKER and a wall PAINTS.  Delete that
+                   branch and a tower silently paints SEA.
+                   ⚠⚠ A TOWER ORDER REFUSES ERASURE (@X274), and a
+                   falsifying probe found that rather than the design:
+                   the 100 points go at PICKUP, and the wall trail
+                   erases any order it drives over — so without it,
+                   driving over your own tower site destroys a beacon
+                   you paid for, silently.
+                   ⚠ `build_at` picks the MOST ADVANCED order in reach,
+                   so a crew converges: a half-built wall stops nothing,
+                   and it is what makes *N helpers are N times as fast*
+                   observable at all.
+                   ⚠ The marker check is NOT here — *is there already a
+                   marker on this hex* needs the marker world, so it
+                   lives in `spawn.loft::wave_drop`, which is the split
+                   `cargo_destination_ok` makes for a tower TOP
   font.loft        THE FONT — the ONE seam to graphics::draw_text
                    (BACKLOG B1) — TEXT_FONT_FILE, Font { handle, path,
                    loaded }, font_load / font_load_from / font_ready /

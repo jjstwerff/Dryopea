@@ -194,7 +194,7 @@ fn test_taking_a_top_stops_the_tower_firing() {
     assert(tts_fired > 0, "the tower is firing: {tts_fired}");
     assert(alive_count(tts_s) > 0, "and there is still something to shoot");
 
-    assert(wave_take(tts_s, BLOCKER_PLAYER, tts_mw) != CARGO_NONE,
+    assert(wave_take(tts_s, BLOCKER_PLAYER, core(), tts_mw) != CARGO_NONE,
            "the player takes its top");
     assert_sound(tts_s.cargo, "after the detach");
     assert(!tower_has_top(tts_s.towers, 4, 0), "the tower is stripped");
@@ -214,10 +214,10 @@ fn test_a_top_cannot_be_mounted_on_open_ground() {
     tam_mw  = two_towers();
     vehicle_place(tam_s.player, 4, 0);
 
-    wave_take(tam_s, BLOCKER_PLAYER, tam_mw);
+    wave_take(tam_s, BLOCKER_PLAYER, core(), tam_mw);
     vehicle_place(tam_s.player, 6, 2);          // nowhere near a tower
 
-    tam_i = wave_drop(tam_s, BLOCKER_PLAYER, core(), tam_mw);
+    tam_i = wave_drop(tam_s, BLOCKER_PLAYER, core(), tam_mw, pal(), painted_empty());
     assert(tam_i != CARGO_NONE, "it goes down");
     assert_sound(tam_s.cargo, "after a drop in the open");
     assert(cargo_owner(tam_s.cargo, tam_i) == BLOCKER_NONE,
@@ -225,7 +225,7 @@ fn test_a_top_cannot_be_mounted_on_open_ground() {
     assert(cargo_count(tam_s.cargo) == 1, "and still in the world");
 
     // And it can be picked straight back up.
-    assert(wave_take(tam_s, BLOCKER_PLAYER, tam_mw) == tam_i,
+    assert(wave_take(tam_s, BLOCKER_PLAYER, core(), tam_mw) == tam_i,
            "the same top is picked back up");
     assert_sound(tam_s.cargo, "after picking it back up");
 }
@@ -242,11 +242,11 @@ fn test_a_transplant_brings_a_black_tower_back_instantly() {
     assert(tower_black(tat_s.towers, 8, 0), "the far tower is black");
 
     vehicle_place(tat_s.player, 4, 0);
-    wave_take(tat_s, BLOCKER_PLAYER, tat_mw);
+    wave_take(tat_s, BLOCKER_PLAYER, core(), tat_mw);
     assert_sound(tat_s.cargo, "carrying the fresh top");
 
     vehicle_place(tat_s.player, 8, 0);
-    assert(wave_drop(tat_s, BLOCKER_PLAYER, core(), tat_mw) != CARGO_NONE,
+    assert(wave_drop(tat_s, BLOCKER_PLAYER, core(), tat_mw, pal(), painted_empty()) != CARGO_NONE,
            "it goes onto the black tower");
     assert_sound(tat_s.cargo, "after the swap");
 
@@ -267,11 +267,11 @@ fn test_a_swap_drops_the_sitting_top_and_conserves() {
     for _ in 0..20 { tower_spend_shot(tas_s.towers, 8, 0); }
 
     vehicle_place(tas_s.player, 4, 0);
-    wave_take(tas_s, BLOCKER_PLAYER, tas_mw);
+    wave_take(tas_s, BLOCKER_PLAYER, core(), tas_mw);
     assert(cargo_count(tas_s.cargo) == 1, "one top in the world");
 
     vehicle_place(tas_s.player, 8, 0);
-    wave_drop(tas_s, BLOCKER_PLAYER, core(), tas_mw);
+    wave_drop(tas_s, BLOCKER_PLAYER, core(), tas_mw, pal(), painted_empty());
     assert_sound(tas_s.cargo, "after the swap");
 
     // The fresh top is on the tower; the 20-shot one is on the ground.
@@ -300,11 +300,11 @@ fn test_a_top_delivered_to_the_core_is_evacuated() {
     tad_mw  = two_towers();
     vehicle_place(tad_s.player, 4, 0);
 
-    wave_take(tad_s, BLOCKER_PLAYER, tad_mw);
+    wave_take(tad_s, BLOCKER_PLAYER, core(), tad_mw);
     assert(cargo_count(tad_s.cargo) == 1, "one in the world");
 
     vehicle_place(tad_s.player, 0, 0);
-    assert(wave_drop(tad_s, BLOCKER_PLAYER, core(), tad_mw) != CARGO_NONE,
+    assert(wave_drop(tad_s, BLOCKER_PLAYER, core(), tad_mw, pal(), painted_empty()) != CARGO_NONE,
            "delivered at the core");
     assert_sound(tad_s.cargo, "after the evacuation");
 
@@ -324,8 +324,8 @@ fn test_a_full_carrier_cannot_take_a_second_top() {
     taf_mw = two_towers();
     vehicle_place(taf_s.player, 4, 0);
 
-    assert(wave_take(taf_s, BLOCKER_PLAYER, taf_mw) != CARGO_NONE, "one top");
-    assert(wave_take(taf_s, BLOCKER_PLAYER, taf_mw) == CARGO_NONE,
+    assert(wave_take(taf_s, BLOCKER_PLAYER, core(), taf_mw) != CARGO_NONE, "one top");
+    assert(wave_take(taf_s, BLOCKER_PLAYER, core(), taf_mw) == CARGO_NONE,
            "and no second one");
     assert_sound(taf_s.cargo, "after a refused take");
     assert(cargo_count(taf_s.cargo) == 1, "still one top in the world");
@@ -344,7 +344,7 @@ fn test_a_wreck_on_the_ground_wins_over_the_tower() {
     cargo_spawn(taw_s.cargo, CARGO_WRECK, 0, 4, 0);
 
     vehicle_place(taw_s.player, 4, 0);
-    taw_i = wave_take(taw_s, BLOCKER_PLAYER, taw_mw);
+    taw_i = wave_take(taw_s, BLOCKER_PLAYER, core(), taw_mw);
     assert(taw_i != CARGO_NONE, "something was picked up");
     assert_sound(taw_s.cargo, "after the pickup");
 
@@ -361,7 +361,7 @@ fn test_a_helper_can_carry_a_top() {
     tah_mw = two_towers();
     tah_s.crew += [helper_new(4, 0)];
 
-    assert(wave_take(tah_s, BLOCKER_CREW + 0, tah_mw) != CARGO_NONE,
+    assert(wave_take(tah_s, BLOCKER_CREW + 0, core(), tah_mw) != CARGO_NONE,
            "the helper takes the top");
     assert_sound(tah_s.cargo, "after a helper's pickup");
     assert(!tower_has_top(tah_s.towers, 4, 0), "the tower is stripped");
@@ -376,7 +376,7 @@ fn test_a_lost_carrier_leaves_the_top_on_the_ground() {
     tal_mw  = two_towers();
     tal_s.crew += [helper_new(4, 0)];
 
-    wave_take(tal_s, BLOCKER_CREW + 0, tal_mw);
+    wave_take(tal_s, BLOCKER_CREW + 0, core(), tal_mw);
     assert(cargo_count(tal_s.cargo) == 1, "one top, carried");
 
     cargo_spill(tal_s.cargo, BLOCKER_CREW + 0, Hex { q: 4, r: 0 });
