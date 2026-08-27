@@ -1,0 +1,261 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 27 phase C1 — the build ORDER.
+//
+// ⚠⚠ **The claim: an order exists only where the palette says a
+// structure may go, and never twice on one hex.**  Nothing builds it
+// yet — that is C2 — so this phase gates the RECORD and its refusals.
+//
+// ⚠ The refusals are the substance.  A record that accepts anything is
+// a hash with a nice name on it; what makes `order_fault` worth having
+// is the list of things it says no to, and every one of them is
+// exercised below by NAME.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+
+fn pal() -> vector<GroundType> { load_palette(PALETTE) }
+
+// Grass, with one hex of everything an order must refuse.
+fn ground() -> PaintedWorld {
+    g = painted_empty();
+    for g_q in -6..7 {
+        for g_r in -6..7 {
+            paint(g, g_q, g_r, as_u8(5));      // grass — buildable
+        }
+    }
+    paint(g, 2, 0, as_u8(8));                  // steep_rock — not buildable
+    paint(g, 3, 0, as_u8(9));                  // a wall already standing
+    paint(g, 4, 0, as_u8(0));                  // sea (erases the entry)
+    g
+}
+
+// ─── The record ─────────────────────────────────────────────────
+
+// @DRY-098 — order a wall on buildable ground, and read it back
+fn test_an_order_on_buildable_ground_is_accepted() {
+    p = pal();
+    pw = ground();
+    bl = build_layer_empty();
+
+    fault = order_fault(p, pw, bl, 0, 0, as_u8(9));
+    ok = order_place(p, pw, bl, 0, 0, as_u8(9));
+    kind = order_kind(bl, 0, 0);
+    done = order_done(bl, 0, 0);
+    total = order_work_total(p, as_u8(9));
+    n = order_count(bl);
+
+    assert(fault == "" && ok && kind == as_u8(9) && done == 0.0 && total == 100.0 && n == 1,
+           "a wall ordered on grass must read back untouched: fault='{fault}' ok={ok} kind={kind} done={done} total={total} count={n}");
+}
+
+// A fresh order owes its kind's UNBRACED figure, and `wall_high` owes
+// twice what `wall` does — `numbers.json` § build_time_wall 10 s vs 20 s
+// at 10 HP/s.
+fn test_wall_high_owes_twice_what_a_wall_owes() {
+    p = pal();
+    low  = order_work_total(p, as_u8(9));
+    high = order_work_total(p, as_u8(10));
+    assert(low == 100.0 && high == 200.0 && high == low * 2.0,
+           "wall owes 100 and wall_high 200: wall={low} wall_high={high}");
+}
+
+// ⚠⚠ THE REFUSAL @M048 named, asserted where it can be seen.  A lone
+// stub's braced HP is 15; the work it owes is 100.  If `order_work_total`
+// ever became `structure_max_hp` this is the reading that would move.
+fn test_the_work_owed_ignores_bracing() {
+    p = pal();
+    pw = ground();
+    paint(pw, -5, -5, as_u8(9));         // an isolated stub
+    owed  = order_work_total(p, as_u8(9));
+    braced = structure_max_hp(p, pw, -5, -5);
+    assert(owed == 100.0 && braced == 15.0,
+           "the work owed must ignore bracing, or a lone wall builds in 1.5 s: owed={owed} braced_hp={braced}");
+}
+
+// ─── The refusals ───────────────────────────────────────────────
+
+// @DRY-099 — every ground an order must refuse, refused BY NAME
+fn test_unbuildable_ground_is_refused_by_name() {
+    p = pal();
+    pw = ground();
+    bl = build_layer_empty();
+
+    rock = order_fault(p, pw, bl, 2, 0, as_u8(9));
+    wall = order_fault(p, pw, bl, 3, 0, as_u8(9));
+    sea  = order_fault(p, pw, bl, 4, 0, as_u8(9));
+
+    placed = order_place(p, pw, bl, 2, 0, as_u8(9))
+          || order_place(p, pw, bl, 3, 0, as_u8(9))
+          || order_place(p, pw, bl, 4, 0, as_u8(9));
+
+    assert(rock.contains("steep_rock") && wall.contains("wall") && sea.contains("sea")
+           && !placed && order_count(bl) == 0,
+           "each refusal must name the ground: rock='{rock}' wall='{wall}' sea='{sea}' any_placed={placed} count={order_count(bl)}");
+}
+
+// Ordering something that is not a structure is refused — you cannot
+// order a hex of grass into existence.
+fn test_ordering_a_non_structure_is_refused() {
+    p = pal();
+    pw = ground();
+    bl = build_layer_empty();
+    grass = order_fault(p, pw, bl, 0, 0, as_u8(5));
+    ok = order_place(p, pw, bl, 0, 0, as_u8(5));
+    assert(grass.contains("grass") && !ok,
+           "grass is not buildable-into: fault='{grass}' placed={ok}");
+}
+
+// Two orders on one hex is refused — the second would silently replace
+// the first's progress.
+fn test_a_second_order_on_one_hex_is_refused() {
+    p = pal();
+    pw = ground();
+    bl = build_layer_empty();
+    first  = order_place(p, pw, bl, 1, 1, as_u8(9));
+    fault  = order_fault(p, pw, bl, 1, 1, as_u8(10));
+    second = order_place(p, pw, bl, 1, 1, as_u8(10));
+    assert(first && !second && fault.contains("already ordered") && order_kind(bl, 1, 1) == as_u8(9),
+           "a hex takes one order: first={first} second={second} fault='{fault}' kind={order_kind(bl, 1, 1)}");
+}
+
+// ─── Erasing, and what commits an order ─────────────────────────
+
+// @DRY-100 — an untouched order is erasable and a started one is not
+//
+// ⚠ `DESIGN.md` § 11 § Wall paint: *"only valid while no helper has
+// started building — construction commits the order"*.  C3 spends this
+// rule from the trail; it lives here so the beacon ferry gets it too.
+fn test_an_untouched_order_erases_and_a_started_one_does_not() {
+    p = pal();
+    pw = ground();
+    bl = build_layer_empty();
+
+    order_place(p, pw, bl, 0, 0, as_u8(9));
+    order_place(p, pw, bl, 1, 0, as_u8(9));
+    order_advance(p, bl, 1, 0, 0.5);        // somebody has started this one
+
+    fresh   = order_erase(bl, 0, 0);
+    started = order_erase(bl, 1, 0);
+    nothing = order_erase(bl, 5, 5);
+
+    assert(fresh && !started && !nothing && order_count(bl) == 1 && order_at(bl, 1, 0),
+           "work commits an order: erased_fresh={fresh} erased_started={started} erased_nothing={nothing} left={order_count(bl)}");
+}
+
+// ─── Advancing ──────────────────────────────────────────────────
+
+// Work accumulates, and the spend that crosses the total is the ONE
+// that reports completion — so a caller cannot finish an order twice.
+fn test_completion_is_reported_exactly_once() {
+    p = pal();
+    pw = ground();
+    bl = build_layer_empty();
+    order_place(p, pw, bl, 0, 0, as_u8(9));
+
+    a = order_advance(p, bl, 0, 0, 40.0);     // 40 / 100
+    b = order_advance(p, bl, 0, 0, 40.0);     // 80 / 100
+    c = order_advance(p, bl, 0, 0, 40.0);     // 120 / 100 — crosses
+    d = order_advance(p, bl, 0, 0, 40.0);     // already over
+    done = order_done(bl, 0, 0);
+
+    assert(!a && !b && c && !d && order_complete(p, bl, 0, 0) && done == 160.0,
+           "exactly the crossing spend reports completion: 40={a} 80={b} 120={c} 160={d} done={done}");
+}
+
+// A spend on a hex with nothing ordered is a no-op rather than a fault,
+// and a non-positive spend changes nothing.
+fn test_a_spend_with_no_order_is_a_no_op() {
+    p = pal();
+    pw = ground();
+    bl = build_layer_empty();
+    order_place(p, pw, bl, 0, 0, as_u8(9));
+
+    nowhere = order_advance(p, bl, 9, 9, 10.0);
+    zero    = order_advance(p, bl, 0, 0, 0.0);
+    neg     = order_advance(p, bl, 0, 0, -5.0);
+
+    assert(!nowhere && !zero && !neg && order_done(bl, 0, 0) == 0.0 && order_count(bl) == 1,
+           "a spend with no order does nothing: nowhere={nowhere} zero={zero} neg={neg} done={order_done(bl, 0, 0)}");
+}
+
+// ─── The zero ───────────────────────────────────────────────────
+
+// ⚠⚠ [loft#914]: a partial literal takes each omitted field's default.
+// Work is stored as DONE precisely so that default reads as *nobody has
+// started*, and this is the assertion that would go red if somebody
+// flipped it to REMAINING.
+fn test_a_partial_order_literal_reads_as_unstarted() {
+    p = pal();
+    partial = BuildOrder { q: 1, r: 2, kind: as_u8(9) };
+    total = order_work_total(p, partial.kind);
+    assert(partial.done == 0.0 && partial.done < total,
+           "an omitted `done` must read as unstarted, not as finished: done={partial.done} total={total}");
+}
+
+// A fresh layer is empty, and an empty layer answers every question
+// without inventing an order.
+fn test_an_empty_layer_answers_nothing_everywhere() {
+    bl = build_layer_empty();
+    assert(order_count(bl) == 0 && !order_at(bl, 0, 0) && order_kind(bl, 0, 0) == 0 as u8
+           && order_done(bl, 0, 0) == 0.0,
+           "an empty layer must not invent an order: count={order_count(bl)} at={order_at(bl, 0, 0)}");
+}
+
+// ─── The order is part of the STATE ─────────────────────────────
+
+// ⚠⚠ `WaveState` gained a field, and `compare.loft`'s field list is
+// HAND-MAINTAINED — so without a row there, two runs that differ only
+// in what has been ordered read as identical and every capture gate in
+// `plans/18` is green over a state it cannot see.
+fn test_state_diff_sees_an_order() {
+    p = pal();
+    pw = ground();
+    a = wave_state_empty();
+    b = wave_state_empty();
+
+    same0 = state_diff(a, b);
+    order_place(p, pw, a.orders, 0, 0, as_u8(9));
+    missing = state_diff(a, b);
+
+    order_place(p, pw, b.orders, 0, 0, as_u8(10));
+    kind = state_diff(a, b);
+
+    b.orders.cells[0, 0] = null;
+    order_place(p, pw, b.orders, 0, 0, as_u8(9));
+    same1 = state_diff(a, b);
+
+    order_advance(p, b.orders, 0, 0, 5.0);
+    done = state_diff(a, b);
+
+    assert(same0 == "" && missing != "" && kind.contains("kind") && same1 == "" && done.contains("done"),
+           "state_diff must see an order appear, change kind and change progress: none='{same0}' missing='{missing}' kind='{kind}' same='{same1}' done='{done}'");
+}
+
+// ⚠ `plans/18` § S2's rule: emit writes a STARTING POSITION, and a
+// capture that cannot write a field back is a capture that loses it.
+fn test_an_order_survives_emit_and_replay() {
+    p = pal();
+    es = editor_state_new(PALETTE);
+    for tr_q in -3..4 {
+        for tr_r in -3..4 { paint(es.pw, tr_q, tr_r, as_u8(5)); }
+    }
+    st = wave_state_empty();
+    order_place(p, es.pw, st.orders, 1, 1, as_u8(9));
+    order_place(p, es.pw, st.orders, 2, 1, as_u8(10));
+    order_advance(p, st.orders, 2, 1, 30.0);
+
+    text_out = emit_keys(p, es.pw, es.mw, st, "27_c1");
+    lines = 0;
+    for tr_l in text_out.split('\n') {
+        if tr_l.starts_with("order ") { lines = lines + 1; }
+    }
+    assert(lines == 2 && text_out.contains("order 1 1 wall 0") && text_out.contains("order 2 1 wall_high 30"),
+           "both orders must be emitted by kind NAME with their progress: lines={lines}");
+}

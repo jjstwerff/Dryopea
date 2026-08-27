@@ -76,6 +76,7 @@ fn test_every_field_of_the_state_is_reachable() {
         // the runtime layers
         + "raise 5 1 1.5 carapace\n"
         + "damage 6 0 25\n"
+        + "order 2 2 wall_high 30\n"
         + "tower 4 0 12 0.4 6.0 off\n"
         + "spent 30\n"
         // the movers
@@ -107,6 +108,12 @@ fn test_every_field_of_the_state_is_reachable() {
 
     height_raise(tef_want.heights, 5, 1, 1.5, as_u8(RUBBLE_CARAPACE));
     damage_apply(tef_want.damage, 6, 0, 25.0);
+    // ⚠ A KIND and a PROGRESS the default would not produce (plan 27
+    // C1) — the same argument the delay and the composition below make.
+    // `orders` left empty on both sides compares equal and proves
+    // nothing, and this file's own comment is what says so.
+    tef_want.orders.cells[2, 2] =
+        BuildOrder { q: 2, r: 2, kind: as_u8(10), done: 30.0 };
 
     tower_bank(tef_want.towers, 4, 0, 0.0);
     tef_wc = tef_want.towers.cells[4, 0];

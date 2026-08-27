@@ -1,0 +1,221 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// BUILDING — the ORDER, and the layer it lives in.
+//
+// Plan 27 phase C1.  The player cannot make a base: walls and towers
+// are placed in the EDITOR, and the wallet buys nothing.  This is the
+// record that changes that.
+//
+// ── The invariant ───────────────────────────────────────────────
+//
+// > **A build order is ONE record — a site, what goes there, and the
+// > work still owed — and it is the only way a structure comes into
+// > existence during a run.**
+//
+// Everything that orders creates one (wall paint, the beacon ferry);
+// everything that builds spends helper-seconds against one; an order
+// that reaches its total paints its hex and disappears.
+//
+// ⚠ Omitting the order at a NEW creator is LOUD — nothing appears — so
+// the two creators do not need a type to force the call.
+//
+// ── Work is what has been DONE, never what is LEFT ──────────────
+//
+// ⚠⚠ Same rule as `damage.loft` § DAMAGE TAKEN, `tower.loft` § Shots
+// FIRED and `wallet.loft` § points SPENT, and here it is [loft#914]
+// that makes it load-bearing: **a struct literal that omits a field
+// takes that field's default SILENTLY**.  Store work REMAINING and a
+// `BuildOrder { q: 1, r: 2, kind: … }` written anywhere is an order
+// that is **already finished** — it would paint a wall the moment
+// anything looked at it.  Store work DONE and the same partial literal
+// is an order nobody has started, which is the truthful zero.
+//
+// ── What the order does NOT say ─────────────────────────────────
+//
+// ⚠ **It carries no height and no passability.**  A site is an
+// INTENT: an enemy walks over it, a vehicle drives through it, and the
+// flow field does not know it is there.  The alternative — a
+// half-built obstacle that already blocks — is a mechanic rather than
+// a detail, and `plans/27` § Open questions 2 is where it would be
+// argued.
+//
+// ⚠ **And it carries no builder.**  `@X252` makes helpers
+// semi-automatic by default, so an order is PICKED UP rather than
+// assigned; a `helper` field here would be the auto-assignment
+// `@X198` names as the thing that deletes the assignment pillar.
+//
+// ── Why this is not a `StructureHit` ────────────────────────────
+//
+// ⚠⚠ `DamageLayer` is the same SHAPE — a sparse hash keyed by hex, one
+// door, zero removes the entry — and it is **not the same rule**.
+// Damage is harm to a structure that EXISTS; an order is intent for one
+// that does not, and it carries a KIND because nothing on the hex says
+// what is coming.  The pattern is copied; the record is not extended.
+// *Equality of shape is evidence; sameness of rule is the claim.*
+
+use painted;
+use palette;
+use damage;
+use lattice;
+
+// One ordered structure.
+pub struct BuildOrder {
+    q:    integer,
+    r:    integer,
+    kind: u8,       // palette index of what goes here
+    done: float,    // work already spent — see § Work is what has been DONE
+}
+
+// Every order on the map.  Lives on `WaveState`, never saved: a map
+// holds the GROUND and the MARKERS (`maps.loft`), and an order is
+// something a RUN is in the middle of.
+pub struct BuildLayer {
+    cells: hash<BuildOrder[q, r]>,
+}
+
+// Factory: nothing ordered.
+pub fn build_layer_empty() -> BuildLayer {
+    BuildLayer { cells: [] }
+}
+
+// How much work `kind` owes, in the same units `damage.loft` counts HP.
+//
+// ⚠⚠ **The kind's UNBRACED figure, and that is a refusal** (`@M048`).
+// `structure_max_hp` scales by `brace_of`, so *the HP it will have*
+// would also handle bracing — elegantly, and wrongly: a lone stub
+// would owe **15** and build in 1.5 s where `DESIGN.md` § 13 says *one
+// helper, one wall hex, 10 s* flatly.  **A wall is cheaper to BREAK at
+// an end; it is not cheaper to BUILD there.**
+//
+// ⚠ It asks by KIND rather than by hex because an order's hex is still
+// grass — there is nothing painted there to read.
+//
+// Example: @DRY-098
+pub fn order_work_total(pal: vector<GroundType>, kind: u8) -> float {
+    structure_kind_hp(pal, kind)
+}
+
+// Is there an order here?
+pub fn order_at(bl: const BuildLayer, q: integer, r: integer) -> boolean {
+    bl.cells[q, r] != null
+}
+
+// What is ordered here — palette index, or 0 (sea, i.e. nothing) on a
+// hex with no order.
+pub fn order_kind(bl: const BuildLayer, q: integer, r: integer) -> u8 {
+    ok_c = bl.cells[q, r];
+    if ok_c == null { 0 as u8 } else { ok_c.kind }
+}
+
+// Work spent here so far — 0.0 where nothing is ordered, which is also
+// what an untouched order reads.
+//
+// ⚠ The two are told apart by `order_at`, never by this number.
+pub fn order_done(bl: const BuildLayer, q: integer, r: integer) -> float {
+    od_c = bl.cells[q, r];
+    if od_c == null { 0.0 } else { od_c.done }
+}
+
+// How many orders stand.
+pub fn order_count(bl: const BuildLayer) -> integer {
+    len(bl.cells)
+}
+
+// Why an order at (q, r) for `kind` would be refused — `""` when it
+// would not.
+//
+// ⚠⚠ **This is the doorstep, and `order_place` asks it rather than
+// duplicating it** — the shape `maps.loft::map_fault` uses, so the
+// same sentence answers *may I?* and *why not?*.
+//
+// ⚠ Pure of the run: it reads the palette, the ground and the orders
+// already standing, so it reads the same for a hex reached by driving,
+// by a script, or by a beacon.
+//
+// Example: @DRY-099
+pub fn order_fault(pal: vector<GroundType>, pw: PaintedWorld,
+                   bl: const BuildLayer, q: integer, r: integer,
+                   kind: u8) -> text {
+    if order_work_total(pal, kind) <= 0.0 {
+        of_want = pal[kind as integer] ?? GroundType {};
+        return "`{of_want.name}` is not something that can be built";
+    }
+    // ⚠ The palette has carried `buildable` since plan 01 and no
+    // simulation code read it until now.  Sea, water, rapids,
+    // waterfall, steep_rock, both walls and rubble are all false —
+    // which is *you cannot build on water, on a cliff, on a heap, or
+    // on something already standing*, in one flag.
+    of_here = lookup_painted(pw, q, r);
+    of_g = pal[of_here as integer] ?? GroundType {};
+    if !of_g.buildable {
+        return "the ground at ({q}, {r}) is `{of_g.name}`, which is not buildable";
+    }
+    if order_at(bl, q, r) {
+        of_std = pal[order_kind(bl, q, r) as integer] ?? GroundType {};
+        return "({q}, {r}) is already ordered as `{of_std.name}`";
+    }
+    ""
+}
+
+// Order `kind` at (q, r).  Answers whether it was accepted.
+//
+// ⚠⚠ **The ONE door.**  It asks `order_fault` itself, so a caller
+// cannot place an illegal order by forgetting to check — which is what
+// makes the refusals above a rule rather than a convention.  The wall
+// trail and the beacon ferry both arrive here.
+//
+// Example: @DRY-098
+pub fn order_place(pal: vector<GroundType>, pw: PaintedWorld,
+                   bl: BuildLayer, q: integer, r: integer,
+                   kind: u8) -> boolean {
+    if order_fault(pal, pw, bl, q, r, kind) != "" { return false; }
+    bl.cells[q, r] = BuildOrder { q: q, r: r, kind: kind, done: 0.0 };
+    true
+}
+
+// Take an order back.  Answers whether one was removed.
+//
+// ⚠⚠ **Refuses an order somebody has started**, which is `DESIGN.md`
+// § 11 § Wall paint's *"only valid while no helper has started
+// building — construction commits the order"*.  The rule lives here
+// rather than in the trail, because the beacon ferry wants it too and
+// a second copy is the one that drifts.
+//
+// Example: @DRY-100
+pub fn order_erase(bl: BuildLayer, q: integer, r: integer) -> boolean {
+    oe_c = bl.cells[q, r];
+    if oe_c == null { return false; }
+    if oe_c.done > 0.0 { return false; }
+    bl.cells[q, r] = null;
+    true
+}
+
+// Spend `amount` of work on the order at (q, r).  Answers whether that
+// spend COMPLETED it.
+//
+// ⚠ It does not paint — completion is a consequence and belongs with
+// the tick's other consequences (`spawn.loft` § the deaths and the
+// breaks).  `order_finish` is the site that does both halves.
+//
+// ⚠ A spend on a hex with no order is a no-op rather than a fault: a
+// helper working on an order somebody erased this tick is a race the
+// caller should not have to spell.
+pub fn order_advance(pal: vector<GroundType>, bl: BuildLayer,
+                     q: integer, r: integer, amount: float) -> boolean {
+    oa_c = bl.cells[q, r];
+    if oa_c == null { return false; }
+    if amount <= 0.0 { return false; }
+    oa_total = order_work_total(pal, oa_c.kind);
+    oa_was = oa_c.done;
+    oa_c.done = oa_was + amount;
+    oa_was < oa_total && oa_c.done >= oa_total
+}
+
+// Has the order at (q, r) had all its work spent?
+pub fn order_complete(pal: vector<GroundType>, bl: const BuildLayer,
+                      q: integer, r: integer) -> boolean {
+    oc_c = bl.cells[q, r];
+    if oc_c == null { return false; }
+    oc_c.done >= order_work_total(pal, oc_c.kind)
+}

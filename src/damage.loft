@@ -388,12 +388,28 @@ pub fn damage_count(dl: const DamageLayer) -> integer {
 // BRACED number, and what a hex on the map is actually worth is
 // `structure_max_hp` — this is only the half of it that the kind
 // decides.
+// The unbraced HP a palette KIND is worth — 0.0 for anything that is
+// not a structure.
+//
+// ⚠ The by-index door, for a caller that has a kind and no hex to read
+// it off.  `plans/27` C1 is the first: a build order's site is still
+// grass, so there is nothing painted there to ask.
+//
+// ⚠⚠ **`structure_base_hp` delegates here rather than repeating the
+// two names**, which is what stops a third structure kind from being
+// added to one and not the other.
+//
+// Example: @DRY-098
+pub fn structure_kind_hp(pal: vector<GroundType>, kind: u8) -> float {
+    skh_e = pal[kind as integer] ?? GroundType {};
+    if skh_e.name == "wall"      { return WALL_HP; }
+    if skh_e.name == "wall_high" { return WALL_HIGH_HP; }
+    0.0
+}
+
 pub fn structure_base_hp(pal: vector<GroundType>, pw: PaintedWorld,
                          q: integer, r: integer) -> float {
-    sbh_name = painted_kind_name(pal, pw, q, r);
-    if sbh_name == "wall"      { return WALL_HP; }
-    if sbh_name == "wall_high" { return WALL_HIGH_HP; }
-    0.0
+    structure_kind_hp(pal, lookup_painted(pw, q, r))
 }
 
 // The HP the structure at this hex actually has — its kind's figure,

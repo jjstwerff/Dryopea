@@ -1237,7 +1237,7 @@ fn script_ints(tok: vector<text>, n: integer) -> vector<integer> {
 fn is_author_cmd(name: text) -> boolean {
     name == "tower" || name == "object" || name == "spent"
     || name == "player" || name == "member" || name == "pending"
-    || name == "cursor" || name == "flag"
+    || name == "cursor" || name == "flag" || name == "order"
 }
 
 // Read an on/off word.  -1 when it is neither, so a caller can refuse.
@@ -1377,6 +1377,27 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
 
     // Points SPENT out of the run's budget — the way `wallet.loft`
     // stores it, so the fixture says what the ledger says.
+    // A BUILD ORDER, authored (plan 27 C1).
+    //
+    // ⚠ It AUTHORS and never simulates, exactly as `tower` and `object`
+    // do: the ground is not checked against `order_fault`, because a
+    // captured state is a POSITION rather than a request — a legal run
+    // can reach an order whose ground later changed, and a scenario
+    // that could not write it back would not round-trip.
+    if sa_cmd == "order" {
+        if sa_argc != 4 { return "order needs <q> <r> <kind> <done>"; }
+        sa_oq = (tok[1] ?? "") as integer?;
+        sa_or = (tok[2] ?? "") as integer?;
+        if sa_oq == null || sa_or == null { return "order: <q> and <r> must be whole numbers"; }
+        sa_ok = palette_index_of(s.picker.palette, tok[3] ?? "");
+        if sa_ok < 0 { return "order: unknown ground kind '{tok[3] ?? ""}'"; }
+        sa_od = (tok[4] ?? "") as float?;
+        if sa_od == null { return "order: <done> must be a number"; }
+        run.play.wave.orders.cells[sa_oq, sa_or] =
+            BuildOrder { q: sa_oq, r: sa_or, kind: sa_ok as u8? ?? 0, done: sa_od };
+        return "";
+    }
+
     if sa_cmd == "spent" {
         if sa_argc != 1 { return "spent needs <points>"; }
         sa_sp = (tok[1] ?? "") as float?;

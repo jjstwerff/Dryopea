@@ -9,7 +9,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**Active — C0 shipped (the probes), C1-C5 open.**
+**Active — C0 + C1 shipped, C2-C5 open.**
 
 Walls and towers are placed in the **editor**.  The player cannot make a
 base, and the wallet buys nothing.  This plan builds the missing verb:
@@ -100,7 +100,7 @@ break at an end; it is not cheaper to build there.
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
 | **C0** — the probes: what the design assumes, measured | S | `tests/27_c0_probe.loft` | **Shipped** |
-| **C1** — the order record + its layer + `.keys` authoring + `order_fault` | M | `tests/27_c1_the_order.loft`; `state_diff` + emit round-trip | Open |
+| **C1** — the order record + its layer + `.keys` authoring + `order_fault` | M | `tests/27_c1_the_order.loft`; `state_diff` + emit round-trip | **Shipped** |
 | **C2** — helpers build it, and the structure appears | M | `tests/27_c2_construction.loft`; N-helpers-N-times; `can_step` flips | Open |
 | **C3** — wall paint (Q): the trail lays orders, re-driving erases | M | `tests/27_c3_wall_paint.loft` + a `.keys` scenario in the gate | Open |
 | **C4** — the beacon ferry: 100 points, carry, drop, tower | M | `tests/27_c4_the_beacon.loft` | Open |
@@ -150,3 +150,18 @@ break at an end; it is not cheaper to build there.
   ⚠ Three further claims probed TRUE (`buildable` exists and is unread,
   the work owed is already a number, a wall closes a step) and a fourth is
   the § The invariant refusal, measured: a lone stub is **15**, not 100.
+- **C1** — `src/build.loft`.  Work is stored as **DONE, never LEFT**, and
+  [loft#914] is why: a partial literal omitting `done` reads as *nobody has
+  started*, where storing REMAINING would make it read as **already
+  finished** and paint a wall the moment anything looked at it.  Same rule
+  as `damage.loft` § DAMAGE TAKEN and `wallet.loft` § points SPENT, and the
+  same fail-closed argument `font.loft` makes for `loaded`.
+  ⚠ `order_place` asks `order_fault` itself, so an illegal order cannot be
+  placed by forgetting to check — `maps.loft::map_fault`'s shape.
+  ⚠ `structure_base_hp` now delegates to a new `structure_kind_hp`, because
+  an order's hex is still grass and there is nothing painted there to read.
+  ⚠⚠ **Adding a field to `WaveState` costs FOUR sites and three of them
+  fail silently** — `compare.loft` (two runs differing only in orders would
+  read as identical), `emit.loft` (a capture that loses the field),
+  `convert.loft`'s schema and `tests/09_c5a`'s vocabulary list.  The last
+  one is the only one that went red on its own.

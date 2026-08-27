@@ -128,7 +128,9 @@ fn emit_enemies(state: const WaveState) -> text {
     ee_out
 }
 
-fn emit_layers(state: const WaveState) -> text {
+// ⚠ It takes the palette only for the ORDER lines, which name their
+// kind rather than indexing it — the same choice `kind` and `flag` make.
+fn emit_layers(pal: vector<GroundType>, state: const WaveState) -> text {
     el_out = "";
     for el_h in state.heights.cells {
         el_out = el_out + "raise {el_h.q} {el_h.r} {el_h.metres} "
@@ -136,6 +138,13 @@ fn emit_layers(state: const WaveState) -> text {
     }
     for el_d in state.damage.cells {
         el_out = el_out + "damage {el_d.q} {el_d.r} {el_d.taken}\n";
+    }
+    // ⚠ Build orders (plan 27 C1).  Written by KIND NAME rather than by
+    // palette index, like `kind` and `flag`, so a `.keys` file survives
+    // a palette whose entries were reordered.
+    for el_o in state.orders.cells {
+        el_og = pal[el_o.kind as integer] ?? GroundType {};
+        el_out = el_out + "order {el_o.q} {el_o.r} " + el_og.name + " {el_o.done}\n";
     }
     for el_t in state.towers.cells {
         el_out = el_out + "tower {el_t.q} {el_t.r} {el_t.shots} "
@@ -259,7 +268,7 @@ pub fn emit_keys(pal: vector<GroundType>, pw: const PaintedWorld,
     ek_out = ek_out + emit_markers(mw);
     ek_out = ek_out + emit_ground(pal, pw);
     ek_out = ek_out + emit_enemies(state);
-    ek_out = ek_out + emit_layers(state);
+    ek_out = ek_out + emit_layers(pal, state);
     ek_out = ek_out + emit_movers(state);
     ek_out = ek_out + emit_cargo(state);
     ek_out = ek_out + emit_schedule(state);
@@ -380,6 +389,15 @@ fn crop_state(state: const WaveState, centre: const Hex,
     for cs_d in state.damage.cells {
         if in_crop(centre, radius, cs_d.q, cs_d.r) {
             damage_apply(cs_out.damage, cs_d.q, cs_d.r, cs_d.taken);
+        }
+    }
+    // ⚠ Build orders crop like every other layer — an order outside the
+    // radius is ground the crop does not contain, so keeping it would
+    // emit a line about a hex the fixture no longer has.
+    for cs_o in state.orders.cells {
+        if in_crop(centre, radius, cs_o.q, cs_o.r) {
+            cs_out.orders.cells[cs_o.q, cs_o.r] =
+                BuildOrder { q: cs_o.q, r: cs_o.r, kind: cs_o.kind, done: cs_o.done };
         }
     }
     // ⚠ A tower's cell goes with its MARKER, by the same predicate — a

@@ -48,6 +48,7 @@
 use lattice;
 use height;
 use damage;
+use build;
 use tower;
 use wallet;
 use vehicle;
@@ -212,6 +213,30 @@ fn damage_diff(a: const DamageLayer, b: const DamageLayer) -> text {
     }
     if len(a.cells) != len(b.cells) {
         return "damage: {len(a.cells)} hexes vs {len(b.cells)}";
+    }
+    ""
+}
+
+// ⚠ Orders are compared by KEY like every other layer, because hash
+// iteration order is not part of the state.  Both fields matter: a hex
+// ordered as `wall` and the same hex ordered as `wall_high` are two
+// different bases, and so are one somebody has started and one nobody
+// has.
+fn orders_diff(a: const BuildLayer, b: const BuildLayer) -> text {
+    for od_x in a.cells {
+        od_y = b.cells[od_x.q, od_x.r];
+        if od_y == null {
+            return "order ({od_x.q}, {od_x.r}): kind {od_x.kind} vs nothing";
+        }
+        if od_x.kind != od_y.kind {
+            return "order ({od_x.q}, {od_x.r}): kind {od_x.kind} vs {od_y.kind}";
+        }
+        if od_x.done != od_y.done {
+            return "order ({od_x.q}, {od_x.r}): done {od_x.done} vs {od_y.done}";
+        }
+    }
+    if len(a.cells) != len(b.cells) {
+        return "orders: {len(a.cells)} vs {len(b.cells)}";
     }
     ""
 }
@@ -382,6 +407,8 @@ pub fn state_diff(a: const WaveState, b: const WaveState) -> text {
     if sd_h != "" { return sd_h; }
     sd_d = damage_diff(a.damage, b.damage);
     if sd_d != "" { return sd_d; }
+    sd_o = orders_diff(a.orders, b.orders);
+    if sd_o != "" { return sd_o; }
     sd_t = towers_diff(a.towers, b.towers);
     if sd_t != "" { return sd_t; }
     sd_w = wallet_diff(a.wallet, b.wallet);
