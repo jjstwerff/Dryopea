@@ -91,6 +91,7 @@ use palette;
 use damage;
 use lattice;
 use fixstep;
+use save;
 
 // How long one helper takes over each structure, in the clock's base
 // units — `numbers.json` § `wall.build_time_wall` (10 s) and
@@ -362,4 +363,21 @@ pub fn build_resolve(pal: vector<GroundType>, pw: PaintedWorld,
         bl.cells[br_o.q, br_o.r] = null;
     }
     len(br_done)
+}
+
+// The palette index the wall trail lays.
+//
+// ⚠ Looked up by NAME rather than written as `9`, because the palette
+// is loaded from a file and a hard-coded index is a second definition
+// of what `wall` is — `save.loft::palette_index_of` is the one door.
+//
+// ⚠ **The trail lays the LOW wall.**  `DESIGN.md` § 13 gives both
+// heights the same economics and the player the choice, but the choice
+// itself is a second key and `@X139` makes the key table a budget —
+// so the trail lays one kind and picking the other is unbuilt work
+// rather than an omission.
+pub fn as_wall_kind(pal: vector<GroundType>) -> u8 {
+    awk_i = palette_index_of(pal, "wall");
+    if awk_i < 0 { return 0 as u8; }
+    awk_i as u8? ?? 0
 }

@@ -9,7 +9,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**Active — C0 + C1 + C2 shipped, C3-C5 open.**
+**Active — C0-C3 shipped; C4 and C5 open.**
 
 Walls and towers are placed in the **editor**.  The player cannot make a
 base, and the wallet buys nothing.  This plan builds the missing verb:
@@ -91,7 +91,7 @@ break at an end; it is not cheaper to build there.
 |---|---|---|---|
 | **C1** | an order authored at a `grass` hex reads back `kind = wall, work = 100`; the same order at `steep_rock` is **refused by name** | an order exists only where the palette says `buildable`, and never where a structure already stands | `steep_rock`, `water`, an occupied `wall` hex, and a **second order on the same hex** |
 | **C2** ✅ | one helper finishes a wall in **15 ticks** (10.0 s); two in **8**, four in **4**; `wall_high` in **30**; on completion `lookup_painted` answers `wall` and `can_step` **refuses** the hex | work is helper-seconds and nothing else — N helpers are N times as fast, exactly | a helper out of reach adds **zero**; a wrecked helper adds **zero**; a run with **no crew** builds nothing |
-| **C3** | driving Q-on over three hexes leaves three orders; re-driving one **erases** it; re-driving one a helper has **started** does not | the trail is erasable exactly until work has been spent on it | an order with `work < full` refuses erasure |
+| **C3** ✅ | driving Q-on across the field orders **every hex entered** (12 of 12, one gap — the hex it started on); driving back rubs out the middle and leaves **the two ends**; a hex a helper has **started** survives | the trail toggles on ENTRY, along the path actually taken | the endpoint-only version reads **6 laid, 7 gaps** — the wall with holes |
 | **C4** | beacon pickup at the core debits **100**; a drop on a legal site leaves a tower order owing **300** | points are spent at PICKUP and a failed deposit does not refund | a pickup with < 100 points is refused; a drop off-site keeps the beacon |
 | **C5** | a base whose player builds during the recon window outlives the same base whose player does not | `@X022`'s *pre-wave window is a budget* is a measurable claim | the control run must differ **only** in the build |
 
@@ -102,7 +102,7 @@ break at an end; it is not cheaper to build there.
 | **C0** — the probes: what the design assumes, measured | S | `tests/27_c0_probe.loft` | **Shipped** |
 | **C1** — the order record + its layer + `.keys` authoring + `order_fault` | M | `tests/27_c1_the_order.loft`; `state_diff` + emit round-trip | **Shipped** |
 | **C2** — helpers build it, and the structure appears | M | `tests/27_c2_construction.loft`; N-helpers-N-times; `can_step` flips | **Shipped** |
-| **C3** — wall paint (Q): the trail lays orders, re-driving erases | M | `tests/27_c3_wall_paint.loft` + a `.keys` scenario in the gate | Open |
+| **C3** — wall paint (Q): the trail lays orders, re-driving erases | M | `tests/27_c3_wall_paint.loft` | **Shipped** |
 | **C4** — the beacon ferry: 100 points, carry, drop, tower | M | `tests/27_c4_the_beacon.loft` | Open |
 | **C5** — the measurement: does building buy a base anything? | S | `scripts/validate.sh` scenarios, `plans/12` § B7 shape | Open |
 
@@ -150,6 +150,13 @@ break at an end; it is not cheaper to build there.
   ⚠ Three further claims probed TRUE (`buildable` exists and is unread,
   the work owed is already a number, a wall closes a step) and a fourth is
   the § The invariant refusal, measured: a lone stub is **15**, not 100.
+- **C3** — `@X270`, `@X271`.  ⚠⚠ **The trail walks `lat_line` and skips
+  the hex it started on**, which fixes two things at once: a vehicle
+  crosses two hexes a tick so the endpoint alone leaves gaps, and the
+  previous tick already ordered the start so re-laying it rubs the trail
+  out.  ⚠ Paint mode is on `PlayState`, so `WaveState` gains nothing.
+  ⚠ **Both design-budget gates fired as designed** — `09_i1`'s row count
+  and `a4_the_controls`' documentation check — which is `@X139` working.
 - **C2** — `@M049`, `@X269`.  ⚠⚠ **The first build of the work was a
   FLOAT rate and it came up short**: `wall_high` took **31 ticks against
   a true 30**, which is `@D003`/`@D004`'s family in a new mechanic.  The

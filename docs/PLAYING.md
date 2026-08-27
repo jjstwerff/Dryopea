@@ -86,13 +86,22 @@ played frame never pans and an edited one never drives.
 | `W` `A` `S` `D` | `drive_north` `drive_west` `drive_south` `drive_east` | drive, at 3 hexes/sec |
 | `Shift` | `boost` | 6 hexes/sec for 2 s, then 5 s of cooldown — and it climbs **3.0 m** where a rolling vehicle climbs 0.4.  ⚠ The only way out of a base you have sealed |
 | `E` | `carry` | pick up / put down.  **One key**, resolved on what your hands hold; dropping at the core delivers |
+| `Q` | `paint_wall` | ⚠⚠ **wall paint on / off — this is how you BUILD.**  With it on, every hex you drive over is ordered as a wall; drive over one again and the outline is rubbed out.  Your crew raise them, **10 s of one helper's time per hex** — two helpers on one site take half as long.  ⚠ You cannot order a wall on water, on a cliff, on a heap or on something already standing.  ⚠ An outline a helper has **started** can no longer be rubbed out |
+
+⚠⚠ **`Q` is the one key here that is not a place you drive to**, and
+that is deliberate rather than an oversight — `DESIGN.md` § 11 calls it
+*"an acknowledged exception to the spatial principle"*.  Everything else
+in play mode happens because of where you are; this changes what driving
+MEANS.  It is also the key you are most likely never to find, which is
+why the vehicle is meant to tint red while it is on.
 
 ⚠ **The editor's mouse still works while the clock runs**, and the
 simulation sees it — measured: a `wall_high` painted mid-run makes the
-hex robots were stepping through impassable on the next tick.  ⚠ But
-the renderer does not: the live mesh watches the *height layer*, which
-cannot see a hex you painted (`src/play_view.loft`), so what you drew
-does not appear until you leave play mode and come back.
+hex robots were stepping through impassable on the next tick.  ⚠ And
+since plan 27 C2 **the renderer sees it too**: the live mesh used to
+watch the *height layer* only, which could not see a hex you painted, so
+what you drew stayed invisible until you left play mode and came back
+(`@X269`).
 
 ### Painting
 
@@ -190,7 +199,7 @@ is about.
 
 | missing | what it means when you play |
 |---|---|
-| ⚠⚠ **BUILDING** | You cannot build during a run.  The wallet counts down and buys nothing; walls and towers are placed in the **editor**, before you press P.  This is the biggest missing mechanic — [`../plans/BACKLOG.md`](../plans/BACKLOG.md) B2 |
+| ⚠ **BUYING** | You can build WALLS now (`Q`, above — [`plans/27`](../plans/27-building/README.md) C3), and they are free: helper-time is the cost.  What the wallet still buys is **nothing** — a TOWER needs the beacon ferry and a seventh crew member needs an order, and neither is built |
 | ⚠⚠ **TEXT** | Nothing can draw a letter (`@X097`), so the wallet is seven-segment rectangles and there is no dialogue, no debrief, no crew chatter — BACKLOG B1 |
 | **the landing flow** | P puts you at the core.  Choosing where to land is plan 05 |
 | **a crew you can direct** | Helpers exist in the simulation, and a `.keys` scenario can place them — `make play SCRIPT=a-base-that-plays-its-list` gives you one.  ⚠ A **map** cannot carry crew, so every shipped map is played solo |

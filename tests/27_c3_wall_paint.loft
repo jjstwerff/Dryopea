@@ -1,0 +1,222 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 27 phase C3 — wall paint, and the trail it leaves.
+//
+// ⚠⚠ **The claim: driving with paint mode on orders every hex you
+// cross, and driving over one again rubs it out — until a helper has
+// started it.**
+//
+// ⚠ The reading that carries the phase is the one about the PATH.  At
+// 3 hex/s over a 2/3 s tick the vehicle crosses TWO hexes, so a trail
+// laid at the vehicle's hex alone leaves a gap in every other one — a
+// wall with holes in it, which is a wall that stops nothing.  A gate
+// that only drove one hex a tick could not see that.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+fn pal() -> vector<GroundType> { load_palette(PALETTE) }
+
+// A grass field with a core, and the player parked at the origin.
+fn session() -> EditorState {
+    s = editor_state_new(PALETTE);
+    for s_q in -10..11 {
+        for s_r in -10..11 { paint(s.pw, s_q, s_r, as_u8(5)); }
+    }
+    place_marker(s.mw, 0, 0, MARKER_KIND_TARGET, as_u8(0));
+    s
+}
+
+fn live(s: EditorState) -> PlayState {
+    ps = play_state_new();
+    play_set_mode(ps, s, true);
+    vehicle_place(ps.wave.player, -6, 0);
+    ps
+}
+
+// Press Q for one frame.
+fn press_q(ps: PlayState, s: EditorState) {
+    pq_in = editor_input_empty();
+    pq_in.in_playing = true;
+    pq_in.in_paint_wall = true;
+    play_step(ps, s, pq_in, 0.0);
+    pq_up = editor_input_empty();
+    pq_up.in_playing = true;
+    play_step(ps, s, pq_up, 0.0);
+}
+
+// ─── The mode ───────────────────────────────────────────────────
+
+// @DRY-103 — Q toggles paint mode, and it is edge-triggered
+fn test_q_toggles_paint_mode() {
+    s = session();
+    ps = live(s);
+    off0 = play_painting(ps);
+    press_q(ps, s);
+    on = play_painting(ps);
+    press_q(ps, s);
+    off1 = play_painting(ps);
+    assert(!off0 && on && !off1,
+           "Q must toggle: start={off0} after_one={on} after_two={off1}");
+}
+
+// A HELD Q is one toggle, not one per frame — the same edge rule
+// `boost` and `carry` follow.
+fn test_holding_q_toggles_once() {
+    s = session();
+    ps = live(s);
+    held = editor_input_empty();
+    held.in_playing = true;
+    held.in_paint_wall = true;
+    for th_i in 0..5 { play_step(ps, s, held, 0.0); }
+    assert(play_painting(ps),
+           "five frames of a held Q is still ON: {play_painting(ps)}");
+}
+
+// ─── The trail ──────────────────────────────────────────────────
+
+// ⚠⚠ THE PHASE'S HEADLINE.  The trail follows the PATH, so a vehicle
+// that crossed two hexes in a tick orders BOTH of them — no gaps.
+fn test_the_trail_has_no_gaps() {
+    s = session();
+    ps = live(s);
+    press_q(ps, s);
+
+    // Drive east across the field for several ticks.
+    vehicle_drive(ps.wave.player, 6, 0);
+    play_ticks(ps, s, 6);
+
+    // Every hex from where it started to where it stopped is ordered.
+    here = ps.wave.player;
+    laid = 0;
+    gaps = 0;
+    for tg_q in -6..(here.q + 1) {
+        if order_at(ps.wave.orders, tg_q, 0) { laid = laid + 1; } else { gaps = gaps + 1; }
+    }
+    moved = here.q - (-6);
+    start = order_at(ps.wave.orders, -6, 0);
+    // ⚠ The ONE gap is the hex it started on, which is skipped by
+    // design: the trail orders every hex ENTERED, and you do not enter
+    // the one you are already standing on.
+    assert(moved >= 4 && gaps == 1 && !start && laid == moved,
+           "every hex ENTERED is ordered and only the starting hex is not: crossed={moved} laid={laid} gaps={gaps} start_ordered={start}");
+}
+
+// The control that makes the reading above mean something: paint mode
+// OFF leaves nothing behind, over the same drive.
+fn test_paint_off_lays_nothing() {
+    s = session();
+    ps = live(s);
+    vehicle_drive(ps.wave.player, 6, 0);
+    play_ticks(ps, s, 6);
+    assert(order_count(ps.wave.orders) == 0,
+           "driving with the mode off must leave nothing: {order_count(ps.wave.orders)}");
+}
+
+// ⚠ Driving over an outline rubs it out — `DESIGN.md` § 11 § Wall
+// paint.  Same drive, back the way it came.
+fn test_re_driving_erases_the_outline() {
+    s = session();
+    ps = live(s);
+    press_q(ps, s);
+
+    vehicle_drive(ps.wave.player, 0, 0);
+    play_ticks(ps, s, 6);
+    after_out = order_count(ps.wave.orders);
+
+    vehicle_drive(ps.wave.player, -6, 0);
+    play_ticks(ps, s, 6);
+    after_back = order_count(ps.wave.orders);
+
+    // ⚠⚠ TWO survive, and both follow from *toggle on ENTRY* rather
+    // than contradicting it: the hex the player turned around on is the
+    // return trip's STARTING hex and is skipped, and the hex they came
+    // back to was never ordered on the way out, so entering it lays one.
+    // The six between them are rubbed out.
+    turn = order_at(ps.wave.orders, 0, 0);
+    home = order_at(ps.wave.orders, -6, 0);
+    assert(after_out == 6 && after_back == 2 && turn && home,
+           "driving back rubs out the middle and leaves the two ends: out={after_out} back={after_back} turn={turn} home={home}");
+}
+
+// ⚠⚠ …but NOT one a helper has started.  *Construction commits the
+// order*, and the rule lives on the layer so the trail did not have to
+// re-state it.
+fn test_re_driving_does_not_erase_what_the_crew_has_started() {
+    p = pal();
+    s = session();
+    ps = live(s);
+    press_q(ps, s);
+
+    vehicle_drive(ps.wave.player, 0, 0);
+    play_ticks(ps, s, 6);
+    started = order_count(ps.wave.orders);
+    assert(started > 3, "there is a trail to commit: {started}");
+
+    // A helper works on the hex at (-3, 0) for one tick.
+    assert(order_at(ps.wave.orders, -3, 0), "the trail reached (-3, 0)");
+    order_spend(p, ps.wave.orders, -3, 0, TICK_STEP_UNITS);
+
+    vehicle_drive(ps.wave.player, -6, 0);
+    play_ticks(ps, s, 6);
+
+    // ⚠ Three: the committed hex, plus the two endpoints § the test
+    // above explains.  The four other outlines are gone.
+    assert(order_at(ps.wave.orders, -3, 0) && order_count(ps.wave.orders) == 3,
+           "the committed hex survives the rub-out: left={order_count(ps.wave.orders)} committed={order_at(ps.wave.orders, -3, 0)}");
+}
+
+// ─── What the trail refuses ─────────────────────────────────────
+
+// ⚠ The trail needs no rules of its own: `order_place` asks
+// `order_fault`, so driving over ground nothing can be built on leaves
+// nothing behind.
+fn test_the_trail_refuses_unbuildable_ground() {
+    s = session();
+    paint(s.pw, -3, 0, as_u8(8));        // steep_rock, mid-route
+    paint(s.pw, -2, 0, as_u8(9));        // a wall already standing
+    ps = live(s);
+    press_q(ps, s);
+
+    vehicle_drive(ps.wave.player, 2, 0);
+    play_ticks(ps, s, 8);
+
+    assert(!order_at(ps.wave.orders, -3, 0) && !order_at(ps.wave.orders, -2, 0)
+           && order_at(ps.wave.orders, -4, 0),
+           "the trail skips what cannot be built on and lays the rest: rock={order_at(ps.wave.orders, -3, 0)} wall={order_at(ps.wave.orders, -2, 0)} grass={order_at(ps.wave.orders, -4, 0)}");
+}
+
+// ─── End to end ─────────────────────────────────────────────────
+
+// ⚠⚠ The whole mechanic: the player draws a wall by driving, the crew
+// raise it, and a robot can no longer walk through it.  **This is the
+// verb `plans/ROADMAP.md` § The critical path has called the biggest
+// missing mechanic since plan 19.**
+fn test_a_player_draws_a_wall_and_the_crew_raise_it() {
+    p = pal();
+    s = session();
+    ps = live(s);
+    ps.wave.crew += [helper_new(-4, 0)];
+
+    press_q(ps, s);
+    vehicle_drive(ps.wave.player, -2, 0);
+    play_ticks(ps, s, 4);
+    ordered = order_count(ps.wave.orders);
+
+    // Stop painting and drive clear, so the trail is not rubbed out.
+    press_q(ps, s);
+    vehicle_drive(ps.wave.player, -6, 4);
+    play_ticks(ps, s, 60);
+
+    walls = 0;
+    for tw_q in -6..1 {
+        if lookup_painted(s.pw, tw_q, 0) == as_wall_kind(p) { walls = walls + 1; }
+    }
+    assert(ordered > 2 && walls > 0,
+           "a wall the player drew and the crew raised: ordered={ordered} standing={walls}");
+}

@@ -155,6 +155,19 @@ pub struct PlayState {
     // `editor_input_copy`, one frame apart.
     prev: EditorInput,
 
+    // Is the player laying a wall trail (plan 27 C3)?
+    //
+    // ⚠⚠ **Here rather than on `WaveState`, and the reason is the same
+    // one `playing` gives**: it is a property of the SESSION at the
+    // controls, not of the base.  A captured `.keys` file is a starting
+    // POSITION — the orders the trail already laid are in it, because
+    // those are the base; whether the player happened to be holding
+    // paint mode when the capture was taken is not.
+    //
+    // ⚠ So `WaveState` gains nothing, and `state_diff`, `emit_keys` and
+    // the `.keys` vocabulary all stay exactly as total as they were.
+    painting: boolean,
+
     // Is this session LIVE — the game running, or the map being edited?
     // Plan 19 P3.  ⚠ See § The mode is remembered by the SESSION for why
     // it is here and not a local in `main()`.
@@ -185,8 +198,12 @@ pub fn play_state_new() -> PlayState {
         // ⚠ A session opens in the EDITOR, which is what keeps every
         // caller written before P3 — the script runner, and all 28 gate
         // scenarios — meaning exactly what it meant.
-        playing: false,
-        cam:     camera_rig_new(),
+        playing:  false,
+        // ⚠ And it opens with paint mode OFF, which is the only default
+        // that can be right: a session that started painting would lay
+        // a wall along wherever the player first drove.
+        painting: false,
+        cam:      camera_rig_new(),
     }
 }
 
@@ -241,6 +258,17 @@ pub fn play_core(mw: const MarkerWorld) -> (integer, integer, integer) {
 
 pub fn play_mode(ps: const PlayState) -> boolean {
     ps.playing
+}
+
+// Is the player laying a wall trail (plan 27 C3)?
+//
+// ⚠ The read door, so nothing outside `play.loft` touches the field —
+// and the one a renderer will ask when `DESIGN.md` § 12's *vehicle body
+// tinted red* gets built.
+//
+// Example: @DRY-103
+pub fn play_painting(ps: const PlayState) -> boolean {
+    ps.painting
 }
 
 // How much of a frame's elapsed time the GAME gets.
@@ -424,6 +452,18 @@ fn play_actions(ps: PlayState, s: EditorState, input: const EditorInput) {
     // first, and only a carrier with full hands deposits.  That is what
     // makes the key *context-resolved on the carrier's state* rather
     // than on what happens to be underfoot.
+    // ── Wall paint: a MODE, and the design says so ──────────────
+    //
+    // ⚠⚠ **Edge-triggered, and it is the one key in play mode that is
+    // not a position** (`DESIGN.md` § 11, *"an acknowledged exception to
+    // the spatial principle"*).  Every other play action is a thing you
+    // do by BEING somewhere; this one changes what driving MEANS, which
+    // is why it needs a key at all and why `@X140` calls it the sharpest
+    // discoverability hazard in the design.
+    if input.in_paint_wall && !ps.prev.in_paint_wall {
+        ps.painting = !ps.painting;
+    }
+
     if input.in_carry && !ps.prev.in_carry {
         if cargo_carrying(ps.wave.cargo, BLOCKER_PLAYER) {
             pa_core = play_core(s.mw);
@@ -447,8 +487,59 @@ fn play_actions(ps: PlayState, s: EditorState, input: const EditorInput) {
 // game wearing the same numbers.  Both doors below reach the
 // simulation through here and nowhere else.
 fn play_one_tick(ps: PlayState, s: EditorState, at: Hex) {
+    // Where the vehicle stood before the tick moved it — the trail
+    // needs both ends.
+    pot_from = Hex { q: ps.wave.player.q, r: ps.wave.player.r };
     wave_tick(ps.wave, s.picker.palette, s.pw, s.mw, at);
+    play_trail(ps, s, pot_from);
     ps.ticks += 1;
+}
+
+// Lay the wall trail over the ground the vehicle just crossed.
+//
+// ⚠⚠ **It walks `lat_line` from where the vehicle STOOD to where it
+// now stands, and that is not a flourish**: at 3 hex/s over a 2/3 s
+// tick the player crosses TWO hexes, so a trail laid at the vehicle's
+// hex alone would leave a gap in every other one — a wall with holes in
+// it, which is a wall that stops nothing.  ⚠ `lat_line` is the very
+// path `drive_along` walked, so the trail cannot disagree with where
+// the vehicle went.
+//
+// ⚠ **Re-driving an outlined hex ERASES it** (`DESIGN.md` § 11 § Wall
+// paint), and `order_erase` is what refuses to erase one a helper has
+// started — *"construction commits the order"*.  The rule lives on the
+// layer, so the beacon ferry gets it too.
+//
+// ⚠ An order the ground refuses is simply not laid: `order_place` asks
+// `order_fault` itself, so driving across water in paint mode leaves
+// nothing behind and needs no test here.
+//
+// Example: @DRY-103
+fn play_trail(ps: PlayState, s: EditorState, from: const Hex) {
+    if !ps.painting { return; }
+    if !vehicle_present(ps.wave.player) { return; }
+    pt_to = Hex { q: ps.wave.player.q, r: ps.wave.player.r };
+    pt_kind = as_wall_kind(s.picker.palette);
+    // ⚠⚠ **The hex it STARTED on is skipped**, exactly as
+    // `vehicle.loft::drive_along` skips it — and here the reason is
+    // sharper than saving a step: the previous tick already ordered
+    // that hex, so laying it again would read as *re-driving* and rub
+    // out the trail's own last link.  A wall with every other hex
+    // missing was the first version of this function.
+    //
+    // ⚠ It also makes a PARKED painter harmless: `lat_line(a, a)` is one
+    // hex, the skip leaves nothing, and a player who stops on their own
+    // outline does not toggle it once a tick.
+    pt_first = true;
+    for pt_h in lat_line(from, pt_to) {
+        if pt_first { pt_first = false; continue; }
+        if order_at(ps.wave.orders, pt_h.q, pt_h.r) {
+            order_erase(ps.wave.orders, pt_h.q, pt_h.r);
+        } else {
+            order_place(s.picker.palette, s.pw, ps.wave.orders,
+                        pt_h.q, pt_h.r, pt_kind);
+        }
+    }
 }
 
 // ─── The two doors ──────────────────────────────────────────────

@@ -169,6 +169,14 @@ pub struct EditorInput {
     // deposit.
     in_carry: boolean,
 
+    // Is the wall-paint key down this frame (plan 27 C3)?
+    //
+    // ⚠ A PLAY field, so the editor seam never reads it — the same
+    // arrangement `in_boost` and `in_carry` have, and what
+    // `tests/19_p2` § The editor seam is blind to the play fields
+    // keeps true.
+    in_paint_wall: boolean,
+
     // ── The SHELL's half (plan 19 P3) ──
     //
     // ⚠⚠ **Neither seam reads this one.**  `editor_step` does not and
@@ -234,6 +242,7 @@ pub fn editor_input_empty() -> EditorInput {
         in_drive_west:     false,
         in_boost:          false,
         in_carry:          false,
+        in_paint_wall:     false,
         in_toggle_play:    false,
     }
 }
@@ -275,6 +284,7 @@ pub fn editor_input_copy(ic: const EditorInput) -> EditorInput {
         in_drive_west:     ic.in_drive_west,
         in_boost:          ic.in_boost,
         in_carry:          ic.in_carry,
+        in_paint_wall:     ic.in_paint_wall,
         in_toggle_play:    ic.in_toggle_play,
     }
 }

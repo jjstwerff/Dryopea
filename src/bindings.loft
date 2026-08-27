@@ -76,6 +76,7 @@ const KEY_N:     integer = 110;   // 'n' — Ctrl+N clears all
 const KEY_H:     integer = 104;   // 'h' — recentre camera
 const KEY_K:     integer = 107;   // 'k' — cycle marker kind
 const KEY_P:     integer = 112;   // 'p' — edit ↔ play (plan 19 P3)
+const KEY_Q:     integer = 113;   // 'q' — wall paint (plan 27 C3)
 
 // ─── One row of the table ───────────────────────────────────────
 
@@ -181,6 +182,17 @@ pub fn editor_actions() -> vector<EditorAction> {
     // the KEYBOARD has one, and this row is what makes `do carry` press
     // what a player presses.
     ea += [act("carry", graphics::KEY_E, CTRL_IGNORED)];
+
+    // ⚠⚠ **WALL PAINT — the one key `@X140` names as the sharpest
+    // discoverability hazard in the whole design**, because a player
+    // who never presses it never builds, and building is the game.
+    // `DESIGN.md` § 11 already calls it *"an acknowledged exception to
+    // the spatial principle"*: everything else in play mode is a
+    // POSITION, and this is a mode.  ⚠ Its mitigation is diegetic — the
+    // vehicle tints red — and `docs/PLAYING.md` is where a human reads
+    // about it.  ⚠ `numbers.json` § `input.wall_paint_toggle` has said
+    // `Q` since before there was anything to bind it to.
+    ea += [act("paint_wall", KEY_Q, CTRL_FORBIDDEN)];
 
     // ── The SHELL (plan 19 P3) ──────────────────────────────────
     //
@@ -444,6 +456,7 @@ pub fn editor_input_from(
         eif_i.in_drive_west  = action_on(src, "drive_west",  eif_ctrl);
         eif_i.in_boost       = action_on(src, "boost",       eif_ctrl);
         eif_i.in_carry       = action_on(src, "carry",       eif_ctrl);
+        eif_i.in_paint_wall  = action_on(src, "paint_wall",  eif_ctrl);
     } else {
         eif_i.in_pan_north = pan_due && action_on(src, "pan_north", eif_ctrl);
         eif_i.in_pan_south = pan_due && action_on(src, "pan_south", eif_ctrl);
