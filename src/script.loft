@@ -897,6 +897,35 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         return "";
     }
 
+    // Whether a trap plate is still ARMED — BACKLOG C4.
+    //
+    // ⚠ **A word rather than a number**, `top`'s shape and for `top`'s
+    // reason: this is a state, and `armed 4 0 1` would read as a count.
+    // ⚠ And it REFUSES a hex with no trap marker, so `armed 4 0 on` can
+    // never be green on a hex where nobody ever put a plate — which is
+    // exactly what a scenario asserting *the trap has not gone off yet*
+    // would otherwise be.
+    if sm_cmd == "armed" {
+        if sm_argc != 3 { return "armed needs <q> <r> <on|off>"; }
+        sm_amv = script_ints(tok, 2);
+        if len(sm_amv) != 2 { return "armed: <q> and <r> must be integers"; }
+        sm_amq = sm_amv[0] ?? 0;
+        sm_amr = sm_amv[1] ?? 0;
+        sm_amw = tok[3] ?? "";
+        if sm_amw != "on" && sm_amw != "off" {
+            return "armed: <on|off>, not '{sm_amw}'";
+        }
+        if marker_kind(s.mw, sm_amq, sm_amr) != MARKER_KIND_TRAP {
+            return "armed: no trap at ({sm_amq}, {sm_amr})";
+        }
+        sm_amis = trap_armed(run.play.wave.traps, sm_amq, sm_amr);
+        if sm_amis != (sm_amw == "on") {
+            return "armed ({sm_amq}, {sm_amr}) is {if sm_amis { "on" } else { "off" }}, expected {sm_amw}";
+        }
+        measure_exact(run, "armed ({sm_amq}, {sm_amr}) {sm_amw}");
+        return "";
+    }
+
     // How many waves the schedule has SENT — plan 16 W1.
     //
     // ⚠ **Sent, not cleared and not survived.**  It is the schedule's
@@ -931,7 +960,7 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
 
     if sm_cmd == "marker" {
         if sm_argc != 3 && sm_argc != 4 {
-            return "marker needs <q> <r> <spawn|target|none> [direction]";
+            return "marker needs <q> <r> <spawn|target|tower|trap|none> [direction]";
         }
         sm_v = script_ints(tok, 2);
         if len(sm_v) != 2 { return "marker: <q> and <r> must be integers"; }
@@ -946,7 +975,7 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
             return "";
         }
         if marker_kind_of(sm_a3) < 0 {
-            return "marker: unknown kind '{sm_a3}' — spawn, target, tower or none";
+            return "marker: unknown kind '{sm_a3}' — spawn, target, tower, trap or none";
         }
         if !sm_here { return "marker at ({sm_q}, {sm_r}) is none, expected {sm_a3}"; }
 
@@ -1249,7 +1278,7 @@ fn is_author_cmd(name: text) -> boolean {
     name == "tower" || name == "object" || name == "spent"
     || name == "player" || name == "member" || name == "pending"
     || name == "cursor" || name == "flag" || name == "order"
-    || name == "skill" || name == "tired"
+    || name == "skill" || name == "tired" || name == "trap"
 }
 
 // Read an on/off word.  -1 when it is neither, so a caller can refuse.
@@ -1283,7 +1312,7 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         if len(sa_fv) != 2 { return "flag: <q> and <r> must be integers"; }
         sa_fk = marker_kind_of(tok[3] ?? "");
         if sa_fk < 0 {
-            return "flag: unknown kind '{tok[3] ?? ""}' — spawn, target, tower";
+            return "flag: unknown kind '{tok[3] ?? ""}' — spawn, target, tower, trap";
         }
         sa_fd = 0;
         if sa_argc == 4 {
@@ -1467,6 +1496,50 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
     // CONDITION is, where this says what they are GOOD AT.  ⚠ Its
     // three arguments are the three skills `BACKLOG C1` builds, in the
     // order `Skills` declares them.
+    // A trap plate's charge, as a STATE (BACKLOG C4) — `tower`'s shape
+    // and for `tower`'s reasons: it AUTHORS and never simulates (no
+    // blast lands, no reach is checked), and it demands the trap MARKER
+    // so `trap 4 0 off 0` cannot quietly describe a hex with no plate
+    // on it.
+    //
+    // ⚠ `<on|off>` is the ARMED reading and not the stored one.  The
+    // field is `spent` so [loft#914]'s silent default lands on *armed*
+    // (`trap.loft` § The field stores SPENT); a `.keys` file is read by
+    // a person, and every rule in the engine is written in `armed`.
+    if sa_cmd == "trap" {
+        if sa_argc != 4 { return "trap needs <q> <r> <on|off> <rearm>"; }
+        sa_plv = script_ints(tok, 2);
+        if len(sa_plv) != 2 { return "trap: <q> and <r> must be integers"; }
+        sa_plq = sa_plv[0] ?? 0;
+        sa_plr = sa_plv[1] ?? 0;
+        if marker_kind(s.mw, sa_plq, sa_plr) != MARKER_KIND_TRAP {
+            return "trap: no trap marker at ({sa_plq}, {sa_plr})";
+        }
+        sa_pla = on_off(tok[3] ?? "");
+        if sa_pla < 0 { return "trap: <on|off> for the charge, not '{tok[3] ?? ""}'"; }
+        sa_plm = (tok[4] ?? "") as float?;
+        if sa_plm == null { return "trap: <rearm> must be a number"; }
+
+        // Written through one cell so the charge and the re-arm cannot
+        // disagree about which plate they belong to — `tower`'s rule.
+        // ⚠ `trap_fire` is what CREATES a cell, so an armed plate with
+        // no work banked writes nothing at all and stays absent, which
+        // is the state it was already in.
+        if sa_pla == 0 || (sa_plm ?? 0.0) != 0.0 {
+            trap_fire(run.play.wave.traps, sa_plq, sa_plr);
+            sa_plc = run.play.wave.traps.cells[sa_plq, sa_plr];
+            if sa_plc == null { return "trap: ({sa_plq}, {sa_plr}) has no cell"; }
+            sa_plc.spent = sa_pla == 0;
+            // ⚠ The UP reading — `rearm` is time BANKED toward the
+            // re-arm (`trap.loft::trap_rearm_progress`), so it restores
+            // as spent rather than as left.
+            timer_restore_spent(sa_plc.rearm,
+                                clock_units_from_seconds(sa_plm ?? 0.0),
+                                TRAP_REARM_UNITS);
+        }
+        return "";
+    }
+
     if sa_cmd == "skill" {
         if sa_argc != 4 {
             return "skill needs <i> <build> <repair> <scout>";
@@ -2491,7 +2564,8 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
     || sc_cmd == "hp" || sc_cmd == "pile" || sc_cmd == "wallet"
     || sc_cmd == "ticks" || sc_cmd == "vehicle" || sc_cmd == "hull"
     || sc_cmd == "helper" || sc_cmd == "cargo" || sc_cmd == "roster"
-    || sc_cmd == "waves" || sc_cmd == "shots" || sc_cmd == "top" {
+    || sc_cmd == "waves" || sc_cmd == "shots" || sc_cmd == "top"
+    || sc_cmd == "armed" {
         return script_measure(s, run, tok);
     }
 

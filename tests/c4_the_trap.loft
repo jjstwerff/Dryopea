@@ -1,0 +1,683 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// BACKLOG C4 — a trap that does not automatically reset.
+//
+// ⚠⚠ **The claim: a plate placed in advance fires ONCE, and getting it
+// back costs a trip out to it in the middle of a wave.**
+//
+// Four readings carry it, and each is written with the control that a
+// wrong implementation would fail:
+//
+//   ⚠⚠ **the trigger is a CROSSING** — the plate goes off under a scout
+//     that never stands on it, and the control is that the scout is
+//     recorded on every hex it ends a tick on and (4, 0) is not one of
+//     them.  An implementation asking `occupancy_taken` reads a plate
+//     that never fires, and **no test using a regular robot could see
+//     it**, which is why the same route is run with one;
+//   ⚠ **the blast is a disc and the crosser cannot out-stride it** —
+//     with a cross-product control over every class in the game;
+//   ⚠ **it fires once** — and re-arming is thirty ticks of somebody
+//     standing there;
+//   ⚠⚠ **and what it is WORTH depends on where it is** — because the
+//     bodies it drops are a ramp (`DESIGN.md` § 7, plan 12 B7), so a
+//     trap at the wall face is not obviously the right place for one.
+//
+// ⚠ Plus the one thing [loft#914] can silently undo: a `TrapCharge`
+// written as a partial literal must land ARMED.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+const WALL:    integer = 8;
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+fn pal() -> vector<GroundType> { load_palette(PALETTE) }
+fn core() -> Hex { Hex { q: 0, r: 0 } }
+
+// A band from well outside the bubble to the core, wide enough to walk
+// a wave down and drive on.
+//
+// ⚠ It has to be painted the whole way: an unpainted hex is sea, and a
+// walking test that runs out of ground measures the edge of the world
+// rather than the thing it was written for.
+fn band() -> PaintedWorld {
+    b_pw = painted_empty();
+    for b_r in -3..=3 {
+        for b_q in -3..=(SCRAMBLER_BUBBLE_RADIUS + 6) {
+            paint(b_pw, b_q, b_r, as_u8(GRASS));
+        }
+    }
+    b_pw
+}
+
+fn trap_at(q: integer, r: integer) -> MarkerWorld {
+    t_mw = marker_empty();
+    place_marker(t_mw, q, r, MARKER_KIND_TRAP as u8, 0 as u8);
+    t_mw
+}
+
+fn play(state: WaveState, pw: PaintedWorld, mw: MarkerWorld, n: integer) {
+    p_pal = pal();
+    for _ in 0..n { wave_tick(state, p_pal, pw, mw, core()); }
+}
+
+// One robot of `kind`, already cut off, walking the field to the core.
+//
+// ⚠ `errand: false` is what makes it ENGAGED — a robot still on its
+// business follows its spawn heading and would be measuring
+// `enemy_walk_heading` rather than the route.
+fn walker(state: WaveState, q: integer, r: integer, kind: integer) {
+    state.enemies += [Enemy { q: q, r: r, kind: as_u8(kind),
+                              heading: 3 as u8, alive: true, errand: false }];
+}
+
+// ─── The plate itself ───────────────────────────────────────────
+
+// @DRY-125 — a plate is armed until something sets it off, and once
+// spent it stays spent until somebody works on it
+fn test_a_plate_fires_once() {
+    ts = trap_state_empty();
+    assert(trap_armed(ts, 4, 0), "a plate nobody has touched is armed");
+    assert(trap_fire(ts, 4, 0), "and it goes off");
+    assert(!trap_armed(ts, 4, 0), "after which it is spent");
+    assert(!trap_fire(ts, 4, 0),
+           "and a second trigger finds nothing: {trap_fire(ts, 4, 0)}");
+    assert(trap_count(ts) == 1, "one cell, not two: {trap_count(ts)}");
+}
+
+// ⚠⚠ **[loft#914], and it is the whole reason the field stores SPENT.**
+// A struct literal that omits a field takes that field's default
+// silently, and a `boolean` defaults to `false`.  Stored as `armed`,
+// every plate anybody ever placed would arrive inert — and a suite
+// where no trap ever fires breaks no assertion that was written about
+// a base where one does.
+fn test_a_partial_literal_lands_on_an_armed_plate() {
+    bare: TrapCharge = TrapCharge { };
+    assert(!bare.spent,
+           "the silent default is a LIVE plate: spent={bare.spent}");
+    fresh = trap_state_empty();
+    assert(trap_armed(fresh, 9, 9),
+           "and a hex the state has never heard of answers the same");
+}
+
+// ⚠ **The blast is a robot's whole HP**, and the literal cannot be
+// derived at file scope ([loft#962]), so the relation is asserted here
+// — the shape `tests/20_a3` uses for `TOWER_FOOTPRINT_M`.
+fn test_the_blast_is_a_robots_whole_hp() {
+    assert(TRAP_DAMAGE == ENEMY_REGULAR_HP,
+           "a plate kills what it catches: {TRAP_DAMAGE} vs {ENEMY_REGULAR_HP}");
+    assert(TRAP_DAMAGE == enemy_max_hp(as_u8(ENEMY_KIND_REGULAR)),
+           "through the class table as well: {enemy_max_hp(as_u8(ENEMY_KIND_REGULAR))}");
+}
+
+// ⚠ **Re-arming is the ONE servicing rate dryopea has.**  There is no
+// trap row in `numbers.json`, and rather than invent a rate the plate
+// takes the tower's — so the two constants have to stay equal, and the
+// duration has to stay a whole number of ticks or `plans/26` L3's whole
+// family of rounding defects comes back.
+fn test_re_arming_is_the_servicing_rate() {
+    assert(TRAP_REARM_UNITS == TOWER_REPAIR_UNITS,
+           "one servicing rate: {TRAP_REARM_UNITS} vs {TOWER_REPAIR_UNITS}");
+    assert(TRAP_REARM_UNITS % TICK_STEP_UNITS == 0,
+           "and a whole number of ticks: {TRAP_REARM_UNITS} / {TICK_STEP_UNITS}");
+    assert(TRAP_REARM_SECONDS == 20.0,
+           "twenty seconds: {TRAP_REARM_SECONDS}");
+}
+
+// ─── ⚠⚠ The trigger is a CROSSING ───────────────────────────────
+
+// Walk one robot of `kind` from `from` down the band to the core, and
+// answer every hex it was standing on at the end of a tick.
+//
+// ⚠ It is the STANDING positions and nothing else — which is exactly
+// the record an implementation asking `occupancy_taken` would have had
+// to fire from.
+fn stood_on(kind: integer, from: integer, ticks: integer, mw: MarkerWorld,
+            state: WaveState) -> vector<integer> {
+    s_pw  = band();
+    s_pal = pal();
+    walker(state, from, 0, kind);
+    s_seen: vector<integer> = [];
+    s_done = false;
+    for _ in 0..ticks {
+        if !s_done {
+            wave_tick(state, s_pal, s_pw, mw, core());
+            s_e = state.enemies[0] ?? Enemy { };
+            // ⚠ Recorded whether or not it survived the tick, and the
+            // loop stops there.  A blast kills what it catches, so a
+            // record that skipped a dead robot would drop the last hex
+            // it stood on — which is the hex the whole reading is
+            // about.
+            s_seen += [s_e.q];
+            if !s_e.alive { s_done = true; }
+        }
+    }
+    s_seen
+}
+
+// @DRY-126 — a plate goes off under a robot that never stood on it
+//
+// ⚠⚠ **THE READING THIS FILE EXISTS FOR.**  A scout takes 2.5 hex/s
+// against a 0.667 s tick, so the bank releases TWO hexes in two ticks
+// out of three and the hex in the middle of a stride is one nothing is
+// ever standing on when a tick ends.  The plate at (4, 0) fires anyway,
+// and the control is the standing record: 4 is not in it.
+//
+// ⚠ A plate that asked `occupancy_taken` would read ARMED here, with
+// the scout walking on to the core — and the suite would be green,
+// because nothing else in the repo asks anything about (4, 0).
+fn test_a_scout_sets_off_a_plate_it_never_stands_on() {
+    tas_mw = trap_at(4, 0);
+    tas_s  = wave_state_empty();
+    tas_seen = stood_on(ENEMY_KIND_SCOUT, 6, 4, tas_mw, tas_s);
+
+    tas_stood = false;
+    for tas_q in tas_seen { if tas_q == 4 { tas_stood = true; } }
+
+    assert(!tas_stood,
+           "the control: the scout never ends a tick on the plate — "
+           + "stood on {tas_seen}");
+    assert(!trap_armed(tas_s.traps, 4, 0),
+           "and the plate went off all the same: armed="
+           + "{trap_armed(tas_s.traps, 4, 0)} after {tas_seen}");
+}
+
+// ⚠⚠ **And the same route with a REGULAR robot is why no existing test
+// could have caught it.**  1.5 hex/s is exactly one hex a tick, so a
+// regular stands on every hex it crosses — both implementations fire,
+// and the defect is invisible to the class every other test in the
+// repo walks.  That is `HARD_WON_RULES.md` § THE INSTRUMENT IS A
+// CROSS-PRODUCT with the axis and the subject swapped.
+fn test_a_regular_robot_stands_on_everything_it_crosses() {
+    tar_mw = trap_at(4, 0);
+    tar_s  = wave_state_empty();
+    tar_seen = stood_on(ENEMY_KIND_REGULAR, 6, 4, tar_mw, tar_s);
+
+    tar_stood = false;
+    for tar_q in tar_seen { if tar_q == 4 { tar_stood = true; } }
+
+    assert(tar_stood,
+           "a regular is on every hex at a tick boundary: {tar_seen}");
+    assert(!trap_armed(tar_s.traps, 4, 0),
+           "so the plate fires either way — which is the point");
+}
+
+// ⚠⚠ **The blast has to catch what set it off, and that is an
+// INVARIANT rather than an observation.**  A crosser ends at most
+// `stride - 1` hexes from the plate, so `TRAP_BLAST_HEXES` has to be at
+// least that — and the day a class strides three, this is what says so
+// before a player finds out that traps stopped working on it.
+//
+// ⚠ Swept over every class, at the shipped tick, through the shipped
+// release function — the cross-product `tests/26_l0` asks for.
+fn test_no_class_may_out_stride_the_blast() {
+    tns_kinds: vector<integer> = [ENEMY_KIND_REGULAR, ENEMY_KIND_SCOUT,
+                                  ENEMY_KIND_MINER, ENEMY_KIND_HARVESTER,
+                                  ENEMY_KIND_INSECT];
+    tns_worst = 0;
+    tns_who   = "";
+    for tns_k in tns_kinds {
+        tns_e = Enemy { q: 0, r: 0, kind: as_u8(tns_k), alive: true };
+        for _ in 0..20 {
+            tns_n = enemy_bank(tns_e, enemy_speed(as_u8(tns_k)), TICK_STEP_UNITS);
+            if tns_n > tns_worst {
+                tns_worst = tns_n;
+                tns_who   = enemy_class_name(as_u8(tns_k));
+            }
+        }
+    }
+    assert(tns_worst - 1 <= TRAP_BLAST_HEXES,
+           "the longest stride in the game is {tns_worst} hexes ({tns_who}), "
+           + "so a crosser ends {tns_worst - 1} from the plate and the blast "
+           + "reaches {TRAP_BLAST_HEXES}");
+    assert(tns_worst >= 2,
+           "the control — a sweep where nothing ever strides more than one "
+           + "hex could not fail this: worst {tns_worst}");
+}
+
+// ─── The blast ──────────────────────────────────────────────────
+
+// ⚠ **Everything inside the disc, and nothing outside it.**  The
+// robots are held in the pre-walk window so the reading is about
+// DISTANCE and not about who moved where — the one on the plate is what
+// sets it off, because `wave_occupancy` counts a robot standing on a
+// hex as having trodden on it.
+fn test_the_blast_is_a_disc_of_one() {
+    tbd_pw = band();
+    tbd_mw = trap_at(6, 0);
+    tbd_s  = wave_state_empty();
+
+    // On it, one away, two away.
+    walker(tbd_s, 6, 0, ENEMY_KIND_REGULAR);
+    walker(tbd_s, 7, 0, ENEMY_KIND_REGULAR);
+    walker(tbd_s, 8, 0, ENEMY_KIND_REGULAR);
+    for tbd_e in tbd_s.enemies { timer_arm(tbd_e.stand, PRE_WALK_UNITS); }
+
+    play(tbd_s, tbd_pw, tbd_mw, 1);
+
+    tbd_on   = tbd_s.enemies[0] ?? Enemy { };
+    tbd_near = tbd_s.enemies[1] ?? Enemy { };
+    tbd_far  = tbd_s.enemies[2] ?? Enemy { };
+    assert(!tbd_on.alive && !tbd_near.alive && tbd_far.alive,
+           "the disc is exactly one hex wide: on={tbd_on.alive} "
+           + "at 1={tbd_near.alive} at 2={tbd_far.alive}, "
+           + "damage taken {tbd_on.taken} / {tbd_near.taken} / {tbd_far.taken}");
+    assert(!trap_armed(tbd_s.traps, 6, 0), "and the plate is spent");
+}
+
+// ⚠ **A spent plate is inert.**  Nothing about the second robot's
+// arrival is different except that the charge has already gone, which
+// is the whole of *does not automatically reset*.
+fn test_a_spent_plate_lets_the_next_one_through() {
+    tsp_pw = band();
+    tsp_mw = trap_at(6, 0);
+    tsp_s  = wave_state_empty();
+    trap_fire(tsp_s.traps, 6, 0);
+
+    walker(tsp_s, 6, 0, ENEMY_KIND_REGULAR);
+    timer_arm((tsp_s.enemies[0] ?? Enemy { }).stand, PRE_WALK_UNITS);
+    play(tsp_s, tsp_pw, tsp_mw, 1);
+
+    tsp_e = tsp_s.enemies[0] ?? Enemy { };
+    assert(tsp_e.alive && tsp_e.taken == 0.0,
+           "a spent plate does nothing: alive={tsp_e.alive} "
+           + "taken={tsp_e.taken}");
+}
+
+// ⚠ **The player's vehicle HOVERS**, so there is no weight on the plate
+// to set it off — and mechanically `Occupancy` holds enemies only, so
+// the rule and the implementation are one fact.  A trap that maimed the
+// crew driving out to service it would make the one act the mechanic
+// exists for unplayable.
+fn test_a_hovering_vehicle_does_not_set_one_off() {
+    thv_pw = band();
+    thv_mw = trap_at(4, 0);
+    thv_s  = wave_state_empty();
+    vehicle_place(thv_s.player, 6, 0);
+    vehicle_drive(thv_s.player, 0, 0);
+
+    // 3.0 hex/s is two hexes a tick, so it ENDS a tick standing on
+    // (4, 0) — the strongest form of the reading: not merely crossed,
+    // parked on.
+    play(thv_s, thv_pw, thv_mw, 1);
+    assert(thv_s.player.q == 4 && thv_s.player.r == 0,
+           "the control: the vehicle is ON the plate — "
+           + "({thv_s.player.q}, {thv_s.player.r})");
+    play(thv_s, thv_pw, thv_mw, 3);
+    assert(trap_armed(thv_s.traps, 4, 0),
+           "and drove over it without setting it off: armed="
+           + "{trap_armed(thv_s.traps, 4, 0)}");
+}
+
+// ─── Getting it back ────────────────────────────────────────────
+
+// @DRY-127 — re-arming is thirty ticks of standing there
+//
+// ⚠ **Presence-locked and no key pressed**, the rule every other job in
+// the game keeps (`spawn.loft::wave_rearm`).  The exact tick matters:
+// 20 s is exactly thirty ticks, and plan 26 L3's whole family of
+// defects was durations that came back one short.
+fn test_re_arming_takes_thirty_ticks_of_presence() {
+    tra_pw = band();
+    tra_mw = trap_at(4, 0);
+    tra_s  = wave_state_empty();
+    trap_fire(tra_s.traps, 4, 0);
+    vehicle_place(tra_s.player, 4, 0);
+
+    play(tra_s, tra_pw, tra_mw, 29);
+    assert(!trap_armed(tra_s.traps, 4, 0),
+           "twenty-nine ticks is not twenty seconds: armed="
+           + "{trap_armed(tra_s.traps, 4, 0)}, banked "
+           + "{clock_seconds_from_units(trap_rearm_progress(tra_s.traps, 4, 0))} s");
+    assert(trap_rearming(tra_s.traps, 4, 0),
+           "and the work is on the PLATE while it is part done");
+    play(tra_s, tra_pw, tra_mw, 1);
+    assert(trap_armed(tra_s.traps, 4, 0),
+           "the thirtieth finishes it: armed="
+           + "{trap_armed(tra_s.traps, 4, 0)}");
+}
+
+// ⚠ **An armed plate refuses the work**, which is what stops a vehicle
+// parked on a live trap banking twenty seconds of nothing and re-arming
+// it the instant it fires.
+fn test_nobody_works_on_an_armed_plate() {
+    tnw_pw = band();
+    tnw_mw = trap_at(4, 0);
+    tnw_s  = wave_state_empty();
+    vehicle_place(tnw_s.player, 4, 0);
+
+    play(tnw_s, tnw_pw, tnw_mw, 40);
+    assert(trap_rearm_progress(tnw_s.traps, 4, 0) == 0,
+           "nothing banked on a live plate: "
+           + "{trap_rearm_progress(tnw_s.traps, 4, 0)}");
+    assert(trap_count(tnw_s.traps) == 0,
+           "and no cell was even created: {trap_count(tnw_s.traps)}");
+}
+
+// ⚠ **A carrier's hands are FULL**, read out of the one carry slot
+// `wave_repair` reads it out of — a plate that could be re-armed
+// one-handed while ferrying a tower-top would be the exception that
+// makes every other job's rule look arbitrary.
+fn test_a_carrier_cannot_re_arm() {
+    tcc_pw = band();
+    tcc_mw = trap_at(4, 0);
+    tcc_s  = wave_state_empty();
+    trap_fire(tcc_s.traps, 4, 0);
+    vehicle_place(tcc_s.player, 4, 0);
+    tcc_i = cargo_spawn(tcc_s.cargo, CARGO_WRECK, 0, 4, 0);
+    cargo_take(tcc_s.cargo, BLOCKER_PLAYER, Hex { q: 4, r: 0 }, CARGO_WRECK);
+
+    play(tcc_s, tcc_pw, tcc_mw, 40);
+    assert(cargo_carrying(tcc_s.cargo, BLOCKER_PLAYER),
+           "the control: its hands really are full (object {tcc_i})");
+    assert(!trap_armed(tcc_s.traps, 4, 0),
+           "so forty ticks of standing there bought nothing: armed="
+           + "{trap_armed(tcc_s.traps, 4, 0)}");
+}
+
+// ⚠ **The crew re-arm too, and a trained mechanic does it sooner**
+// (BACKLOG C1) — `repair` is the skill, because re-arming is servicing
+// a device rather than raising one, and nothing new was added to the
+// lattice for it.
+fn test_a_trained_mechanic_re_arms_sooner() {
+    ttm_pw = band();
+    ttm_mw = trap_at(4, 0);
+
+    green   = wave_state_empty();
+    trained = wave_state_empty();
+    trap_fire(green.traps, 4, 0);
+    trap_fire(trained.traps, 4, 0);
+    green.crew   += [helper_new(4, 0)];
+    trained.crew += [helper_new(4, 0)];
+    (trained.crew[0] ?? Helper { }).skills.repair = 5;
+
+    play(green,   ttm_pw, ttm_mw, 22);
+    play(trained, ttm_pw, ttm_mw, 22);
+
+    assert(!trap_armed(green.traps, 4, 0),
+           "an untrained hand is still at it after 22 ticks: banked "
+           + "{clock_seconds_from_units(trap_rearm_progress(green.traps, 4, 0))} s");
+    assert(trap_armed(trained.traps, 4, 0),
+           "and a level-5 mechanic has finished: armed="
+           + "{trap_armed(trained.traps, 4, 0)}");
+}
+
+// ⚠⚠ **Nobody tires re-arming nothing** (BACKLOG C2) — the finding
+// `wave_repair` had to be corrected for, and the same shape of mistake
+// is available here: every helper in the roster charged a tick of work
+// whether or not there was a spent plate within reach.
+fn test_nobody_tires_re_arming_nothing() {
+    tnt_pw = band();
+    tnt_mw = trap_at(4, 0);
+    tnt_s  = wave_state_empty();
+    // A live plate, and the crew member parked on it.
+    tnt_s.crew += [helper_new(4, 0)];
+
+    play(tnt_s, tnt_pw, tnt_mw, 40);
+    tnt_h = tnt_s.crew[0] ?? Helper { };
+    assert(endurance_spent(tnt_h.endurance) == 0,
+           "forty ticks beside a live plate is forty ticks of rest: "
+           + "{endurance_spent(tnt_h.endurance)}");
+
+    tnt_s2 = wave_state_empty();
+    trap_fire(tnt_s2.traps, 4, 0);
+    tnt_s2.crew += [helper_new(4, 0)];
+    play(tnt_s2, tnt_pw, tnt_mw, 10);
+    assert(endurance_spent((tnt_s2.crew[0] ?? Helper { }).endurance) > 0,
+           "the control: working on a SPENT one does tire them: "
+           + "{endurance_spent((tnt_s2.crew[0] ?? Helper { }).endurance)}");
+}
+
+// ─── The plate in a tick ────────────────────────────────────────
+
+// ⚠ **A plate re-armed at the end of a tick cannot also have fired in
+// it** — `wave_traps` runs after the movers and `wave_rearm` after
+// that, so the two can never see the same tick's charge.  The rule a
+// rebuilt tower follows: it fires first in the NEXT tick.
+fn test_a_plate_re_armed_this_tick_fires_next_tick() {
+    tpr_pw = band();
+    tpr_mw = trap_at(4, 0);
+    tpr_s  = wave_state_empty();
+    trap_fire(tpr_s.traps, 4, 0);
+    vehicle_place(tpr_s.player, 4, 0);
+
+    // A robot standing on the plate the whole time, so the only thing
+    // that changes is the charge.
+    walker(tpr_s, 4, 0, ENEMY_KIND_REGULAR);
+    timer_arm((tpr_s.enemies[0] ?? Enemy { }).stand, 200 * TICK_STEP_UNITS);
+
+    play(tpr_s, tpr_pw, tpr_mw, 30);
+    assert(trap_armed(tpr_s.traps, 4, 0)
+           && (tpr_s.enemies[0] ?? Enemy { }).alive,
+           "re-armed on tick 30 and nothing has gone off yet: armed="
+           + "{trap_armed(tpr_s.traps, 4, 0)} alive="
+           + "{(tpr_s.enemies[0] ?? Enemy { }).alive}");
+    play(tpr_s, tpr_pw, tpr_mw, 1);
+    assert(!trap_armed(tpr_s.traps, 4, 0)
+           && !(tpr_s.enemies[0] ?? Enemy { }).alive,
+           "and on tick 31 it goes off under him: armed="
+           + "{trap_armed(tpr_s.traps, 4, 0)}");
+}
+
+// ─── ⚠⚠ What a plate is WORTH, and WHERE ────────────────────────
+//
+// Plan 16 W4's GATED base, unchanged: five rows, a wall at q = 6 with
+// (6, 0) left open, one spawn out at (18, 0), three towers behind the
+// wall, four waves of twelve.  ⚠ The gate is what makes the base
+// measurable — the wave funnels through one hex and then spreads, so
+// what got through is what drains the wallet.
+//
+// One crew member is in every run, so the roster, the blockers and the
+// salvage are the same in all of them; what changes is **where the
+// plate is** and **whether anybody goes back out to it**.
+
+const NOWHERE: integer = 99;   // no plate / no guard post
+const IDLE_Q:  integer = -1;   // out of the way, two hexes from a tower
+const IDLE_R:  integer = 1;
+const HORIZON: integer = 320;
+
+fn gate_ground() -> PaintedWorld {
+    gg_pw = painted_empty();
+    for gg_r in -2..=2 {
+        for gg_q in -3..=20 { paint(gg_pw, gg_q, gg_r, as_u8(GRASS)); }
+    }
+    paint(gg_pw, 6, -2, as_u8(WALL));
+    paint(gg_pw, 6, -1, as_u8(WALL));
+    paint(gg_pw, 6,  1, as_u8(WALL));
+    paint(gg_pw, 6,  2, as_u8(WALL));
+    gg_pw
+}
+
+// What a run came to.
+//
+// ⚠ `mark` and `purse` are read at a FIXED tick rather than at the
+// fall, because two runs that fall at different ticks cannot be
+// compared on anything measured at their own end.
+struct Outcome {
+    fell:   integer,
+    alive:  integer,
+    blasts: integer,
+    mark:   integer,   // waves sent by tick 150
+    purse:  float,     // points left at tick 150
+    home:   boolean,   // is the crew member still alive?
+    at_q:   integer,
+    at_r:   integer,
+}
+
+// One run with a plate at `(at, 0)`, a crew member who either shuttles
+// out to re-arm it or sits at `guard`, and nothing else different.
+//
+// ⚠ **The shuttle is driven off the plate's STATE, never off a tick
+// number** — plan 16 W4's rule: a run scripted by tick number measures
+// the ticks it was given.
+fn worth(at: integer, ferry: boolean, guard: integer) -> Outcome {
+    w_pw  = gate_ground();
+    w_pal = pal();
+    w_mw  = marker_empty();
+    place_marker(w_mw, 18, 0, MARKER_KIND_SPAWN as u8, 3 as u8);
+    place_marker(w_mw, 1,  0, MARKER_KIND_TOWER as u8, 0 as u8);
+    place_marker(w_mw, 1,  2, MARKER_KIND_TOWER as u8, 0 as u8);
+    place_marker(w_mw, 1, -2, MARKER_KIND_TOWER as u8, 0 as u8);
+    // ⚠ A hex holds ONE marker, so a plate written onto the spawn hex
+    // would DELETE the spawn and the base would face no waves at all —
+    // measured, and it reads as a base that never falls.
+    if at != NOWHERE {
+        place_marker(w_mw, at, 0, MARKER_KIND_TRAP as u8, 0 as u8);
+    }
+
+    w_s = wave_state_empty();
+    w_s.schedule = wave_schedule_of([12, 12, 12, 12], INTER_WAVE_DELAY_SECONDS);
+    wave_schedule_begin(w_s.schedule);
+    if guard != NOWHERE {
+        w_s.crew += [helper_new(guard, 0)];
+    } else {
+        w_s.crew += [helper_new(IDLE_Q, IDLE_R)];
+    }
+
+    w_fell   = 0;
+    w_blasts = 0;
+    w_was    = true;
+    w_mark   = 0;
+    w_purse  = 0.0;
+    for w_n in 1..=HORIZON {
+        if w_fell == 0 {
+            if ferry && at != NOWHERE {
+                w_h = w_s.crew[0] ?? Helper { };
+                if trap_armed(w_s.traps, at, 0) {
+                    helper_drive(w_h, IDLE_Q, IDLE_R);
+                } else {
+                    helper_drive(w_h, at, 0);
+                }
+            }
+            wave_tick(w_s, w_pal, w_pw, w_mw, core());
+            // Counted as the charge GOING, which is the only reading
+            // that survives a re-arm.
+            w_now = trap_armed(w_s.traps, at, 0);
+            if w_was && !w_now { w_blasts += 1; }
+            w_was = w_now;
+            if w_n == 150 {
+                w_mark  = wave_schedule_sent(w_s.schedule);
+                w_purse = wallet_left(w_s.wallet);
+            }
+            if wallet_broke(w_s.wallet) { w_fell = w_n; }
+        }
+    }
+
+    w_c = w_s.crew[0] ?? Helper { };
+    Outcome { fell: w_fell, alive: alive_count(w_s), blasts: w_blasts,
+              mark: w_mark, purse: w_purse,
+              home: w_c.alive, at_q: w_c.q, at_r: w_c.r }
+}
+
+// ⚠⚠ **A PLATE THAT FIRES ONCE IS WORTH LESS THAN NO PLATE AT ALL.**
+//
+//   | run                        | falls | alive | waves @150 | points @150 |
+//   |----------------------------|------:|------:|-----------:|------------:|
+//   | no plate                   |   184 |     9 |          3 |         134 |
+//   | one plate at (7, 0)        |   181 |     8 |          3 |         122 |
+//
+// The blast is real — one fewer robot is standing when the base goes —
+// and the base still falls **three ticks sooner** and is twelve points
+// worse off at the halfway mark.
+//
+// ⚠⚠ That is `DESIGN.md` § 7's measured loop arriving from a new
+// direction: **a kill is a permanent terrain change and nobody
+// reverses it**, which plan 12 B7 measured as a tower making a base
+// fall SOONER (104 without it, 95 with).  A trap is that effect
+// concentrated into one instant on one disc.
+//
+// ⚠ **What this run RULES OUT is the schedule.**  A base that kills
+// faster meets waves faster (`plans/17` T3), which would explain the
+// loss without any terrain in it — and both runs have sent exactly
+// three waves at tick 150, so that is not what happened here.  Which of
+// B7's two channels it is — the ramp, or the column pushed off its axis
+// by the heap — this measurement does not separate.
+fn test_a_plate_fired_once_buys_nothing() {
+    none = worth(NOWHERE, false, NOWHERE);
+    once = worth(7, false, NOWHERE);
+
+    assert(once.fell == 181 && none.fell == 184
+           && once.alive == 8 && none.alive == 9
+           && once.blasts == 1
+           && once.mark == none.mark && once.mark == 3
+           && once.purse == 122.0 && none.purse == 134.0,
+           "one blast and no trip back: falls {none.fell} -> {once.fell}, "
+           + "alive {none.alive} -> {once.alive}, blasts {once.blasts}; "
+           + "at tick 150 both have sent {none.mark}/{once.mark} waves "
+           + "and hold {none.purse}/{once.purse} points");
+}
+
+// ⚠⚠ **THE MECHANIC IS THE TRIP BACK — +106 TICKS, AND IT IS NOT THE
+// BODY STANDING THERE.**  Same base, same crew member, same plate:
+//
+//   | run                                    | falls | alive | blasts |
+//   |----------------------------------------|------:|------:|-------:|
+//   | no plate, crew out of the way          |   184 |     9 |      0 |
+//   | plate at (7, 0), nobody goes back      |   181 |     8 |      1 |
+//   | plate at (7, 0), crew shuttles to it   | **290** |   3 |      3 |
+//
+// ⚠ **The control is the confound this base makes obvious**: a vehicle
+// parked in front of a gate is a BLOCKER, so a shuttle that buys ticks
+// might be buying them by standing there.  The same crew member parked
+// on the same hex for the whole run — strictly more presence than the
+// shuttle spends — buys **20** ticks, and parked in the gate itself,
+// the better blocking hex, **28**.  Against 106.
+//
+// ⚠ So the three effects are not additive: the plate alone is worth
+// −3, the presence alone is worth +20, and the two together are +106.
+// What the trip buys is a plate that fires **three times** instead of
+// once, which is `@X108`'s whole argument made a number.
+fn test_the_mechanic_is_the_trip_back() {
+    none   = worth(NOWHERE, false, NOWHERE);
+    once   = worth(7, false, NOWHERE);
+    ferry  = worth(7, true,  NOWHERE);
+    guard7 = worth(NOWHERE, false, 7);
+    guard6 = worth(NOWHERE, false, 6);
+
+    assert(ferry.fell == 290 && none.fell == 184 && once.fell == 181
+           && guard7.fell == 204 && guard6.fell == 212
+           && ferry.blasts == 3 && ferry.alive == 3,
+           "the trip is the mechanic: none {none.fell}, one blast "
+           + "{once.fell}, shuttled {ferry.fell} ({ferry.blasts} blasts, "
+           + "{ferry.alive} robots left standing) — against a crew "
+           + "member simply PARKED there for the whole run, "
+           + "{guard7.fell} in front of the gate and {guard6.fell} in it");
+}
+
+// ⚠⚠ **ONE HEX DECIDES IT, AND IT FAILS TWO DIFFERENT WAYS.**
+//
+//   | plate at | falls | blasts | the crew member                     |
+//   |----------|------:|-------:|-------------------------------------|
+//   | (6, 0)   |   222 |      3 | **wrecked** — it is standing in the gate |
+//   | (7, 0)   |   290 |      3 | alive                               |
+//   | (8, 0)   |   184 |      1 | alive, and **stuck at (5, 1)**      |
+//
+// ⚠ In the gate the servicing hex is the hex the wave is coming
+// through, so the mechanic works and kills the mechanic.  Two hexes out
+// it is the other way round: **the crew member never gets there at
+// all**, because the way out is its own gate and the siege is standing
+// in it — so the plate fires once and is never seen again, and the run
+// is the 184-tick baseline to the tick.
+//
+// ⚠⚠ That is `DESIGN.md` § What kind of game this is with nothing left
+// to argue about: the advantage is real, it is in the player's hands,
+// and reaching it costs exactly what makes it worth reaching.
+fn test_one_hex_decides_the_trip() {
+    in_gate = worth(6, true, NOWHERE);
+    at_face = worth(7, true, NOWHERE);
+    too_far = worth(8, true, NOWHERE);
+
+    assert(in_gate.fell == 222 && at_face.fell == 290 && too_far.fell == 184
+           && !in_gate.home && at_face.home && too_far.home
+           && in_gate.blasts == 3 && at_face.blasts == 3
+           && too_far.blasts == 1
+           && too_far.at_q == 5 && too_far.at_r == 1,
+           "(6,0) {in_gate.fell}/{in_gate.blasts} crew alive={in_gate.home}; "
+           + "(7,0) {at_face.fell}/{at_face.blasts} alive={at_face.home}; "
+           + "(8,0) {too_far.fell}/{too_far.blasts} alive={too_far.home} "
+           + "stuck at ({too_far.at_q}, {too_far.at_r})");
+}

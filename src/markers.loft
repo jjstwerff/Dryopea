@@ -46,12 +46,28 @@ pub const MARKER_KIND_TARGET: integer = 1;
 // lie the ghost preview would tell — the same reason a target has
 // none.
 pub const MARKER_KIND_TOWER:  integer = 2;
+// A TRAP plate is buried here (BACKLOG C4, `@X108`).  The fourth kind,
+// and it belongs in this layer for the third one's reason: a charge
+// that fires once and is then dead until somebody re-arms it is
+// *placeholder content the runtime reads but the painted palette does
+// not represent*.
+//
+// ⚠ A trap has no authored facing either — a blast is a disc
+// (`trap.loft` § The blast is a DISC of radius 1) — so `direction` is
+// stored as 0 and ignored, the same as a target and a tower.
+//
+// ⚠⚠ **The marker says a trap is HERE; whether it is armed is
+// `trap.loft`'s.**  Two questions with two owners, the same split
+// `MARKER_KIND_TOWER` and `TowerState` already keep — a map holds the
+// marker and a run holds the charge, which is why a saved map does not
+// remember that you set one off.
+pub const MARKER_KIND_TRAP:   integer = 3;
 
 // How many kinds the editor cycles through.  ⚠ It is a COUNT rather
 // than a list, and `editor_step.loft`'s cycle is `(kind + 1) % this`,
 // so a new kind joins the cycle by appending a constant and bumping
 // this — not by adding a branch that some other reader forgets.
-pub const MARKER_KIND_COUNT: integer = 3;
+pub const MARKER_KIND_COUNT: integer = 4;
 
 // The kind's name, for a message a player or a failing script can
 // read, and for the `.keys` vocabulary.  An unknown kind names its
@@ -60,6 +76,7 @@ pub fn marker_kind_name(kind: integer) -> text {
     if kind == MARKER_KIND_SPAWN  { return "spawn"; }
     if kind == MARKER_KIND_TARGET { return "target"; }
     if kind == MARKER_KIND_TOWER  { return "tower"; }
+    if kind == MARKER_KIND_TRAP   { return "trap"; }
     "kind {kind}"
 }
 
@@ -69,6 +86,7 @@ pub fn marker_kind_of(name: text) -> integer {
     if name == "spawn"  { return MARKER_KIND_SPAWN; }
     if name == "target" { return MARKER_KIND_TARGET; }
     if name == "tower"  { return MARKER_KIND_TOWER; }
+    if name == "trap"   { return MARKER_KIND_TRAP; }
     -1
 }
 
@@ -130,6 +148,17 @@ pub fn place_tower(w: MarkerWorld, q: integer, r: integer) {
     };
 }
 
+// Place a trap plate.  Traps have no authored facing; the direction
+// field is stored as 0 and ignored on load.
+pub fn place_trap(w: MarkerWorld, q: integer, r: integer) {
+    w.markers[q, r] = MarkerEntry {
+        q:         q,
+        r:         r,
+        kind:      MARKER_KIND_TRAP as u8,
+        direction: 0 as u8,
+    };
+}
+
 // Place a marker of ANY kind — the one dispatch from a kind number to
 // a placement.
 //
@@ -149,6 +178,7 @@ pub fn place_marker(w: MarkerWorld, q: integer, r: integer,
     if kind == MARKER_KIND_SPAWN  { place_spawn(w, q, r, direction); return true; }
     if kind == MARKER_KIND_TARGET { place_target(w, q, r); return true; }
     if kind == MARKER_KIND_TOWER  { place_tower(w, q, r); return true; }
+    if kind == MARKER_KIND_TRAP   { place_trap(w, q, r); return true; }
     false
 }
 

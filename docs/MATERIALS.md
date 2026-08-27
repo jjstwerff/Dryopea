@@ -346,6 +346,13 @@ itself, and the crane is a machine).  Two do not:
   ([`plans/17`](../plans/17-tower-hot-swap/README.md) § T1) with the
   cost moved to the front, and it needs no new mechanism — a spent trap
   is a black tower that a standing vehicle restores.
+  ⚠⚠ **BUILT** (BACKLOG C4, 2026-08-27,
+  [`src/trap.loft`](../src/trap.loft), `@X281`), and the *no new
+  mechanism* claim held: one file, one marker kind, and one extra
+  count on the occupancy layer.  ⚠ **What the design did NOT predict
+  is that a plate fired once is worth LESS than no plate at all**
+  (`@M057`) — the mechanic is the trip back, and it is worth +106
+  ticks where the blast alone is worth −3.
 - ⚠ **The grabber** — *"grabbing broken or stunned opponents to salvage
   them later."*  It converts kills into salvage without a trip, which is
   the mechanic this document keeps refusing.  **The version that passes

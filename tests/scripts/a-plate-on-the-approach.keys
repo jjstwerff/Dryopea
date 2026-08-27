@@ -1,0 +1,172 @@
+# a-plate-on-the-approach — BACKLOG C4, and the trip is the mechanic.
+#
+# ⚠⚠ **This is `a-base-that-plays-its-list.keys` with a PLATE on the hex
+# in front of the gate, and a second pair of hands.**  Same ground, same
+# wall with the same opening at (6, 0), same towers, same four-wave
+# list, same poke.  What is added is one trap marker at (7, 0) — and an
+# errand: when the plate has gone off, somebody has to go out and
+# re-arm it.
+#
+# ⚠ **A plate fires ONCE** (`@X108`).  It kills what walks onto it and
+# everything within one hex, and then it is a dead plate in the ground
+# until a vehicle stands on it for twenty seconds.  Nothing in this file
+# presses a key to re-arm it: re-arming is a POSITION, the same as
+# clearing rubble and rebuilding a tower.
+#
+# ⚠⚠ **The way out is the gate the wave is coming through**, which is
+# the whole cost.  The errand below is run in the LULL, after wave 1 has
+# been cleared and before wave 2 arrives, because that is the only
+# window it fits in — and it takes TWO crew members, because one alone
+# does not finish twenty seconds of work before the next wave is on top
+# of them.  Measured, on this base's cousin: sent out mid-wave, a lone
+# crew member is destroyed at (7, 0) after about twenty ticks with the
+# plate still dead.
+#
+# ⚠ `tests/c4_the_trap.loft` § One hex decides the trip is the
+# controlled version: a plate at (7, 0) re-armed three times is worth
+# **+106 ticks**, the same plate left spent is worth **−3**, and one hex
+# further out the crew never gets through its own gate at all.
+
+echo a plate on the approach: it fires once, and somebody has to go and re-arm it
+
+do toggle_mode
+
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+do cycle_kind
+click 1 0
+click 1 2
+click 1 -2
+marker 1 0 tower
+marker 1 2 tower
+
+# ⚠ The fourth marker kind (BACKLOG C4).  The editor cycles
+# spawn → target → tower → trap, so a plate is one more press — and
+# every `.keys` file in the corpus grew that press when this kind
+# landed, which is what `CLAUDE.md` § Add a marker kind warns about.
+do cycle_kind
+click 7 0
+marker 7 0 trap
+
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 18 0
+marker 18 0 spawn 3
+
+count markers 6 6
+do toggle_mode
+
+palette 5
+drag -3 -2 20 -2
+drag -3 -1 20 -1
+drag -3 0 20 0
+drag -3 1 20 1
+drag -3 2 20 2
+count painted 120 120
+
+# The wall, with (6, 0) left open — and the plate is the hex in FRONT
+# of the opening, where the column funnels.
+palette 9
+click 6 -2
+click 6 -1
+click 6 1
+click 6 2
+kind 6 0 grass
+kind 6 1 wall
+
+# Two crew members beside the core.  They are the errand.
+crew 0 1
+crew 0 -1
+helper 0 0 1
+helper 1 0 -1
+roster 2 2
+park 0 0
+
+schedule 12 12 12 12
+waves 0 0
+count alive 0 0
+
+# ⚠ A plate nobody has set off is ARMED, and the run holds no cell of
+# state for it at all — `trap.loft` § The field stores SPENT.
+armed 7 0 on
+
+# ── The poke ────────────────────────────────────────────────────
+drive 18 0
+tick 10
+vehicle 18 0
+waves 1 1
+count alive 12 12
+
+# ── The drive home, in front of them ────────────────────────────
+drive 0 0
+tick 10
+vehicle 0 0
+
+# ── ⚠ The plate goes off under the first thing that reaches it ──
+#
+# Nothing here fires it.  Twelve robots walk the road, the leading one
+# steps onto (7, 0), and the charge takes it and everything within a
+# hex of it.
+tick 30
+armed 7 0 off
+count alive 0 0
+pile 7 0 0.5 0.5
+
+# ── ⚠⚠ The errand, run in the lull ──────────────────────────────
+#
+# Out through the gate in two legs, because a vehicle drives in a
+# straight line and the wall is in the way of the first one.
+send 0 6 0
+send 1 6 0
+tick 12
+helper 0 6 0
+helper 1 6 0
+
+send 0 7 0
+send 1 8 0
+tick 6
+helper 0 7 0
+helper 1 8 0
+
+# ⚠ **Sixteen ticks, not thirty**, and that is `wave_rearm`'s *any
+# number of vehicles per plate*: one crew member stands ON the plate
+# and the other one hex from it, so the twenty seconds are paid twice
+# over at once.  It is also why one alone does not make it.
+tick 16
+armed 7 0 on
+roster 2 2
+
+# ── And home again, before wave 2 is on them ────────────────────
+send 0 6 0
+send 1 6 0
+tick 8
+send 0 0 1
+send 1 0 -1
+tick 14
+helper 0 0 1
+helper 1 0 -1
+roster 2 2
+
+# ── ⚠ And it fires a SECOND time, unattended ────────────────────
+#
+# The plate is live again and nobody is near it.  Wave 2 walks down the
+# same road onto the same hex.
+tick 60
+armed 7 0 off
+
+# ── The rest of the list, and what the base came to ─────────────
+#
+# ⚠ Both crew members come home: the errand was survivable because it
+# was run in the lull, which is the only thing this file does that
+# `a-base-that-plays-its-list.keys` does not.
+tick 500
+waves 4 4
+count alive 0 0
+roster 2 2
+wallet 393.0 394.0
+
+snap c4_a_plate_on_the_approach

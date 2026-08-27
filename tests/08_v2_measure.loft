@@ -255,6 +255,7 @@ const BASE: text = `
     # ⚠ TWICE: spawn -> target -> tower -> spawn since plan 12 B5a.
     do cycle_kind
     do cycle_kind
+    do cycle_kind
     do rotate
     do rotate
     do rotate
@@ -302,7 +303,7 @@ fn test_a_wave_spawns_and_walks_towards_the_core() {
 fn test_a_wave_that_emits_nothing_fails() {
     twe_s = editor_state_new(PALETTE);
     twe_run = script_run(twe_s,
-        "do toggle_mode\ndo cycle_kind\nclick 0 0\ndo cycle_kind\ndo cycle_kind\nclick 2 0\nwave 5");
+        "do toggle_mode\ndo cycle_kind\nclick 0 0\ndo cycle_kind\ndo cycle_kind\ndo cycle_kind\nclick 2 0\nwave 5");
 
     assert(!twe_run.ok, "a silenced spawn cannot emit, and the run must say so");
     assert(twe_run.message.contains("emitted 0"), "{twe_run.message}");

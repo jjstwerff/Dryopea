@@ -57,7 +57,7 @@ comes back.  ⚠ The HUD is one number and `docs/DESIGN.md` § HUD says it shoul
 be — no wave counter, no health bar, no minimap; everything else is diegetic.
 ⚠⚠ **`MAP=` and `SCRIPT=` are what give it a base to be.**  `make play
 MAP=starter_01` opens one of the three AUTHORED maps in `maps/` (BACKLOG A2,
-2026-08-27); `SCRIPT=<name>` opens any of the 36 `.keys` files in
+2026-08-27); `SCRIPT=<name>` opens any of the 41 `.keys` files in
 `tests/scripts/` + `tests/gl/` as a live starting position, cut at its first
 `tick` (`@X263`).  Bare `make play` opens the empty default slot.
 ⚠⚠ **THE PLAYER CAN BUILD** ([`plans/27`](plans/27-building/README.md),
@@ -74,8 +74,8 @@ critical path is **4, the SCRAMBLE**.
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1547 green**, ~320 s on a busy box, 116 files |
-| scenarios | `scripts/validate.sh` | **37 scripts, 709 measurements**, ~14 s |
+| tests | `scripts/test.sh` | **1566 green**, ~320 s on a busy box, 117 files |
+| scenarios | `scripts/validate.sh` | **38 scripts, 745 measurements**, ~20 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
 
 ⚠ `scripts/test.sh` is the canonical runner — **never `loft test` directly**
@@ -376,7 +376,7 @@ scripts/validate_gl.sh the-ground    # just one
 make play
 # One of the three AUTHORED maps in maps/ (BACKLOG A2) — repo content.
 make play MAP=starter_01
-# Open one of the 36 `.keys` scenarios as a live starting position
+# Open one of the 41 `.keys` scenarios as a live starting position
 # (BACKLOG A1).  ⚠ `script=`, never `--script` — loft strips a leading
 # `--` argument as its own and the entry would open a MAP of that name.
 make play SCRIPT=a-base-that-plays-its-list
@@ -490,6 +490,7 @@ source of truth and the listing is a navigational summary of it.
 | `skill.loft` | **CREW SKILLS — build, repair, scout**.  `Skills` on `Helper`, `skill_factor`, and the DETECTION rule |
 | `endure.loft` | **ENDURANCE — work spends it, rest restores it**.  ⚠ A tired person works LESS and never stops |
 | `jammer.loft` | **THE JAMMER SWITCH — turning your own core off**.  ⚠ It stops the SUPPLY and never the SIEGE |
+| `trap.loft` | **A TRAP THAT DOES NOT AUTOMATICALLY RESET** — placed in advance, fires ONCE, re-armed by a standing vehicle.  ⚠ The trigger is a CROSSING, never a standing position |
 | `font.loft` | **THE FONT — the ONE seam to `graphics::draw_text`**.  ⚠ The path is ABSOLUTE and that is enforced at the door |
 | `picker.loft` / `hud.loft` / `editor_mode.loft` / `chunks.loft` / `history.loft` | palette UI, HUD (⚠ and **the ONE number the game shows** — the wallet), the mode flag, the dirty-chunk set, undo/redo |
 | `spawn.loft` | **the tick** — `WaveState`, `wave_tick`, enemy movement, targeting, deaths, the schedule, `TICK_SECONDS` |
@@ -1024,6 +1025,7 @@ names; most of them exist because somebody did it without reading.
 | Judge what a wave's COMPOSITION is worth | [`plans/24`](plans/24-the-siege-front/README.md) § W2 — ⚠⚠ **the siege front is the wall's WIDTH** |
 | Add ambient life, or ask why a robot walks past instead of at you | `src/errand.loft` — ⚠⚠ **the bubble takes the errand, ONE WAY** |
 | Turn the core OFF, or ask what the jammer switch costs | `src/jammer.loft` — ⚠⚠ **it stops the SUPPLY and never the SIEGE** |
+| Place a TRAP, or ask why re-arming one costs a trip | `src/trap.loft` — ⚠⚠ **a plate fired once is worth LESS than no plate**; the mechanic is the trip back (`@M057`) |
 | Advance the GAME | `src/play.loft` — ⚠ never call `wave_tick` directly, and never spell a count as `n * TICK_SECONDS` |
 | Ask whether a session is LIVE, or start one | `src/play.loft::play_mode` — ⚠ it gates the CLOCK, never the seam |
 | Advance the game by TIME, or change the tick's length | `fixstep::clock_advance` / `clock_step`; `TICK_STEP_UNITS` in `spawn.loft` |
@@ -1058,7 +1060,7 @@ names; most of them exist because somebody did it without reading.
 | Add a new kind of carryable thing | a `CARGO_*` constant + a destination rule — ⚠ and NOTHING in the carrying path |
 | Clear rubble / collect after a tower | `src/vehicle.loft::salvage_at` — the shared chassis |
 | Place or restore a marker of any kind | `src/markers.loft::place_marker` — the ONE dispatch |
-| Add a marker kind | append a constant, bump `MARKER_KIND_COUNT`, add rows — ⚠ every `.keys` cycle grows |
+| Add a marker kind | append a constant, bump `MARKER_KIND_COUNT`, add rows — ⚠⚠ **and the cycle grows in 47 places**: BACKLOG C4's fourth kind moved **33 `.keys` fixtures and 14 inline test scripts** by one `do cycle_kind` press.  ⚠ Each file's own `marker … spawn` assertion is what makes the omission loud |
 | Change what a key does | `src/bindings.loft::editor_actions` — the ONE table; never a `gl_key_pressed` |
 | Add a PLAY action (a key that drives the game) | a row in `editor_actions` + a field on `EditorInput` + `play.loft::play_actions` |
 | Ask why WASD does two different things | `src/bindings.loft::editor_input_from` — `playing` fills one set or the other |

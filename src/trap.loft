@@ -1,0 +1,337 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// A TRAP THAT DOES NOT AUTOMATICALLY RESET.
+//
+// BACKLOG C4, `@X108`.  From the 2023 catalogue — *"spike trap: not
+// automatically reset when activated"*, *"demolition: a triggered
+// explosion, not automatically reset"* — and
+// [`MATERIALS.md`](../docs/MATERIALS.md) § Towers is where it was
+// ruled in: **this is `DESIGN.md` § What kind of game this is passed
+// outright.**  A trap is placed in advance, fires once, and then
+// somebody has to drive out to it, in the middle of a wave, to re-arm
+// it.
+//
+// ⚠ It is *the tower-repair clock with the cost moved to the front*
+// (`plans/17` T1).  A tower's servicing buys **thirty** shots and
+// arrives at the END of its useful life; a trap's buys **one** blast
+// and arrives at the START of every one.  That is the whole
+// difference, and it is why a trap is a decision where a tower is an
+// installation.
+//
+// ── ⚠⚠ The trigger is a CROSSING, never a standing position ─────
+//
+// The obvious implementation asks *who is standing on the plate at the
+// end of the tick*, and it has a hole with a name: **the scout**.
+// A tick is no longer a hex (`spawn.loft::enemy_tick`) — at 2.5 hex/s
+// against a 0.667 s tick a scout is released **two** hexes in two ticks
+// out of three, and the hex in the middle of a two-hex stride is one it
+// is never standing on when a tick ends.  So a plate that asked about
+// standing would be walked straight over by the one class fast enough
+// to matter, roughly two crossings in five, and **no test using a
+// regular robot could ever see it** — a regular takes exactly one hex
+// per tick, so it stands on everything it crosses.
+//
+// That is `HARD_WON_RULES.md` § THE INSTRUMENT IS A CROSS-PRODUCT with
+// the axis and the subject swapped once more, and the fix is to ask the
+// right question rather than to sweep more often: `occupancy.loft`
+// counts **visits** — every foot that has been set on a hex this tick,
+// including the ones that were already standing there — and a trap
+// fires on `occupancy_trodden`.  It costs one field and one line,
+// because `Occupancy` is already threaded through the mover and
+// `occupancy_enter` is already the ONE door every arrival goes through.
+//
+// ── ⚠⚠ The blast is a DISC of radius 1, and TWO derivations land
+//        on that number ───────────────────────────────────────────
+//
+// **First: the trigger must not be able to out-stride its own blast.**
+// A trap that hurt only its own hex would fire under a scout and then
+// watch it walk out — the plate goes dark, the robot goes on, and the
+// mechanic is a no-op for the class it most needs to stop.  A stride is
+// at most two hexes (above), so a crosser ends **at most one hex** from
+// the plate, and radius 1 catches it by construction.  ⚠ That is an
+// INVARIANT and not an observation: the day a class strides three, the
+// blast has to grow with it, and
+// `tests/c4_the_trap.loft` § No class may out-stride the blast is what
+// says so before a player finds out.
+//
+// **Second: it is `hex_disc_radius_1`** — the one footprint
+// `numbers.json` names (§ tower.footprint_layout), the same disc
+// `TOWER_REPAIR_REACH_HEXES` and `NIBBLE_REACH_HEXES` are each derived
+// from.  Two arguments from opposite ends arriving at one number is
+// what makes it a derivation rather than a tuning.
+//
+// ── ⚠⚠ Its real cost is the RAMP it builds, and nothing new was
+//        written for that ────────────────────────────────────────
+//
+// A trap that kills a cluster drops that cluster where it stood, and
+// `DESIGN.md` § 7 already measured what a heap of bodies is worth to
+// the people walking over it: **a tower without a cleanup crew makes a
+// base fall SOONER — 104 ticks without it, 95 with** (plan 12 B7), because
+// a robot climbs 2.0 m and three bodies on one hex is 1.5 m of ramp.
+// A trap is that effect concentrated into one instant on one disc.
+//
+// So the design test is passed twice over.  A trap hands the player a
+// burst of kills at a place they chose, and the kills become terrain
+// somebody has to drive out and clear — at the worst possible moment —
+// or the next wave walks over its own dead.  ⚠ **Which is why a trap
+// at the wall face is not obviously the right place to put one**, and
+// `tests/c4_the_trap.loft` measures that rather than asserting it.
+//
+// ── ⚠ It does not fire on the player, and the fiction says why ──
+//
+// `Occupancy` holds ENEMIES only (`occupancy.loft` § The other map), so
+// a vehicle crossing a plate cannot trigger it — and that is the right
+// answer rather than a convenient one: the player's vehicle **hovers**
+// (`DESIGN.md` § Hover + boost), so there is no weight on the plate to
+// set it off.  A trap that maimed the crew driving out to re-arm it
+// would also make the one act the mechanic exists for unplayable.
+//
+// ── ⚠ The field stores SPENT, so [loft#914]'s default is ARMED ──
+//
+// A struct literal that omits a field takes that field's default
+// SILENTLY, and a `boolean` defaults to `false`.  Stored as `spent`,
+// an absent cell and a partial literal both read **armed**, which is
+// what somebody who wrote `flag 4 0 trap` in a map meant.  Stored as
+// `armed`, every trap anybody ever placed would be inert on arrival
+// and nothing would be able to see it.
+//
+// Same argument `tower.loft` makes for `top_removed`, `damage.loft` for
+// *taken*, `wallet.loft` for *spent* and `jammer.loft` for *off*:
+// **the neutral value has to be what an author means.**
+//
+// ── What this does NOT decide ───────────────────────────────────
+//
+// ⚠ **Buying one during a run.**  Plan 27 gives the player a tower by
+// carrying a beacon out of the core; a trap beacon wants a second cargo
+// kind and a key to choose between them, and `@X139` says the key table
+// is a BUDGET that a new row needs an argument for.  So a trap is
+// AUTHORED — which is exactly what *"placed in advance"* says — and the
+// beacon route is left where plan 27 left it.
+//
+// ⚠ **Damaging the player's own walls.**  `DESIGN.md` § Damage TYPE
+// gives splash that cost, and the whole table is designed-not-built
+// (plan 12 B5a ships one untyped weapon).  Shipping one row of it here
+// would make the trap's drawback read as a balance choice rather than
+// as a TYPE, so the blast lands on robots only until the triangle
+// arrives.
+//
+// ⚠ **Anything drawn in 3-D.**  The editor draws a trap marker
+// (`marker_render.loft`); the play view's part-trees are
+// `catalogue.loft`'s and adding a class there is plan 20's surface and
+// the GL gate's.
+
+use lattice;
+use fixstep;
+
+// ─── The numbers ────────────────────────────────────────────────
+
+// What one blast lands on everything inside it.
+//
+// ⚠ **It is `damage.loft::ENEMY_REGULAR_HP`, and that is the
+// definition rather than a figure**: a trap that fires once is only
+// worth a trip if what it catches does not get up.  Deriving the damage
+// from the robot's HP also says the right thing about a class that is
+// tougher — a trap wounds a boss, it does not delete one.
+//
+// ⚠ **A LITERAL, and it has to be.**  A file-scope `const` initialised
+// from a SIBLING MODULE's const panics the compiler through the
+// aggregator ([loft#962]), so the relation is asserted at RUNTIME
+// instead — `tests/c4_the_trap.loft` § The blast is a robot's whole HP
+// is what stops the literal drifting.  Same shape as
+// `tower.loft::TOWER_FOOTPRINT_M`.
+pub const TRAP_DAMAGE: float = 30.0;   // = ENEMY_REGULAR_HP
+
+// How far the blast reaches — see § The blast is a DISC of radius 1.
+pub const TRAP_BLAST_HEXES: integer = 1;
+
+// How close a vehicle has to be to work on a plate.
+//
+// ⚠ **DERIVED and not copied**, the same way `TOWER_REPAIR_REACH_HEXES`
+// is: a trap occupies `hex_disc_radius_1`, so a vehicle within one hex
+// is standing ON it.  It lands on the same number as the blast by
+// arithmetic — both are that disc — and they are two constants because
+// they are two facts, and the day a bigger charge has a wider blast the
+// reach must not follow it.
+pub const TRAP_REACH_HEXES: integer = 1;
+
+// How long re-arming one takes, in the clock's base units.
+//
+// ⚠⚠ **There is no trap row in `numbers.json`, and this is CHOSEN.**
+// It is the case BACKLOG C1's `scout` hit and `@X112` says to push back
+// on: rather than invent a rate, re-arming takes the ONE servicing rate
+// dryopea has — `tower.loft::TOWER_REPAIR_UNITS`, *"time for a helper
+// to repair a black tower from scratch"*, 20 s.  A separate figure
+// would be a tunable this work invented, which is the argument
+// `tower.loft` already makes for using one rate for the player and for
+// a helper.
+//
+// ⚠ **What that price MEANS is the whole of `@X108`.**  The same twenty
+// seconds of standing buys thirty tower shots or one blast: the trap is
+// an order of magnitude worse per second of servicing, and it is paid
+// for by landing where you chose, at once, with no line of sight and no
+// range — and by being re-armable while a tower that is still firing
+// cannot be touched at all.
+//
+// ⚠ A LITERAL for `tower.loft::TOWER_REPAIR_UNITS`' reason — a const
+// whose initialiser casts another computed const needs a temporary and
+// loft refuses one in a const.  `tests/c4_the_trap.loft` § Re-arming is
+// the servicing rate is what pins the two together.
+pub const TRAP_REARM_UNITS: integer = 60000000;   // 20 s
+pub const TRAP_REARM_SECONDS: float = (TRAP_REARM_UNITS as float)
+                                      / (CLOCK_UNITS_PER_SECOND as float);
+
+// ─── What a plate remembers between ticks ───────────────────────
+
+// One trap plate: whether it has fired, and how far along its re-arm
+// is.
+//
+// ⚠ **`spent` and NEVER `armed`** — see § The field stores SPENT.
+//
+// ⚠ `rearm` is a `fixstep::Timer` rather than a float of seconds, for
+// plan 26 L3's reason: in integer base units there are no longer two
+// directions to be unsafe in, and *armed* is a STATE the timer answers
+// rather than a threshold somebody compares against zero.
+pub struct TrapCharge {
+    q:     integer,
+    r:     integer,
+    spent: boolean,
+    rearm: Timer,
+}
+
+// Every plate on the map that has ever been touched.  A hash must be a
+// struct field — the same loft idiom `TowerState`, `PaintedWorld` and
+// `HeightLayer` follow.
+//
+// ⚠ **Absence is not the same as "no trap here".**  Whether a hex is a
+// trap at ALL is the MARKER layer's question; this only says what a
+// trap that exists has been through, which is why an unheard-of hex
+// reads *armed* rather than *nothing*.
+pub struct TrapState {
+    cells: hash<TrapCharge[q, r]>,
+}
+
+// Factory: every plate armed, nobody working on anything.
+pub fn trap_state_empty() -> TrapState {
+    TrapState { cells: [] }
+}
+
+// Is the plate at (q, r) ready to fire?
+//
+// ⚠⚠ **Every reader asks THIS and never the field**, `jammer_on`'s rule
+// for `jammer_off`: `spent` is stored so the silent default lands where
+// an author means it, and `armed` is what the rules are written in.
+//
+// ⚠ **An absent cell answers TRUE**, which is the whole reason the
+// field is spelled the way it is.
+//
+// Example: @DRY-125, @DRY-126
+pub fn trap_armed(ts: const TrapState, q: integer, r: integer) -> boolean {
+    ta_c = ts.cells[q, r];
+    if ta_c == null { return true; }
+    !ta_c.spent
+}
+
+// Fire the plate at (q, r).  Answers whether it went off — false when
+// it had already been spent, which is what makes it fire ONCE.
+//
+// ⚠ It lands no damage: what a blast does to a roster is
+// `spawn.loft::wave_traps`, because a roster is the wave engine's.
+// This file owns what a trap IS and the tick owns what one DOES, the
+// same split `tower.loft` and `spawn.loft` keep.
+//
+// ⚠ Firing CANCELS a re-arm in progress rather than leaving it banked.
+// Nothing can reach that state today — a plate being re-armed is spent,
+// and a spent plate does not fire — and the line is here so that a
+// future half-armed plate cannot come back from a blast with the work
+// somebody did on it still in the bank.
+//
+// Example: @DRY-125
+pub fn trap_fire(ts: TrapState, q: integer, r: integer) -> boolean {
+    tf_c = ts.cells[q, r];
+    if tf_c == null {
+        ts.cells[q, r] = TrapCharge { q: q, r: r, spent: true,
+                                      rearm: timer_new() };
+        return true;
+    }
+    if tf_c.spent { return false; }
+    tf_c.spent = true;
+    timer_cancel(tf_c.rearm);
+    true
+}
+
+// Base time units banked toward (q, r)'s re-arm.  Zero for a plate
+// nobody is working on.
+//
+// ⚠ The UP reading, `tower_repair_progress`' choice and for its reason:
+// *time banked* rather than *time left*, so zero is the neutral value
+// and one number answers both.
+pub fn trap_rearm_progress(ts: const TrapState, q: integer, r: integer) -> integer {
+    trp_c = ts.cells[q, r];
+    if trp_c == null { return 0; }
+    timer_spent(trp_c.rearm)
+}
+
+// Is somebody part-way through re-arming this plate?
+//
+// ⚠ It asks the TIMER rather than comparing its reading to zero — the
+// same removal of an epsilon `tower_repairing` makes.
+pub fn trap_rearming(ts: const TrapState, q: integer, r: integer) -> boolean {
+    trg_c = ts.cells[q, r];
+    if trg_c == null { return false; }
+    timer_running(trg_c.rearm)
+}
+
+// Bank one turn of work into (q, r)'s re-arm.  Answers whether THIS
+// call finished it.
+//
+// ⚠ **The progress lives on the PLATE, not on whoever is kneeling over
+// it** — `tower_repair_tick`'s rule, and for the same reason: a crew
+// member driven off at 19 of 20 seconds leaves the work where it
+// stands, and the player finishes it.
+//
+// ⚠ An ARMED plate refuses the work outright, which is what stops a
+// vehicle parked on a live trap banking twenty seconds of nothing and
+// then re-arming it the instant it fires.
+//
+// ⚠ It ARMS on the first turn of work, so `trap_rearming` is a state
+// rather than a comparison against zero.
+//
+// Example: @DRY-127
+pub fn trap_rearm_tick(ts: TrapState, q: integer, r: integer,
+                       elapsed: integer) -> boolean {
+    if trap_armed(ts, q, r) { return false; }
+    trt_c = ts.cells[q, r];
+    // A spent plate HAS a cell by construction — `trap_armed` answers
+    // true for an absent one and `trap_fire` creates one.  The guard is
+    // here so the null case has an answer rather than because it is
+    // reachable.
+    if trt_c == null { return false; }
+
+    if !timer_running(trt_c.rearm) { timer_arm(trt_c.rearm, TRAP_REARM_UNITS); }
+    if !timer_spend(trt_c.rearm, elapsed) { return false; }
+
+    trt_c.spent = false;
+    true
+}
+
+// Is `at` inside the blast of a plate at `trap`?
+//
+// ⚠ `lat_distance` and nothing else — the rule `tower_in_range` carries,
+// and the one moros#10 was: a `+ 1` on a `q` anywhere is the bug.
+pub fn trap_in_blast(trap: const Hex, at: const Hex) -> boolean {
+    lat_distance(trap, at) <= TRAP_BLAST_HEXES
+}
+
+// Is `at` close enough to work on the plate at `trap`?
+pub fn trap_in_reach(trap: const Hex, at: const Hex) -> boolean {
+    lat_distance(trap, at) <= TRAP_REACH_HEXES
+}
+
+// How many plates have been fired or worked on at least once.
+//
+// ⚠ Counts CELLS, so a map full of armed traps nobody has touched
+// answers 0.  How many traps there ARE is the marker layer's count.
+pub fn trap_count(ts: const TrapState) -> integer {
+    len(ts.cells)
+}

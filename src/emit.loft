@@ -46,6 +46,7 @@ use markers;
 use height;
 use damage;
 use tower;
+use trap;
 use wallet;
 use vehicle;
 use helper;
@@ -172,6 +173,16 @@ fn emit_layers(pal: vector<GroundType>, state: const WaveState) -> text {
                         + "{el_t.charge} "
                         + "{clock_seconds_from_units(timer_spent(el_t.repair))} "
                         + (if el_t.top_removed { "off" } else { "on" }) + "\n";
+    }
+    // ⚠ Trap plates (BACKLOG C4).  Only the cells that EXIST, which is
+    // the same *what is not neutral* rule the enemies follow: a plate
+    // nobody has set off has no cell, so a map full of live traps emits
+    // its `flag … trap` lines and nothing else — and the 37 captured
+    // scenarios, which have no traps at all, emit exactly what they did.
+    for el_p in state.traps.cells {
+        el_out = el_out + "trap {el_p.q} {el_p.r} "
+                        + (if el_p.spent { "off" } else { "on" }) + " "
+                        + "{clock_seconds_from_units(timer_spent(el_p.rearm))}\n";
     }
     if wallet_spent(state.wallet) != 0.0 {
         el_out = el_out + "spent {wallet_spent(state.wallet)}\n";
@@ -411,7 +422,7 @@ fn crop_state(state: const WaveState, centre: const Hex,
             cs_out.enemies += [Enemy { q: cs_e.q, r: cs_e.r, kind: cs_e.kind,
                                        heading: cs_e.heading, alive: cs_e.alive,
                                        taken: cs_e.taken, stand: cs_e.stand,
-                                       bank: cs_e.bank }];
+                                       bank: cs_e.bank, errand: cs_e.errand }];
         }
     }
     cs_out.pick_cursor = state.pick_cursor;
@@ -452,6 +463,24 @@ fn crop_state(state: const WaveState, centre: const Hex,
         }
     }
 
+    // ⚠ **A plate's cell goes with its MARKER**, by the tower's argument
+    // and for the tower's reason (BACKLOG C4): `crop_markers` keeps a
+    // trap marker inside the radius, so a cell dropped here would
+    // replay as a FRESH plate — a fixture cropped around a base that
+    // had already spent its trap would come back with a live one.
+    for cs_p in state.traps.cells {
+        if in_crop(centre, radius, cs_p.q, cs_p.r) {
+            cs_out.traps.cells[cs_p.q, cs_p.r] =
+                TrapCharge { q: cs_p.q, r: cs_p.r, spent: cs_p.spent,
+                             rearm: cs_p.rearm };
+        }
+    }
+
+    // ⚠ The run-wide switches are not per-hex and so cannot be cropped
+    // at all — they are carried whole, the way the wallet and the
+    // schedule are.
+    cs_out.jammer   = state.jammer;
+    cs_out.traffic  = state.traffic;
     cs_out.wallet   = state.wallet;
     cs_out.player   = state.player;
     cs_out.crew     = state.crew;

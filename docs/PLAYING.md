@@ -23,7 +23,7 @@ twenty-five plans.
 ```bash
 make play MAP=starter_01          # an authored base — start here
 make play PLANET=kepler           # a place that REMEMBERS what you did to it
-make play SCRIPT=a-defended-base  # any of the 36 `.keys` scenarios
+make play SCRIPT=a-defended-base  # any of the 41 `.keys` scenarios
 make play                         # the default save slot, empty on a fresh checkout
 ```
 
@@ -77,7 +77,7 @@ large map.  The console says so.
 | `W` `A` `S` `D` | `pan_north` `pan_west` `pan_south` `pan_east` | pan the camera (held → about 8 hexes/sec) |
 | `H` | `recentre` | camera back to the origin, leaving both layers alone |
 | `Tab` | `toggle_mode` | ground ↔ marker mode.  The badge top-right says which: grass-green ground, hot pink marker |
-| `K` | `cycle_kind` | marker mode: spawn → target → tower → spawn |
+| `K` | `cycle_kind` | marker mode: spawn → target → tower → trap → spawn |
 | `R` | `rotate` | marker mode: turn the place-direction clockwise.  `Shift`+`R` the other way.  No-op for a target |
 | `Ctrl`+`Z` | `undo` | one drag is one undo, 50 deep |
 | `Ctrl`+`Y` | `redo` | any other action discards the redo branch |

@@ -52,6 +52,7 @@ use build;
 use skill;
 use endure;
 use tower;
+use trap;
 use wallet;
 use vehicle;
 use helper;
@@ -279,6 +280,25 @@ fn towers_diff(a: const TowerState, b: const TowerState) -> text {
     ""
 }
 
+fn traps_diff(a: const TrapState, b: const TrapState) -> text {
+    for tpd_x in a.cells {
+        tpd_y = b.cells[tpd_x.q, tpd_x.r];
+        if tpd_y == null {
+            return "traps ({tpd_x.q}, {tpd_x.r}): a cell vs nothing";
+        }
+        if tpd_x.spent != tpd_y.spent {
+            return "traps ({tpd_x.q}, {tpd_x.r}).spent: {tpd_x.spent} vs {tpd_y.spent}";
+        }
+        if timer_spent(tpd_x.rearm) != timer_spent(tpd_y.rearm) {
+            return "traps ({tpd_x.q}, {tpd_x.r}).rearm: {timer_spent(tpd_x.rearm)} vs {timer_spent(tpd_y.rearm)}";
+        }
+    }
+    if len(a.cells) != len(b.cells) {
+        return "traps: {len(a.cells)} cells vs {len(b.cells)}";
+    }
+    ""
+}
+
 // ─── The rest ───────────────────────────────────────────────────
 
 fn wallet_diff(a: const Wallet, b: const Wallet) -> text {
@@ -440,6 +460,12 @@ pub fn state_diff(a: const WaveState, b: const WaveState) -> text {
     }
     sd_t = towers_diff(a.towers, b.towers);
     if sd_t != "" { return sd_t; }
+    // ⚠ The trap plates (BACKLOG C4).  A field list kept by hand is
+    // this file's known weakness (§ its own header), and the round trip
+    // in `tests/18_s2` is what makes a missing row fail loudly rather
+    // than silently agreeing.
+    sd_tp = traps_diff(a.traps, b.traps);
+    if sd_tp != "" { return sd_tp; }
     sd_w = wallet_diff(a.wallet, b.wallet);
     if sd_w != "" { return sd_w; }
     sd_p = vehicle_diff(a.player, b.player);

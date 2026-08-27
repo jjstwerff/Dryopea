@@ -197,6 +197,7 @@ const CORE_SPAWN_AND_WALL: text = `
     click 0 0
     do cycle_kind
     do cycle_kind
+    do cycle_kind
     do rotate
     do rotate
     do rotate
@@ -216,6 +217,7 @@ const CORE_SPAWN_AND_WALL_UNDER_THE_SPAWN: text = `
     do toggle_mode
     do cycle_kind
     click 0 0
+    do cycle_kind
     do cycle_kind
     do cycle_kind
     do rotate
@@ -273,7 +275,7 @@ fn test_a_legal_walk_reads_green() {
 // its first step, because the map is water.
 fn test_a_blank_map_is_water_under_every_enemy() {
     tbm = script_run(editor_state_new(PALETTE),
-        "do toggle_mode\ndo cycle_kind\nclick 0 0\ndo cycle_kind\ndo cycle_kind\nclick 12 0\nwave 1\nenemies passable",
+        "do toggle_mode\ndo cycle_kind\nclick 0 0\ndo cycle_kind\ndo cycle_kind\ndo cycle_kind\nclick 12 0\nwave 1\nenemies passable",
         SHOTS);
 
     assert(!tbm.ok, "an unpainted world is sea, and a robot does not swim");

@@ -36,6 +36,7 @@ use flow;
 use occupancy;
 use damage;
 use tower;
+use trap;
 use wallet;
 use vehicle;
 use helper;
@@ -567,6 +568,7 @@ pub struct WaveState {
     orders:      BuildLayer,
     traffic:     Traffic,
     jammer:      Jammer,
+    traps:       TrapState,
 }
 
 // Factory: a fresh wave state with no enemies, a cursor at 0, the
@@ -585,6 +587,7 @@ pub fn wave_state_empty() -> WaveState {
         orders:  build_layer_empty(),
         traffic: traffic_new(),
         jammer:  jammer_new(),
+        traps:   trap_state_empty(),
     }
 }
 
@@ -1630,6 +1633,67 @@ pub fn wave_fire(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     wf_shots
 }
 
+// ─── The plates go off (BACKLOG C4) ─────────────────────────────
+
+// Every armed trap that was trodden on this tick fires, once.  Answers
+// how many went off.
+//
+// ⚠⚠ **It runs AFTER the movers, where every other weapon runs
+// before.**  `wave_fire` shoots at where an enemy IS at the top of the
+// tick because a tower is aiming; a plate is not aiming at anything —
+// it is waiting to be stepped on, and the stepping is what the mover
+// loop just did.  Reading the pre-move world here would make a trap a
+// tower with a range of one.
+//
+// ⚠⚠ **The trigger is the VISIT COUNT and never the occupancy count**
+// (`trap.loft` § The trigger is a CROSSING).  A scout is released two
+// hexes in two ticks out of three, and the hex in the middle of a
+// two-hex stride is one nothing is standing on when the tick ends —
+// so `occupancy_taken` would let the fastest class walk over the plate
+// and `occupancy_trodden` does not.
+//
+// ⚠ It lands DAMAGE and never a death, the rule `wave_fire` keeps:
+// `wave_deaths` at the end of the tick is the ONE death path, so a
+// trap kill and a tower kill leave the same body in the same place —
+// and the heap they leave is the mechanic's real cost
+// (`trap.loft` § Its real cost is the RAMP it builds).
+//
+// ⚠ **The blast reads the world as it stands NOW**, after everybody
+// has moved, so it catches the robot that set it off wherever the rest
+// of its stride carried it — which is what makes `TRAP_BLAST_HEXES`
+// the number it is.
+//
+// ⚠ Ordered by the marker hash like `wave_fire`, and that is safe for
+// the same reason: each plate is independent, so the order two of them
+// go off in changes nothing a measurement can see.
+pub fn wave_traps(state: WaveState, mw: const MarkerWorld,
+                  occ: const Occupancy) -> integer {
+    wtp_n = 0;
+    for wtp_m in mw.markers {
+        if wtp_m.kind != MARKER_KIND_TRAP as u8 { continue; }
+        if !occupancy_trodden(occ, wtp_m.q, wtp_m.r) { continue; }
+        // ⚠ `trap_fire` is what decides, not a `trap_armed` test above
+        // it: one door spends the charge and answers whether there was
+        // one, the way `tower_spend_shot` is the one site a shot leaves
+        // the magazine through.  A test-then-spend pair is two places
+        // for the same fact to be read from.
+        if !trap_fire(state.traps, wtp_m.q, wtp_m.r) { continue; }
+        wtp_at = Hex { q: wtp_m.q, r: wtp_m.r };
+        for wtp_e in state.enemies {
+            if !wtp_e.alive { continue; }
+            if trap_in_blast(wtp_at, Hex { q: wtp_e.q, r: wtp_e.r }) {
+                // ⚠ Through the loop variable, which ALIASES — the
+                // opposite trap to `wave_fire`'s, where the enemy comes
+                // out of an index and a helper that RETURNED one would
+                // hand back a copy.
+                enemy_hurt(wtp_e, TRAP_DAMAGE);
+            }
+        }
+        wtp_n += 1;
+    }
+    wtp_n
+}
+
 // What every besieging enemy does to the structure it is stopped by,
 // this tick.
 //
@@ -1990,6 +2054,20 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
         }
     }
 
+    // ⚠⚠ **The plates go off HERE, after the movers and before every
+    // other consequence** (BACKLOG C4).  A trap is the one weapon in
+    // the game that is triggered rather than aimed, so it is the one
+    // that reads the world AFTER the tick's movement instead of before
+    // it — `wave_traps` carries the argument, and `wt_occ` carries the
+    // evidence: the mover loop above wrote every arrival into it,
+    // crossings included.
+    //
+    // ⚠ Before the deaths, so a blast's kills fall with the tick's
+    // other bodies and become terrain on tick N+1 like every other
+    // corpse; before `wave_rearm`, so a plate re-armed at the end of
+    // this tick cannot also have fired in it.
+    wave_traps(state, mw, wt_occ);
+
     // ⚠ **The consequences land LAST, after every enemy has moved**, so
     // it is tick N+1 that walks over the body and routes through the
     // hole.  A hex raised or a wall felled mid-loop would change the
@@ -2121,6 +2199,18 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     // call to a local panics the parser
     // ([loft#918](https://github.com/loft-lang/loft/issues/918)).
     wave_repair(state, mw, TICK_STEP_UNITS);
+
+    // ⚠ **And the plates are serviced beside the towers** (BACKLOG C4),
+    // in the same place and for the same reasons: it is work a vehicle
+    // does by BEING somewhere, after the movers so it is the plate the
+    // vehicle ENDED beside, and what it changes belongs to tick N+1 —
+    // a plate re-armed now is live from the next tick, exactly as a
+    // rebuilt tower fires from the next one.
+    //
+    // ⚠ A bare statement rather than bound to a local: `wave_rearm` is
+    // declared below and binding a FORWARD-declared call to a local
+    // panics the parser ([loft#918]).
+    wave_rearm(state, mw, TICK_STEP_UNITS);
 
     // ⚠⚠ **Everybody recovers a little, every tick** (BACKLOG C2), and
     // working simply outpaces it — which is what lets the three jobs
@@ -2484,6 +2574,113 @@ fn wave_repair(state: WaveState, mw: const MarkerWorld,
     }
 
     wr_done
+}
+
+// ─── Upkeep: re-arming a spent plate (BACKLOG C4) ───────────────
+//
+// ⚠⚠ **The same job as a tower rebuild, and deliberately a second
+// function rather than a branch inside `wave_repair`.**  A vehicle
+// standing between a black tower and a spent plate does both, exactly
+// as it already salvages and builds and repairs in one tick: presence
+// is what pays for all of them, and making the two compete would be a
+// priority rule nobody asked for and nothing could see the effect of.
+//
+// ⚠ **Twenty seconds buys one blast here and thirty shots there**, and
+// that asymmetry IS the mechanic (`trap.loft` § How long re-arming one
+// takes).  What a trap buys with it is a kill at a place chosen in
+// advance, with no line of sight and no range — and the trip out to
+// make it, in the middle of a wave, is `@X108`'s whole argument for
+// why the mechanic belongs in this game.
+
+// Which spent plate `at` should work on — the nearest, ties by `q` then
+// `r`.  Answers a hex with no marker on it when there is none in reach.
+//
+// ⚠ Ordered by coordinate and never by hash order, `repair_target`'s
+// rule: `mw.markers` is stable within one run and not across them, and
+// a scripted run has to repeat.
+fn rearm_target(state: const WaveState, mw: const MarkerWorld,
+                at: const Hex) -> Hex {
+    rat_best = Hex { q: 0, r: 0 };
+    rat_have = false;
+    rat_dist = 0;
+    for rat_m in mw.markers {
+        if rat_m.kind == MARKER_KIND_TRAP as u8 {
+            rat_h = Hex { q: rat_m.q, r: rat_m.r };
+            if trap_in_reach(rat_h, at)
+               && !trap_armed(state.traps, rat_m.q, rat_m.r) {
+                rat_d = lat_distance(rat_h, at);
+                if !rat_have || rat_d < rat_dist
+                   || (rat_d == rat_dist
+                       && (rat_m.q < rat_best.q
+                           || (rat_m.q == rat_best.q && rat_m.r < rat_best.r))) {
+                    rat_best = rat_h;
+                    rat_dist = rat_d;
+                    rat_have = true;
+                }
+            }
+        }
+    }
+    // ⚠ Nothing in reach answers the vehicle's OWN hex, and it is safe
+    // for `repair_target`'s reason: `trap_rearm_tick` refuses any hex
+    // whose plate is armed, and a hex with no trap on it has no cell —
+    // only `trap_fire` creates one — so it reads armed and is refused.
+    if !rat_have { return Hex { q: at.q, r: at.r }; }
+    rat_best
+}
+
+// Every vehicle's turn at a spent plate.  Answers how many re-arms
+// FINISHED this tick.
+//
+// ⚠ **One plate per vehicle per tick, and any number of vehicles per
+// plate** — `wave_repair`'s shape, so a crew of N re-arms N times as
+// fast and order decides only who lands the last fraction.
+//
+// ⚠ **No key is pressed**, and **a carrier's hands are FULL**: both
+// rules are `wave_repair`'s, read out of the same one carry slot, and
+// a trap that could be re-armed one-handed while ferrying a tower-top
+// would be the exception that makes every other job's rule look
+// arbitrary.
+fn wave_rearm(state: WaveState, mw: const MarkerWorld,
+              elapsed: integer) -> integer {
+    wra_done = 0;
+
+    if vehicle_present(state.player) && carrier_free(state, BLOCKER_PLAYER) {
+        wra_at = Hex { q: state.player.q, r: state.player.r };
+        wra_t  = rearm_target(state, mw, wra_at);
+        if trap_rearm_tick(state.traps, wra_t.q, wra_t.r, elapsed) {
+            wra_done += 1;
+        }
+    }
+
+    wra_ci = 0;
+    for wra_h in state.crew {
+        if wra_h.alive && carrier_free(state, BLOCKER_CREW + wra_ci) {
+            wra_hat = Hex { q: wra_h.q, r: wra_h.r };
+            wra_ht  = rearm_target(state, mw, wra_hat);
+            // ⚠ **`repair` is the skill, and re-arming is servicing a
+            // device rather than raising one** (BACKLOG C1) — the same
+            // number that scales a tower rebuild, because a trap costs
+            // the same clock and a crew member who is good at one is
+            // good at the other.  Nothing new was added to the lattice.
+            //
+            // ⚠⚠ **Asked BEFORE the work, so nobody tires re-arming
+            // nothing** (BACKLOG C2) — `wave_repair`'s finding, and it
+            // is the same shape of mistake here: every helper in the
+            // roster would be charged a tick of work whether or not
+            // there was a spent plate within reach.
+            if !trap_armed(state.traps, wra_ht.q, wra_ht.r) {
+                endurance_work(wra_h.endurance, elapsed);
+                if trap_rearm_tick(state.traps, wra_ht.q, wra_ht.r,
+                                   crew_work_units(wra_h, wra_h.skills.repair,
+                                                   elapsed)) {
+                    wra_done += 1;
+                }
+            }
+        }
+        wra_ci += 1;
+    }
+
+    wra_done
 }
 
 // ─── What starts the list at all (plan 16 W3) ───────────────────

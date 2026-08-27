@@ -34,11 +34,25 @@
 // attacks an occupied hex *because* it is occupied.
 
 
-// One hex and how many enemies stand on it.
+// One hex, how many enemies stand on it, and how many have set foot on
+// it this tick.
+//
+// ⚠⚠ **`visits` is not `n` counted differently — it is the question a
+// TRAP has to ask** (BACKLOG C4).  `n` is who is standing here NOW, and
+// it falls back to zero the moment they walk on; `visits` only ever
+// rises, so a hex that was crossed in the middle of a two-hex stride
+// still says so at the end of the tick.  Without it a plate is walked
+// straight over by the one class fast enough to matter — see
+// `trap.loft` § The trigger is a CROSSING.
+//
+// ⚠ It counts the enemies that were already standing here when the
+// occupancy was built as well, because they trod on this hex to get
+// here and a plate under a besieging robot has to go off.
 pub struct OccupiedHex {
-    q: integer,
-    r: integer,
-    n: integer,
+    q:      integer,
+    r:      integer,
+    n:      integer,
+    visits: integer,
 }
 
 // Who is standing where.  A hash must be a struct field (the same
@@ -56,17 +70,31 @@ pub fn occupancy_empty() -> Occupancy {
 }
 
 // Somebody stepped onto (q, r).
+//
+// ⚠ **The ONE door every arrival goes through**, which is what let the
+// visit record cost one line: `wave_occupancy` seeds the tick through
+// it and `enemy_move_to` steps through it, so a plate asking
+// `occupancy_trodden` sees both without a single signature moving.
+//
+// ⚠ `visits: 1` is spelled out rather than defaulted — a literal that
+// omits a field takes its zero SILENTLY ([loft#914]), and this is the
+// site where a wrong one would leave every trap in the game inert.
 pub fn occupancy_enter(o: Occupancy, q: integer, r: integer) {
     oe_c = o.cells[q, r];
     if oe_c == null {
-        o.cells[q, r] = OccupiedHex { q: q, r: r, n: 1 };
+        o.cells[q, r] = OccupiedHex { q: q, r: r, n: 1, visits: 1 };
     } else {
-        oe_c.n = oe_c.n + 1;
+        oe_c.n      = oe_c.n + 1;
+        oe_c.visits = oe_c.visits + 1;
     }
 }
 
 // Somebody stepped off (q, r).  A no-op on a hex nobody holds — see
 // § It is a COUNT per hex.
+//
+// ⚠ **It does not touch `visits`**, and that is the whole point of the
+// second number: leaving is what erases the evidence from `n`, and a
+// trap has to be able to see a robot that has already walked on.
 pub fn occupancy_leave(o: Occupancy, q: integer, r: integer) {
     ol_c = o.cells[q, r];
     if ol_c == null { return; }
@@ -85,6 +113,22 @@ pub fn occupancy_count(o: const Occupancy, q: integer, r: integer) -> integer {
     oc_c = o.cells[q, r];
     if oc_c == null { return 0; }
     oc_c.n
+}
+
+// How many enemies have set foot on (q, r) since this occupancy was
+// built — which, in a tick, means since the tick began.
+pub fn occupancy_visits(o: const Occupancy, q: integer, r: integer) -> integer {
+    ov_c = o.cells[q, r];
+    if ov_c == null { return 0; }
+    ov_c.visits
+}
+
+// Has anything walked on (q, r) this tick?
+//
+// ⚠ **The door the trap rule is written in**, `tower_black`'s shape:
+// the count is for a message, the boolean is for the rule.
+pub fn occupancy_trodden(o: const Occupancy, q: integer, r: integer) -> boolean {
+    occupancy_visits(o, q, r) > 0
 }
 
 // How many distinct hexes are held.
@@ -187,7 +231,10 @@ pub fn blocker_crew_index(id: integer) -> integer {
 // on (4, 0)" does not — the same argument `occupancy_fault` makes.
 pub fn occupancy_stacked(o: const Occupancy) -> OccupiedHex {
     for os_c in o.cells {
-        if os_c.n > 1 { return OccupiedHex { q: os_c.q, r: os_c.r, n: os_c.n }; }
+        if os_c.n > 1 {
+            return OccupiedHex { q: os_c.q, r: os_c.r, n: os_c.n,
+                                 visits: os_c.visits };
+        }
     }
-    OccupiedHex { q: 0, r: 0, n: 0 }
+    OccupiedHex { q: 0, r: 0, n: 0, visits: 0 }
 }

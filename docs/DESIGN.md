@@ -1098,7 +1098,7 @@ anti-elemental dampener, anti-comms-priority disruptor,
 area-effect splash, …; exact catalogue TBD).  See
 [§ Economy + progression](#13-economy--progression).
 
-⚠⚠ **Two entries from the 2023 catalogue are worth taking now**
+⚠⚠ **Two entries from the 2023 catalogue were worth taking now**
 ([`MATERIALS.md`](MATERIALS.md) § Towers): a **trap that does
 not automatically reset** — placed in advance, fires once, and
 then somebody has to drive out **mid-wave** to re-arm it, which
@@ -1107,6 +1107,33 @@ mechanism (it is a black tower restored by a standing vehicle,
 § Tower overload + hot-swap) — and a **grabber**, but only in
 its *move a body off the chokepoint* form, never as a way to
 bank salvage without the trip.
+
+⚠⚠ **The trap is BUILT** (BACKLOG C4, 2026-08-27,
+[`src/trap.loft`](../src/trap.loft), `@X281`).  It is the fourth
+marker kind; it fires on the hex being **crossed** rather than
+stood on, because a scout strides two hexes in a tick and the
+middle one is never a standing position; the blast is
+`hex_disc_radius_1`, which is both the one footprint
+`numbers.json` names and the smallest disc a crosser cannot
+out-stride; and re-arming is twenty seconds of a vehicle
+standing there, with no key pressed.
+
+⚠⚠ **And what it is worth turned out to be the TRIP and not the
+blast** (`@M057`).  One plate that fires once and is never
+re-armed makes the base fall **three ticks SOONER** — the bodies
+it drops are a permanent terrain change, § 7's own loop — while
+the same plate re-armed three times is worth **+106 ticks**, and
+a crew member simply parked on the same hex for the whole run is
+worth 20.  ⚠ **One hex decides it**: in the gate, the servicing
+hex is the hex the wave is coming through and the crew member is
+destroyed there; two hexes outside, the crew member never gets
+through its own gate at all.  That is this section's own test
+with nothing left to argue about.
+
+⚠ The trap does **not** damage the player's own walls, which is
+what § Damage TYPE gives splash: that table is designed and not
+built, and shipping one row of it would make the trap's drawback
+read as a balance choice rather than as a type.
 
 #### Damage TYPE is the axis, and it is a triangle rather than a ladder
 

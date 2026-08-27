@@ -47,6 +47,25 @@ pub const TOWER_COLOR:       integer = 0x30d0d0;
 pub const TOWER_GHOST_COLOR: integer = 0x188080;   // dimmer for hover
 pub const TOWER_R_M:         float   = 0.34;
 
+// Trap marker (BACKLOG C4) — an amber X, drawn as two crossed lines
+// through the hex centre.
+//
+// ⚠ **A different SHAPE and not just a different colour**, the rule
+// the other three already keep: an arrow, a disc, a ring and now a
+// cross, so the four are told apart in greyscale and at a zoom where
+// a hex is a dozen pixels.  `entity_view.loft::entity_colour` states
+// the same rule for the things the game draws — *distinct is not
+// distinguishable*.
+//
+// ⚠ **The marker says a plate is HERE and never whether it is armed.**
+// A spent trap looks exactly like a live one in the editor, because
+// the editor draws the MAP and being spent is something a RUN did
+// (`markers.loft` § MARKER_KIND_TRAP).  What a player should see is
+// `DESIGN.md` § Two surface signals' job and nothing here draws it.
+pub const TRAP_COLOR:       integer = 0xf09020;
+pub const TRAP_GHOST_COLOR: integer = 0x785010;   // dimmer for hover
+pub const TRAP_R_M:         float   = 0.32;
+
 // Unit forward vector in world metres for a hex direction d ∈ 0..5.
 //
 // ⚠ Comes from the LATTICE (plan 09 C4), not from an angle table.
@@ -204,6 +223,59 @@ pub fn draw_tower_marker(
     }
 }
 
+// Draw a trap plate at the (q, r) hex centre — an X of two crossed
+// lines, thickened by a second pair one pixel off when it is placed
+// and left thin for the hover ghost.
+pub fn draw_trap_marker(
+    cv:     Canvas,
+    cam:    EditorCamera,
+    q:      integer,
+    r:      integer,
+    cw:     integer,
+    ch:     integer,
+    ppm:    float,
+    filled: boolean,
+) {
+    // The same inline world→canvas maths the other three markers use —
+    // floats end to end, so the `(tuple.N as float)` parser bug does
+    // not bite.
+    dtp_camw  = lat_to_metres(cam.pos);
+    dtp_world = lat_to_metres(Hex { q: q, r: r });
+    dtp_cx    = ((cw as float) * 0.5 + (dtp_world.0 - dtp_camw.0) * ppm + 0.5) as integer;
+    dtp_cy    = ((ch as float) * 0.5 + (dtp_world.1 - dtp_camw.1) * ppm + 0.5) as integer;
+
+    dtp_a = (TRAP_R_M * ppm) as integer;
+    if dtp_a < 3 { dtp_a = 3; }
+
+    dtp_col = if filled { TRAP_COLOR } else { TRAP_GHOST_COLOR };
+    cv.draw_line(dtp_cx - dtp_a, dtp_cy - dtp_a,
+                 dtp_cx + dtp_a, dtp_cy + dtp_a, dtp_col);
+    cv.draw_line(dtp_cx - dtp_a, dtp_cy + dtp_a,
+                 dtp_cx + dtp_a, dtp_cy - dtp_a, dtp_col);
+    if filled {
+        // A second pair one pixel down gives the cross a body without
+        // a fill primitive — the same trick `draw_tower_marker` plays
+        // with two circles one radius apart.
+        cv.draw_line(dtp_cx - dtp_a, dtp_cy - dtp_a + 1,
+                     dtp_cx + dtp_a, dtp_cy + dtp_a + 1, dtp_col);
+        cv.draw_line(dtp_cx - dtp_a, dtp_cy + dtp_a + 1,
+                     dtp_cx + dtp_a, dtp_cy - dtp_a + 1, dtp_col);
+    }
+}
+
+// Hover preview for a trap — thin cross, at the hovered hex.
+pub fn render_ghost_trap(
+    cv:  Canvas,
+    cam: EditorCamera,
+    q:   integer,
+    r:   integer,
+    cw:  integer,
+    ch:  integer,
+    ppm: float,
+) {
+    draw_trap_marker(cv, cam, q, r, cw, ch, ppm, false);
+}
+
 // Hover preview for a tower — outline only, at the hovered hex.
 pub fn render_ghost_tower(
     cv:  Canvas,
@@ -242,6 +314,10 @@ pub fn render_markers(
             draw_tower_marker(cv, cam,
                               rm_e.q, rm_e.r,
                               cw, ch, ppm, true);
+        } else if rm_e.kind == MARKER_KIND_TRAP as u8 {
+            draw_trap_marker(cv, cam,
+                             rm_e.q, rm_e.r,
+                             cw, ch, ppm, true);
         }
     }
 }

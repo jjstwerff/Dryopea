@@ -1622,6 +1622,60 @@ src/
                    the bubble as a LURE — and tier 3 does not exist, so
                    the only thing the off state can be priced against
                    today is the player's own base (@M056)
+  trap.loft        A TRAP THAT DOES NOT AUTOMATICALLY RESET
+                   (BACKLOG C4, @X108) — TRAP_DAMAGE / TRAP_BLAST_HEXES
+                   / TRAP_REACH_HEXES / TRAP_REARM_UNITS, TrapCharge {
+                   spent, rearm }, trap_state_empty / trap_armed /
+                   trap_fire / trap_rearm_tick / trap_rearming /
+                   trap_rearm_progress / trap_in_blast / trap_in_reach;
+                   and in `spawn.loft`, `wave_traps` and `wave_rearm`.
+                   ⚠ It is the tower-repair clock with the COST MOVED
+                   TO THE FRONT (plans/17 T1): a tower's servicing buys
+                   thirty shots at the END of its life, a plate's buys
+                   ONE blast at the start of every one.
+                   ⚠⚠ THE TRIGGER IS A CROSSING, NEVER A STANDING
+                   POSITION.  A scout is released TWO hexes in two
+                   ticks out of three, and the hex in the middle of a
+                   stride is one nothing stands on when a tick ends —
+                   so a plate asking `occupancy_taken` is walked over
+                   by the one class fast enough to matter, and NO TEST
+                   USING A REGULAR ROBOT COULD SEE IT (a regular takes
+                   exactly one hex a tick).  `occupancy.loft` grew a
+                   `visits` count for it: one field and one line,
+                   because `occupancy_enter` is already the ONE door
+                   every arrival goes through and `Occupancy` is
+                   already threaded into the mover.
+                   ⚠⚠ THE BLAST IS A DISC OF RADIUS 1, and two
+                   derivations land on that number: a crosser ends at
+                   most `stride − 1` hexes away so radius 1 catches
+                   what set it off (ASSERTED as a cross-product over
+                   every class), and it is `hex_disc_radius_1`, the one
+                   footprint numbers.json names.
+                   ⚠ THE FIELD STORES `spent`, so [loft#914]'s silent
+                   default is an ARMED plate — which is what somebody
+                   who wrote `flag 7 0 trap` in a map meant.  Every
+                   reader asks `trap_armed`.
+                   ⚠ It does not fire on the player or the crew:
+                   `Occupancy` holds enemies only, and the fiction
+                   agrees — the vehicle HOVERS, so there is no weight
+                   on the plate.
+                   ⚠ Re-arming takes the ONE servicing rate dryopea has
+                   (TOWER_REPAIR_UNITS, 20 s) because there is no trap
+                   row in numbers.json — the case @X112 says to push
+                   back on, CHOSEN and said to be chosen.  It is
+                   presence-locked, refuses a CARRIER, refuses an ARMED
+                   plate, and scales by the crew's `repair` skill.
+                   ⚠⚠ WHAT IT IS WORTH IS THE TRIP, NOT THE BLAST
+                   (@M057): one blast nobody goes back for is worth
+                   −3 ticks — the bodies are a permanent terrain change
+                   (plan 12 B7) — while the same plate re-armed three
+                   times is +106, and the control says it is not the
+                   crew member standing there (parked for the whole
+                   run: +20).  ⚠ And ONE HEX decides it, failing two
+                   different ways: in the gate the servicing hex is the
+                   hex the wave comes through and the crew member is
+                   wrecked; two hexes out it never gets through its own
+                   gate at all
   font.loft        THE FONT — the ONE seam to graphics::draw_text
                    (BACKLOG B1) — TEXT_FONT_FILE, Font { handle, path,
                    loaded }, font_load / font_load_from / font_ready /

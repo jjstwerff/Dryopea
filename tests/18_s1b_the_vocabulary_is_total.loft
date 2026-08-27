@@ -43,11 +43,18 @@ fn as_u8(n: integer) -> u8 {
     n as u8? ?? 0
 }
 
-// A session with a core, a tower marker and some ground.
+// A session with a core, a tower marker, a trap plate and some ground.
 fn played(src: text) -> ScriptRun {
     p_head = "do toggle_mode\n"
            + "do cycle_kind\nclick 0 0\n"          // target at (0, 0)
            + "do cycle_kind\nclick 4 0\n"          // tower at (4, 0)
+           // ⚠ The fourth kind (BACKLOG C4).  `trap` demands its marker
+           // the way `tower` does, so the head has to place one or the
+           // totality test below cannot say a word about `traps` — and
+           // a field left at its default on BOTH sides of the
+           // comparison compares equal and proves nothing, which is the
+           // trap this whole file keeps stepping around.
+           + "do cycle_kind\nclick 5 0\n"          // trap at (5, 0)
            + "do toggle_mode\npalette 5\ndrag -2 0 16 0\n"
            // ⚠ A wall, because `damage` refuses a hex with nothing
            // breakable on it — "at 0 HP" and "no wall here" are the two
@@ -79,6 +86,7 @@ fn test_every_field_of_the_state_is_reachable() {
         + "order 2 2 wall_high 3\n"
         + "order 3 3 tower 12\n"
         + "tower 4 0 12 0.4 6.0 off\n"
+        + "trap 5 0 off 6.5\n"
         + "spent 30\n"
         // the movers
         + "park 1 0\ndrive 3 0\nplayer on 1.5 2.5 20\n"
@@ -131,6 +139,19 @@ fn test_every_field_of_the_state_is_reachable() {
         timer_restore_spent(tef_wc.repair, clock_units_from_seconds(6.0),
                             TOWER_REPAIR_UNITS);
         tef_wc.top_removed = true;
+    }
+
+    // ⚠ A plate SPENT with work banked on it (BACKLOG C4).  Both a
+    // live plate and an untouched one have no cell at all, so authoring
+    // an armed one would leave `traps` empty on both sides — the
+    // default-on-both-sides blindness this file's own comments name
+    // three times over.
+    trap_fire(tef_want.traps, 5, 0);
+    tef_wp = tef_want.traps.cells[5, 0];
+    if tef_wp != null {
+        tef_wp.spent = true;
+        timer_restore_spent(tef_wp.rearm, clock_units_from_seconds(6.5),
+                            TRAP_REARM_UNITS);
     }
 
     wallet_drain(tef_want.wallet, 30.0);
