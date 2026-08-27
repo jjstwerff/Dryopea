@@ -1,0 +1,259 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// BACKLOG B4 — a robot going about its business.
+//
+// ⚠⚠ **The claim: traffic crosses the map and goes on its way, and the
+// SAME traffic becomes a wave when the base is sitting on its road.**
+// That second half is `ROBOT_ECONOMY.md`'s *"the only thing that
+// matters is which edges the base happens to sit on"*, and it is the
+// reading this file exists for — a gate that only showed robots
+// appearing would be satisfied by scenery with no game in it.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+fn pal() -> vector<GroundType> { load_palette(PALETTE) }
+
+// A long east-west corridor of grass — wide enough that a marker can
+// sit OUTSIDE the 25-hex scrambler bubble, which no scenario in
+// `tests/scripts/` is.
+fn road(from_q: integer, to_q: integer) -> EditorState {
+    s = editor_state_new(PALETTE);
+    for r_q in from_q..(to_q + 1) {
+        for r_r in -3..4 { paint(s.pw, r_q, r_r, as_u8(5)); }
+    }
+    place_marker(s.mw, 0, 0, MARKER_KIND_TARGET, as_u8(0));
+    s
+}
+
+// ⚠⚠ A road that runs PAST the base rather than at it — a north-south
+// corridor far to the east, where heading 1 keeps `q` and only changes
+// `r`.
+//
+// ⚠ **The distance of the SOURCE is not the question; the route is.**
+// The first version of § the same traffic used the east-west road above
+// with a marker 34 hexes out heading WEST — which walks straight at the
+// core, enters the bubble, and besieges it.  It read as scenery only
+// because forty ticks was not quite enough to arrive, so the gate was
+// passing on TIMING and would have flipped on a longer run.
+// `a-road-that-passes-by.keys` is what caught it, at sixty ticks and
+// 136.67 points of a 200-point wallet.
+fn bypass() -> EditorState {
+    s = editor_state_new(PALETTE);
+    for b_q in 32..37 {
+        for b_r in -20..21 { paint(s.pw, b_q, b_r, as_u8(5)); }
+    }
+    place_marker(s.mw, 0, 0, MARKER_KIND_TARGET, as_u8(0));
+    s
+}
+
+fn live(s: EditorState, rate: float) -> PlayState {
+    ps = play_state_new();
+    play_set_mode(ps, s, true);
+    traffic_set(ps.wave.traffic, rate);
+    ps
+}
+
+// ─── Traffic exists ─────────────────────────────────────────────
+
+// @DRY-110 — a busy road puts robots on it, at the rate it was given
+fn test_a_busy_road_puts_robots_on_it() {
+    s = road(-40, 40);
+    // ⚠ Well outside the bubble (25), so these are TRAFFIC and not a
+    // wave — see § the bubble below.
+    place_marker(s.mw, 34, 0, MARKER_KIND_SPAWN, as_u8(3));
+    ps = live(s, 1.0);
+
+    quiet = len(ps.wave.enemies);
+    play_ticks(ps, s, 15);          // 10 s at 1 robot/s
+    busy = len(ps.wave.enemies);
+
+    assert(quiet == 0 && busy >= 8 && busy <= 12,
+           "a road at 1 robot/s must carry about ten in ten seconds: before={quiet} after={busy}");
+}
+
+// ⚠⚠ The control, and the one this file most needs: a QUIET road
+// carries nothing.  Without it every reading here is satisfied by a
+// spawner that ignores the rate — and traffic being off by default is
+// what keeps the 35 gated scenarios measuring the game they always did.
+fn test_a_quiet_road_carries_nothing() {
+    s = road(-40, 40);
+    place_marker(s.mw, 34, 0, MARKER_KIND_SPAWN, as_u8(3));
+    ps = live(s, 0.0);
+    play_ticks(ps, s, 30);
+    assert(len(ps.wave.enemies) == 0 && !traffic_running(ps.wave.traffic),
+           "a quiet road is empty: {len(ps.wave.enemies)}");
+}
+
+// ⚠ Traffic does NOT need the wave list — ambient life is what a player
+// sees BEFORE they poke anything, and `@X022`'s recon window is
+// unlimited precisely so there is time to look.
+fn test_traffic_runs_without_the_wave_list() {
+    s = road(-40, 40);
+    place_marker(s.mw, 34, 0, MARKER_KIND_SPAWN, as_u8(3));
+    ps = live(s, 1.0);
+    play_ticks(ps, s, 15);
+    assert(len(ps.wave.enemies) > 0 && !wave_schedule_running(ps.wave.schedule),
+           "the road is busy and the list has not started: robots={len(ps.wave.enemies)} list={wave_schedule_running(ps.wave.schedule)}");
+}
+
+// ─── And it goes on its way ─────────────────────────────────────
+
+// @DRY-111 — a robot that has crossed the map LEAVES
+//
+// ⚠⚠ **This is the half that was missing.**  `enemy_walk_heading` has
+// walked a robot along its business since plan 11 F5b, but nothing ever
+// ended one: walk into the sea and it stood there for the rest of the
+// run, so traffic would silt the map up rather than cross it.
+fn test_a_robot_that_has_crossed_goes_on_its_way() {
+    p = pal();
+    s = road(-40, 40);
+    ps = live(s, 0.0);
+
+    // One robot, on an errand, four hexes from the western edge and
+    // walking west (heading 3).
+    ps.wave.enemies += [Enemy { q: -36, r: 0, kind: as_u8(ENEMY_KIND_REGULAR),
+                                heading: 3 as u8, alive: true, errand: true }];
+    play_ticks(ps, s, 20);
+
+    assert(len(ps.wave.enemies) == 0,
+           "it walked off the map and is gone: {len(ps.wave.enemies)}");
+}
+
+// ⚠⚠ **A CUT-OFF robot in the same place does NOT leave** — it is
+// besieging, which is the whole of `ENEMY_MOVEMENT.md`.  Without this
+// control the test above is satisfied by a rule that removes anything
+// that cannot take a step, which would delete the game.
+fn test_but_a_cut_off_robot_stays_and_besieges() {
+    p = pal();
+    s = road(-40, 40);
+    ps = live(s, 0.0);
+
+    ps.wave.enemies += [Enemy { q: -36, r: 0, kind: as_u8(ENEMY_KIND_REGULAR),
+                                heading: 3 as u8, alive: true }];
+    play_ticks(ps, s, 20);
+
+    assert(len(ps.wave.enemies) == 1,
+           "a lost robot stays on the map: {len(ps.wave.enemies)}");
+}
+
+// ⚠ Departing is not DYING: nothing is dropped, nothing is paid.  A
+// robot that walked on was never the player's to kill, and routing it
+// through `wave_deaths` would pay a wallet for traffic nobody touched.
+fn test_departing_is_not_dying() {
+    p = pal();
+    s = road(-40, 40);
+    ps = live(s, 0.0);
+    ps.wave.enemies += [Enemy { q: -36, r: 0, kind: as_u8(ENEMY_KIND_REGULAR),
+                                heading: 3 as u8, alive: true, errand: true }];
+
+    before = wallet_left(ps.wave.wallet);
+    play_ticks(ps, s, 20);
+
+    assert(len(ps.wave.enemies) == 0 && wallet_left(ps.wave.wallet) == before
+           && height_count(ps.wave.heights) == 0,
+           "no body, no salvage, no payment: wallet {before} -> {wallet_left(ps.wave.wallet)} piles={height_count(ps.wave.heights)}");
+}
+
+// ─── ⚠⚠ The bubble is the whole mechanic ────────────────────────
+
+// @DRY-112 — the SAME traffic is scenery or a wave, and where the base
+// sits is what decides
+//
+// ⚠⚠ Two runs, identical but for where the spawn marker is: one
+// outside the scrambler bubble (25 hexes) and one inside it.  The first
+// is a road passing by; the second is a siege.  ***That is the design's
+// own sentence — "the only thing that matters is which edges the base
+// happens to sit on" — measured.***
+fn test_the_same_traffic_is_scenery_or_a_wave() {
+    // ── Far: the road runs PAST, never at ──
+    far_s = bypass();
+    place_marker(far_s.mw, 34, 18, MARKER_KIND_SPAWN, as_u8(1));
+    far = live(far_s, 1.0);
+    play_ticks(far, far_s, 80);
+    far_spent = wallet_spent(far.wave.wallet);
+
+    // ── Near: the base is sitting on it ──
+    near_s = road(-40, 40);
+    place_marker(near_s.mw, 12, 0, MARKER_KIND_SPAWN, as_u8(3));
+    near = live(near_s, 1.0);
+    play_ticks(near, near_s, 80);
+    near_spent = wallet_spent(near.wave.wallet);
+
+    assert(far_spent == 0.0 && near_spent > 0.0,
+           "a road that runs PAST is scenery and one that runs THROUGH is a wave: far_drain={far_spent} near_drain={near_spent}");
+}
+
+// ⚠ And the transition is ONE WAY.  A robot that entered the bubble has
+// lost its link; walking back out does not restore a signal the core is
+// still jamming, and one that recovered its errand would wander off
+// mid-siege.
+fn test_losing_the_errand_is_one_way() {
+    s = road(-40, 40);
+    ps = live(s, 0.0);
+    // Inside the bubble from the first tick.
+    ps.wave.enemies += [Enemy { q: 10, r: 0, kind: as_u8(ENEMY_KIND_REGULAR),
+                                heading: 1 as u8, alive: true, errand: true }];
+    play_ticks(ps, s, 3);
+    lost = (ps.wave.enemies[0] ?? Enemy { }).errand;
+    assert(len(ps.wave.enemies) == 1 && !lost,
+           "the bubble takes the errand and keeps it: still_on_errand={lost}");
+}
+
+// ⚠ A robot OUTSIDE the bubble keeps its errand — the control that
+// makes the reading above about the bubble rather than about time.
+//
+// ⚠⚠ It walks EAST, further out, along the corridor: the first draft
+// sent it across the corridor's seven rows instead, and three ticks
+// put it off the map — so it left, `enemies[0]` answered the DEFAULT
+// struct, and the reading was `errand = false` for a robot that had
+// correctly gone on its way.  **A `?? Enemy { }` on an empty roster is
+// a reading about nothing**, so the length is asserted first.
+fn test_outside_the_bubble_a_robot_keeps_its_errand() {
+    s = road(-40, 40);
+    ps = live(s, 0.0);
+    ps.wave.enemies += [Enemy { q: 34, r: 0, kind: as_u8(ENEMY_KIND_REGULAR),
+                                heading: 0 as u8, alive: true, errand: true }];
+    play_ticks(ps, s, 3);
+    assert(len(ps.wave.enemies) == 1, "it is still on the map to be asked about");
+    here = ps.wave.enemies[0] ?? Enemy { };
+    assert(here.errand && here.q > 34 && lat_distance(Hex { q: here.q, r: here.r },
+                                                      Hex { q: 0, r: 0 }) > SCRAMBLER_BUBBLE_RADIUS,
+           "walking further out is still its own business: errand={here.errand} at=({here.q},{here.r})");
+}
+
+// ─── The state ──────────────────────────────────────────────────
+
+// ⚠⚠ `WaveState` gained a field, and `compare.loft`'s list is
+// HAND-MAINTAINED — without a row there, two runs whose roads differ
+// read as identical and every capture gate in `plans/18` is green over
+// a state it cannot see.
+fn test_state_diff_sees_the_traffic() {
+    a = wave_state_empty();
+    b = wave_state_empty();
+    same = state_diff(a, b);
+    traffic_set(a.traffic, 2.0);
+    rate = state_diff(a, b);
+    traffic_set(b.traffic, 2.0);
+    same2 = state_diff(a, b);
+    traffic_due(a.traffic, TICK_STEP_UNITS);
+    carry = state_diff(a, b);
+    assert(same == "" && rate.contains("traffic rate") && same2 == ""
+           && carry.contains("traffic carry"),
+           "the road is part of the state: none='{same}' rate='{rate}' same='{same2}' carry='{carry}'");
+}
+
+// ⚠ The default is what protects every scenario written before B4:
+// a fresh state's road is quiet and a partial `Enemy` literal is a
+// CUT-OFF robot, which is how the game has always worked.
+fn test_the_defaults_are_the_old_behaviour() {
+    st = wave_state_empty();
+    partial = Enemy { q: 1, r: 2, kind: as_u8(ENEMY_KIND_REGULAR), alive: true };
+    assert(!traffic_running(st.traffic) && st.traffic.rate == 0.0 && !partial.errand,
+           "quiet road, lost robot: rate={st.traffic.rate} errand={partial.errand}");
+}

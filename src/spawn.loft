@@ -41,6 +41,7 @@ use vehicle;
 use helper;
 use carry;
 use build;
+use errand;
 use waves;
 use fixstep;
 
@@ -460,6 +461,21 @@ pub struct Enemy {
     taken:   float,
     stand:   Timer,
     bank:    Bank,
+
+    // Is this robot going about its BUSINESS, rather than lost?
+    // BACKLOG B4.
+    //
+    // ⚠⚠ **False is the way the game has always worked**, and
+    // [loft#914]'s silent default is why it has to be: every enemy in
+    // every scenario written before B4 is a cut-off robot walking to
+    // the core, and a partial `Enemy { … }` literal must go on meaning
+    // that.
+    //
+    // ⚠ It is cleared — never set — by `enemy_step`: a robot that
+    // enters the scrambler bubble has lost its link and is one of the
+    // wave, and it never goes back (`errand.loft` § The bubble is the
+    // whole mechanic).
+    errand:  boolean,
 }
 
 // What this enemy has left, in HP — 0.0 once it has absorbed its whole
@@ -545,6 +561,7 @@ pub struct WaveState {
     cargo:       CargoLayer,
     schedule:    WaveSchedule,
     orders:      BuildLayer,
+    traffic:     Traffic,
 }
 
 // Factory: a fresh wave state with no enemies, a cursor at 0, the
@@ -561,6 +578,7 @@ pub fn wave_state_empty() -> WaveState {
         cargo:   cargo_empty(),
         schedule: wave_schedule_new(),
         orders:  build_layer_empty(),
+        traffic: traffic_new(),
     }
 }
 
@@ -808,6 +826,19 @@ fn enemy_step(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
         enemy_walk_heading(e, pal, pw, hl, occ);
         return;
     }
+
+    // ⚠⚠ **Inside the bubble a robot has lost its errand** (BACKLOG
+    // B4).  `SETTING.md` § Why waves happen: the scrambler cuts its
+    // link, it can no longer hear the AI driving it, and from here on
+    // it is one of the accreting wave.  **One way only** — walking back
+    // out does not restore a signal the core is still jamming, and a
+    // robot that recovered its errand would wander off mid-siege.
+    //
+    // ⚠ Cleared HERE rather than at the spawn, because this is the one
+    // site that knows where the boundary is — and it is the same test
+    // the mode above turns on, so the two can never disagree about
+    // which robots are lost.
+    e.errand = false;
 
     // ── Engage: follow the field (plan 11 F5) ───────────────────
     //
@@ -1826,6 +1857,11 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     wave_provoke_step(state, mw, core);
     wave_schedule_step(state, mw, core);
 
+    // ⚠ **Ambient traffic goes out with the schedule** (BACKLOG B4) and
+    // for the same reason: a robot that sets out this tick is one this
+    // tick's fields, occupancy and move order already know about.
+    wave_traffic_step(state, mw, core);
+
     // Everything the tick reads is fixed before anybody moves: the
     // fields, where everyone stands, and the order they act in.
     wt_fields = wave_fields(state, pal, pw, core);
@@ -1973,6 +2009,18 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     wave_repair(state, mw, TICK_STEP_UNITS);
 
     wave_deaths(state);
+
+    // ⚠ **A robot that finished its business goes on its way**
+    // (BACKLOG B4), here with the deaths because it is the same kind of
+    // consequence: it happens at the END of a tick, so everything that
+    // ran this tick saw it, and tick N+1 does not.
+    //
+    // ⚠⚠ **Before `damage_resolve`, and the order matters**: a breach
+    // resolved first would open the way a robot was about to call the
+    // end of its errand, so it would leave through a hole that did not
+    // exist while it was walking.
+    errand_depart(state, pal, pw, state.heights);
+
     damage_resolve(pal, pw, state.damage, state.heights);
 
     // ⚠ **A finished structure appears HERE, with the deaths and the
@@ -2127,6 +2175,44 @@ pub const SPAWN_DISABLE_RADIUS: integer = 10;
 // in the order they were written, which K0 measured to be worth 20x on
 // a wall's breach clock.  Each call carries on from `pick_cursor`, so
 // the whole wave still spreads round the markers as one.
+// Put this tick's ambient traffic on the road (BACKLOG B4).  Answers
+// how many robots set out.
+//
+// ⚠⚠ **It reuses `spawn_wave`'s markers and its heading** — a robot on
+// an errand enters where a cut-off one does and walks the direction the
+// marker says, because `SETTING.md` makes those the same fact: a spawn
+// marker's direction is *what they were going before*.  A traffic
+// source of its own would be a second spawn path, which
+// `ROBOT_ECONOMY.md` § The governing rule refuses by name.
+//
+// ⚠ **The class is the ordinary robot.**  A mix is `waves.loft`'s job
+// and traffic has no composition — `@X245` asks for *robots in their
+// normal work flow*, and which four roles are on which route is
+// `ROBOT_ECONOMY.md`'s § traffic_mix, which this is deliberately not.
+//
+// ⚠ It runs whether or not the wave list has started: ambient life is
+// what a player sees BEFORE they poke anything, and `@X022`'s recon
+// window is unlimited precisely so there is time to look.
+//
+// Example: @DRY-112
+pub fn wave_traffic_step(state: WaveState, mw: MarkerWorld, core: Hex) -> integer {
+    wts_n = traffic_due(state.traffic, TICK_STEP_UNITS);
+    if wts_n <= 0 { return 0; }
+    wts_before = len(state.enemies);
+    spawn_wave(state, wts_n, ENEMY_KIND_REGULAR as u8? ?? 0, mw,
+               core.q, core.r, SPAWN_DISABLE_RADIUS);
+    // ⚠ Marked AFTER the spawn rather than threaded through
+    // `spawn_wave`: giving that function a traffic flag would put a
+    // second meaning into the one door both spawners share, and
+    // `tests/16_w1` § The two spawners agree is what keeps it single.
+    wts_i = wts_before;
+    while wts_i < len(state.enemies) {
+        (state.enemies[wts_i] ?? Enemy { }).errand = true;
+        wts_i += 1;
+    }
+    len(state.enemies) - wts_before
+}
+
 pub fn wave_schedule_step(state: WaveState, mw: MarkerWorld, core: Hex) -> integer {
     wss_due = wave_schedule_due(state.schedule, alive_count(state) == 0,
                                 TICK_STEP_UNITS);

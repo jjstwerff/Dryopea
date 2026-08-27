@@ -1,0 +1,179 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// A ROBOT GOING ABOUT ITS BUSINESS — traffic, and how it ends.
+//
+// BACKLOG B4.  ⚠⚠ **Every robot in the code was a WAVE** (`@X245`):
+// the roster only ever grew from `wave_schedule_step`, every one of
+// them walked toward the core, and none of them ever left.  A player
+// landing on a fresh world saw an empty map until they poked a spawn
+// marker.
+//
+// ⚠ `@X245` says the finished game's first fifteen minutes are
+// SCOUTING, in a world that is alive — *"robots in their normal work
+// flow, busy with whatever project they happen to be in"* — and names
+// three things it needs.  Two now exist: somebody to point at it
+// (text, `@X268`) and somewhere to go (§ X1's rings).  **This is the
+// third.**
+//
+// ── ⚠⚠ Traffic and waves are the SAME robots ────────────────────
+//
+// `ROBOT_ECONOMY.md` § The graph: *"Material flows along the edges;
+// the flow is the traffic; **the traffic is the waves**."*  And
+// `SETTING.md` § Why waves happen: a wave is *"the gradual accretion
+// of individual cut-off robots"*, where a spawn marker is *"where
+// cut-off robots first enter the bubble's edge"* and **the marker's
+// direction is the heading they were going BEFORE**.
+//
+// So this file adds **no mover and no second AI** — `DESIGN.md` § 10's
+// rule, and `ROBOT_ECONOMY.md` § The governing rule states it again:
+// *an installation that needs its own movement code has broken it*.
+// `spawn.loft::enemy_walk_heading` has walked a robot along its
+// business since plan 11 F5b.  What was missing is at both ends:
+//
+//   ⚠ **a robot's business never ENDED** — walk into a cliff or the
+//     sea and it stands there for the rest of the run, so traffic
+//     would silt the map up rather than cross it;
+//   ⚠ **and nothing ever started one** that the wave schedule had not.
+//
+// ── ⚠⚠ The bubble is the whole mechanic ─────────────────────────
+//
+// A robot on an errand that enters the scrambler bubble **loses its
+// errand** — its link is cut, it is one of the wave, and it never goes
+// back.  That is `SETTING.md`'s fiction made mechanical, and it is
+// what `ROBOT_ECONOMY.md` means by *"the only thing that matters is
+// which edges the base happens to sit on"*:
+//
+//   **the same traffic is scenery or a wave, and where you landed is
+//   what decides which.**
+//
+// ⚠ Measured rather than asserted — `tests/b4_the_errand.loft` runs one
+// traffic rate past a marker outside the bubble and the same rate past
+// one inside it, and reads scenery in the first and a siege in the
+// second.
+//
+// ── What keeps the 679 gate measurements still ──────────────────
+//
+// ⚠⚠ `Enemy.errand` defaults **false**, so every robot in every
+// existing scenario is a cut-off robot exactly as before, and traffic
+// is off until a `.keys` file says `traffic <rate>`.  [loft#914]'s
+// silent default lands on *the way the game already worked*, which is
+// the only direction it could safely land.
+
+use spawn;
+use markers;
+use lattice;
+use passable;
+use painted;
+use palette;
+use height;
+use occupancy;
+use fixstep;
+
+// Robots per second one source puts on the road, when a map says
+// nothing — `traffic <rate>` is how a scenario says otherwise.
+//
+// ⚠ ZERO, and that is the load-bearing default: ambient life is opt-in
+// so that the 35 gated scenarios measure the game they always did.
+pub const TRAFFIC_RATE_DEFAULT: float = 0.0;
+
+// One map's ambient traffic.
+//
+// ⚠ A `Bank` rather than a timer, and for `fixstep`'s own reason: a
+// rate banked in integer base units releases whole robots exactly at
+// every tick length, where a float accumulator comes up short (`@M049`
+// is the same mistake one system over).  ⚠ The RATE is stored because
+// it is a property of the map; the bank holds only the carry.
+pub struct Traffic {
+    rate: float,
+    bank: Bank,
+}
+
+// Factory: a quiet map.
+pub fn traffic_new() -> Traffic {
+    Traffic { rate: TRAFFIC_RATE_DEFAULT, bank: bank_new() }
+}
+
+// Set how busy this map is, in robots per second.
+//
+// ⚠ Negative is clamped to nothing rather than refused: a map is quiet
+// or it is busy, and there is no third thing a negative rate could
+// mean.
+//
+// Example: @DRY-110
+pub fn traffic_set(t: Traffic, rate: float) {
+    t.rate = max(rate, 0.0);
+}
+
+// Is any traffic running?
+pub fn traffic_running(t: const Traffic) -> boolean {
+    t.rate > 0.0
+}
+
+// How many robots this map puts on the road over `elapsed`.
+//
+// ⚠ It SPENDS the bank, so a caller asks once per tick — the same
+// contract `enemy_bank` and `helper_bank` have.
+//
+// Example: @DRY-110
+pub fn traffic_due(t: Traffic, elapsed: integer) -> integer {
+    if !traffic_running(t) { return 0; }
+    bank_gain(t.bank, bank_rate(t.rate), elapsed, BANK_WHOLE)
+}
+
+// ─── Where a robot's business ENDS ──────────────────────────────
+
+// Has this robot finished its business here?
+//
+// ⚠⚠ **Its business is its HEADING** — `SETTING.md` says a spawn
+// marker's direction is *what they were going before* — so a robot is
+// done when it can go no further that way: the map's edge, a cliff,
+// deep water.  It has crossed, and it goes on its way.
+//
+// ⚠ **Only a robot on an ERRAND is ever done.**  A cut-off robot that
+// walks into a wall is besieging it, which is the whole of
+// `ENEMY_MOVEMENT.md`; making that one leave would delete the game.
+//
+// ⚠ It asks `can_step`, the one passability rule, rather than a second
+// idea of what stops a robot — the same reason `enemy_walk_heading`
+// asks it.
+//
+// Example: @DRY-111
+pub fn errand_done(e: const Enemy, pal: vector<GroundType>, pw: PaintedWorld,
+                   hl: const HeightLayer) -> boolean {
+    if !e.errand { return false; }
+    if !e.alive  { return false; }
+    ed_from = Hex { q: e.q, r: e.r };
+    ed_to   = lat_neighbour(ed_from, e.heading as integer);
+    !can_step(pal, pw, hl, e.kind, ed_from, ed_to)
+}
+
+// Take every robot that has finished off the roster.  Answers how many
+// went on their way.
+//
+// ⚠⚠ **It REMOVES rather than killing**, and the difference is the
+// point: `wave_deaths` drops a body, pays salvage and raises the
+// rubble that ramps a wall.  A robot that simply walked on leaves
+// nothing behind, earns the player nothing, and was never theirs to
+// kill.  Routing this through the death path would pay a wallet for
+// traffic the player never touched.
+//
+// ⚠ Called at the tick's CONSEQUENCE stage beside the deaths, so a
+// robot that finished this tick is gone for tick N+1 and every
+// measurement inside this tick saw it.
+//
+// Example: @DRY-111
+pub fn errand_depart(state: WaveState, pal: vector<GroundType>,
+                     pw: PaintedWorld, hl: const HeightLayer) -> integer {
+    ed_keep: vector<Enemy> = [];
+    ed_gone = 0;
+    for ed_e in state.enemies {
+        if errand_done(ed_e, pal, pw, hl) {
+            ed_gone += 1;
+            continue;
+        }
+        ed_keep += [ed_e];
+    }
+    if ed_gone > 0 { state.enemies = ed_keep; }
+    ed_gone
+}

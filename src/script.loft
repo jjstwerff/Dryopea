@@ -2119,6 +2119,33 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
     // that quietly did not happen would leave every assertion after it
     // measuring an unboosted run.  Same argument `hp` makes for
     // refusing a hex with nothing breakable on it.
+    // Ambient traffic, in robots per second (BACKLOG B4).
+    //
+    // ⚠ A RATE rather than a count: `wave` puts a fixed number on the
+    // map at once, and traffic is a road that keeps being used.  ⚠ It
+    // is off until a scenario says otherwise, which is what keeps the
+    // 35 gated scenarios measuring the game they always did.
+    if sc_cmd == "traffic" {
+        if sc_argc != 1 && sc_argc != 2 {
+            return "traffic needs <robots-per-second> [carry]";
+        }
+        sc_tr = (tok[1] ?? "") as float?;
+        if sc_tr == null { return "traffic: <robots-per-second> must be a number"; }
+        traffic_set(run.play.wave.traffic, sc_tr ?? 0.0);
+        // ⚠⚠ The CARRY, and `banked` is the precedent (plan 23 K2b):
+        // a captured road is part-way to its next robot, and a replay
+        // that started from zero would send that one a tick or two
+        // late.  ⚠ It went red in `18_s2`'s round trip the moment a
+        // scenario had a busy road, exactly as `banked` did the moment
+        // a class walked at a speed whose carry is not zero.
+        if sc_argc == 2 {
+            sc_tc = (tok[2] ?? "") as float?;
+            if sc_tc == null { return "traffic: <carry> must be a number"; }
+            bank_restore_fraction(run.play.wave.traffic.bank, sc_tc ?? 0.0, BANK_WHOLE);
+        }
+        return "";
+    }
+
     // Wall paint, as a STATE rather than a keypress (plan 27 C3).
     //
     // ⚠⚠ **`paint on` / `paint off`, not a toggle**, and the reason is

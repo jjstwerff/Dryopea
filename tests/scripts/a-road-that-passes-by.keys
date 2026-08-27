@@ -1,0 +1,81 @@
+# a-road-that-passes-by — BACKLOG B4, and it is the design's own sentence.
+#
+# ⚠⚠ `ROBOT_ECONOMY.md` § The graph: *"the only thing that matters is
+# which edges the base happens to sit on"*.  This is a road that runs
+# PAST the base — a north-south corridor 34 hexes east, outside the
+# 25-hex scrambler bubble for its whole length — so the traffic on it is
+# SCENERY: robots enter, walk their heading, and go on their way without
+# ever knowing the base is there.
+#
+# ⚠⚠ **The distance of the SOURCE is not the question; the ROUTE is**,
+# and this file is what measured that.  Its first version put the same
+# marker 34 hexes east heading WEST — which walks straight at the core,
+# enters the bubble and besieges it: **136.67 points of a 200-point
+# wallet, gone in sixty ticks.**  A road far away that leads here is not
+# a road that passes by.
+#
+# ⚠ The wallet is the reading, and it does not move.
+#
+# ⚠⚠ Its pair is `tests/b4_the_errand.loft` § the same traffic is
+# scenery or a wave, which runs this rate past a marker INSIDE the
+# bubble and reads a siege.  A scenario cannot hold both halves, so the
+# comparison lives in the test and this file is the half you can look
+# at.
+
+echo a road that passes by: traffic that never enters the bubble is scenery
+
+do toggle_mode
+
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+# The road's entry, far east and heading along the corridor rather than
+# down it — `q` never changes, so the base is 34 hexes away for ever.
+do cycle_kind
+do cycle_kind
+do rotate
+click 34 18
+marker 34 18 spawn 1
+
+count markers 2 2
+do toggle_mode
+
+# The corridor itself, five hexes wide and forty long.
+palette 5
+drag 32 -20 32 20
+drag 33 -20 33 20
+drag 34 -20 34 20
+drag 35 -20 35 20
+drag 36 -20 36 20
+
+# A patch of ground under the core, so the base is somewhere real.
+drag -2 -2 2 -2
+drag -2 -1 2 -1
+drag -2 0 2 0
+drag -2 1 2 1
+drag -2 2 2 2
+
+# ── The road ────────────────────────────────────────────────────
+#
+# One robot a second.  ⚠ `traffic` is a RATE where `wave` is a count:
+# a road keeps being used.
+traffic 1.0
+wallet 200.0 200.0
+count alive 0 0
+
+tick 20
+count alive 6 14
+
+# ── Eighty ticks of traffic, and the base never notices ─────────
+#
+# ⚠⚠ **The wallet is untouched.**  Robots have been crossing for nearly
+# a minute and not one has reached the core, because the road never
+# enters the bubble and they never lost their signal.  ⚠ And the roster
+# does not GROW without bound — they leave at the corridor's end, which
+# is the half of this feature that had never existed.
+tick 60
+wallet 200.0 200.0
+count alive 6 26
+
+snap b4_a_road_that_passes_by

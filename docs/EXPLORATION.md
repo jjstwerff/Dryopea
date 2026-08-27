@@ -97,7 +97,7 @@ first thing a new player does is **read a living world.**
 
 | the opening needs | ⚠ status today |
 |---|---|
-| **a world to look at** — robots at work, insects on trees, an elemental moving | ⚠⚠ **the gap.**  Entities *draw* ([`plans/20`](../plans/20-entity-art/README.md) A5), but **every robot in the code is a WAVE**: `spawn.loft` produces them at markers when provoked, and there is **no mover for a robot going about its business** |
+| **a world to look at** — robots at work, insects on trees, an elemental moving | ⚠⚠ **SHIPPED 2026-08-27** — BACKLOG B4 (`@X276`).  Entities *draw* ([`plans/20`](../plans/20-entity-art/README.md) A5), and `traffic <rate>` now puts robots on a road that walk their heading across the map and go on their way.  ⚠⚠ **It needed no new mover**: `ROBOT_ECONOMY.md` already said *the traffic is the waves*, and `enemy_walk_heading` had walked one along its business since plan 11 F5b — what was missing was that a business never ENDED and nothing ever STARTED one.  ⚠ **The bubble decides what it becomes**: a road that runs PAST is scenery, one that runs THROUGH is a wave (`@M053`).  ⚠ What is left is CONTENT — a map with roads on it — and insects and elementals, which are not built |
 | **somebody to point at it** — the crew's remarks | ⚠⚠ **NO LONGER BLOCKED** — BACKLOG B1 shipped text 2026-08-27 (`@X268`), so `src/font.loft` can draw a line and this stopped being the gate on the opening.  ⚠ What remains is the remark DESIGN itself (`@X129`'s *point, never conclude*) and where a line is composited (`@M047`) |
 | **somewhere to go** — the gradient | ⚠ **exists**: § X1's four rings, plus authored markers |
 

@@ -412,6 +412,15 @@ pub fn state_diff(a: const WaveState, b: const WaveState) -> text {
     if sd_d != "" { return sd_d; }
     sd_o = orders_diff(a.orders, b.orders);
     if sd_o != "" { return sd_o; }
+    // ⚠ The RATE and the carry both: two runs whose roads are equally
+    // busy but part-way to different next robots are not in the same
+    // state, and the carry is what says when the next one sets out.
+    if a.traffic.rate != b.traffic.rate {
+        return "traffic rate: {a.traffic.rate} vs {b.traffic.rate}";
+    }
+    if bank_progress(a.traffic.bank) != bank_progress(b.traffic.bank) {
+        return "traffic carry: {bank_progress(a.traffic.bank)} vs {bank_progress(b.traffic.bank)}";
+    }
     sd_t = towers_diff(a.towers, b.towers);
     if sd_t != "" { return sd_t; }
     sd_w = wallet_diff(a.wallet, b.wallet);

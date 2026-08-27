@@ -1455,6 +1455,39 @@ src/
                    restructured so the world lives in a store-owning
                    container.  ROADMAP's "one-line annotation" is
                    falsified
+  errand.loft      A ROBOT GOING ABOUT ITS BUSINESS (BACKLOG B4) —
+                   TRAFFIC_RATE_DEFAULT, Traffic { rate, bank },
+                   traffic_set / traffic_running / traffic_due,
+                   errand_done / errand_depart.
+                   ⚠⚠ NO MOVER AND NO SECOND AI, which is DESIGN.md
+                   § 10's rule and ROBOT_ECONOMY.md § The governing
+                   rule stating it again.  `enemy_walk_heading` has
+                   walked a robot along its business since plan 11 F5b,
+                   and SETTING.md says a spawn marker's direction IS
+                   what they were going before.
+                   ⚠⚠ WHAT WAS MISSING WAS AT BOTH ENDS: a robot's
+                   business never ENDED — walk into a cliff and it
+                   stood there for the rest of the run, so traffic
+                   would silt the map up rather than cross it — and
+                   nothing ever STARTED one the wave schedule had not.
+                   ⚠⚠ THE BUBBLE TAKES THE ERRAND, ONE WAY.  Cleared in
+                   `spawn.loft::enemy_step` at the same test the
+                   steering mode turns on, so the two cannot disagree
+                   about which robots are lost; walking back out does
+                   not restore a signal the core is still jamming.
+                   ⚠ DEPARTING IS NOT DYING — no body, no salvage, no
+                   payment.  A robot that walked on was never the
+                   player's to kill, and routing it through
+                   `wave_deaths` would pay a wallet for traffic nobody
+                   touched.
+                   ⚠ A Bank rather than a timer: a rate banked in
+                   integer base units releases whole robots exactly at
+                   every tick length (@M049 is the same mistake one
+                   system over).
+                   ⚠⚠ `Enemy.errand` and the rate both default to OFF,
+                   so [loft#914]'s silent default lands on the way the
+                   game already worked — which is why 679 gate
+                   measurements did not move
   font.loft        THE FONT — the ONE seam to graphics::draw_text
                    (BACKLOG B1) — TEXT_FONT_FILE, Font { handle, path,
                    loaded }, font_load / font_load_from / font_ready /

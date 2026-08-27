@@ -154,6 +154,12 @@ fn emit_layers(pal: vector<GroundType>, state: const WaveState) -> text {
         el_out = el_out + "order {el_o.q} {el_o.r} " + el_ow + " "
                         + "{clock_seconds_from_units(el_o.spent)}\n";
     }
+    // ⚠ Ambient traffic (BACKLOG B4).  Written only when the road is
+    // BUSY, so the 35 captured scenarios emit exactly what they did.
+    if traffic_running(state.traffic) {
+        el_out = el_out + "traffic {state.traffic.rate} "
+                        + "{bank_fraction(state.traffic.bank, BANK_WHOLE)}\n";
+    }
     for el_t in state.towers.cells {
         el_out = el_out + "tower {el_t.q} {el_t.r} {el_t.shots} "
                         + "{el_t.charge} "
