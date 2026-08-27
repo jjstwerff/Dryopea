@@ -1,0 +1,210 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// A PLANET — where a player's play is kept, and how it is keyed.
+//
+// BACKLOG B3.  ⚠⚠ **This is the first thing in dryopea a session leaves
+// behind.**  Everything else is rebuilt from source: a `maps/*.json` is
+// committed content a `.keys` file built, a scenario is a starting
+// position, a run dies with the window.  A planet is a place that
+// REMEMBERS — land, build a wall, quit, come back, and the wall is
+// where you left it.
+//
+// ⚠ It is what `@X182` calls *the sole prerequisite of five multiplayer
+// features* — the market, crew rescue, caches, homesteads and attacks
+// on offline bases all need somewhere per-planet to put things.  None
+// of them needs mmap; they need **a place and a key**, which is what
+// this file is.
+//
+// ── What a planet IS ────────────────────────────────────────────
+//
+// The GROUND and the MARKERS, and nothing else — the same pair
+// `maps.loft` says a map holds, saved through the same two files.
+// ⚠ A RUN is deliberately not in it: the roster, the wallet, the cargo
+// and the build ORDERS all die with the session, because *a wall that
+// got built is in the ground* while an unfinished order is something a
+// run is in the middle of (`build.loft` § the layer).  **A planet is a
+// place, not a save game.**
+//
+// ── ⚠⚠ Why this is JSON and not a path-backed Store ─────────────
+//
+// `plans/ROADMAP.md` § Persistence destination has said since plan 01
+// that the destination is *the hash IS the file* — a `Store` mmap'd
+// from a path, no save loop — and that when loft shipped the binding
+// **"the dryopea migration is a one-line annotation"**.
+//
+// ⚠ The binding SHIPPED (`QUESTIONS_FOR_LOFT.md` § `store_persist_bind`
+// is under Resolved, and CLAUDE.md called it missing until this
+// backlog item).  ⚠⚠ **The one-line prediction is FALSIFIED**, and the
+// four measurements that falsify it are `@M052`:
+//
+//   1. It WORKS — 63 painted hexes written in one process and read back
+//      in another, every value intact, with no save call.  The
+//      destination is real.
+//   2. ⚠ **A store does not say what it is.**  A MARKER file bound into
+//      a `PaintedWorld` returns `true`, reports the right count, and
+//      reads as a patch of **water** — `MarkerEntry` and `PaintedHex`
+//      share `q`, `r` and a `u8`, so a marker's KIND is read as a
+//      palette index and a spawn marker (kind 0 = sea) vanishes.
+//   3. ⚠⚠ **dryopea's world is a FIELD, so the file is `EditorState`.**
+//      Binding `s.pw.painted` writes the whole container's store —
+//      loft advises `persist-bind-through-field` at the call — so the
+//      undo HISTORY rides along (measured: 12 entries in, 12 out, which
+//      is Ctrl+Z undoing an edit from a previous session), and the
+//      on-disk LAYOUT becomes `EditorState`'s.  Add a field to the
+//      editor's working struct and every saved planet is silently
+//      misread.
+//   4. ⚠ **A binding does not survive being handed over.**
+//      `s.pw = bound_world` COPIES (`CLAUDE.md` § a struct stored in a
+//      FIELD is a copy), so binding a small stable container and giving
+//      it to the editor writes nothing: measured at 2 hexes painted and
+//      **0** read back.
+//
+// **So the mmap route needs `EditorState` restructured so the world
+// lives in a store-owning container of its own**, which is a change to
+// the editor's central seam and far beyond keying a save file.  It is
+// a decision somebody can now make on numbers rather than on a
+// prediction, and until then a planet is JSON — the format
+// `maps/*.json` already round-trips.
+
+use editor_step;
+use maps;
+use save;
+use painted;
+use markers;
+
+// Where every planet's state lives, relative to the working directory.
+//
+// ⚠ gitignored, like `dryopea_save.json` — a planet is a player's, not
+// the repo's.  ⚠⚠ `maps/` is the opposite and deliberately so
+// (`@X265`): a MAP is committed content built from a `.keys` source,
+// and a planet is what somebody's play turned one into.
+pub const PLANET_ROOT: text = "dryopea_planets";
+
+// How a command line asks for one: `planet=<name>`.
+//
+// ⚠ Same shape as `scenario.loft`'s `script=` and for the same reason
+// (`@X264`): loft strips a leading `--` argument as its own, so
+// `--planet x` never reaches `arguments()` and the entry silently opens
+// a MAP called `x`.
+pub const PLANET_ARG: text = "planet=";
+
+// Who is playing, when nobody said.
+//
+// ⚠⚠ **There is a player in the path from the first day**, though
+// dryopea has exactly one — `@X188`: *keep persistence
+// per-planet-per-player rather than per-session*, because it costs
+// nothing to respect now and a shared planet cannot be retrofitted
+// into a path with no room for a name.
+pub const PLANET_PLAYER_DEFAULT: text = "solo";
+
+// The planet a command line asks for, or "" if it does not.
+//
+// Example: @DRY-109
+pub fn planet_arg(args: vector<text>) -> text {
+    pa_n = PLANET_ARG.size();
+    for pa_a in args {
+        if pa_a.size() > pa_n && pa_a.starts_with(PLANET_ARG) {
+            return pa_a[pa_n..pa_a.size()];
+        }
+    }
+    ""
+}
+
+// Is this a name that may become a path component?
+//
+// ⚠ Empty, a slash either way round, or any `..` — all refused.  A name
+// reaches the filesystem, so this is the boundary where *a planet
+// called `../../etc`* stops being a valid planet.
+fn planet_name_ok(name: text) -> boolean {
+    if name == "" { return false; }
+    if name.contains("/")  { return false; }
+    if name.contains("\\") { return false; }
+    if name.contains("..") { return false; }
+    true
+}
+
+// Where one player's state on one planet lives.
+//
+// Example: @DRY-107
+pub fn planet_dir(planet: text, player: text) -> text {
+    "{PLANET_ROOT}/{planet}/{player}"
+}
+
+// Why this planet could not be opened for this player — `""` when it
+// could.
+//
+// ⚠ It asks about the NAMES and nothing about the disk: whether the
+// directory can be made is `planet_open`'s answer, and it says so with
+// its own message.
+//
+// Example: @DRY-108
+pub fn persist_fault(planet: text, player: text) -> text {
+    if !planet_name_ok(planet) {
+        return "`{planet}` is not a planet name — it must be non-empty and free of `/`, `\\` and `..`";
+    }
+    if !planet_name_ok(player) {
+        return "`{player}` is not a player name — it must be non-empty and free of `/`, `\\` and `..`";
+    }
+    ""
+}
+
+// Open a planet: attach this session to the files that remember it, and
+// load what is already there.  Answers `""` on success, or why not.
+//
+// ⚠⚠ **The two paths are DERIVED from the planet and the player, never
+// passed** — which is what makes a planet a KEY rather than a filename.
+// A caller that could pass paths could point a session at another
+// player's world, and `@X188` is a statement about who can see what.
+//
+// ⚠ It goes through `maps.loft`'s slot naming and `editor_state_attach`,
+// so a planet saves and reloads by exactly the path a MAP does.  There
+// is no second save format and no second loader to drift.
+//
+// Example: @DRY-107, @DRY-108
+pub fn planet_open(s: EditorState, planet: text, player: text) -> text {
+    po_fault = persist_fault(planet, player);
+    if po_fault != "" { return po_fault; }
+
+    po_dir = planet_dir(planet, player);
+    mkdir_all(po_dir);
+    if !is_dir(po_dir) {
+        return "cannot make `{po_dir}` — a planet needs somewhere to live";
+    }
+
+    po_world  = map_slot_path(po_dir, "world");
+    po_marker = map_marker_slot_path(po_dir, "world");
+    editor_state_attach(s, po_world, po_marker);
+
+    // ⚠ `load_map_or_empty` is the load-or-empty pattern `main.loft`
+    // already uses: an absent file is an EMPTY planet rather than a
+    // failure, which is what makes the first landing on a new world the
+    // same code path as the tenth.
+    po_loaded = load_map_or_empty(po_world, s.picker.palette);
+    s.pw  = po_loaded.0;
+    s.cam = po_loaded.1;
+    s.mw  = load_markers_or_empty(po_marker);
+    ""
+}
+
+// Write this session's planet back.
+//
+// ⚠⚠ **JSON needs an explicit save, and that is the whole of what the
+// Store route would have removed** (§ Why this is JSON).  It is the
+// same `save_world` + `save_markers` pair the editor's `do save` action
+// and `map_build_one` both call, so a planet is written by exactly the
+// code a map is.
+//
+// ⚠ It answers whether it wrote: a session never attached to a planet
+// has nothing to save, and saying so beats writing to `""`.
+//
+// Example: @DRY-108
+pub fn planet_save(s: const EditorState, planet: text, player: text) -> boolean {
+    if persist_fault(planet, player) != "" { return false; }
+    ps_dir = planet_dir(planet, player);
+    if !is_dir(ps_dir) { return false; }
+    save_world(s.pw, s.cam, s.picker.palette, planet,
+               map_slot_path(ps_dir, "world"));
+    save_markers(s.mw, planet, map_marker_slot_path(ps_dir, "world"));
+    true
+}

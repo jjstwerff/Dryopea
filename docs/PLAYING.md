@@ -22,6 +22,7 @@ twenty-five plans.
 
 ```bash
 make play MAP=starter_01          # an authored base — start here
+make play PLANET=kepler           # a place that REMEMBERS what you did to it
 make play SCRIPT=a-defended-base  # any of the 36 `.keys` scenarios
 make play                         # the default save slot, empty on a fresh checkout
 ```
@@ -29,6 +30,16 @@ make play                         # the default save slot, empty on a fresh chec
 Three maps ship in [`../maps/`](../maps/README.md); `SCRIPT=` opens any
 `.keys` file in `tests/scripts/` or `tests/gl/` as a starting position.
 **Escape** closes the window.
+
+⚠⚠ **A PLANET is the one that keeps your work.**  `MAP=` and `SCRIPT=`
+open authored content — the same base every time, however you left it —
+while `PLANET=` opens *your* world: build a wall, press `Ctrl+S`, quit,
+and it is there when you come back.  It lives in
+`dryopea_planets/<name>/solo/` and is gitignored, because a map is the
+repo's and a planet is yours.  ⚠ A planet remembers the GROUND and the
+MARKERS and nothing else — the run itself (your crew, the wallet, a
+wall still being built) goes when the window does.  ⚠ `PLANET=` wins if
+you pass more than one.
 
 ⚠ It runs **interpreted** (`make play` passes `--interpret`) because the
 native backend loads an empty palette — `make play-native` exists only

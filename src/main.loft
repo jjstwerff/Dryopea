@@ -232,6 +232,29 @@ fn main() {
     );
     editor_state_attach(s, save_path, marker_save_path);
 
+    // ── The planet (BACKLOG B3) ─────────────────────────────────
+    //
+    // ⚠⚠ **A PLANET WINS OVER A MAP AND A SCENARIO**, and the order is
+    // the design: `script=` and `MAP=` both open CONTENT — a base
+    // somebody authored — while `planet=` opens a PLACE that remembers
+    // what you did to it.  A launch that asked for both would be asking
+    // for an authored base and its own history at once, and the history
+    // is the one that cannot be regenerated.
+    //
+    // ⚠ It re-attaches and re-loads, which is why it sits after the
+    // block above rather than replacing it: the map path stays the
+    // default a session falls back to, and `planet_open` is the one
+    // place that knows a planet's two files.
+    planet = planet_arg(args);
+    if planet != "" {
+        pfault = planet_open(s, planet, PLANET_PLAYER_DEFAULT);
+        if pfault != "" {
+            println("dryopea: {pfault}");
+            return;
+        }
+        map_label = "planet {planet}";
+    }
+
     // ── The scenario (BACKLOG A1) ───────────────────────────────
     //
     // ⚠ **Before the window**, for `gl_gate.loft`'s reason one layer

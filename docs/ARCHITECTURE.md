@@ -1423,6 +1423,38 @@ src/
                    marker on this hex* needs the marker world, so it
                    lives in `spawn.loft::wave_drop`, which is the split
                    `cargo_destination_ok` makes for a tower TOP
+  persist.loft     A PLANET — a place that REMEMBERS (BACKLOG B3) —
+                   PLANET_ROOT / PLANET_ARG / planet_arg / planet_dir /
+                   persist_fault / planet_open / planet_save.
+                   `dryopea_planets/<planet>/<player>/world.json`,
+                   gitignored; `make play PLANET=<name>` opens it.
+                   ⚠⚠ THE PATHS ARE DERIVED FROM THE KEY, NEVER PASSED —
+                   a caller that could pass paths could point a session
+                   at another player's world, and @X188 is a statement
+                   about who can see what.
+                   ⚠ The PLAYER is in the path from day one though
+                   dryopea has exactly one: a shared planet cannot be
+                   retrofitted into a path with no room for a name.
+                   ⚠⚠ A PLANET IS THE GROUND AND THE MARKERS AND NOT A
+                   RUN — the pair a MAP holds.  A wall the crew RAISED
+                   survives because it is ground; the order that made
+                   it, the roster and the wallet die with the session.
+                   A planet is a place, not a save game.
+                   ⚠ It goes through `maps.loft`'s slot naming and
+                   `save.loft`'s writer, so there is no second save
+                   format and no second loader to drift.
+                   ⚠⚠ JSON RATHER THAN THE MMAP `Store`, ON MEASURED
+                   GROUNDS (@M052).  `store_persist_bind` shipped and
+                   round-trips across processes with no save call — but
+                   dryopea's world is a FIELD of `EditorState`, so a
+                   bind writes the CONTAINER's store: loft advises
+                   `persist-bind-through-field`, the undo history rides
+                   along, and the on-disk layout becomes the editor's
+                   working struct's, which any new field silently
+                   invalidates.  Taking it needs `EditorState`
+                   restructured so the world lives in a store-owning
+                   container.  ROADMAP's "one-line annotation" is
+                   falsified
   font.loft        THE FONT — the ONE seam to graphics::draw_text
                    (BACKLOG B1) — TEXT_FONT_FILE, Font { handle, path,
                    loaded }, font_load / font_load_from / font_ready /

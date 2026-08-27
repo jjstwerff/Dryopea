@@ -37,6 +37,12 @@ mkdir -p "$ROOT"/tests/actual
 # behind from a previous run.
 rm -f "$ROOT"/tests/actual/*.png "$ROOT"/tests/actual/*.json
 
+# Planets (BACKLOG B3) are gitignored cwd state, like dryopea_save.json,
+# and `tests/b3_the_planet.loft` writes real ones.  Dropped between runs
+# for the same reason the actuals are: a planet left behind by a removed
+# test is a world a later run could silently read as its own.
+rm -rf "$ROOT"/dryopea_planets
+
 cd "$ROOT"
 
 # The worked-example gate — `docs/EXAMPLES.md`.  A text scan costing

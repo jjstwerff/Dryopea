@@ -1,0 +1,224 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// BACKLOG B3 — a planet remembers.
+//
+// ⚠⚠ **The claim: a session opened at a planet, changed and saved, is
+// the same session when it is opened again — and two planets, or two
+// players, never see each other's.**
+//
+// ⚠ The reading that carries it is the SECOND open.  A test that opened
+// once and read its own memory back would pass against a `planet_open`
+// that never touched a file, so every round-trip below goes through a
+// FRESH `editor_state_new`.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+
+// Forget everything about a planet, so a test starts cold.
+//
+// ⚠ Every test here deletes first: one that only passed on a SECOND run
+// — because a previous run had left the file behind — is a test that
+// fails on a fresh checkout and nowhere else.
+fn forget(planet: text, player: text) {
+    fg_dir = planet_dir(planet, player);
+    delete("{fg_dir}/world.json");
+    delete("{fg_dir}/world_markers.json");
+}
+
+// ─── It remembers ───────────────────────────────────────────────
+
+// @DRY-107 — a planet opened, changed, saved and opened again is the same
+fn test_a_planet_remembers_its_ground_and_markers() {
+    forget("probe_a", PLANET_PLAYER_DEFAULT);
+
+    a = editor_state_new(PALETTE);
+    open1 = planet_open(a, "probe_a", PLANET_PLAYER_DEFAULT);
+    for tp_q in -4..5 {
+        for tp_r in -3..4 { paint(a.pw, tp_q, tp_r, as_u8(5)); }
+    }
+    paint(a.pw, 0, 0, as_u8(9));
+    place_marker(a.mw, 0, 0, MARKER_KIND_TARGET, as_u8(0));
+    place_marker(a.mw, 9, 1, MARKER_KIND_SPAWN, as_u8(3));
+    wrote = painted_count(a.pw);
+    saved = planet_save(a, "probe_a", PLANET_PLAYER_DEFAULT);
+
+    // ⚠ A FRESH session, opened at the same planet.
+    b = editor_state_new(PALETTE);
+    open2 = planet_open(b, "probe_a", PLANET_PLAYER_DEFAULT);
+
+    assert(open1 == "" && open2 == "" && saved && wrote == 63
+           && painted_count(b.pw) == 63 && marker_count(b.mw) == 2
+           && lookup_painted(b.pw, 0, 0) == as_u8(9)
+           && lookup_painted(b.pw, -4, -3) == as_u8(5)
+           && marker_kind(b.mw, 0, 0) == MARKER_KIND_TARGET
+           && marker_kind(b.mw, 9, 1) == MARKER_KIND_SPAWN,
+           "a planet must come back as it was left: open1='{open1}' open2='{open2}' saved={saved} wrote={wrote} read={painted_count(b.pw)} markers={marker_count(b.mw)} wall={lookup_painted(b.pw, 0, 0)}");
+}
+
+// ⚠⚠ The vacuity control this file needs most: a planet nobody has
+// touched opens EMPTY.  Without it every reading above is satisfied by
+// an implementation that quietly shares one world with everybody.
+fn test_an_untouched_planet_opens_empty() {
+    forget("probe_empty", PLANET_PLAYER_DEFAULT);
+    e = editor_state_new(PALETTE);
+    fault = planet_open(e, "probe_empty", PLANET_PLAYER_DEFAULT);
+    assert(fault == "" && painted_count(e.pw) == 0 && marker_count(e.mw) == 0,
+           "a fresh planet is empty ground: fault='{fault}' painted={painted_count(e.pw)} markers={marker_count(e.mw)}");
+}
+
+// ⚠ And an UNSAVED change is not remembered — which is the honest cost
+// of JSON over the mmap destination (`persist.loft` § Why this is JSON).
+// If this ever starts failing, the Store migration has landed.
+fn test_an_unsaved_change_is_not_remembered() {
+    forget("probe_unsaved", PLANET_PLAYER_DEFAULT);
+    a = editor_state_new(PALETTE);
+    planet_open(a, "probe_unsaved", PLANET_PLAYER_DEFAULT);
+    paint(a.pw, 1, 1, as_u8(9));
+
+    b = editor_state_new(PALETTE);
+    planet_open(b, "probe_unsaved", PLANET_PLAYER_DEFAULT);
+    assert(painted_count(b.pw) == 0,
+           "JSON needs an explicit save: {painted_count(b.pw)}");
+}
+
+// ─── The keying is real ─────────────────────────────────────────
+
+// @DRY-108 — two planets do not see each other
+//
+// ⚠ This is what makes it PER-PLANET rather than *a save file*: the
+// path is the key, and a test that only ever used one name could not
+// tell the two apart.
+fn test_two_planets_do_not_see_each_other() {
+    forget("probe_one", PLANET_PLAYER_DEFAULT);
+    forget("probe_two", PLANET_PLAYER_DEFAULT);
+
+    one = editor_state_new(PALETTE);
+    planet_open(one, "probe_one", PLANET_PLAYER_DEFAULT);
+    paint(one.pw, 5, 5, as_u8(9));
+    planet_save(one, "probe_one", PLANET_PLAYER_DEFAULT);
+
+    two = editor_state_new(PALETTE);
+    planet_open(two, "probe_two", PLANET_PLAYER_DEFAULT);
+
+    assert(painted_count(one.pw) == 1 && painted_count(two.pw) == 0,
+           "one planet's wall is not another's: one={painted_count(one.pw)} two={painted_count(two.pw)}");
+}
+
+// ⚠⚠ And two PLAYERS do not see each other's planet — `@X188` asks for
+// per-planet-per-player, and the player is in the path from the first
+// day precisely so a shared world never has to be retrofitted into a
+// path with no room for a name.
+fn test_two_players_do_not_see_each_others_planet() {
+    forget("probe_shared", "ada");
+    forget("probe_shared", "grace");
+
+    a = editor_state_new(PALETTE);
+    planet_open(a, "probe_shared", "ada");
+    paint(a.pw, 1, 1, as_u8(9));
+    paint(a.pw, 2, 2, as_u8(9));
+    planet_save(a, "probe_shared", "ada");
+
+    g = editor_state_new(PALETTE);
+    planet_open(g, "probe_shared", "grace");
+
+    assert(painted_count(a.pw) == 2 && painted_count(g.pw) == 0
+           && planet_dir("probe_shared", "ada") != planet_dir("probe_shared", "grace"),
+           "one planet, two players, two worlds: ada={painted_count(a.pw)} grace={painted_count(g.pw)}");
+}
+
+// ⚠ A planet's two files sit under its own directory, and the paths are
+// DERIVED — which is what makes a planet a KEY rather than a filename a
+// caller could point anywhere.
+fn test_the_paths_are_derived_from_the_key() {
+    d = planet_dir("kepler", "ada");
+    assert(d.starts_with(PLANET_ROOT) && d.contains("kepler") && d.contains("ada")
+           && planet_dir("kepler", "ada") != planet_dir("kepler", "grace")
+           && planet_dir("kepler", "ada") != planet_dir("mars", "ada"),
+           "the key is the path: '{d}'");
+}
+
+// ─── The refusals ───────────────────────────────────────────────
+
+// ⚠⚠ A name becomes a PATH.  `..` is a directory traversal and a slash
+// writes somewhere nobody will look — both refused BY NAME, and the
+// message says which of the two names was wrong.
+fn test_a_name_that_would_escape_the_root_is_refused() {
+    s = editor_state_new(PALETTE);
+    up    = planet_open(s, "../../etc", PLANET_PLAYER_DEFAULT);
+    slash = planet_open(s, "a/b", PLANET_PLAYER_DEFAULT);
+    empty = planet_open(s, "", PLANET_PLAYER_DEFAULT);
+    who   = planet_open(s, "ok", "../root");
+    // ⚠⚠ **`..` WITH NO SLASH IN IT**, and it is the only input here
+    // that isolates the traversal guard: every other escaping name
+    // above is already caught by the `/` rule, so without this one the
+    // `..` check can be deleted and the gate stays green — measured.
+    // `dryopea_planets/../solo` is one level out of the root.
+    dots  = planet_open(s, "..", PLANET_PLAYER_DEFAULT);
+
+    assert(up != "" && slash != "" && empty != "" && who != "" && dots != ""
+           && up.contains("planet name") && who.contains("player name")
+           && dots.contains("planet name")
+           && !planet_save(s, "../../etc", PLANET_PLAYER_DEFAULT),
+           "every escaping name is refused by name: up='{up}' slash='{slash}' empty='{empty}' player='{who}' dots='{dots}'");
+}
+
+// ─── The command line ───────────────────────────────────────────
+
+// @DRY-109 — `planet=<name>`, and never `--planet`
+fn test_the_command_line_asks_with_planet_equals() {
+    one   = planet_arg(["planet=dryopea"]);
+    two   = planet_arg(["script=x", "planet=kepler"]);
+    none  = planet_arg(["starter_01"]);
+    bare  = planet_arg(["planet="]);
+    assert(one == "dryopea" && two == "kepler" && none == "" && bare == ""
+           && planet_arg([]) == "",
+           "the flag reads like `script=` and nothing else: one='{one}' two='{two}' none='{none}' bare='{bare}'");
+}
+
+// ─── What a planet is NOT ───────────────────────────────────────
+
+// ⚠⚠ A planet is the GROUND and the MARKERS — the pair a MAP holds —
+// and a RUN is deliberately not in it.  A wall the crew RAISED is
+// ground, so it survives; the order that produced it, the roster and
+// the wallet do not.  This is the assertion that goes red if somebody
+// starts persisting a session.
+fn test_a_planet_keeps_the_wall_and_forgets_the_run() {
+    forget("probe_run", PLANET_PLAYER_DEFAULT);
+    s = editor_state_new(PALETTE);
+    fault = planet_open(s, "probe_run", PLANET_PLAYER_DEFAULT);
+    assert(fault == "", "it opens: '{fault}'");
+
+    for tr_q in -6..7 {
+        for tr_r in -4..5 { paint(s.pw, tr_q, tr_r, as_u8(5)); }
+    }
+    place_marker(s.mw, 0, 0, MARKER_KIND_TARGET, as_u8(0));
+
+    ps = play_state_new();
+    play_set_mode(ps, s, true);
+    ps.wave.crew += [helper_new(2, 0)];
+    order_place(load_palette(PALETTE), s.pw, ps.wave.orders, 2, 0,
+                BUILD_GROUND, as_u8(9));
+    wallet_drain(ps.wave.wallet, 25.0);
+    // Two orders: one the crew finish, one they never reach.
+    order_place(load_palette(PALETTE), s.pw, ps.wave.orders, 6, 4,
+                BUILD_GROUND, as_u8(9));
+    play_ticks(ps, s, 20);
+    built = lookup_painted(s.pw, 2, 0);
+    left  = order_count(ps.wave.orders);
+    planet_save(s, "probe_run", PLANET_PLAYER_DEFAULT);
+
+    b = editor_state_new(PALETTE);
+    planet_open(b, "probe_run", PLANET_PLAYER_DEFAULT);
+
+    assert(built == as_u8(9) && left == 1
+           && lookup_painted(b.pw, 2, 0) == as_u8(9)
+           && lookup_painted(b.pw, 6, 4) == as_u8(5)
+           && marker_count(b.mw) == 1,
+           "the wall survives because it is GROUND, the unfinished order does not: built={built} unfinished={left} remembered={lookup_painted(b.pw, 2, 0)} site_still_grass={lookup_painted(b.pw, 6, 4)}");
+}

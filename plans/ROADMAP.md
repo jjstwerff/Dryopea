@@ -445,7 +445,7 @@ deserve a plan when the trigger to start lands.
 
 ---
 
-## Persistence destination — path-backed `Store` (deferred, awaiting loft)
+## Persistence destination — path-backed `Store` (deferred, and now on MEASURED grounds)
 
 Today the editor saves to `dryopea_save.json` via `text as
 MapFile` round-trip.  The eventual destination is **the hash IS
@@ -458,10 +458,11 @@ The Rust side already supports this (`Store::open(path)`,
 `Store::open_durable(path, mode)`; @PLAN38 phase 01 shipped in
 loft commit `d494edc`).  The integrity bracket
 (`store_durable_check` / `store_durable_seal`) is exposed to
-`.loft` user code as of phase 01b (`8bc4b08`).  **What's missing
+`.loft` user code as of phase 01b (`8bc4b08`).  ~~**What's missing
 is the language surface for binding a user-data `Store` to a path
-at program startup** — see [`QUESTIONS_FOR_LOFT.md` § Path-backed
-user-data Store binding](../QUESTIONS_FOR_LOFT.md).
+at program startup**~~ — ⚠⚠ **IT SHIPPED**, and
+[`QUESTIONS_FOR_LOFT.md`](../QUESTIONS_FOR_LOFT.md) has it under
+Resolved.  See § What B3 measured below.
 
 Until that lands, we **stay on JSON** for the world file —
 the manual binary `file()` + `#read` cursor-IO route is a worse
@@ -476,9 +477,41 @@ surface lands:
   per-map metadata + objective + waves list, stencil library
   definitions.  Diffable, hand-editable, git-friendly.
 
-When the upstream surface lands the dryopea migration is a
+~~When the upstream surface lands the dryopea migration is a
 **one-line annotation** on `PaintedWorld` / the marker-layer
-wrapper / etc.; the rest of the codebase doesn't change.
+wrapper / etc.; the rest of the codebase doesn't change.~~
+
+### ⚠⚠ What B3 measured — the one-line prediction is FALSIFIED
+
+`@M052`, 2026-08-27.  `store_persist_bind` **works**: 63 painted hexes
+bound in one process and read back in another, every value intact, with
+no save call.  The destination is real.  Four measurements say dryopea
+cannot take it yet:
+
+1. ⚠ **A store does not say what it is.**  A MARKER file bound into a
+   `PaintedWorld` returns `true`, reports the right count, and reads as
+   a patch of **water** — `MarkerEntry` and `PaintedHex` share `q`, `r`
+   and a `u8`, so a marker's kind is read as a palette index and a spawn
+   marker (kind 0 = sea) silently vanishes.
+2. ⚠⚠ **dryopea's world is a FIELD, so the file is `EditorState`.**
+   Binding `s.pw.painted` writes the whole container's store — loft
+   advises `persist-bind-through-field` at the call — so the undo
+   HISTORY rides along (12 entries in, 12 out, which is Ctrl+Z undoing
+   an edit from a previous session) and the on-disk LAYOUT becomes the
+   editor's working struct's.  **Add a field to `EditorState` and every
+   saved world is silently misread.**
+3. ⚠ **A binding does not survive being handed over.**  `s.pw = bound`
+   COPIES (`CLAUDE.md` § a struct stored in a FIELD is a copy), so
+   binding a small stable container and giving it to the editor writes
+   nothing — measured at 2 hexes painted and **0** read back.
+4. ⚠ A missing directory is a silent `false`.
+
+**So the migration is not an annotation: it needs `EditorState`
+restructured so the world lives in a store-owning container of its
+own.**  That is a change to the editor's central seam, and it is now a
+decision somebody can take on numbers rather than on a prediction.
+BACKLOG B3 shipped the per-planet KEY over the JSON path instead
+(`@X275`).
 
 ---
 

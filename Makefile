@@ -16,6 +16,16 @@
 #                   instead of the default single-slot save.  The maps/
 #                   directory is auto-created on first save.
 #
+#   make play PLANET=kepler
+#                   Open a PLANET — a place that REMEMBERS (BACKLOG B3).
+#                   Build a wall, press Ctrl+S, quit, come back, and the
+#                   wall is where you left it.  Lives in
+#                   dryopea_planets/<name>/solo/ and is gitignored: a
+#                   MAP is the repo's, a planet is yours.
+#                   ⚠ PLANET wins over SCRIPT and MAP — a scenario and a
+#                   map open authored CONTENT, a planet opens your own
+#                   history, and the history cannot be regenerated.
+#
 #   make play SCRIPT=a-defended-base
 #                   Open a `.keys` scenario as a playable STARTING
 #                   POSITION (BACKLOG A1) — the base it authors, with
@@ -128,7 +138,7 @@ play:
 	@command -v $(LOFT_BIN) >/dev/null 2>&1 || { \
 	  echo "ERROR: loft binary not found: $(LOFT_BIN)"; \
 	  echo "Install loft, or set LOFT_BIN."; exit 2; }
-	$(LOFT_BIN) --interpret src/main.loft $(if $(SCRIPT),script=$(SCRIPT),$(MAP))
+	$(LOFT_BIN) --interpret src/main.loft $(if $(PLANET),planet=$(PLANET),$(if $(SCRIPT),script=$(SCRIPT),$(MAP)))
 
 # Native-compile play target — currently useless (empty palette,
 # see #866 above), though it no longer crashes.  Kept for testing
@@ -137,7 +147,7 @@ play-native:
 	@command -v $(LOFT_BIN) >/dev/null 2>&1 || { \
 	  echo "ERROR: loft binary not found: $(LOFT_BIN)"; \
 	  echo "Install loft, or set LOFT_BIN."; exit 2; }
-	$(LOFT_BIN) src/main.loft $(if $(SCRIPT),script=$(SCRIPT),$(MAP))
+	$(LOFT_BIN) src/main.loft $(if $(PLANET),planet=$(PLANET),$(if $(SCRIPT),script=$(SCRIPT),$(MAP)))
 
 # Full test suite.  Delegates to scripts/test.sh (single source of
 # truth for the invocation — that script also cleans tests/actual/
