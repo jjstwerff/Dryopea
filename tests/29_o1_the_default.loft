@@ -1,0 +1,359 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 29 phase O1 — the semi-automatic default.
+//
+// ⚠⚠ **The claim: a crew member nobody has told anything finds work
+// inside their own senses and goes to it.**  `docs/DESIGN.md` § 9
+// § SEMI-AUTOMATIC BY DEFAULT — *"they find work, and a new player never
+// has to assign anything"* — and `@X262`'s test that every system in
+// this game has to pass: **does it work with NO input?**
+//
+// ⚠⚠ **AND THE DEFAULT IS DELIBERATELY MYOPIC, which is the half a
+// gate has to hold down.**  `@X198` names auto-assignment as *"the thing
+// that deletes this pillar entirely"*; `@X252` resolves it by making
+// auto a **default rather than a ceiling**, and that resolution is only
+// true if the default is genuinely fine AND genuinely not optimal.  So
+// the boundary — **3 hexes for an untrained crew member, and 4 is out** —
+// is asserted as hard as the behaviour is, and the two are one claim.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text    = "examples/palette.json";
+const GRASS:   integer = 5;
+const WALL:    integer = 9;
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+fn pal_at(path: text) -> vector<GroundType> { load_palette(path) }
+
+fn plain(span: integer) -> PaintedWorld {
+    p_pw = painted_empty();
+    for p_q in -span..=span {
+        for p_r in -span..=span { paint(p_pw, p_q, p_r, as_u8(GRASS)); }
+    }
+    p_pw
+}
+
+fn core_at(q: integer, r: integer) -> Hex { Hex { q: q, r: r } }
+
+// A base with one crew member at `hq, hr` and one wall ordered at
+// (0, 0), and nothing else in it.
+fn one_and_one(p: vector<GroundType>, pw: PaintedWorld,
+               hq: integer, hr: integer) -> WaveState {
+    oa_s = wave_state_empty();
+    oa_s.crew += [helper_new(hq, hr)];
+    order_place(p, pw, oa_s.orders, 0, 0, BUILD_GROUND, as_u8(WALL));
+    oa_s
+}
+
+fn run_ticks(s: WaveState, p: vector<GroundType>, pw: PaintedWorld,
+             n: integer) -> integer {
+    rt_mw = marker_empty();
+    rt_i = 0;
+    while rt_i < n {
+        wave_tick(s, p, pw, rt_mw, core_at(0, 0));
+        rt_i += 1;
+    }
+    rt_i
+}
+
+// How many ticks until the order at (0, 0) is gone, or -1.
+//
+// ⚠⚠ **It paints its OWN world**, and that is not tidiness: a finished
+// order PAINTS the hex, so a second case run over a shared
+// `PaintedWorld` orders a wall onto a wall — `order_fault` refuses it,
+// `order_at` is false from tick one, and the case reads *finished
+// immediately*.  Both regressions this file caught on its first run were
+// that, and neither looked like a fixture bug.
+fn ticks_to_finish(p: vector<GroundType>, hq: integer, hr: integer,
+                   cap: integer) -> integer {
+    tf_pw = plain(12);
+    tf_s  = one_and_one(p, tf_pw, hq, hr);
+    tf_mw = marker_empty();
+    tf_t = 0;
+    while tf_t < cap {
+        tf_t += 1;
+        wave_tick(tf_s, p, tf_pw, tf_mw, core_at(0, 0));
+        if !order_at(tf_s.orders, 0, 0) { return tf_t; }
+    }
+    -1
+}
+
+// ─── ⚠⚠ It works with NO input ──────────────────────────────────
+
+// ⚠⚠ The phase, in one reading.
+//
+// ⚠ Three hexes is inside an untrained crew member's own senses, so
+// they walk over and raise the wall.  ⚠⚠ Before O1 this base ran for
+// ever: `plans/29` § O0 reading 1 measured sixty ticks with **not one
+// unit of work** in the order.
+fn test_a_crew_member_nobody_told_anything_finds_the_work() {
+    tac_p  = pal_at(PALETTE);
+    tac_pw = plain(12);
+    tac_s  = one_and_one(tac_p, tac_pw, 3, 0);
+
+    tac_mw = marker_empty();
+    tac_n  = 0;
+    while tac_n < 90 {
+        tac_n += 1;
+        wave_tick(tac_s, tac_p, tac_pw, tac_mw, core_at(0, 0));
+        if !order_at(tac_s.orders, 0, 0) { continue; }
+    }
+    assert(!order_at(tac_s.orders, 0, 0),
+           "the wall goes up with nobody directing anybody");
+
+    tac_h = tac_s.crew[0] ?? Helper { };
+    assert(tac_h.q == 0 && tac_h.r == 0,
+           "and the crew member is standing on it: ({tac_h.q}, {tac_h.r})");
+    assert(hex_ground_name(tac_p, tac_pw, tac_s.heights, 0, 0) == "wall",
+           "and the wall is there");
+}
+
+// ⚠⚠ **The walk costs what the walk costs, and no more — and it is ONE
+// tick for three hexes, not two.**  A crew member banks 1.667 hexes a
+// tick, so three hexes take two ticks of walking; a crew member standing
+// on the site needs 15 ticks of work (`numbers.json` § wall.build_time
+// 10 s over a 2/3 s tick).  ⚠ The arithmetic says 17 and the tree says
+// **16**, because **arriving and working are the same tick**:
+// `wave_assign` and `helper_tick` run before `helper_build`, so the tick
+// that lands them on the site is also the tick they put work into it.
+// It is `plans/28` § S1's *arriving and arming are the same tick* in a
+// second place, and it is the shape to expect wherever this tick moves
+// somebody and then asks them to do something.
+//
+// ⚠ Pricing it exactly is what stops a later phase blaming the DECISION
+// for the DISTANCE.
+fn test_the_default_costs_the_walk_and_nothing_else() {
+    ttd_p  = pal_at(PALETTE);
+
+    ttd_on   = ticks_to_finish(ttd_p, 0, 0, 90);
+    ttd_away = ticks_to_finish(ttd_p, 3, 0, 90);
+
+    assert(ttd_on == 15, "standing on it: {ttd_on} ticks");
+    assert(ttd_away == 16, "three hexes off: {ttd_away} ticks");
+    assert(ttd_away - ttd_on == 1,
+           "so three hexes of walking cost ONE tick of work, not two: "
+           + "{ttd_away - ttd_on} at {HELPER_SPEED_HEX_PER_SECOND} hex/s");
+}
+
+// ─── ⚠⚠ The boundary — the default is MYOPIC on purpose ─────────
+
+// ⚠⚠ **THE HALF THAT KEEPS THE PILLAR ALIVE.**  Untrained senses reach
+// three hexes, so a wall ordered four away is not found and the base
+// runs exactly as `plans/29` § O0 measured it.  ⚠ A default that reached
+// the whole map would BE `@X198`'s auto-assignment, and the remit would
+// have nothing left to buy.
+fn test_one_hex_further_out_and_nobody_comes() {
+    toh_p  = pal_at(PALETTE);
+
+    assert(detect_radius(skills_new()) == 3,
+           "untrained senses: {detect_radius(skills_new())} hexes");
+
+    toh_in  = ticks_to_finish(toh_p, 3, 0, 90);
+    toh_out = ticks_to_finish(toh_p, 4, 0, 90);
+
+    assert(toh_in > 0, "three hexes is inside: {toh_in} ticks");
+    assert(toh_out == -1,
+           "four hexes is outside, and ninety ticks change nothing");
+}
+
+// ⚠⚠ **And the SCOUT skill widens it for free** — `detect_radius` scales
+// by `skill_factor(scout)`, so a trained observer finds work further
+// out with nothing added here.  ⚠ That is `@X253`'s *direction and
+// advancement point the same way, with no mechanism connecting them*
+// arriving as arithmetic rather than as a claim.
+fn test_a_trained_scout_finds_work_further_out() {
+    tat_p  = pal_at(PALETTE);
+    tat_pw = plain(12);
+
+    tat_s = one_and_one(tat_p, tat_pw, 4, 0);
+    tat_h = tat_s.crew[0] ?? Helper { };
+    tat_h.skills.scout = 5;
+    assert(detect_radius(tat_h.skills) == 4,
+           "a level-5 scout reaches {detect_radius(tat_h.skills)} hexes");
+
+    tat_mw = marker_empty();
+    tat_n  = 0;
+    while tat_n < 90 {
+        tat_n += 1;
+        wave_tick(tat_s, tat_p, tat_pw, tat_mw, core_at(0, 0));
+        if !order_at(tat_s.orders, 0, 0) { continue; }
+    }
+    assert(!order_at(tat_s.orders, 0, 0),
+           "so the same four-hex base the untrained one never notices "
+           + "is finished");
+}
+
+// @DRY-140 — ⚠⚠ **THE SUBJECT'S OWN RADIUS IS NOT ASKED, AND THAT IS A
+// MEASURED REFUSAL.**  The first version of `in_scope` asked the full
+// `skill.loft::detect_sees`, so a heap's `notice_of_heap` widened a crew
+// member's work radius from 3 hexes to 6 — and it moved **18 tests
+// across 8 files**, all one way: bases that used to fall stood for 800
+// ticks with 0 enemies alive, and a wallet that ended at 40 ended at
+// **299 of 300** (`@X295`).
+//
+// ⚠ **The reason it was wrong is not the size.**  `@X277`'s two radii
+// answer *is this thing worth driving to*, which is the PLAYER's
+// question; this one asks *what is under my nose*, which is a fact about
+// the person and nothing about the pile.
+//
+// ⚠⚠ So a heap and a build order at the SAME distance are in scope or
+// out of it together, and the pair below is what says so — with a
+// four-metre pile, which under the old rule would have been audible from
+// nine hexes.
+fn test_a_heap_is_no_louder_than_an_order() {
+    tah_ts  = tower_state_empty();
+    tah_tr  = trap_state_empty();
+    tah_mw  = marker_empty();
+    tah_sk  = skills_new();
+    tah_at  = core_at(0, 0);
+
+    tah_bl = build_layer_empty();
+    tah_bl.cells[4, 0] = BuildOrder { q: 4, r: 0, what: BUILD_GROUND,
+                                      kind: as_u8(WALL), spent: 0 };
+    tah_hl = height_layer_empty();
+    height_raise(tah_hl, 4, 0, 4.0, 0 as u8);
+
+    tah_out = jobs_in_scope(tah_bl, tah_hl, tah_ts, tah_tr, tah_mw,
+                            tah_at, tah_sk, TASK_ANY);
+    assert(len(tah_out) == 0,
+           "four hexes out, neither the order nor the four-metre heap is "
+           + "in scope: {len(tah_out)}");
+    assert(notice_of_heap(4.0) == 6,
+           "though the heap announces itself from "
+           + "{notice_of_heap(4.0)} hexes — a radius this rule does not ask");
+
+    // ⚠ The CONTROL — one hex nearer and BOTH are in scope, so the
+    // reading above is the distance rule rather than an empty fixture.
+    tah_bl2 = build_layer_empty();
+    tah_bl2.cells[3, 0] = BuildOrder { q: 3, r: 0, what: BUILD_GROUND,
+                                       kind: as_u8(WALL), spent: 0 };
+    tah_hl2 = height_layer_empty();
+    height_raise(tah_hl2, 3, 0, 4.0, 0 as u8);
+    tah_in = jobs_in_scope(tah_bl2, tah_hl2, tah_ts, tah_tr, tah_mw,
+                           tah_at, tah_sk, TASK_ANY);
+    assert(len(tah_in) == 2,
+           "CONTROL — three hexes out, both of them are: {len(tah_in)}");
+}
+
+// ─── ⚠ Which one they pick ──────────────────────────────────────
+
+// @DRY-141 — ⚠ Nearest wins.  ⚠⚠ The CONTROL is the second half: swap which one is
+// nearer and the pick swaps, so the gate is reading the distance rule
+// rather than the order the container happened to answer in.
+fn test_the_nearest_job_wins_and_the_control_swaps_it() {
+    tnj_jobs: vector<Job> = [];
+    tnj_jobs += [Job { found: true, kind: TASK_BUILD, q: 5, r: 0 }];
+    tnj_jobs += [Job { found: true, kind: TASK_BUILD, q: 2, r: 0 }];
+
+    tnj_a = job_pick(tnj_jobs, core_at(0, 0), job_none());
+    assert(tnj_a.q == 2, "from the west, the near one: ({tnj_a.q}, {tnj_a.r})");
+
+    tnj_b = job_pick(tnj_jobs, core_at(7, 0), job_none());
+    assert(tnj_b.q == 5, "CONTROL — from the east, the other one: ({tnj_b.q}, {tnj_b.r})");
+}
+
+// ⚠⚠ **A JOB STARTED IS NOT CHEAP TO ABANDON** (`@X198`'s position
+// axis), and mechanically it is what stops a crew member oscillating
+// between two jobs that trade places as they walk.  ⚠ The negative
+// control is the same call with the rival one hex nearer: stickiness
+// that could not be overridden would be a crew member that never
+// re-decides.
+fn test_a_job_being_walked_to_is_not_swapped_for_an_equal_one() {
+    tjb_jobs: vector<Job> = [];
+    tjb_jobs += [Job { found: true, kind: TASK_BUILD, q: 3, r: 0 }];
+    tjb_jobs += [Job { found: true, kind: TASK_BUILD, q: -3, r: 0 }];
+
+    tjb_held = Job { found: true, kind: TASK_BUILD, q: 3, r: 0 };
+    tjb_a = job_pick(tjb_jobs, core_at(0, 0), tjb_held);
+    assert(tjb_a.q == 3,
+           "equally far, they carry on with the one they were walking to: "
+           + "({tjb_a.q}, {tjb_a.r})");
+
+    // CONTROL — nothing held, and the tie-break takes the lower `q`.
+    tjb_b = job_pick(tjb_jobs, core_at(0, 0), job_none());
+    assert(tjb_b.q == -3,
+           "CONTROL — with nothing held the tie-break decides: "
+           + "({tjb_b.q}, {tjb_b.r})");
+
+    // CONTROL — a strictly nearer job DOES take them.
+    tjb_jobs += [Job { found: true, kind: TASK_BUILD, q: 1, r: 0 }];
+    tjb_c = job_pick(tjb_jobs, core_at(0, 0), tjb_held);
+    assert(tjb_c.q == 1,
+           "CONTROL — but one strictly nearer wins: ({tjb_c.q}, {tjb_c.r})");
+}
+
+// ─── ⚠ Who is NOT redirected ────────────────────────────────────
+
+// ⚠⚠ **The player is steered by the player.**  `DESIGN.md` § 8 has the
+// vehicle as the thing the player drives, and a chassis that took itself
+// off to the nearest job would be the game making `@X252`'s scarce
+// decision on their behalf.
+fn test_the_player_is_never_sent_anywhere() {
+    tpn_p  = pal_at(PALETTE);
+    tpn_pw = plain(12);
+    tpn_s  = wave_state_empty();
+    vehicle_place(tpn_s.player, 3, 0);
+    order_place(tpn_p, tpn_pw, tpn_s.orders, 0, 0, BUILD_GROUND, as_u8(WALL));
+
+    run_ticks(tpn_s, tpn_p, tpn_pw, 30);
+
+    assert(tpn_s.player.q == 3 && tpn_s.player.r == 0,
+           "the vehicle has not moved: ({tpn_s.player.q}, {tpn_s.player.r})");
+    assert(order_at(tpn_s.orders, 0, 0),
+           "and the order is untouched — the player builds nothing");
+}
+
+// ⚠⚠ **A CARRIER IS NOT WALKED OFF ITS ERRAND.**  `plans/15`'s carry
+// model gives a loaded crew member a destination that belongs to the
+// LOAD, and `wave_repair` already refuses to let a carrier repair for
+// the same reason — a beacon on its way to a site is not redirected to
+// a nearer heap.
+fn test_a_carrier_keeps_its_errand() {
+    tck_p  = pal_at(PALETTE);
+    tck_pw = plain(12);
+    tck_s  = wave_state_empty();
+    tck_s.crew += [helper_new(3, 0)];
+    order_place(tck_p, tck_pw, tck_s.orders, 0, 0, BUILD_GROUND, as_u8(WALL));
+    cargo_spawn(tck_s.cargo, CARGO_BEACON, -1, 3, 0);
+    cargo_take(tck_s.cargo, BLOCKER_CREW + 0, core_at(3, 0), CARGO_REACH_HEXES);
+
+    run_ticks(tck_s, tck_p, tck_pw, 30);
+
+    tck_h = tck_s.crew[0] ?? Helper { };
+    assert(tck_h.q == 3 && tck_h.r == 0,
+           "a loaded crew member stays put: ({tck_h.q}, {tck_h.r})");
+    assert(order_at(tck_s.orders, 0, 0), "and the order is untouched");
+
+    // ⚠ The CONTROL — the same base with an empty pair of hands.
+    tck_s2 = wave_state_empty();
+    tck_s2.crew += [helper_new(3, 0)];
+    order_place(tck_p, tck_pw, tck_s2.orders, 0, 0, BUILD_GROUND, as_u8(WALL));
+    run_ticks(tck_s2, tck_p, tck_pw, 30);
+    assert(!order_at(tck_s2.orders, 0, 0),
+           "CONTROL — unloaded, the same crew member raises it");
+}
+
+// ─── ⚠ Idle ─────────────────────────────────────────────────────
+
+// ⚠⚠ **IDLE IS A MANAGEMENT STATE, NOT A WORLD STATE** (`DESIGN.md` § 9
+// § It sharpens the idle helper).  A crew member with a base full of
+// work outside their senses is idle, and that is `@X142`'s complaint
+// with something true behind it.
+fn test_a_crew_member_with_nothing_in_reach_is_idle() {
+    tac_p  = pal_at(PALETTE);
+    tac_pw = plain(12);
+
+    tac_far = one_and_one(tac_p, tac_pw, 6, 0);
+    run_ticks(tac_far, tac_p, tac_pw, 4);
+    assert(wave_idle_crew(tac_far) == 1,
+           "work six hexes off leaves them idle: {wave_idle_crew(tac_far)}");
+
+    tac_near = one_and_one(tac_p, tac_pw, 3, 0);
+    run_ticks(tac_near, tac_p, tac_pw, 1);
+    assert(wave_idle_crew(tac_near) == 0,
+           "CONTROL — the same crew member three hexes off has a job: "
+           + "{wave_idle_crew(tac_near)}");
+}

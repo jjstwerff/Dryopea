@@ -11,10 +11,23 @@
 // test every system in this game has to pass: **does it work with NO
 // input?**
 //
-// ⚠ Everything here is a reading of the tree as it stands.  The
-// assertions are written so that BUILDING the default turns them red —
-// that is the point of a probe, and `plans/29` § O0 records what they
-// said on the day they were taken.
+// ⚠ Everything here was a reading of the tree as it stood at `10878a6`,
+// and `plans/29` § O0 records what each one said on the day it was
+// taken.
+//
+// ── ⚠⚠ WHAT O1 CHANGED, AND WHY THIS FILE STILL READS THE SAME ──
+//
+// O1 built the semi-automatic default, and **every assertion below is
+// still green** — because the fixture puts the work **four** hexes away
+// and an untrained crew member's senses reach **three**
+// (`skill.loft::DETECT_BASE_HEXES`).
+//
+// ⚠⚠ **So this file changed meaning without changing a line**, which is
+// worth saying out loud rather than leaving for the next reader to
+// discover: before O1 it measured *nothing chooses*, and after O1 it
+// measures *the default is MYOPIC* — the other half of the boundary
+// `tests/29_o1_the_default.loft` § The boundary asserts from the inside.
+// ⚠ Read the two together; neither is the whole claim.
 
 #cwd
 
@@ -69,8 +82,13 @@ fn run_ticks(s: WaveState, p: vector<GroundType>, pw: PaintedWorld,
 // plays, never goes and never builds.
 //
 // ⚠ Four hexes is not a hard case: a helper covers 1.667 of them a
-// tick, so the walk is three ticks against the sixty this runs.  What
-// is missing is not the speed — it is the DECISION.
+// tick, so the walk is two ticks against the sixty this runs.  What was
+// missing was not the speed — it was the DECISION.
+//
+// ⚠⚠ **Since O1 it reads as the default's OUTER edge instead**: the
+// decision now exists and four hexes is one past what an untrained crew
+// member notices.  ⚠ Move the order one hex nearer and this goes red,
+// which is `tests/29_o1_the_default.loft` § test_one_hex_further_out.
 fn test_an_unattended_crew_member_never_goes_to_the_work() {
     tau_p  = pal_at(PALETTE);
     tau_pw = plain(10);
@@ -106,11 +124,17 @@ fn test_but_a_crew_member_standing_on_it_builds_it() {
            + "{hex_ground_name(tbs_p, tbs_pw, tbs_s.heights, 0, 0)}");
 }
 
-// ⚠⚠ **And the destination is never even SET**, which says where the
-// gap is: `helper_drive` is the verb, `to_q` / `to_r` is the state it
-// writes, and a whole tick of simulation leaves them exactly where
-// `helper_new` put them.  Nothing in `src/` calls it — the `.keys`
-// script runner is its only caller in the tree.
+// ⚠⚠ **And the destination was never even SET**, which is what said
+// where the gap was: `helper_drive` is the verb, `to_q` / `to_r` is the
+// state it writes, and a whole tick of simulation left them exactly
+// where `helper_new` put them.  At the time nothing in `src/` called it
+// — the `.keys` script runner was its only caller in the tree.
+//
+// ⚠ O1 added `spawn.loft::wave_assign`, which is now that caller.  This
+// still reads *arrived*, because a crew member with nothing in scope is
+// pointed nowhere — `job_pick` answers `job_none()` and `wave_assign`
+// leaves the destination alone rather than writing the hex they are
+// already standing on.
 fn test_nothing_in_the_simulation_points_a_crew_member_anywhere() {
     tns_p  = pal_at(PALETTE);
     tns_pw = plain(10);

@@ -1,0 +1,322 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// A JOB, and which one a crew member goes to.
+//
+// Plan 29.  `docs/DESIGN.md` § 9 § ASSIGNMENT IS A PILLAR (`@X197`) is
+// the design this file serves, and § SEMI-AUTOMATIC BY DEFAULT
+// (`@X252`) is the shape it takes:
+//
+// > *"the helpers are semi-automatic at the start.  But later a player
+// > can go to an individual one of them and in that interaction can give
+// > them specific tasks instead — from then on they behave less
+// > general."*
+//
+// ── ⚠⚠ THE REMIT TRADES BREADTH FOR REACH ───────────────────────
+//
+// **A general crew member takes the nearest job inside their own
+// SENSES; a directed one hunts ONE KIND across the whole base.**  Both
+// halves are load-bearing and they are what makes an order worth giving:
+//
+// | | breadth | reach |
+// |---|---|---|
+// | **general** (the default) | all four jobs | `detect_sees` — 3 hexes untrained |
+// | **directed** | one job | the whole map |
+//
+// ⚠ A remit that only NARROWED would be a pure loss and nobody would
+// ever give one — the payoff `@X253` names (*a helper you keep directing
+// to repair becomes a repairer*) needs `@X124`'s practice loop, and
+// `@M066` measured that nine of the twelve skills have no number in the
+// tree at all.  ⚠ A remit that only WIDENED would be free, and a
+// decision that costs nothing is not one.
+//
+// ⚠⚠ **And it keeps `@X198`'s four axes incommensurable**: directing
+// buys global coverage of ONE currency at the price of local coverage of
+// all four, which cannot be ranked against the others.
+//
+// ── ⚠⚠ WHY THE DEFAULT IS DELIBERATELY MYOPIC ───────────────────
+//
+// `@X198` names **auto-assignment** as *"the thing that deletes this
+// pillar entirely"*, and `@X252` resolves it: auto is a **DEFAULT rather
+// than a CEILING**.  ⚠ The resolution only holds if the default is
+// genuinely fine and genuinely not optimal — `@X261` wants both halves —
+// so the rule here collapses to **POSITION**, one of `@X198`'s four
+// axes, and ignores VALUE-KIND entirely.  A crew member parked by the
+// wall builds the wall and clears the bodies beside it, and never works
+// out that the black tower across the base matters more.
+//
+// ⚠ **The radius is not invented** (`@X112`: check the number exists
+// first).  `skill.loft::detect_radius` is already *how far this crew
+// member's own attention reaches*, and already scaled by `scout` — so a
+// trained observer finds work further out for free, which is `@X253`'s
+// *direction and advancement point the same way* arriving with no
+// mechanism connecting them.
+//
+// ⚠⚠ **AND IT IS THE CREW MEMBER'S RADIUS ALONE — the SUBJECT'S half of
+// `@X277` is deliberately NOT added here, and that is a MEASURED
+// correction.**  The first version asked the full `detect_sees`, so a
+// heap's own `notice_of_heap` widened a crew member's work radius from
+// 3 hexes to 6 — and it moved **16 tests across 6 files**: bases that
+// used to fall stood for 800 ticks with 0 enemies alive, and a wallet
+// that ended at 40 ended at 299.
+//
+// ⚠ The reason it was wrong is not the size.  `@X277`'s two radii answer
+// ***is this thing worth driving to***, which is the PLAYER's question
+// and the one `MATERIALS.md` § The governing rule needs; this asks
+// ***what is under my nose***, which is a fact about the person and
+// nothing about the pile.  A work radius that grew with the depth of a
+// heap would make a crew member's attention a property of the rubbish.
+//
+// ⚠⚠ **`@X198`'s test is what it failed**: *does this make ONE axis
+// dominate?*  At six hexes the default absorbed the work
+// `docs/DESIGN.md` § 9 § The scarcity is STRUCTURAL says growth is
+// supposed to CREATE — towers refilled themselves, bodies cleared
+// themselves — and a default that absorbs the work it creates deletes
+// the table the pillar stands on.
+//
+// ── ⚠ Why this file cannot see a `WaveState` ────────────────────
+//
+// `spawn.loft` uses this file, and a `use` imports one way only — the
+// same constraint `scramble.loft::manifest_of` and `moat.loft::
+// moat_depth` were shaped by, with the same benefit: **a job search can
+// be asked about a world that is not in a run at all**, which is what
+// makes the set claims below testable.
+
+use lattice;
+use markers;
+use build;
+use height;
+use tower;
+use trap;
+use skill;
+
+// ─── The four jobs ──────────────────────────────────────────────
+//
+// ⚠⚠ **These are the four things a crew member already does by STANDING
+// somewhere**, and that is the whole of why there are four: `wave_tick`
+// calls `helper_build`, `helper_salvage`, `wave_repair` and
+// `wave_rearm`, each gated on a one-hex disc.  This file adds no fifth
+// job — it answers which of the four to walk to.
+//
+// ⚠ **`TASK_ANY` is 0 and that is deliberate** ([loft#914]): a struct
+// literal that omits a field takes its default silently, so the neutral
+// value has to be the one a partial `Helper` should read as — and a
+// crew member nobody has directed is GENERAL.
+
+pub const TASK_ANY:    integer = 0;
+pub const TASK_BUILD:  integer = 1;   // an order waiting to be raised
+pub const TASK_CLEAR:  integer = 2;   // a pile of rubble to take away
+pub const TASK_REPAIR: integer = 3;   // a tower gone black
+pub const TASK_REARM:  integer = 4;   // a plate that has fired
+
+// How many remits there are, `TASK_ANY` included — the cycle's modulus.
+pub const TASK_KIND_COUNT: integer = 5;
+
+// What a remit is called, for a script and for a person reading a
+// measurement.  ⚠ The WRITER and the READER are a PAIR (`@D007`), so
+// `script.loft` parses exactly these words and nothing else.
+pub fn task_name(kind: integer) -> text {
+    if kind == TASK_BUILD  { return "build"; }
+    if kind == TASK_CLEAR  { return "clear"; }
+    if kind == TASK_REPAIR { return "repair"; }
+    if kind == TASK_REARM  { return "rearm"; }
+    "any"
+}
+
+// The inverse.  ⚠ An unknown word answers `TASK_ANY`, which a caller
+// that needs to REFUSE one has to check for itself — `task_named` is
+// what says whether a word was a remit at all.
+pub fn task_from_name(name: text) -> integer {
+    if name == "build"  { return TASK_BUILD; }
+    if name == "clear"  { return TASK_CLEAR; }
+    if name == "repair" { return TASK_REPAIR; }
+    if name == "rearm"  { return TASK_REARM; }
+    TASK_ANY
+}
+
+pub fn task_named(name: text) -> boolean {
+    name == "any" || task_from_name(name) != TASK_ANY
+}
+
+// The next remit in the cycle.
+//
+// ⚠⚠ **The cycle is what makes widening cost exactly what narrowing
+// cost** (`@X289`, BACKLOG D3): a player who has narrowed somebody too
+// far drives back out and keeps pressing, and comes round to `any`.  ⚠
+// It is a full RESET rather than a step-wise unwind, which is `@X289`'s
+// recommendation — *a step-wise unwind prices the MISTAKE where `@X252`
+// says the ATTENTION is what is scarce*.
+pub fn task_cycle(kind: integer) -> integer {
+    (kind + 1) % TASK_KIND_COUNT
+}
+
+// ─── A job ──────────────────────────────────────────────────────
+
+// One piece of work, somewhere.
+//
+// ⚠ `found` is a field rather than a sentinel coordinate because (0, 0)
+// is a real hex — it is where the core usually is — and because
+// [loft#914] makes `false` the safe default for a partial literal.
+pub struct Job {
+    found: boolean,
+    kind:  integer,
+    q:     integer,
+    r:     integer,
+}
+
+// Nothing to do.
+pub fn job_none() -> Job {
+    Job { found: false, kind: TASK_ANY, q: 0, r: 0 }
+}
+
+pub fn job_same(a: const Job, b: const Job) -> boolean {
+    a.found == b.found && a.kind == b.kind && a.q == b.q && a.r == b.r
+}
+
+// ─── What is in scope ───────────────────────────────────────────
+
+// ⚠⚠ **THE ONE PLACE THE TWO HALVES OF THE REMIT MEET.**  A directed
+// crew member sees the whole map for their own kind; a general one sees
+// what `detect_sees` says they do.  Every job kind routes through here,
+// so the two claims in `plans/29` § Invariant gate are enforced at one
+// site rather than asserted four times.
+fn in_scope(from: const Hex, at: const Hex, sk: const Skills,
+            directed: boolean) -> boolean {
+    if directed { return true; }
+    lat_distance(from, at) <= detect_radius(sk)
+}
+
+// Does this remit accept this kind of work?
+fn remit_takes(remit: integer, kind: integer) -> boolean {
+    remit == TASK_ANY || remit == kind
+}
+
+// ⚠ Everything a crew member standing at `from` under `remit` would
+// consider, in a stable order: build, clear, repair, re-arm, and within
+// each the order its own container answers.
+//
+// ⚠⚠ **It answers the SET, and that is the point.**  The plan's
+// invariant is a set inclusion — *every job a general crew member would
+// take, a directed one takes too* — and a gate that could only ask
+// *which one did you pick* would be asserting a consequence of the rule
+// rather than the rule.
+//
+// Example: @DRY-140, @DRY-142
+pub fn jobs_in_scope(bl: const BuildLayer, hl: const HeightLayer,
+                     ts: const TowerState, tr: const TrapState,
+                     mw: const MarkerWorld, from: const Hex,
+                     sk: const Skills, remit: integer) -> vector<Job> {
+    jis_out: vector<Job> = [];
+    jis_wide = remit != TASK_ANY;
+
+    // ⚠ A build order is a site the PLAYER marked out, so it has no
+    // notice radius of its own to add — what finds it is the crew
+    // member's own senses.
+    if remit_takes(remit, TASK_BUILD) {
+        for jis_o in bl.cells {
+            jis_oh = Hex { q: jis_o.q, r: jis_o.r };
+            if in_scope(from, jis_oh, sk, jis_wide) {
+                jis_out += [Job { found: true, kind: TASK_BUILD,
+                                  q: jis_o.q, r: jis_o.r }];
+            }
+        }
+    }
+
+    // ⚠ A heap is found by the same radius everything else is.
+    // `notice_of_heap` is NOT asked — see § AND IT IS THE CREW MEMBER'S
+    // RADIUS ALONE in the header for what happened when it was.
+    if remit_takes(remit, TASK_CLEAR) {
+        for jis_p in hl.cells {
+            if jis_p.metres > 0.0 {
+                jis_ph = Hex { q: jis_p.q, r: jis_p.r };
+                if in_scope(from, jis_ph, sk, jis_wide) {
+                    jis_out += [Job { found: true, kind: TASK_CLEAR,
+                                      q: jis_p.q, r: jis_p.r }];
+                }
+            }
+        }
+    }
+
+    // ⚠ Both of the marker jobs ask the MARKER world and then the
+    // state, in that order, because a tower or a plate is a marker
+    // first — `place_marker` is the one dispatch and a `TowerState`
+    // cell exists only once something has fired.
+    for jis_m in mw.markers {
+        jis_mh = Hex { q: jis_m.q, r: jis_m.r };
+        if jis_m.kind == MARKER_KIND_TOWER as u8
+           && remit_takes(remit, TASK_REPAIR)
+           && tower_repairable(ts, jis_m.q, jis_m.r)
+           && in_scope(from, jis_mh, sk, jis_wide) {
+            jis_out += [Job { found: true, kind: TASK_REPAIR,
+                              q: jis_m.q, r: jis_m.r }];
+        }
+        if jis_m.kind == MARKER_KIND_TRAP as u8
+           && remit_takes(remit, TASK_REARM)
+           && !trap_armed(tr, jis_m.q, jis_m.r)
+           && in_scope(from, jis_mh, sk, jis_wide) {
+            jis_out += [Job { found: true, kind: TASK_REARM,
+                              q: jis_m.q, r: jis_m.r }];
+        }
+    }
+
+    jis_out
+}
+
+// ─── Which one ──────────────────────────────────────────────────
+
+// The job a crew member at `from` goes to, given what they are already
+// heading for.
+//
+// ⚠ **Nearest wins, ties by kind then `q` then `r`** — the rule
+// `repair_target` and `rearm_target` already write twice, for the reason
+// they give: a hash is stable within one run and not across them, and a
+// scripted run has to repeat.
+//
+// ⚠⚠ **`current` only has to be MATCHED, never beaten** — a job already
+// being walked to is abandoned only for one strictly nearer.  That is
+// `@X198`'s *a job started is not cheap to abandon* as arithmetic, and
+// mechanically it is what stops a crew member oscillating between two
+// jobs that trade places as they move.
+//
+// Example: @DRY-141
+pub fn job_pick(jobs: const vector<Job>, from: const Hex,
+                current: const Job) -> Job {
+    jp_best = job_none();
+    jp_dist = 0;
+    for jp_j in jobs {
+        jp_d = lat_distance(from, Hex { q: jp_j.q, r: jp_j.r });
+        jp_take = false;
+        if !jp_best.found                       { jp_take = true; }
+        else if jp_d < jp_dist                  { jp_take = true; }
+        else if jp_d == jp_dist {
+            // ⚠ The tie-break, and it never reaches `r` unless kind and
+            // `q` both agree — one hex holds one job of one kind.
+            if jp_j.kind < jp_best.kind { jp_take = true; }
+            else if jp_j.kind == jp_best.kind {
+                if jp_j.q < jp_best.q { jp_take = true; }
+                else if jp_j.q == jp_best.q && jp_j.r < jp_best.r {
+                    jp_take = true;
+                }
+            }
+        }
+        if jp_take {
+            jp_best = Job { found: true, kind: jp_j.kind,
+                            q: jp_j.q, r: jp_j.r };
+            jp_dist = jp_d;
+        }
+    }
+
+    // ⚠ The stickiness, applied AFTER the winner is known so it costs
+    // one pass rather than two: if what they were already going to is
+    // still on the list and no further away, they carry on.
+    if current.found && jp_best.found {
+        jp_cd = lat_distance(from, Hex { q: current.q, r: current.r });
+        if jp_cd <= jp_dist {
+            for jp_c in jobs {
+                if job_same(jp_c, current) { return current; }
+            }
+        }
+    }
+
+    jp_best
+}

@@ -330,7 +330,13 @@ fn test_out_of_reach_repairs_nothing() {
     tor_mw  = one_tower();
     tor_pw  = ground();
     tor_pal = pal();
+    // ⚠⚠ **ORDERED TO STAND THERE, SINCE PLAN 29 O1.**  The claim is
+    // about the repair verb's REACH, and a crew member nobody has told
+    // anything now walks the two hexes and closes it — so the fixture
+    // has to say what it used to get for free.  `helper_drive` is the
+    // door: an ORDER, which `wave_assign` does not overrule (`@X296`).
     tor_s.crew += [helper_new(6, 0)];
+    helper_drive(tor_s.crew[0] ?? Helper { }, 6, 0);
 
     assert(!tower_in_repair_reach(Hex { q: 4, r: 0 }, Hex { q: 6, r: 0 }),
            "two hexes is out of reach");
@@ -342,6 +348,7 @@ fn test_out_of_reach_repairs_nothing() {
 
     // And one hex out — inside the footprint — does work.
     tor_s.crew += [helper_new(5, 0)];
+    helper_drive(tor_s.crew[1] ?? Helper { }, 5, 0);
     assert(tower_in_repair_reach(Hex { q: 4, r: 0 }, Hex { q: 5, r: 0 }),
            "one hex is in reach");
     for _ in 0..REBUILD_TICKS {

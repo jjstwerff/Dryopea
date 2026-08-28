@@ -79,6 +79,7 @@ const KEY_P:     integer = 112;   // 'p' — edit ↔ play (plan 19 P3)
 const KEY_Q:     integer = 113;   // 'q' — wall paint (plan 27 C3)
 const KEY_J:     integer = 106;   // 'j' — the jammer switch (BACKLOG C3)
 const KEY_F:     integer = 102;   // 'f' — the trench trail (BACKLOG C5)
+const KEY_G:     integer = 103;   // 'g' — direct a crew member (plan 29 O3)
 
 // ─── One row of the table ───────────────────────────────────────
 
@@ -211,6 +212,31 @@ pub fn editor_actions() -> vector<EditorAction> {
     // has no trench row to inherit one from — the case
     // `docs/PROGRESSION.md` § P2 says to choose in the open.
     ea += [act("dig", KEY_F, CTRL_FORBIDDEN)];
+
+    // ⚠⚠ **DIRECTING A CREW MEMBER — one key, and it CYCLES** (plan 29
+    // O3).  `@X139` makes the key table a BUDGET and asks for an
+    // argument; there are two, and the second is the one that decides
+    // the shape.
+    //
+    // ⚠ **It cannot be a POSITION**, for the reason the jammer cannot:
+    // driving past somebody would set their remit every frame, and there
+    // would be no way left to say *general*.  ⚠⚠ And it has to be a
+    // CYCLE because **widening is the same interaction as narrowing**
+    // (`@X289`, BACKLOG D3) — a player who has narrowed somebody too far
+    // drives back out and keeps pressing until they come round to `any`,
+    // which is a full RESET rather than a step-wise unwind and is what
+    // `@X289` recommends: *a step-wise unwind prices the MISTAKE where
+    // `@X252` says the ATTENTION is what is scarce.*
+    //
+    // ⚠ What the key still costs is the position half —
+    // `play_direct_crew` refuses unless the vehicle is beside somebody —
+    // so the trip `@X156` makes the interaction is the whole price, and
+    // pressing G in an empty field does nothing at all.
+    //
+    // ⚠ **G, beside F**, the same argument the trench trail took: the
+    // hand that holds WASD reaches it.  ⚠ `numbers.json` § `input` has
+    // no row to inherit one from.
+    ea += [act("direct", KEY_G, CTRL_FORBIDDEN)];
 
     // ⚠⚠ **THE JAMMER SWITCH — the second key that is not a position**
     // (BACKLOG C3), and the argument `@X139` demands for a new row is
@@ -492,6 +518,7 @@ pub fn editor_input_from(
         eif_i.in_paint_wall  = action_on(src, "paint_wall",  eif_ctrl);
         eif_i.in_dig         = action_on(src, "dig",         eif_ctrl);
         eif_i.in_toggle_jammer = action_on(src, "toggle_jammer", eif_ctrl);
+        eif_i.in_direct      = action_on(src, "direct",      eif_ctrl);
     } else {
         eif_i.in_pan_north = pan_due && action_on(src, "pan_north", eif_ctrl);
         eif_i.in_pan_south = pan_due && action_on(src, "pan_south", eif_ctrl);

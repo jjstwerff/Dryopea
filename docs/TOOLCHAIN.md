@@ -133,10 +133,47 @@ characters where the interpreter emitted 1017, i.e. it never ran the
 same workload.  **A backend answering differently on a different
 workload is not a backend answering correctly.**
 
+## ⚠⚠ Run the gates DETACHED — `scripts/gate.sh`
+
+⚠⚠ **A long gate polled from its log is wrong three ways, and dryopea
+hit all three inside one session.**  The obvious pattern — start
+`scripts/test.sh` in the background and keep grepping the output —
+costs a look a minute, answers *still running* most of them, and:
+
+- **a run that DIES writes no result**, so a waiter grepping for one
+  blocks for ever on a process that is already gone;
+- **the PREVIOUS run's result is still in the file** while the next one
+  is compiling, so the grep answers about the wrong run;
+- **a marker file left behind by a killed run means nothing.**
+
+⚠ The fix is loft's, and `scripts/gate.sh` is it ported:
+**record the run's own identity and check the PROCESS, not the log.**
+`.gate-verdict` holds one line — `STATE PID EPOCH ELAPSED [detail]` —
+and `status` re-reads the pid, so a run that vanished reports **DIED**.
+
+```bash
+scripts/gate.sh start     # detach and return at once (make gate)
+scripts/gate.sh wait      # exits ONCE, when a verdict exists (make gate-wait)
+scripts/gate.sh status    # RUNNING / PASSED / FAILED / DIED (make gate-status)
+scripts/gate.sh report    # the last run's failures again
+GATES=test|validate|full scripts/gate.sh start
+```
+
+⚠⚠ **`wait` is the one to launch in the background from an agent**: it
+exits exactly once, so the harness re-invokes once — where polling costs
+one turn per look.  ⚠ And what it prints is **the failing assertions**,
+not fifteen thousand lines of log.
+
+⚠ `LOFT_TIMEOUT` defaults to **1500** here rather than loft's 300,
+because § The 300 s hard-kill is close enough that a busy box trips it.
+
 ## Two suites at once clobber each other
 
 ⚠ Do not run two `scripts/test.sh` at once — both pre-clean
 `tests/actual/`, so they clobber each other and fail for no reason.
+⚠⚠ **`scripts/gate.sh start` REFUSES to** — it re-reads the running
+gate's pid and declines rather than clobbering, which is this rule
+enforced instead of documented.
 
 ## The wall clock is not yours alone
 

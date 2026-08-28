@@ -241,6 +241,7 @@ use damage;
 use wallet;
 use vehicle;
 use helper;
+use task;
 use occupancy;
 use spawn;
 use fixstep;
@@ -633,7 +634,7 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
     sm_a4   = tok[4] ?? "";
 
     if sm_cmd == "count" {
-        if sm_argc != 3 { return "count needs <painted|markers|alive|orders|targets> <lo> <hi>"; }
+        if sm_argc != 3 { return "count needs <painted|markers|alive|orders|idle|targets> <lo> <hi>"; }
         sm_lo = sm_a2 as integer?;
         sm_hi = sm_a3 as integer?;
         if sm_lo == null || sm_hi == null { return "count: <lo> and <hi> must be integers"; }
@@ -654,6 +655,19 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         if sm_a1 == "orders" {
             return measure_int(run, "count orders",
                                order_count(run.play.wave.orders),
+                               sm_lo ?? 0, sm_hi ?? 0);
+        }
+        // Crew members with nothing to do (plan 29).
+        //
+        // ⚠⚠ **IDLE IS A MANAGEMENT STATE** (`DESIGN.md` § 9 § It
+        // sharpens the idle helper): it counts people nobody has given a
+        // job, in a base that may be full of work — which is what makes
+        // it the reading `@X253`'s *the system reports its own
+        // over-tuning* is about.  ⚠ A narrowed crew member is idle where
+        // a general one beside them is not.
+        if sm_a1 == "idle" {
+            return measure_int(run, "count idle",
+                               wave_idle_crew(run.play.wave),
                                sm_lo ?? 0, sm_hi ?? 0);
         }
         // ⚠ **The anti-collapse measurement** (plan 11 F7).  How many
@@ -1320,6 +1334,7 @@ fn is_author_cmd(name: text) -> boolean {
     || name == "player" || name == "member" || name == "pending"
     || name == "cursor" || name == "flag" || name == "order"
     || name == "skill" || name == "tired" || name == "trap"
+    || name == "remit"
 }
 
 // Read an on/off word.  -1 when it is neither, so a caller can refuse.
@@ -1627,6 +1642,35 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         if sa_ts == null { return "tired: <seconds-spent> must be a number"; }
         sa_th = run.play.wave.crew[sa_tin] ?? Helper { };
         sa_th.endurance.spent = clock_units_from_seconds(sa_ts ?? 0.0);
+        return "";
+    }
+
+    // What the player has TOLD a crew member to do (plan 29 O3).
+    //
+    // ⚠ A verb of its own for `tired`'s reason: `member` says what a
+    // crew member's condition is in the WORLD, `skill` what they are
+    // good at, and this what they were told — three facts about one
+    // person that a fixture should be able to set one at a time.
+    //
+    // ⚠⚠ **The WRITER and the READER are a PAIR** (`@D007`): the words
+    // here are `task_name`'s words and nothing else, so a fifth remit
+    // added to `task.loft` is a word this verb refuses until somebody
+    // adds it in both places — which is the failure `@D007` cost a
+    // round-tripped BEACON to learn.
+    if sa_cmd == "remit" {
+        if sa_argc != 2 { return "remit needs <i> <any|build|clear|repair|rearm>"; }
+        sa_ri = (tok[1] ?? "") as integer?;
+        if sa_ri == null { return "remit: <i> must be an integer"; }
+        sa_rin = sa_ri ?? 0;
+        if sa_rin < 0 || sa_rin >= len(run.play.wave.crew) {
+            return "remit: no helper {sa_rin} — the crew is {len(run.play.wave.crew)} strong";
+        }
+        sa_rw = tok[2] ?? "";
+        if !task_named(sa_rw) {
+            return "remit: '{sa_rw}' is not a remit — any, build, clear, repair or rearm";
+        }
+        sa_rh = run.play.wave.crew[sa_rin] ?? Helper { };
+        helper_direct(sa_rh, task_from_name(sa_rw));
         return "";
     }
 
@@ -2387,6 +2431,15 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
     }
 
     // Add a helper, and point one somewhere.  Plan 14 H1.
+    //
+    // ⚠⚠ **The two verbs mean different things since plan 29 O1.**
+    // `crew` places somebody nobody has told anything, so from the next
+    // tick they find their own work inside their own senses; `send` is
+    // an ORDER, and `wave_assign` does not overrule one (`@X296`).
+    // ⚠ So **`send <i> <q> <r>` on the hex they are already standing on
+    // is how a fixture says STAY** — which several controls in the
+    // corpus now have to say out loud because they used to get it for
+    // free.
     if sc_cmd == "crew" {
         if sc_argc != 2 { return "crew needs <q> <r>"; }
         sc_crw = script_ints(tok, 2);

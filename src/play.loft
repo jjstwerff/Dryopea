@@ -602,6 +602,22 @@ fn play_actions(ps: PlayState, s: EditorState, input: const EditorInput) {
                                Hex { q: pa_jcore.1, r: pa_jcore.2 });
         }
     }
+
+    // ── Directing a crew member (plan 29 O3) ────────────────────
+    //
+    // ⚠⚠ **`@X156` MAKES PRESENCE THE INTERACTION**, so this is a key
+    // whose whole cost is the DRIVE: pressing G away from everybody does
+    // nothing, and the only way to narrow somebody is to be standing
+    // next to them.  `docs/DESIGN.md` § 9 § The pillar survives because
+    // DIRECTING SOMEBODY COSTS A TRIP is the sentence, and *your
+    // attention is the scarce resource, not the orders* is why the trip
+    // has to stay.
+    //
+    // ⚠ Edge-triggered, like every toggle here — a held G would run the
+    // whole cycle in five frames.
+    if input.in_direct && !ps.prev.in_direct {
+        wave_direct_nearest(ps.wave);
+    }
 }
 
 // ─── The tick ───────────────────────────────────────────────────

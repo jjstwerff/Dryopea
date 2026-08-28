@@ -263,10 +263,19 @@ fn gate_run(towers: integer, mode: integer, limit: integer) -> RunFacts {
     gr_s   = wave_state_empty();
     gr_s.schedule = wave_schedule_of([12, 12, 12, 12], INTER_WAVE_DELAY_SECONDS);
     wave_schedule_begin(gr_s.schedule);
+    // ⚠⚠ **STANDING SOMEWHERE IS AN ORDER SINCE PLAN 29 O1.**  A crew
+    // member nobody has told anything walks off to the nearest job
+    // inside their own senses, so this fixture — whose whole subject is
+    // *a crew member in the GATE*, and its control *a crew member
+    // nowhere near anything* — has to say what it used to get for free.
+    // ⚠ `helper_drive` is the door that says it: an ORDER, which
+    // `wave_assign` does not overrule (`@X296`).
     if mode == NO_GATE {
         gr_s.crew += [helper_new(IDLE_Q, IDLE_R)];
+        helper_drive(gr_s.crew[0] ?? Helper { }, IDLE_Q, IDLE_R);
     } else {
         gr_s.crew += [helper_new(GATE_Q, 0)];
+        helper_drive(gr_s.crew[0] ?? Helper { }, GATE_Q, 0);
     }
     vehicle_place(gr_s.player, HOME_Q, HOME_R);
 

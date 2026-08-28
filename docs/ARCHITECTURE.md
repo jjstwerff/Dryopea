@@ -1729,6 +1729,61 @@ src/
                    the bubble as a LURE — and tier 3 does not exist, so
                    the only thing the off state can be priced against
                    today is the player's own base (@M056)
+  task.loft        A JOB, AND WHICH ONE A CREW MEMBER GOES TO
+                   (plan 29 O1/O3, @X197's assignment pillar) —
+                   TASK_ANY / _BUILD / _CLEAR / _REPAIR / _REARM,
+                   TASK_KIND_COUNT, task_name / task_from_name /
+                   task_named / task_cycle, Job { found, kind, q, r },
+                   job_none / job_same / jobs_in_scope / job_pick; and
+                   in `spawn.loft`, `wave_assign` (the ONE site where a
+                   crew member decides anything) and
+                   `wave_direct_nearest`.
+                   ⚠ It adds no FIFTH job.  The four are the four a
+                   crew member already did by STANDING somewhere —
+                   `helper_build`, `helper_salvage`, `wave_repair`,
+                   `wave_rearm` — each on a one-hex disc, and every one
+                   of them still fires on position exactly as before.
+                   This answers WHICH ONE TO WALK TO.
+                   ⚠⚠ THE REMIT TRADES BREADTH FOR REACH: undirected is
+                   all four inside `detect_radius` (3 hexes untrained),
+                   directed is ONE kind across the whole map.  A remit
+                   that only narrowed would be a pure loss nobody would
+                   ever give — @X253's payoff needs @X124's practice
+                   loop, and @M066 measured that nine of twelve skills
+                   have no number in the tree.  One that only widened
+                   would be free, and a decision that costs nothing is
+                   not one.
+                   ⚠⚠ THE RADIUS IS THE CREW MEMBER'S ALONE, and that
+                   is a MEASURED correction.  The first version asked
+                   the full `detect_sees`, so a heap's own
+                   `notice_of_heap` widened the work radius from 3 to 6
+                   — and it moved 18 tests across 8 files, all in one
+                   direction: bases that used to fall stood for 800
+                   ticks with 0 enemies alive, and a wallet that ended
+                   at 40 ended at 299 of 300.  @X277's two radii answer
+                   *is this worth driving to*, which is the PLAYER's
+                   question; this asks *what is under my nose*, which
+                   is a fact about the person and nothing about the
+                   pile.  ⚠ And it is @X198's test that it failed —
+                   a default that absorbs the work DESIGN.md § 9 says
+                   growth is supposed to CREATE deletes the table the
+                   pillar stands on.
+                   ⚠ `job_pick` is nearest-wins, ties by kind then q
+                   then r — `repair_target`'s rule for the third time —
+                   plus ONE line of stickiness: a job already being
+                   walked to is abandoned only for one STRICTLY nearer.
+                   That is @X198's *a job started is not cheap to
+                   abandon* as arithmetic, and mechanically it is what
+                   stops a crew member oscillating between two jobs
+                   that trade places as they move.
+                   ⚠ TASK_ANY is 0 so a partial Helper literal reads as
+                   GENERAL ([loft#914]) — the same discipline that
+                   spells a field `top_removed` rather than `has_top`.
+                   ⚠ It cannot see a `WaveState`: `spawn.loft` uses it,
+                   and a `use` imports one way only — `manifest_of` and
+                   `moat_depth` were shaped by the same constraint,
+                   with the same benefit, which is that a job search can
+                   be asked about a world that is not in a run at all
   trap.loft        A TRAP THAT DOES NOT AUTOMATICALLY RESET
                    (BACKLOG C4, @X108) — TRAP_DAMAGE / TRAP_BLAST_HEXES
                    / TRAP_REACH_HEXES / TRAP_REARM_UNITS, TrapCharge {

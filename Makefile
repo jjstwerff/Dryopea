@@ -65,6 +65,24 @@
 #   make validate-gl FIXTURE=the-ground
 #                   Just that one fixture.
 #
+#   make gate       Start the gates DETACHED and return at once.
+#                   ⚠⚠ The way to run the suite when you are not going
+#                   to sit and watch it: `scripts/test.sh` takes minutes
+#                   on a busy box, and polling a log costs a look per
+#                   minute and answers "still running" most of them.
+#                   `make gate` starts it; `make gate-wait` blocks ONCE
+#                   and then prints the failures; `make gate-status`
+#                   answers RUNNING / PASSED / FAILED / DIED without
+#                   waiting.  GATES=test|validate|full picks which.
+#
+#   make gate-wait  Block until the detached run has a verdict, then
+#                   print the failing assertions — not the log.
+#
+#   make gate-status
+#                   Ask without waiting.  ⚠ It re-reads the PID, so a run
+#                   that was OOM-killed reports DIED instead of hanging
+#                   a waiter for ever.
+#
 #   make maps       Rebuild every authored map in maps/ from its `.keys`
 #                   source (BACKLOG A2).  ⚠ This WRITES repo content —
 #                   maps/<name>.json + <name>_markers.json are committed
@@ -108,7 +126,7 @@
 # package registry via loft.toml + loft.lock, so no --lib path is passed.
 LOFT_BIN  ?= loft
 
-.PHONY: help play play-native test validate validate-gl maps check clean
+.PHONY: help play play-native test validate validate-gl gate gate-wait gate-status gate-report maps check clean
 
 # ── Help ─────────────────────────────────────────────────────────
 
@@ -168,6 +186,29 @@ validate:
 # purpose, so a machine with no xvfb still runs 654 measurements.
 validate-gl:
 	@LOFT_BIN=$(LOFT_BIN) scripts/validate_gl.sh $(FIXTURE)
+
+# ── The detached gate runner ─────────────────────────────────────
+#
+# ⚠⚠ **Modelled on loft's `scripts/ci-run.sh`, and for its reasons.**  A
+# long gate polled from a log is wrong three ways — a run that DIES never
+# writes a result, the PREVIOUS run's result is still in the file while
+# the next one compiles, and a leftover marker file means nothing.  The
+# fix is to record the run's identity and check the PROCESS.
+#
+# ⚠ `gate` also refuses a second run while one is going, which is
+# CLAUDE.md § Do not run two `scripts/test.sh` at once ENFORCED rather
+# than documented.
+gate:
+	@GATES=$(or $(GATES),all) LOFT_BIN=$(LOFT_BIN) scripts/gate.sh start
+
+gate-wait:
+	@scripts/gate.sh wait
+
+gate-status:
+	@scripts/gate.sh status
+
+gate-report:
+	@scripts/gate.sh report
 
 # Rebuild the authored maps (BACKLOG A2).  ⚠ NOT a gate — it writes
 # maps/*.json, which are committed repo content.  Run it after editing

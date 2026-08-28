@@ -48,6 +48,7 @@ use skill;
 use endure;
 use jammer;
 use scramble;
+use task;
 use waves;
 use fixstep;
 
@@ -2165,6 +2166,15 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
                   vehicle_in_core(state.player, core),
                   TICK_STEP_UNITS);
 
+    // ⚠⚠ **The crew decide where they are going BEFORE they go** (plan
+    // 29 O1) — `docs/DESIGN.md` § 9 § SEMI-AUTOMATIC BY DEFAULT, and
+    // the whole of what *"a new player never has to assign anything"*
+    // costs the tick.  ⚠ Before the movement rather than after it, so a
+    // crew member that finds work this tick starts walking this tick;
+    // after it, every decision would be a tick stale and a crew member
+    // beside a finished order would take one step nowhere.
+    wave_assign(state, mw);
+
     // ⚠ **The crew takes its turn with the player** (plan 14 H1), for
     // the same reason and in the same place: they are the same chassis
     // doing the same kind of work, and what they change about the
@@ -2607,6 +2617,108 @@ fn repair_target(state: const WaveState, mw: const MarkerWorld,
 // repair is what stops it being an unfalsifiable line of code.
 fn carrier_free(state: const WaveState, owner: integer) -> boolean {
     !cargo_carrying(state.cargo, owner)
+}
+
+// ─── Who goes where (plan 29 O1) ────────────────────────────────
+
+// Every crew member picks the job they are going to, and drives at it.
+//
+// ⚠⚠ **THE ONE SITE WHERE A CREW MEMBER DECIDES ANYTHING.**  Until this
+// existed, `helper_drive`'s only caller in the tree was the `.keys`
+// script runner (`plans/29` § O0) — a crew member stood wherever a
+// fixture left them for the whole run, and the four jobs they can do
+// each reach exactly one hex.
+//
+// ⚠ **It never touches the PLAYER.**  `DESIGN.md` § 8 has the vehicle
+// as the thing the player steers, and a chassis that drove itself
+// somewhere would be the game taking the decision `@X252` says is the
+// scarce one.
+//
+// ⚠⚠ **AND IT DOES NOT OVERRULE AN ORDER.**  `helper_drive` is somebody
+// deciding where a crew member goes — a `.keys` file's `send`, a
+// retrieval errand, a fixture parking a blocker — and a search that
+// rewrote the destination on the next tick would make the verb say
+// something the simulation ignores.  ⚠ It was found by measurement
+// rather than by reasoning: with the override in, `tests/17_t3` drove a
+// crew member at the gate every tick and it walked off to a heap.
+//
+// ⚠ A crew member in RECOVERY at the core is not `alive`, so the same
+// one-word filter `wave_repair` and `wave_blockers` use covers them:
+// somebody being put back together does not pick up work.
+//
+// ⚠⚠ **A CARRIER IS NOT REDIRECTED.**  `plans/15`'s carry model gives a
+// loaded crew member a destination that belongs to the load, and
+// `carrier_free` is the same question `wave_repair` asks before letting
+// one repair — so a beacon on its way to a site is not walked off to a
+// nearer heap.
+fn wave_assign(state: WaveState, mw: const MarkerWorld) {
+    wa_i = 0;
+    for wa_h in state.crew {
+        if wa_h.alive && !helper_ordered(wa_h)
+           && carrier_free(state, BLOCKER_CREW + wa_i) {
+            wa_at = Hex { q: wa_h.q, r: wa_h.r };
+            // ⚠ Bound to a local rather than nested — a struct returned
+            // through two tail calls loses what its loop wrote
+            // ([loft#880]), and `jobs_in_scope` is exactly that shape.
+            wa_jobs = jobs_in_scope(state.orders, state.heights,
+                                    state.towers, state.traps, mw,
+                                    wa_at, wa_h.skills, wa_h.remit);
+            wa_pick = job_pick(wa_jobs, wa_at, wa_h.job);
+            wa_h.job = wa_pick;
+            if wa_pick.found { helper_seek(wa_h, wa_pick.q, wa_pick.r); }
+        }
+        wa_i += 1;
+    }
+}
+
+// Cycle the remit of the crew member the player is standing beside.
+//
+// ⚠⚠ **`@X156`: PRESENCE IS THE INTERACTION**, so the whole cost of an
+// order is the drive out to give it.  ⚠ The reach is
+// `CARGO_REACH_HEXES` — the same one hex `beacon_buy` and `wave_drop`
+// use, because *beside somebody* should mean one thing in this game.
+//
+// ⚠ **The NEAREST, ties by roster slot**, and the tie-break matters:
+// two crew members on one hex would otherwise be directed in whatever
+// order the roster happened to hold them, and a scripted run has to
+// repeat.
+//
+// ⚠ Answers the slot directed, or -1 when nobody is in reach — which is
+// what `play.loft` needs to say *pressing G in an empty field does
+// nothing at all*.
+pub fn wave_direct_nearest(state: WaveState) -> integer {
+    if !vehicle_present(state.player) { return -1; }
+    wdn_at   = Hex { q: state.player.q, r: state.player.r };
+    wdn_best = -1;
+    wdn_dist = 0;
+    wdn_i    = 0;
+    for wdn_h in state.crew {
+        if wdn_h.alive {
+            wdn_d = lat_distance(wdn_at, Hex { q: wdn_h.q, r: wdn_h.r });
+            if wdn_d <= CARGO_REACH_HEXES && (wdn_best < 0 || wdn_d < wdn_dist) {
+                wdn_best = wdn_i;
+                wdn_dist = wdn_d;
+            }
+        }
+        wdn_i += 1;
+    }
+    if wdn_best < 0 { return -1; }
+    helper_cycle_remit(state.crew[wdn_best] ?? Helper { });
+    wdn_best
+}
+
+// How many crew members have nothing to do.
+//
+// ⚠⚠ **The channel `@X253` says the system reports its own over-tuning
+// through** — a general crew member is rarely idle and a narrowed one is
+// idle whenever their job is not needed where they are.  ⚠ What SPEAKS
+// is not built (`@X142`); this is the true state a voice would read.
+pub fn wave_idle_crew(state: const WaveState) -> integer {
+    wic_n = 0;
+    for wic_h in state.crew {
+        if helper_idle(wic_h) { wic_n += 1; }
+    }
+    wic_n
 }
 
 fn wave_repair(state: WaveState, mw: const MarkerWorld,

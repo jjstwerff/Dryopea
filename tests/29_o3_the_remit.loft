@@ -1,0 +1,322 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 29 phase O3 — the remit, and the two halves that make it a
+// decision.
+//
+// ⚠⚠ **THE INVARIANT: THE REMIT TRADES BREADTH FOR REACH.**  It is two
+// exact claims and this file is written round them:
+//
+// | half | claim | how it fails |
+// |---|---|---|
+// | **kind narrows** | a directed crew member never accepts a job outside their remit | a remit that also widened the kind set |
+// | **reach widens** | every job a GENERAL crew member would take, one directed to that job's kind takes too | a remit that narrowed the distance as well |
+//
+// ⚠ Plus the **COVER**: the union over the four remits contains
+// everything the general rule accepts, so **no kind of work becomes
+// unreachable by narrowing**.
+//
+// ⚠⚠ **Why both halves have to hold, in design terms.**  A remit that
+// only NARROWED would be a pure loss and nobody would ever give one —
+// the payoff `@X253` names (*a helper you keep directing to repair
+// becomes a repairer*) needs `@X124`'s practice loop, and `@M066`
+// measured that nine of the twelve skills have no number in the tree.
+// A remit that only WIDENED would be free, and a decision that costs
+// nothing is not one.  ⚠ `docs/DESIGN.md` § 9 § SEMI-AUTOMATIC BY
+// DEFAULT is the design: *"from then on they behave less general"*.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text    = "examples/palette.json";
+const GRASS:   integer = 5;
+const WALL:    integer = 9;
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+fn pal_at(path: text) -> vector<GroundType> { load_palette(path) }
+
+fn plain(span: integer) -> PaintedWorld {
+    p_pw = painted_empty();
+    for p_q in -span..=span {
+        for p_r in -span..=span { paint(p_pw, p_q, p_r, as_u8(GRASS)); }
+    }
+    p_pw
+}
+
+fn core_at(q: integer, r: integer) -> Hex { Hex { q: q, r: r } }
+
+// ─── A world with all four jobs in it ───────────────────────────
+
+// Everything a crew member can do, at a spread of distances from
+// (0, 0): a wall order at 2, a heap at 3, a black tower at 8 and a
+// spent plate at 9.
+//
+// ⚠ The two far ones are deliberately outside every untrained radius,
+// so the general set and the directed sets differ by construction —
+// `plans/29` § O0 reading 4 is why a fixture with everything at one
+// distance would measure nothing.
+struct Yard {
+    bl: BuildLayer,
+    hl: HeightLayer,
+    ts: TowerState,
+    tr: TrapState,
+    mw: MarkerWorld,
+}
+
+fn yard() -> Yard {
+    y_bl = build_layer_empty();
+    y_bl.cells[2, 0] = BuildOrder { q: 2, r: 0, what: BUILD_GROUND,
+                                    kind: as_u8(WALL), spent: 0 };
+
+    y_hl = height_layer_empty();
+    height_raise(y_hl, 3, 0, 1.0, 0 as u8);
+
+    y_mw = marker_empty();
+    place_marker(y_mw, 8, 0, MARKER_KIND_TOWER, 0 as u8);
+    place_marker(y_mw, 9, 0, MARKER_KIND_TRAP,  0 as u8);
+
+    y_ts = tower_state_empty();
+    y_i = 0;
+    while y_i < TOWER_SHOT_BUDGET {
+        tower_spend_shot(y_ts, 8, 0);
+        y_i += 1;
+    }
+
+    y_tr = trap_state_empty();
+    trap_fire(y_tr, 9, 0);
+
+    Yard { bl: y_bl, hl: y_hl, ts: y_ts, tr: y_tr, mw: y_mw }
+}
+
+fn scope_of(y: const Yard, remit: integer) -> vector<Job> {
+    jobs_in_scope(y.bl, y.hl, y.ts, y.tr, y.mw,
+                  core_at(0, 0), skills_new(), remit)
+}
+
+fn has_job(jobs: const vector<Job>, kind: integer, q: integer, r: integer) -> boolean {
+    for hj_j in jobs {
+        if hj_j.kind == kind && hj_j.q == q && hj_j.r == r { return true; }
+    }
+    false
+}
+
+fn count_kind(jobs: const vector<Job>, kind: integer) -> integer {
+    ck_n = 0;
+    for ck_j in jobs { if ck_j.kind == kind { ck_n += 1; } }
+    ck_n
+}
+
+// ─── ⚠⚠ The fixture's own control ───────────────────────────────
+
+// ⚠⚠ **A GATE THAT READS PERFECT IS AS SUSPECT AS ONE THAT READS
+// WRONG** (`CLAUDE.md` § Testing something that moves).  Every set claim
+// below is vacuous over an empty world, so this asks first whether the
+// yard can produce a non-trivial reading at all — and whether the two
+// far jobs really are out of an untrained crew member's senses, which is
+// the only thing that makes *narrowing widens the reach* observable.
+fn test_the_yard_can_disagree_with_itself() {
+    tyc_y = yard();
+    tyc_any = scope_of(tyc_y, TASK_ANY);
+
+    assert(len(tyc_any) == 2,
+           "a general crew member at the core sees TWO of the four: {len(tyc_any)}");
+    assert(has_job(tyc_any, TASK_BUILD, 2, 0), "the order two hexes off");
+    assert(has_job(tyc_any, TASK_CLEAR, 3, 0), "and the heap three off");
+    assert(!has_job(tyc_any, TASK_REPAIR, 8, 0),
+           "not the black tower eight off");
+    assert(!has_job(tyc_any, TASK_REARM, 9, 0),
+           "and not the spent plate nine off");
+}
+
+// ─── ⚠⚠ Half one — the kind NARROWS ─────────────────────────────
+
+// @DRY-142 — ⚠⚠ **A directed crew member accepts NOTHING outside their
+// remit**, over all four remits and every job in the yard.  ⚠ The loop
+// is the claim: a fifth job kind added to `task.loft` without a
+// `remit_takes` row fails here rather than quietly widening somebody.
+fn test_a_remit_never_accepts_another_kind() {
+    tar_y = yard();
+    tar_kinds = [TASK_BUILD, TASK_CLEAR, TASK_REPAIR, TASK_REARM];
+    for tar_k in tar_kinds {
+        tar_s = scope_of(tar_y, tar_k);
+        assert(len(tar_s) == count_kind(tar_s, tar_k),
+               "remit '{task_name(tar_k)}' sees {len(tar_s)} jobs and "
+               + "{count_kind(tar_s, tar_k)} of them are its own");
+        assert(len(tar_s) == 1,
+               "and there is exactly one of each in the yard: {len(tar_s)}");
+    }
+}
+
+// ─── ⚠⚠ Half two — the reach WIDENS ─────────────────────────────
+
+// ⚠⚠ **Every job a GENERAL crew member would take, a directed one takes
+// too.**  Asserted as a containment over the general set rather than as
+// four hand-written cases, so it stays true of a yard nobody thought of.
+fn test_a_remit_never_loses_a_job_the_general_rule_had() {
+    tan_y   = yard();
+    tan_any = scope_of(tan_y, TASK_ANY);
+    for tan_j in tan_any {
+        tan_s = scope_of(tan_y, tan_j.kind);
+        assert(has_job(tan_s, tan_j.kind, tan_j.q, tan_j.r),
+               "remit '{task_name(tan_j.kind)}' still has the "
+               + "({tan_j.q}, {tan_j.r}) job the general rule found");
+    }
+    assert(len(tan_any) > 0, "CONTROL — the general set is not empty");
+}
+
+// ⚠⚠ **AND IT GAINS THE ONES THE GENERAL RULE COULD NOT SEE**, which is
+// what a player is buying.  The black tower eight hexes off is outside
+// every untrained radius and a repair remit reaches it.
+fn test_a_remit_reaches_what_the_senses_cannot() {
+    trw_y = yard();
+
+    assert(has_job(scope_of(trw_y, TASK_REPAIR), TASK_REPAIR, 8, 0),
+           "a repairer finds the black tower eight hexes away");
+    assert(has_job(scope_of(trw_y, TASK_REARM), TASK_REARM, 9, 0),
+           "and a re-armer the plate at nine");
+    assert(!has_job(scope_of(trw_y, TASK_ANY), TASK_REPAIR, 8, 0),
+           "CONTROL — the same crew member undirected finds neither");
+}
+
+// ⚠ **THE COVER** — nothing becomes unreachable by narrowing.  ⚠⚠ A
+// remit that made some job findable by nobody would be a trap the
+// player could walk into and never walk out of, and `@X289` rules that
+// widening is always available; this is the other half of that promise.
+fn test_the_four_remits_cover_the_general_rule() {
+    ttf_y   = yard();
+    ttf_any = scope_of(ttf_y, TASK_ANY);
+    ttf_all: vector<Job> = [];
+    ttf_kinds = [TASK_BUILD, TASK_CLEAR, TASK_REPAIR, TASK_REARM];
+    for ttf_k in ttf_kinds {
+        for ttf_j in scope_of(ttf_y, ttf_k) { ttf_all += [ttf_j]; }
+    }
+    for ttf_g in ttf_any {
+        assert(has_job(ttf_all, ttf_g.kind, ttf_g.q, ttf_g.r),
+               "the ({ttf_g.q}, {ttf_g.r}) job is in some remit's set");
+    }
+    assert(len(ttf_all) == 4,
+           "and between them the four remits reach every job in the yard: "
+           + "{len(ttf_all)}");
+}
+
+// ─── ⚠⚠ The cycle — widening costs what narrowing cost ──────────
+
+// ⚠⚠ **`@X289`, BACKLOG D3: a specialised helper CAN be widened, and it
+// costs a trip.**  Five presses come back to where they started, so the
+// widening is a full RESET rather than a step-wise unwind — which is
+// `@X289`'s recommendation, on the grounds that a step-wise unwind
+// prices the MISTAKE where `@X252` says the ATTENTION is what is scarce.
+fn test_five_presses_come_back_round() {
+    tfp_h = helper_new(0, 0);
+    assert(tfp_h.remit == TASK_ANY, "nobody has told them anything");
+
+    tfp_seen: vector<integer> = [];
+    tfp_i = 0;
+    while tfp_i < TASK_KIND_COUNT {
+        helper_cycle_remit(tfp_h);
+        tfp_seen += [tfp_h.remit];
+        tfp_i += 1;
+    }
+    assert(len(tfp_seen) == 5, "five presses: {len(tfp_seen)}");
+    assert((tfp_seen[0] ?? -1) == TASK_BUILD,  "one press: build");
+    assert((tfp_seen[1] ?? -1) == TASK_CLEAR,  "two: clear");
+    assert((tfp_seen[2] ?? -1) == TASK_REPAIR, "three: repair");
+    assert((tfp_seen[3] ?? -1) == TASK_REARM,  "four: rearm");
+    assert((tfp_seen[4] ?? -1) == TASK_ANY,
+           "and the fifth is back to general — the widening is a RESET");
+}
+
+// ⚠ Directing somebody drops the job they were walking to, or the
+// stickiness in `job_pick` would hold them on it for one more tick —
+// one tick of a decision the player has just reversed.
+fn test_directing_somebody_drops_what_they_were_doing() {
+    tds_h = helper_new(0, 0);
+    tds_h.job = Job { found: true, kind: TASK_BUILD, q: 4, r: 0 };
+    helper_direct(tds_h, TASK_REPAIR);
+    assert(!tds_h.job.found, "the held job is gone");
+    assert(tds_h.remit == TASK_REPAIR, "and the remit is the new one");
+}
+
+// ─── ⚠⚠ Presence is the interaction ─────────────────────────────
+
+// ⚠⚠ **`@X156`: THE WHOLE COST OF AN ORDER IS THE DRIVE OUT TO GIVE
+// IT.**  One hex directs; two hexes does not; nobody in the world does
+// not.  ⚠ `docs/DESIGN.md` § 9 § The pillar survives because DIRECTING
+// SOMEBODY COSTS A TRIP is the sentence, and without the refusal at two
+// hexes the key would be free and the pillar would be a menu.
+fn test_you_have_to_drive_out_to_them() {
+    tyh_s = wave_state_empty();
+    vehicle_place(tyh_s.player, 0, 0);
+    tyh_s.crew += [helper_new(1, 0)];   // beside
+    tyh_s.crew += [helper_new(4, 0)];   // out of reach
+
+    assert(wave_direct_nearest(tyh_s) == 0, "the one beside you is directed");
+    assert((tyh_s.crew[0] ?? Helper { }).remit == TASK_BUILD,
+           "one press moves them one step round the cycle");
+    assert((tyh_s.crew[1] ?? Helper { }).remit == TASK_ANY,
+           "and the one four hexes off is untouched");
+
+    // CONTROL — the same press with nobody in reach.
+    tyh_far = wave_state_empty();
+    vehicle_place(tyh_far.player, 0, 0);
+    tyh_far.crew += [helper_new(2, 0)];
+    assert(wave_direct_nearest(tyh_far) == -1,
+           "CONTROL — two hexes is out of reach and the press does nothing");
+    assert((tyh_far.crew[0] ?? Helper { }).remit == TASK_ANY,
+           "and nobody's remit moved");
+
+    // CONTROL — and with no vehicle in the world at all.
+    tyh_none = wave_state_empty();
+    tyh_none.crew += [helper_new(0, 0)];
+    assert(wave_direct_nearest(tyh_none) == -1,
+           "CONTROL — nobody is standing anywhere to give an order");
+}
+
+// ─── ⚠⚠ It is a RATCHET, and over-tuning TELLS YOU ──────────────
+
+// ⚠ *"From then on"* is persistent and per-helper (`@X253`), so nothing
+// in the tick clears a remit.  ⚠ A run produces a crew with a PROFILE.
+fn test_a_remit_survives_the_run() {
+    tar_p  = pal_at(PALETTE);
+    tar_pw = plain(12);
+    tar_s  = wave_state_empty();
+    tar_s.crew += [helper_new(2, 0)];
+    helper_direct(tar_s.crew[0] ?? Helper { }, TASK_REPAIR);
+    order_place(tar_p, tar_pw, tar_s.orders, 0, 0, BUILD_GROUND, as_u8(WALL));
+
+    tar_mw = marker_empty();
+    tar_t = 0;
+    while tar_t < 60 {
+        wave_tick(tar_s, tar_p, tar_pw, tar_mw, core_at(0, 0));
+        tar_t += 1;
+    }
+    assert((tar_s.crew[0] ?? Helper { }).remit == TASK_REPAIR,
+           "sixty ticks later they are still a repairer");
+    assert(order_at(tar_s.orders, 0, 0),
+           "and the wall two hexes away is still an order — they do not build");
+}
+
+// @DRY-143 — ⚠⚠ **THE SYSTEM REPORTS ITS OWN OVER-TUNING** (`@X253`): a
+// narrowed crew member is idle in a base full of work their remit
+// excludes, where a general one beside them is not.  ⚠ What SPEAKS is
+// not built (`@X142`); this is the true state a voice would read.
+fn test_a_narrowed_crew_member_is_idle_beside_work() {
+    tan_p  = pal_at(PALETTE);
+    tan_pw = plain(12);
+    tan_s  = wave_state_empty();
+    tan_s.crew += [helper_new(2, 0)];   // 0 — narrowed to repair
+    tan_s.crew += [helper_new(2, 1)];   // 1 — general
+    helper_direct(tan_s.crew[0] ?? Helper { }, TASK_REPAIR);
+    order_place(tan_p, tan_pw, tan_s.orders, 0, 0, BUILD_GROUND, as_u8(WALL));
+
+    tan_mw = marker_empty();
+    wave_tick(tan_s, tan_p, tan_pw, tan_mw, core_at(0, 0));
+
+    assert(helper_idle(tan_s.crew[0] ?? Helper { }),
+           "the repairer has nothing to do in a base with a wall to build");
+    assert(!helper_idle(tan_s.crew[1] ?? Helper { }),
+           "CONTROL — the general one beside them took the job");
+    assert(wave_idle_crew(tan_s) == 1,
+           "one idle of two: {wave_idle_crew(tan_s)}");
+}

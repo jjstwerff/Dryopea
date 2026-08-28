@@ -1,0 +1,102 @@
+# a-crew-out-of-earshot — plan 29 O4, and it is HALF A PAIR.
+#
+# ⚠⚠ **`a-crew-out-of-earshot.keys` and `a-crew-that-was-told.keys` are
+# the same file except for TWO LINES: `remit 0 build` and
+# `remit 1 build`.**  Same ground, same core, same spawn, same wave
+# list, same crew, same drive, same ticks spent — so the difference in
+# the clock is the ORDER and can be nothing else.
+#
+# ⚠ The crew stand FIVE hexes from the line the player draws, which is
+# outside an untrained crew member's own senses (3 hexes,
+# `skill.loft::DETECT_BASE_HEXES`).  ⚠⚠ **So the semi-automatic default
+# finds nothing and this base is `a-base-nobody-builds` with a wall
+# nobody raises** — which is what makes the sibling's reading the price
+# of a trip out to somebody.
+#
+# ── What the player does ────────────────────────────────────────
+#
+# Parks at (5, -2), presses paint, and drives to (5, 2) — which orders
+# FIVE hexes: the one it was standing on when the mode came on, plus the
+# four it enters.  That is the band's whole walkable height, so the wall
+# would SEAL if anybody raised it.
+#
+# ⚠⚠ **The recon window is what pays for it** (`@X022`): the wave list
+# does not start until the player pokes a spawn marker, so the ticks
+# spent building are free — which is the design claim this pair makes
+# measurable for the first time.
+
+echo out of earshot: a wall drawn by driving, and nobody comes
+
+do toggle_mode
+
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+do cycle_kind
+do cycle_kind
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 11 0
+marker 11 0 spawn 3
+
+count markers 2 2
+do toggle_mode
+
+palette 5
+drag -3 -2 12 -2
+drag -3 -1 12 -1
+drag -3 0 12 0
+drag -3 1 12 1
+drag -3 2 12 2
+count painted 80 80
+
+# ⚠⚠ The crew, standing FIVE HEXES from the line the player is about to
+# draw — one clear of an untrained crew member's own senses.  Nobody has
+# told them anything, so nobody comes.
+crew 0 -1
+crew 0 1
+
+# ── The build (or not) ──────────────────────────────────────────
+park 5 -2
+paint on
+drive 5 2
+tick 6
+count orders 5 5
+paint off
+
+# Park clear of the line so the trail is not rubbed out, and let the
+# crew work.  60 helper-seconds over two helpers is 30 s = 45 ticks,
+# plus the walk out to it — which nobody ordered.
+drive 0 0
+tick 50
+# ⚠ FIVE orders still standing — nobody is in earshot of one.
+count orders 5 5
+count painted 80 80
+# ⚠⚠ The whole band, hex by hex — because a wall with ONE gap in it
+# buys nothing at all (`plans/12` § B7 measured a gate at +1 tick), so
+# *five* is the number that matters rather than *some*.
+kind 5 -2 grass
+kind 5 -1 grass
+kind 5 0 grass
+kind 5 1 grass
+kind 5 2 grass
+
+
+# ── The waves — identical to `an-undefended-base` ───────────────
+wave 5
+count alive 5 5
+
+tick 22
+wave 8
+count alive 13 13
+
+# ── The clock ───────────────────────────────────────────────────
+#
+# ⚠⚠ **Nobody came, so this is the no-wall clock.**  The half of the
+# pair that shows the default has an EDGE, and what the sibling buys.
+fall 900
+ticks 138 142
+snap o4_a_crew_out_of_earshot

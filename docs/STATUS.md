@@ -125,6 +125,49 @@ that keeps it fixed — a test cannot stop the next caller reaching for a
 base scale that looks like the answer.  ⚠ The rebaseline the defect
 warned about was an EMPTY SET: all 16 goldens are drawn at zoom 1.
 
+⚠⚠ **AND THE CREW FIND THEIR OWN WORK** ([`plans/29`](../plans/29-the-crews-own-work/README.md)
+O1, `src/task.loft`, `@X295`).  `DESIGN.md` § 9 calls assignment a
+PILLAR and until this there was none: `helper_drive`'s only caller in the
+tree was the `.keys` script runner, so **a crew member four hexes from a
+wall order stood there for sixty ticks with not one unit of work in it**,
+and all four jobs they can do reach exactly one hex.  A crew member
+nobody has told anything now takes the nearest of the four **inside their
+own senses** — 3 hexes untrained, 4 at scout 5.
+
+⚠⚠ **The radius is the load-bearing number and it was measured twice.**
+Asked as the full `detect_sees`, a heap's own `notice_of_heap` widened it
+to six hexes and **18 tests across 8 files moved one way**: bases that
+used to fall stood for 800 ticks with 0 enemies alive, and a wallet that
+ended at 40 ended at 299 of 300.  ⚠ `@X277`'s two radii answer *is this
+worth driving to*, which is the player's question; the crew's is *what is
+under my nose*.  ⚠⚠ **And a default that absorbs the work § 9 says growth
+is supposed to CREATE deletes the table the pillar stands on.**
+
+⚠ **`helper_drive` is an ORDER and the search does not overrule one**
+(`@X296`) — a verb that says *go here* has to be honoured or the `.keys`
+vocabulary lies.  ⚠ No key sends a crew member to a hex, so in a played
+session nobody is ever ordered and every crew member is semi-automatic.
+
+⚠⚠ **AND YOU CAN TELL SOMEBODY WHAT TO DO** ([`plans/29`](../plans/29-the-crews-own-work/README.md)
+O3, `@X297`).  Press **G** beside a crew member and their remit moves one
+step round a cycle — **anything → build → clear → repair → re-arm →
+anything**.  ⚠⚠ **A remit trades BREADTH for REACH**: they will do the
+one job only, and they will cross the whole map to find it.  ⚠ The cycle
+is what makes widening cost what narrowing cost — a trip — which answers
+`@X289`'s RESET-or-STEP by construction.
+
+⚠⚠ **The pillar comes out intact as ARITHMETIC** (`@M069`, `@M070`):
+
+| | work NEAR the crew | work FAR from the crew |
+|---|---|---|
+| **nobody told them anything** | 174 | **140** |
+| **told, one trip each** | 174 | **174** |
+
+The default buys **+44** in the left column and nothing in the right; an
+order buys **+34** in the right and nothing in the left.  ⚠ **Neither
+dominates**, which is `DESIGN.md` § 9's *does this make ONE axis
+dominate?* answered with numbers instead of an argument.
+
 ## Two rules the table above rests on
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number

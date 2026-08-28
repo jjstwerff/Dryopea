@@ -50,6 +50,7 @@ use trap;
 use wallet;
 use vehicle;
 use helper;
+use task;
 use carry;
 use waves;
 use spawn;
@@ -226,6 +227,17 @@ fn emit_movers(state: const WaveState) -> text {
            || em2_h.skills.scout != 0 {
             em2_out = em2_out + "skill {em2_i} {em2_h.skills.build} "
                               + "{em2_h.skills.repair} {em2_h.skills.scout}\n";
+        }
+        // ⚠ A remit only when there is one (plan 29 O3) — `TASK_ANY` is
+        // *nobody has told them anything*, which is every crew member in
+        // the corpus and the state a run starts in.
+        //
+        // ⚠⚠ **The WRITER and the READER are a PAIR** (`@D007`): this
+        // writes `task_name` and `script.loft`'s `remit` reads it
+        // through `task_from_name`, so a fifth remit has to be added to
+        // both or a captured state silently loses it.
+        if em2_h.remit != TASK_ANY {
+            em2_out = em2_out + "remit {em2_i} {task_name(em2_h.remit)}\n";
         }
         em2_i += 1;
     }

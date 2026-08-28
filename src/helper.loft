@@ -63,6 +63,7 @@ use fixstep;
 use build;
 use skill;
 use endure;
+use task;
 
 // ─── The numbers ────────────────────────────────────────────────
 //
@@ -156,23 +157,132 @@ pub struct Helper {
     // the whole run — two containers keyed by the same index are two
     // facts that can disagree about who is who.
     skills:  Skills,
+
+    // What the player has told this crew member to do (plan 29 O3) —
+    // a `TASK_*`, and `TASK_ANY` is *nobody has told them anything*.
+    //
+    // ⚠⚠ **`TASK_ANY` is 0 so a partial literal reads as GENERAL**
+    // ([loft#914]), which is the same discipline that spells a field
+    // `top_removed` rather than `has_top`: the silent default has to be
+    // the state a crew member starts a run in.
+    //
+    // ⚠ Beside `skills` and for the identical reason — a remit is a
+    // fact about this person, and `docs/DESIGN.md` § 9 § It is a
+    // RATCHET makes it persist for the rest of the run.
+    remit:   integer,
+
+    // Where they are already going, so a job started is not abandoned
+    // for one no nearer (`job_pick`).
+    //
+    // ⚠ It is a CACHE of a decision, never a second source of truth:
+    // `wave_assign` recomputes it every tick and only the stickiness
+    // reads it.
+    job:     Job,
+
+    // ⚠⚠ **Has somebody TOLD this crew member where to go?**
+    //
+    // `helper_drive` is an ORDER and `wave_assign` does not overrule
+    // one — which is not a convenience, it is what stops the search
+    // making the `.keys` vocabulary lie.  `send 0 8 1` said *go to
+    // (8, 1)*, and a search that rewrote the destination on the next
+    // tick would leave the verb saying something the simulation
+    // ignores.  ⚠ It was measured before it was reasoned about: with
+    // the override in, `tests/17_t3` drove a crew member to the gate
+    // every tick and it went somewhere else.
+    //
+    // ⚠ FALSE is the neutral value and has to be ([loft#914]): a crew
+    // member nobody has told anything is the state a run starts in, and
+    // a partial literal must read as *free to find their own work*.
+    //
+    // ⚠ `helper_direct` clears it — **one order at a time**, so giving
+    // somebody a remit replaces a hex somebody sent them to, and
+    // cycling back round to `TASK_ANY` hands them back to the default
+    // completely.
+    ordered: boolean,
 }
 
 // Factory: a helper standing at (q, r) with nothing banked.
 pub fn helper_new(q: integer, r: integer) -> Helper {
     Helper { q: q, r: r, to_q: q, to_r: r, alive: true,
              bank: bank_new(), taken: 0.0, recover: timer_new(),
-             skills: skills_new(), endurance: endurance_new() }
+             skills: skills_new(), endurance: endurance_new(),
+             remit: TASK_ANY, job: job_none(), ordered: false }
 }
 
 // Point a helper at a hex.  It drives there over the next ticks.
+//
+// ⚠⚠ **THIS IS AN ORDER, and `wave_assign` does not overrule one**
+// (plan 29 O1).  Whoever calls this has decided where the crew member
+// goes, and the semi-automatic search fills an EMPTY diary rather than
+// arguing with a full one.  ⚠ `helper_seek` is the other door — what a
+// crew member chooses for themselves — and it is the one that leaves
+// them free.
 pub fn helper_drive(h: Helper, q: integer, r: integer) {
+    h.to_q = q;
+    h.to_r = r;
+    h.ordered = true;
+}
+
+// Where this crew member has decided to go of their own accord.
+//
+// ⚠ The same two fields and NOT the same verb: `helper_drive` is
+// somebody else's decision and this is theirs, and only the first of
+// them survives the next tick's search.  ⚠ Two doors onto two facts,
+// which is `carry.loft`'s rule about a carrier and its load.
+pub fn helper_seek(h: Helper, q: integer, r: integer) {
     h.to_q = q;
     h.to_r = r;
 }
 
+// Has somebody told this crew member where to go?
+pub fn helper_ordered(h: const Helper) -> boolean {
+    h.ordered
+}
+
 pub fn helper_arrived(h: const Helper) -> boolean {
     h.q == h.to_q && h.r == h.to_r
+}
+
+// ─── The remit (plan 29 O3) ─────────────────────────────────────
+
+// Tell this crew member what to do from now on.
+//
+// ⚠⚠ **`docs/DESIGN.md` § 9 § It is a RATCHET** — *"from then on they
+// behave less general"* is **persistent and per-helper**, so nothing
+// here expires and nothing clears it at a wave boundary.  A run
+// produces a crew with a profile.
+//
+// ⚠ `TASK_ANY` is the widening, and `@X289` rules that it is allowed
+// and that it costs what narrowing cost: a trip.
+pub fn helper_direct(h: Helper, remit: integer) {
+    h.remit = remit;
+    // ⚠ ONE order at a time: a remit replaces a hex somebody sent them
+    // to, so cycling round to `TASK_ANY` hands them back to the default
+    // completely rather than to a destination they no longer remember
+    // being given.
+    h.ordered = false;
+    // ⚠ The held job goes with the remit, or a crew member keeps
+    // walking to work their new orders exclude — the stickiness in
+    // `job_pick` would hold it there for one tick, which is one tick of
+    // a decision the player has just reversed.
+    h.job = job_none();
+}
+
+// The next remit round the cycle — what one press at their side does.
+pub fn helper_cycle_remit(h: Helper) {
+    helper_direct(h, task_cycle(h.remit));
+}
+
+// ⚠⚠ **IDLE is a MANAGEMENT state, not a world state** (`docs/DESIGN.md`
+// § 9 § It sharpens the idle helper): a crew member stands waiting
+// because nobody has given them a job, never because there is nothing to
+// do.  ⚠ So this asks whether THIS person has work — a narrowed one is
+// idle in a base full of work their remit excludes, which is `@X253`'s
+// *the system reports its own over-tuning* made readable.
+//
+// Example: @DRY-143
+pub fn helper_idle(h: const Helper) -> boolean {
+    h.alive && !h.job.found
 }
 
 // What this helper has left, in HP.

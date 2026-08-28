@@ -353,11 +353,25 @@ fn source_of(path: text) -> text {
 // So `a-crew-on-two-fronts.keys` reading 242 is the OTHER FRONT's
 // doing and not the second helper's, which is the only reading that
 // separates coverage from throughput.
+//
+// ⚠⚠ **PLAN 29 O1 MADE *standing on the same hex* SOMETHING THAT HAS TO
+// BE SAID.**  A crew member nobody has told anything now walks to the
+// nearest job inside their own senses, so the second one no longer
+// stands where the first is — and `send 1 7 0` is what says *stay*,
+// because `helper_drive` is an ORDER the search does not overrule
+// (`@X296`).  ⚠ The control is unchanged in what it claims; the fixture
+// simply has to state a fact it used to get for free.
+//
+// ⚠ **And the un-ordered reading is worth having**: left free, the
+// second crew member finds a little more to do and the base runs **141**
+// ticks against the file's 130..140 band — **+1**, which is the same
+// *one tower makes 0.03 m of body a tick* arithmetic seen from the other
+// side.  It is not a second helper's worth of anything.
 fn test_a_second_helper_beside_the_first_changes_nothing() {
     tas_src = source_of(ONE_FRONT);
     assert(tas_src.contains("crew 7 0\n"), "the scenario still places its crew by hand");
 
-    tas_two = tas_src.replace("crew 7 0\n", "crew 7 0\ncrew 7 0\n");
+    tas_two = tas_src.replace("crew 7 0\n", "crew 7 0\ncrew 7 0\nsend 1 7 0\n");
     tas_run = script_run(editor_state_new(PALETTE), tas_two, SHOTS);
 
     assert(tas_run.ok,

@@ -91,6 +91,7 @@ fn test_every_field_of_the_state_is_reachable() {
         // the movers
         + "park 1 0\ndrive 3 0\nplayer on 1.5 2.5 20\n"
         + "crew 2 1\nsend 0 8 1\nmember 0 off 0.5 15 45\n"
+        + "remit 0 repair\n"
         // the cargo and the schedule
         + "object 7 0 wreck 0 player\n"
         + "schedule 4 6\ncompose 1 2 miner 4 scout\n"
@@ -170,6 +171,12 @@ fn test_every_field_of_the_state_is_reachable() {
     bank_restore_fraction(tef_wh.bank, 0.5, BANK_WHOLE);
     tef_wh.taken    = 15.0;
     timer_arm(tef_wh.recover, clock_units_from_seconds(45.0));
+    // ⚠ A REMIT the default would not produce (plan 29 O3) — the same
+    // argument the order kind, the tower order and the spent plate all
+    // make above.  `TASK_ANY` on both sides compares equal and proves
+    // nothing.  ⚠ Set through `helper_direct`, which also clears the
+    // held job, because that is what the script verb does.
+    helper_direct(tef_wh, TASK_REPAIR);
 
     tef_oi = cargo_spawn(tef_want.cargo, CARGO_WRECK, 0, 7, 0);
     (tef_want.cargo.items[tef_oi] ?? CarryObject { }).owner = BLOCKER_PLAYER;

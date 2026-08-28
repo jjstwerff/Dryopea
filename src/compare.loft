@@ -56,6 +56,7 @@ use trap;
 use wallet;
 use vehicle;
 use helper;
+use task;
 use carry;
 use waves;
 use spawn;
@@ -138,6 +139,13 @@ fn crew_diff(a: const WaveState, b: const WaveState) -> text {
         }
         if endurance_spent(cd_x.endurance) != endurance_spent(cd_y.endurance) {
             return "crew[{cd_i}].endurance: {endurance_spent(cd_x.endurance)} vs {endurance_spent(cd_y.endurance)}";
+        }
+        // ⚠ The remit is compared and the HELD JOB is not (plan 29):
+        // a remit is a fact about the person and survives a round trip,
+        // while `Helper.job` is a cache `wave_assign` rewrites on the
+        // next tick from the world both states already agree about.
+        if cd_x.remit != cd_y.remit {
+            return "crew[{cd_i}].remit: {task_name(cd_x.remit)} vs {task_name(cd_y.remit)}";
         }
         if cd_x.skills.build != cd_y.skills.build
            || cd_x.skills.repair != cd_y.skills.repair

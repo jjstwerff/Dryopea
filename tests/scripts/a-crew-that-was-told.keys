@@ -1,0 +1,126 @@
+# a-crew-that-was-told — plan 29 O4, and it is the OTHER HALF.
+#
+# ⚠⚠ **`a-crew-out-of-earshot.keys` and `a-crew-that-was-told.keys` are
+# the same file except for TWO LINES: `remit 0 build` and
+# `remit 1 build`.**  Same ground, same core, same spawn, same wave
+# list, same crew, same drive, same ticks spent — so the difference in
+# the clock is the ORDER and can be nothing else.
+#
+# ⚠ The crew stand FIVE hexes from the line the player draws, which is
+# outside an untrained crew member's own senses (3 hexes,
+# `skill.loft::DETECT_BASE_HEXES`) — so the semi-automatic default finds
+# nothing and the sibling's wall is never raised.
+#
+# ⚠⚠ **A REMIT REACHES THE WHOLE MAP** (`@X297`): a crew member told
+# *build* hunts build orders wherever they are, so these two walk the
+# five hexes and raise the wall the other file's crew never notice.
+# **That is what a trip out to somebody buys**, and it is the price of
+# the narrowing — from now on they will do nothing else.
+#
+# ── What the player does ────────────────────────────────────────
+#
+# Parks at (5, -2), presses paint, and drives to (5, 2) — which orders
+# FIVE hexes: the one it was standing on when the mode came on, plus the
+# four it enters.  That is the band's whole walkable height, so the wall
+# would SEAL if anybody raised it.
+#
+# ⚠⚠ **The recon window is what pays for it** (`@X022`): the wave list
+# does not start until the player pokes a spawn marker, so the ticks
+# spent building are free — which is the design claim this pair makes
+# measurable for the first time.
+
+echo told to build: the same wall, and two crew who were given an order
+
+do toggle_mode
+
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+do cycle_kind
+do cycle_kind
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 11 0
+marker 11 0 spawn 3
+
+count markers 2 2
+do toggle_mode
+
+palette 5
+drag -3 -2 12 -2
+drag -3 -1 12 -1
+drag -3 0 12 0
+drag -3 1 12 1
+drag -3 2 12 2
+count painted 80 80
+
+# ⚠⚠ The crew, standing FIVE HEXES from the line the player is about to
+# draw — one clear of an untrained crew member's own senses.  Nobody has
+# told them anything, so nobody comes.
+crew 0 -1
+crew 0 1
+
+# ⚠⚠ **THE TWO LINES THIS PAIR TURNS ON.**  In the game they are one
+# press of **G** each, standing beside the person — `@X156` makes
+# presence the interaction, so the whole cost is the drive out.
+remit 0 build
+remit 1 build
+
+# ── The build (or not) ──────────────────────────────────────────
+park 5 -2
+paint on
+drive 5 2
+tick 6
+count orders 5 5
+paint off
+
+# Park clear of the line so the trail is not rubbed out, and let the
+# crew work.  60 helper-seconds over two helpers is 30 s = 45 ticks,
+# plus the walk out to it — which nobody ordered.
+drive 0 0
+tick 50
+# ⚠ Nothing left ordered: they walked five hexes and raised it.
+count orders 0 0
+count painted 80 80
+# ⚠⚠ The whole band, hex by hex — because a wall with ONE gap in it
+# buys nothing at all (`plans/12` § B7 measured a gate at +1 tick), so
+# *five* is the number that matters rather than *some*.
+kind 5 -2 wall
+kind 5 -1 wall
+kind 5 0 wall
+kind 5 1 wall
+kind 5 2 wall
+
+
+# ── The waves — identical to `an-undefended-base` ───────────────
+wave 5
+count alive 5 5
+
+tick 22
+wave 8
+count alive 13 13
+
+# ── The clock ───────────────────────────────────────────────────
+#
+# ⚠⚠ **A TRIP OUT TO SOMEBODY IS WORTH +34 TICKS — 140 against 174**
+# (`@M070`), two lines apart.  The `out-of-earshot` half has the same
+# ground, the same core, the same spawn, the same wave list, the same
+# crew in the same hexes and the same drive; what it does not have is
+# somebody having been told.
+#
+# ⚠⚠ **And 174 is the ceiling `@M050` and `@M069` both land on** — the
+# wall gets raised, so the base plays exactly as it does when the crew
+# were parked on the line or standing two hexes off it.  What the order
+# buys is not a better wall: it is REACH, and reach is only worth
+# anything when the work is out of earshot.
+#
+# ⚠ The price is on the other side of the ledger and no scenario here
+# measures it: from now on these two will do nothing but build
+# (`@X297`), so the heap by the core is somebody else's problem.
+fall 900
+ticks 172 176
+count idle 0 2
+snap o4_a_crew_that_was_told

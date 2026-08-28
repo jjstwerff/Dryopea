@@ -198,6 +198,16 @@ pub struct EditorInput {
     // there.  `spawn.loft::wave_jammer_switch` owns the position half.
     in_toggle_jammer: boolean,
 
+    // G — direct the crew member you are standing beside (plan 29 O3).
+    //
+    // ⚠ A PLAY field like the five above it, and a KEY rather than a
+    // position for the jammer's reason: driving past somebody would set
+    // their remit every frame, and there would be no press left that
+    // means *general*.  ⚠⚠ It CYCLES, because widening is the same
+    // interaction as narrowing (`@X289`) — `play.loft::play_direct_crew`
+    // owns the position half and the reach.
+    in_direct: boolean,
+
     // ── The SHELL's half (plan 19 P3) ──
     //
     // ⚠⚠ **Neither seam reads this one.**  `editor_step` does not and
@@ -266,6 +276,7 @@ pub fn editor_input_empty() -> EditorInput {
         in_paint_wall:     false,
         in_dig:            false,
         in_toggle_jammer:  false,
+        in_direct:         false,
         in_toggle_play:    false,
     }
 }
@@ -310,6 +321,7 @@ pub fn editor_input_copy(ic: const EditorInput) -> EditorInput {
         in_paint_wall:     ic.in_paint_wall,
         in_dig:            ic.in_dig,
         in_toggle_jammer:  ic.in_toggle_jammer,
+        in_direct:         ic.in_direct,
         in_toggle_play:    ic.in_toggle_play,
     }
 }

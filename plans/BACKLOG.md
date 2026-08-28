@@ -102,9 +102,15 @@ an order:
 - ~~**B2 (BUILDING) is the biggest missing mechanic.**~~  **B2 is done**
   (2026-08-27, [`plans/27`](27-building/README.md)) — so `@X022`, `@X024`
   and `@X019` are no longer inert, and `ROADMAP.md` § The critical path
-  item **3** is closed.  ⚠ The next item on that path is **4, the
-  SCRAMBLE** — the run's ending, and the mechanic the game is named
-  after.  Its ingredients all shipped years of plans ago.
+  item **3** is closed.
+- ⚠⚠ **THE CRITICAL PATH'S FOUR GAPS ARE ALL CLOSED** — item **4, the
+  SCRAMBLE**, shipped 2026-08-28 ([`plans/28`](28-the-scramble/README.md)),
+  and it is the mechanic the game is named after.  ⚠ What follows is
+  `ROADMAP.md` § Then the run becomes a RUN: **5 helper ORDERS** (in
+  progress, [`plans/29`](29-the-crews-own-work/README.md)), **6 the
+  landing flow**, **7 carryover** — the scramble produces it and nothing
+  consumes it — and **8 the permit clock**, still blocked on `@X287`'s
+  ruling rather than on a mechanism.
 
 ⚠ **Most of this is not a plan** (`README.md` § Pick the lightest
 workflow that fits).  Only **B2** is clearly multi-phase; the rest are

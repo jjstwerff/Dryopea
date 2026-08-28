@@ -532,10 +532,20 @@ fn worth(at: integer, ferry: boolean, guard: integer) -> Outcome {
     w_s = wave_state_empty();
     w_s.schedule = wave_schedule_of([12, 12, 12, 12], INTER_WAVE_DELAY_SECONDS);
     wave_schedule_begin(w_s.schedule);
+    // ⚠⚠ **STANDING SOMEWHERE IS AN ORDER SINCE PLAN 29 O1.**  This
+    // fixture's whole subject is WHERE a crew member is — guarding the
+    // plate, parked in front of the gate, or nowhere near anything —
+    // and a crew member nobody has told anything now walks to the
+    // nearest job inside their own senses.  `helper_drive` is the door
+    // that says *stay*: an ORDER, which `wave_assign` does not overrule
+    // (`@X296`).  ⚠ The `ferry` arm re-issues one every tick, so it was
+    // never the case that broke; the PARKED control was.
     if guard != NOWHERE {
         w_s.crew += [helper_new(guard, 0)];
+        helper_drive(w_s.crew[0] ?? Helper { }, guard, 0);
     } else {
         w_s.crew += [helper_new(IDLE_Q, IDLE_R)];
+        helper_drive(w_s.crew[0] ?? Helper { }, IDLE_Q, IDLE_R);
     }
 
     w_fell   = 0;

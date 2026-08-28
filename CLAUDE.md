@@ -47,6 +47,17 @@ truth** and [`plans/README.md`](plans/README.md) indexes them.
 - **How the toolchain fails, and how to tell that from a real defect** —
   [`docs/TOOLCHAIN.md`](docs/TOOLCHAIN.md).
 
+⚠⚠ **THE CRITICAL PATH'S FOUR GAPS ARE ALL CLOSED** — building
+([`plans/27`](plans/27-building/README.md), 2026-08-27) and the SCRAMBLE
+([`plans/28`](plans/28-the-scramble/README.md), 2026-08-28) were the last
+two.  ⚠ What follows is `ROADMAP.md` § Then the run becomes a RUN, and
+its item **5, helper ORDERS**, shipped the same day
+([`plans/29`](plans/29-the-crews-own-work/README.md)): **the crew find
+their own work, and you can tell one of them what to do.**  The next
+items are **6 the landing flow**, **7 carryover** — the scramble produces
+it and nothing consumes it — and **8 the permit clock**, blocked on
+`@X287`'s ruling rather than on a mechanism.
+
 **Where the game is right now:** the simulation is complete enough to play a
 seven-wave base to its end, and **the game is PLAYABLE AND VISIBLE** — `make
 play SCRIPT=a-base-that-plays-its-list`, press **P**, and the map editor
@@ -60,6 +71,16 @@ MAP=starter_01` opens one of the three AUTHORED maps in `maps/` (BACKLOG A2,
 2026-08-27); `SCRIPT=<name>` opens any of the 50 `.keys` files in
 `tests/scripts/` + `tests/gl/` as a live starting position, cut at its first
 `tick` (`@X263`).  Bare `make play` opens the empty default slot.
+⚠⚠ **AND THE CREW WORK ON THEIR OWN** ([`plans/29`](plans/29-the-crews-own-work/README.md),
+complete 2026-08-28) — a crew member nobody has told anything takes the
+nearest of four jobs **inside their own senses** (3 hexes untrained), and
+press **G** beside one to narrow them to a single job they will then hunt
+across the whole map.  ⚠⚠ **The pillar comes out intact as arithmetic**:
+the default is worth **+44** ticks where the work is near and 0 where it
+is not; one order is worth **+34** where it is far and 0 where it is near
+(`@M069`, `@M070`).  ⚠ `helper_drive` is an ORDER the search does not
+overrule (`@X296`), which is how a `.keys` fixture says *stay*.
+
 ⚠⚠ **THE PLAYER CAN BUILD** ([`plans/27`](plans/27-building/README.md),
 complete 2026-08-27) — `ROADMAP.md` § The critical path item **3** is closed.
 Press **Q** and every hex you drive over is ordered as a wall your crew raise
@@ -74,8 +95,8 @@ critical path is **4, the SCRAMBLE**.
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1667 green**, ~320 s on a busy box, 128 files |
-| scenarios | `scripts/validate.sh` | **47 scripts, 873 measurements**, ~20 s |
+| tests | `scripts/test.sh` | **1692 green**, ~320 s on a busy box, 131 files |
+| scenarios | `scripts/validate.sh` | **50 scripts, 920 measurements**, ~20 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
 
 ⚠ `scripts/test.sh` is the canonical runner — **never `loft test` directly**
@@ -98,6 +119,9 @@ alone and pushed the run over the cliff.
 
 ⚠ **Do not run two `scripts/test.sh` at once** — both pre-clean
 `tests/actual/`, so they clobber each other and fail for no reason.
+⚠⚠ **`scripts/gate.sh start` REFUSES to, which is the rule enforced
+rather than documented** — and it is the entry to reach for whenever you
+are not going to sit and watch the run (§ Key commands).
 
 ⚠ **Both gates run INTERPRETED, and that is not a preference** — on the
 native backend `load_palette` answers 0 entries
@@ -370,7 +394,23 @@ via `loft.toml` + `loft.lock`, so no `--lib` path is passed
 anywhere.
 
 ```bash
-# Run dryopea's test suite (canonical entry — DO NOT run `loft test` directly)
+# ⚠⚠ RUN THE GATES DETACHED — the way to do it when you are not going to
+# sit and watch.  `scripts/test.sh` takes MINUTES on a busy box, and
+# polling its log costs a look a minute and answers "still running" most
+# of them.  `start` returns at once; `wait` blocks ONCE and then prints
+# the FAILING ASSERTIONS rather than the log; `status` answers without
+# waiting and re-reads the PID, so a run that was OOM-killed reports DIED
+# instead of hanging a waiter for ever.
+#   ⚠ `start` also REFUSES a second run while one is going, which is
+#   § Do not run two `scripts/test.sh` at once enforced rather than
+#   documented.  Modelled on loft's `scripts/ci-run.sh`.
+scripts/gate.sh start          # or: make gate
+scripts/gate.sh wait           # or: make gate-wait   ← launch in the BACKGROUND
+scripts/gate.sh status         # or: make gate-status
+scripts/gate.sh report         # the last run's failures again
+GATES=test scripts/gate.sh start        # test only; validate / full also
+# Run dryopea's test suite (canonical entry — DO NOT run `loft test` directly).
+# ⚠ Fine in the FOREGROUND when you mean to wait for it; use gate.sh otherwise.
 scripts/test.sh
 
 # Play every tests/scripts/*.keys and gate on what they measure —
@@ -510,6 +550,7 @@ source of truth and the listing is a navigational summary of it.
 | `skill.loft` | **CREW SKILLS — build, repair, scout**.  `Skills` on `Helper`, `skill_factor`, and the DETECTION rule |
 | `endure.loft` | **ENDURANCE — work spends it, rest restores it**.  ⚠ A tired person works LESS and never stops |
 | `jammer.loft` | **THE JAMMER SWITCH — turning your own core off**.  ⚠ It stops the SUPPLY and never the SIEGE |
+| `task.loft` | **A JOB, and which one a crew member goes to** — the four `TASK_*` kinds, `jobs_in_scope`, `job_pick`.  ⚠⚠ **The remit trades BREADTH for REACH**, and the radius is the crew member's ALONE
 | `trap.loft` | **A TRAP THAT DOES NOT AUTOMATICALLY RESET** — placed in advance, fires ONCE, re-armed by a standing vehicle.  ⚠ The trigger is a CROSSING, never a standing position |
 | `moat.loft` | **A MOAT — the one hex whose surface is BELOW the ground around it**, the palette's `drop` read at last, and what a besieger shovels into one.  ⚠⚠ Its depth decides ONE thing: how much it takes to FILL — so it is a TIMER |
 | `font.loft` | **THE FONT — the ONE seam to `graphics::draw_text`**.  ⚠ The path is ABSOLUTE and that is enforced at the door |
@@ -849,7 +890,7 @@ second copy here is the one that drifts.
 | [docs/HARD_WON_RULES.md](docs/HARD_WON_RULES.md) | ⚠⚠ **Every rule that cost a real defect to learn, with the measurement that produced it.**  § Hard-won rules carries the HEADLINES; this is the evidence |
 | [docs/PLAYING.md](docs/PLAYING.md) | ⚠ **How to play what exists** — the ONE controls list, GATED against `bindings.loft::editor_actions` |
 | [docs/STATUS.md](docs/STATUS.md) | What exists today, one line per shipped phase.  ⚠ Orientation only — each plan's own `## Status` is the source of truth |
-| [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md) | ⚠⚠ **How the gates go red for reasons that are not defects** — the 300 s hard-kill, clobbering suites, a shared wall clock, the `graphics` cdylib fault |
+| [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md) | ⚠⚠ **How the gates go red for reasons that are not defects** — the 300 s hard-kill, clobbering suites, a shared wall clock, the `graphics` cdylib fault.  ⚠ And § Run the gates DETACHED: `scripts/gate.sh`, because polling a long run's log is wrong three ways |
 | [docs/EXAMPLES.md](docs/EXAMPLES.md) | ⚠ **The worked-example convention** — an index tag `@XXX-###` in a comment above a test, cited from the function.  ⚠ NEW work only |
 | [docs/PROFILING.md](docs/PROFILING.md) | How to profile the suite, the numbers of record and their date |
 | [docs/LOFT_GOTCHAS.md](docs/LOFT_GOTCHAS.md) | Every loft behaviour dryopea works around — ⚠ almost all compile clean and fail silently |
@@ -929,7 +970,11 @@ names; most of them exist because somebody did it without reading.
 | Add a DIALOGUE UI, a topic menu or a conversation system | [`docs/DECISIONS.md`](docs/DECISIONS.md) (`@X156`) — ⚠⚠ **there is no question list in this design** |
 | Add anything to the POST-MISSION screen, or ask what a debrief may say | [`docs/PROGRESSION.md`](docs/PROGRESSION.md) § P2f — ⚠ never a SCORING screen |
 | Ask how a player DISCOVERS an advanced option | [`docs/PROGRESSION.md`](docs/PROGRESSION.md) § P2f |
-| Ask who does a job, or whether helpers pick their own work | [`docs/DESIGN.md`](docs/DESIGN.md) § 9 |
+| Ask who does a job, or whether helpers pick their own work | `src/task.loft` + [`plans/29`](plans/29-the-crews-own-work/README.md) — ⚠⚠ **they do now**: the nearest of four jobs inside `detect_radius`, and the ONE site where a crew member decides anything is `spawn.loft::wave_assign` |
+| Send a crew member somewhere, or ask why the search ignores them | `src/helper.loft::helper_drive` — ⚠⚠ **it is an ORDER and `wave_assign` does not overrule one** (`@X296`); `helper_seek` is what a crew member chooses for themselves |
+| Widen the DEFAULT's radius, or make the crew cleverer | ⚠⚠ **Read `@X295` first — it was measured and refused.**  At six hexes the default absorbed the work `DESIGN.md` § 9 says growth is supposed to CREATE, and 18 tests across 8 files moved one way |
+| Direct a crew member, or ask what a REMIT costs | `src/task.loft` + `@X297` — ⚠ one kind, base-wide, on key **G**, and the cycle is what makes widening cost what narrowing cost |
+| Ask who does a job when nobody is looking | [`docs/DESIGN.md`](docs/DESIGN.md) § 9 |
 | Judge a task-assignment, priority-list or automation idea | [`docs/DESIGN.md`](docs/DESIGN.md) § 9 — ⚠⚠ **assignment is a PILLAR**; a priority list deletes it |
 | Ask whether the game may GATE content, or balance the first mission | [`docs/PROGRESSION.md`](docs/PROGRESSION.md) § P0c — ⚠ no; prefer FOUND over AWARDED |
 | Design a RANDOM element, or ask why exploration does not go stale | [`docs/PROGRESSION.md`](docs/PROGRESSION.md) § P1d — vary the INSTANCE, never the RULES |
@@ -985,7 +1030,7 @@ names; most of them exist because somebody did it without reading.
 |---|---|
 | Pick something CONCRETE to build | [`plans/BACKLOG.md`](plans/BACKLOG.md) — deliberately unordered |
 | Pick next work to do | [`plans/ROADMAP.md`](plans/ROADMAP.md) § The critical path |
-| Ask what the BIGGEST missing mechanic is | ⚠ it WAS building ([`plans/27`](plans/27-building/README.md), shipped); the next item is **4, the SCRAMBLE** |
+| Ask what the BIGGEST missing mechanic is | ⚠⚠ **the critical path's four gaps are ALL closed** (building 27, the scramble 28, helper orders 29).  What is left is `ROADMAP.md` § Then the run becomes a RUN: **6 the landing flow**, **7 carryover**, **8 the permit clock** |
 | Continue plan 01 work | [`plans/01-ground-editor/README.md`](plans/01-ground-editor/README.md) § Implementation status |
 | TUNE a number | `examples/numbers.json` — ⚠ nothing LOADS it; edit the `.loft` constant too |
 | Document a new public function, or point at a test as its EXAMPLE | [`docs/EXAMPLES.md`](docs/EXAMPLES.md) |
@@ -1079,6 +1124,7 @@ names; most of them exist because somebody did it without reading.
 | Ask how strong a wall hex is | `src/damage.loft::structure_max_hp` — ⚠ `numbers.json`'s 100 is the BRACED number, and since BACKLOG C6 it is **braced AND founded**: bracing holds a wall up sideways, FOOTING holds it up from below |
 | Ask how much a wall has left | `src/damage.loft::structure_hp` — ⚠ 0.0 answers both *broken* and *never a structure* |
 | Break a wall | `src/damage.loft::break_structure` — the one site, and it does both halves |
+| Judge whether a CREW MEMBER should be told what to do | `@M070` — ⚠⚠ **+34 ticks where the work is out of earshot and 0 where it is not**, against the default's +44 and 0 the other way round.  Neither dominates, which is what keeps `DESIGN.md` § 9 a pillar |
 | Judge whether a DEFENCE is worth building | [`plans/12`](plans/12-combat-resolution/README.md) § B7 — 69 / 112 / 128 ticks |
 | Ask what the opening 200 points buys, or judge a LANDING-LOADOUT idea | `tests/d2_the_landing_choice.loft` (`@X288`, `@M065`) — ⚠⚠ **200 over a 100-point beacon is exactly TWO and the third press is refused**, so the landing exclusion is the WALLET's and needed no rule.  ⚠ The scrambler is not the other half: it costs nothing and a base lands with it ON |
 | Ask what a wall is MADE of, or why the ground matters | `src/damage.loft` § Footing (`@X284`) — ⚠⚠ **the palette's `slope` read at last**; 153 / 174 / 220 on sand, grass and rock, and the STURDIEST hex in reach wins |
@@ -1087,6 +1133,7 @@ names; most of them exist because somebody did it without reading.
 | Bring a spent tower back | `src/tower.loft::tower_repair_tick` — ⚠ it refills the MAGAZINE, never the CHARGE |
 | Take a tower's top off, move it, or evacuate it | `src/spawn.loft::wave_take` / `wave_drop` |
 | Judge whether a TRANSPLANT is worth doing | [`plans/17`](plans/17-tower-hot-swap/README.md) § T3 — **+3 ticks at best, −50 if the donor was firing** |
+| Run the suite without sitting and watching it | `scripts/gate.sh start` then `wait` in the BACKGROUND — [`docs/TOOLCHAIN.md`](docs/TOOLCHAIN.md) § Run the gates DETACHED.  ⚠⚠ **Polling a log costs a turn a minute and is wrong three ways** |
 | Find out why a base cannot be played to its end | [`plans/16`](plans/16-the-wave-system/README.md) § W4 — the 30-shot magazine |
 | Bring a lost crew member back | `src/spawn.loft::wave_drop` at the core — and NOTHING else does it |
 | Take a crew member out of the run | `src/helper.loft::helper_wreck` |
