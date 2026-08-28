@@ -9,6 +9,12 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 kind today**: the three maps in `maps/` are authored `.keys` files built
 into committed `.json` pairs, and there is no seed anywhere in `src/`.
 
+> ⚠⚠ **THE THESIS, in the owner's words** (`@X323`): *"it all comes down
+> to a way to **express detail based on a very compact base set of
+> data**."*  ⚠ Every ruling below is an answer to that, and § THE THESIS
+> reads them as one family — plus the refusal test it implies: **does
+> this add data in proportion to the detail it produces?**
+
 ⚠ This document is the **world → scenario** half.
 [`ERRANDS.md`](ERRANDS.md) is the **what a mob is doing** half and owns
 the two-scale ruling (`@X298`); [`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md)
@@ -26,6 +32,82 @@ useful thing in it is which of those is which.
 > rulings made here independently (`@X299`, `@X301`, `@X306`).  ⚠ Read
 > the citations below as *this idea, tried* rather than as *somebody
 > else's idea*.
+
+## ⚠⚠ THE THESIS — express DETAIL from a very compact BASE SET  `@X323`
+
+Owner, 2026-08-28:
+
+> *"it all comes down to a way to **express detail based on a very
+> compact base set of data**."*
+
+⚠⚠ **That is what every ruling in this document is an answer to**, and
+reading them as one family is worth more than reading them one at a
+time:
+
+| ruling | the compression | the rule that expands it |
+|---|---|---|
+| `@X313` six neighbours | **eighteen numbers** | slope, aspect and drainage — a cell alone has no gradient |
+| `@X316` the block | a **row**, and a seed | the coarse map picks the table, the block picks the cell |
+| `@X318` conditions | a **predicate**, not an index | *what I need*, so placement is never stored |
+| `@X321` the residual | **one row** | ⚠⚠ the same block on a different slope is a different landform |
+| `@X319` variants | ⚠ 6 rotations × 2 reflections **free** | detail with **no extra data at all** |
+| `@X320` the edge contract | ⚠ nothing — it is a **restriction** | substitutability, bought by giving something up |
+| `@X299` a mob's rule | **five anchors** | its whole life, at any time `t` |
+| `@X302` `slip` | ⚠⚠ **one integer** | the closed form survives deviation |
+| `@X300` the bound | one **region per POI** | a query where there was a scan |
+| `@X306` the result | the **snapshot, changed** | a campaign, out of a few rows a sortie |
+| `@X308` the given layer | ⚠ a **heightmap nobody authored** | a world the author does not know, at t = 0 |
+
+> ⚠⚠ **Every one of them is a COMPRESSION with a rule for decompressing
+> it — and every rule is LOCAL, DETERMINISTIC and COMMUTATIVE.**
+
+⚠ Those three properties are not a coincidence either.  **Local** is what
+lets a piece be produced without its neighbours being produced first;
+**deterministic** is what lets it be thrown away and recomputed;
+**commutative** is what lets two owners of a shared thing agree without
+talking.  ⚠⚠ **Take any one away and the compression stops being usable**
+— that is why `@X316`'s anchors, `@X320`'s edge ownership and `@X319`'s
+position hash keep turning out to be the same requirement wearing
+different hats.
+
+### ⚠⚠ So it is also a REFUSAL TEST
+
+> ⚠⚠ **DOES THIS ADD DATA IN PROPORTION TO THE DETAIL IT PRODUCES?**  If
+> it does, it is the wrong mechanism.
+
+⚠ Worked refusals, and each is already written somewhere in these two
+documents:
+
+| proposal | verdict |
+|---|---|
+| store the fine terrain a scenario generated | ❌ data ∝ output — `@X306` keeps the **delta** instead |
+| a block as a **stamp** rather than a rule over anchors | ❌ — and `@X319` priced it: **2 908 variants** for a 10-hex block |
+| node inventories ticking per cell | ❌ `@X298` puts the economy on the server; `@X303` refuses it as simulation nobody can see |
+| a per-mob stored PATH | ❌ `@X302` — five anchors and an integer instead |
+| a bespoke result format | ❌ `@X306` — *the result is the snapshot, changed* |
+| a bigger palette, more `K_*` kinds | ⚠ `@X309` measured that one and answered **no**: *the 14 kinds SUFFICE* |
+
+### ⚠⚠ And dryopea has been doing this since plan 01 without naming it
+
+⚠ The thesis is not new to this repo — **it is the habit every shipped
+system already has**, which is the strongest reason to trust it at a new
+scale:
+
+| system | the compact base | what it expresses |
+|---|---|---|
+| `painted.loft` | ⚠ sparse, **sea-default** — absence IS the sea | a whole world from what was painted |
+| `height.loft` | metres of rubble | ⚠⚠ *a LAYER, never a repaint* — clearing restores exactly what was authored |
+| `part.loft` + `catalogue.loft` | a part-**tree** | every entity's geometry, DERIVED |
+| `pose.loft` | ⚠ nothing | *read the sim, never a second flag* |
+| `entity_view.loft` | ⚠⚠ **nothing is STATE** | the roster walked, the triangles derived |
+| `carry.loft` | one record with an **owner** | conservation, STRUCTURALLY |
+| `mesh_chunks.loft` | the painted set **plus a ring** | the drawn region |
+| `scramble.loft` | ⚠ three fields | what a sortie was worth (`@M068`) |
+
+⚠⚠ **So `@X321`'s *rubble is a LAYER, never a repaint* at 1.5 km is not
+an analogy — it is the same rule, and the repo has seven other instances
+of it.**  ⚠ What is new here is only the scale, and `@X323` is the name
+the habit never had.
 
 ## ⚠⚠ THE CORRECTION: the Ortler map is a CALIBRATION FIXTURE, not a world  `@X309`
 

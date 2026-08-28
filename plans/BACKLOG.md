@@ -72,6 +72,12 @@ the scenario*, and *get realistic routes that make the mobs have a
 believable behaviour* — so **does this make behaviour more BELIEVABLE,
 or does it only simulate MORE?**  Every row below has to answer it.
 
+⚠⚠ **THE THESIS ALL OF IT SERVES** (`@X323`, owner): *express detail from
+a very compact BASE SET of data.*  ⚠ So the test on every row below is
+**does this add data in proportion to the detail it produces?** — and
+every mechanism is a COMPRESSION whose decompression is **local,
+deterministic and commutative**.
+
 ⚠⚠ **AND ALMOST ALL OF IT IS LIBRARY WORK** (`@X322`): three layers —
 **LIBRARY** (the mechanism, no policy), **CATALOGUE** (the game's rows),
 **SCRIPT** (the game's edge cases).  ⚠ *The library never asks for a thing
