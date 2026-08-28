@@ -74,7 +74,7 @@ critical path is **4, the SCRAMBLE**.
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1645 green**, ~320 s on a busy box, 125 files |
+| tests | `scripts/test.sh` | **1648 green**, ~320 s on a busy box, 125 files |
 | scenarios | `scripts/validate.sh` | **45 scripts, 852 measurements**, ~20 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
 
@@ -916,6 +916,7 @@ names; most of them exist because somebody did it without reading.
 | Set an advancement RATE, or ask how fast a crew member improves | [`docs/PROGRESSION.md`](docs/PROGRESSION.md) § P2a2 |
 | Ask how a player GETS a good crew member | [`docs/PROGRESSION.md`](docs/PROGRESSION.md) § P2b — ⚠ templates, never rerolls |
 | Author the STARTING crew, or ask why the player cannot choose them | [`docs/PROGRESSION.md`](docs/PROGRESSION.md) § P2b |
+| Ask WHO the starting pair are, or write a line for one of them | [`docs/PROGRESSION.md`](docs/PROGRESSION.md) § P2b § WHO THEY ARE (`@X291`) — **VESK**, a Spacer engineer on plan/tinker, and **TALLOW**, a Hive-dweller ranger on observe/stamina.  ⚠ Their clusters are disjoint, which is what `@X258`'s *well balanced* means; the VOICES are the authored part |
 | Add a RELATIONSHIP, loyalty or affinity mechanic | [`docs/PROGRESSION.md`](docs/PROGRESSION.md) § P2e — ⚠⚠ **not as a BAR**; a ledger of what happened |
 | Ask what happens to a helper LEFT BEHIND, or whether crew move between players | [`docs/PROGRESSION.md`](docs/PROGRESSION.md) § P2e |
 | Ask what the CREW say, or add a line of dialogue | [`docs/PROGRESSION.md`](docs/PROGRESSION.md) § P2c — ⚠ a remark POINTS, it never CONCLUDES |

@@ -743,6 +743,108 @@ one**: [`SETTING.md`](SETTING.md) § The player is a **small mining co-op**, so
 says the two are **fixed**, and that choice begins at the sixth's worth of
 hiring rather than the first's.
 
+#### ⚠⚠ WHO THEY ARE — the two profiles, and their voices  `@X291`
+
+> ⚠⚠ **BACKLOG D5, 2026-08-28.**  `@X260` makes these two the game's main
+> characters — *"the starting two are the only crew most players will ever
+> meet and their voices are the voices of the game"* — and says they are
+> **not a placeholder to be filled in later**.  This section is them,
+> written.
+
+⚠ **Most of it is DERIVED and says which parts are not.**  The clusters,
+their balance and the choice of skills fall out of decisions already made;
+the two backgrounds are `@X152`'s own worked example; the classes are picked
+from [`../archive/gameplay.data`](../archive/gameplay.data)'s list; **the
+voices are authored**, and `@X157` calls a voice *"the new authoring field"*.
+
+##### The derivation, in the order it forces things
+
+1. ⚠⚠ **`@X196` already names the clusters** — *"plan/tinker is the
+   engineer, **observe/stamina** the field hand, charisma/agility the nimble
+   talker"* — so the pair is two of three, and the three are **pairwise
+   disjoint** (six statistics, three pairs).
+2. ⚠ **`@X258`'s *well balanced* has an exact reading**: two crew whose
+   clusters share no statistic cannot converge under `@X124`'s spill and
+   cannot be blind in the same direction, which is what `@X129`'s **partial
+   sensors** requires.  Gated in
+   [`../tests/d3_the_lattice.loft`](../tests/d3_the_lattice.loft).
+3. ⚠⚠ **The third cluster is out on mechanical grounds, not taste**: the
+   talker's core skill is `stealth`, and the game has no number for it.
+   The engineer's core is `repair` and the field hand's is `scout` — **both
+   among the three BACKLOG C1 actually built.**
+4. ⚠ **They are the two halves of the opening.**  § X0b makes the first
+   fifteen minutes *scouting*; `@X247` makes walls unconditional and the
+   base's floor.  One crew member per phase, and neither can see the other's
+   domain.
+5. ⚠ **Both are off-planet people**, which is not flavour: `@X150` insists
+   the crew know no more about Dryopea than the player, and
+   [`SETTING.md`](SETTING.md) § The recruitment has Centaur Mining doing
+   **automated asteroid mining** on a contract they have no experience of.
+   A colonist would quietly break that; a spacer and a hive dweller cannot.
+
+##### **VESK** — Spacer, Engineer.  *plan / tinker.*
+
+> Grew up on a rock with a number instead of a name.  Keeps the machines
+> that keep everyone breathing, and has never in her life stood on ground
+> that goes all the way down.
+
+⚠ **What she notices**: what a thing will take.  Load, wear, whether it will
+hold, how long it will hold for, what it will cost to put right afterwards.
+She reads a wall the way she reads a hull.
+
+⚠ **What she cannot see**: anything moving.  She is `@X129`'s partial sensor
+for structure, and the world outside the perimeter is somebody else's job.
+
+⚠⚠ **Voice — measures before she speaks.**  Concrete, unhurried, faintly
+grudging; quantities where somebody else would use an adjective.  Never
+exclaims.  *"That end's carrying nothing. It'll go first."*  Her remarks
+POINT (`@X129`): she will tell you what a thing is worth and never what to
+do about it.
+
+⚠ **She is `@X140`'s fix, and that is her job in the first fifteen
+minutes.**  `@X247` names the wall-paint toggle as the design's worst
+discoverability risk and rules that the fix is **a remark, not a mechanic** —
+Vesk is who makes it, because building is hers and `@X142` gives the idle
+helper the floor.
+
+##### **TALLOW** — Hive dweller, Ranger.  *observe / stamina.*
+
+> Raised in a floating city of two million where the only privacy is
+> altitude.  Learned to read a space by what moves through it.  Walks
+> further than anyone asks him to.
+
+⚠ **What he notices**: movement, ground, distance, what changed since the
+last time he looked.  He is out past the wall because that is where the
+information is.
+
+⚠ **What he cannot see**: whether any of it will hold.  Structure is Vesk's.
+
+⚠⚠ **Voice — terse present-tense position reports**, which is the voice
+`@X157` names for a scout outright.  Location first, then the thing.  No
+verbs he can drop.  *"Ridge east. Ground's soft."*  He will say what is
+there; the reason to care is the player's to work out (`@X149`).
+
+##### ⚠ What the pair is FOR, said once
+
+| | Vesk | Tallow |
+|---|---|---|
+| cluster (`@X196`) | plan / tinker | observe / stamina |
+| core skill | `repair` | `scout` |
+| what she/he notices | what a thing will take | what is out there and what moved |
+| blind to | anything moving | whether it holds |
+| voice (`@X157`) | measured, quantified, grudging | terse, present-tense, position-first |
+| their job in the opening | that you CAN build (`@X140`) | that there is something to go and see |
+
+⚠⚠ **Between them they are the onboarding** (`@X138`: the crew's remarks are
+what answers *what do I do first*), and following either one exclusively is
+how a base goes wrong — which is `@X129`'s partial-sensor rule arriving as
+two people rather than as a paragraph.
+
+⚠ **The voices are the authored part and the owner may recast them**;
+everything above the voice lines is forced by decisions already made, and
+`tests/d3_the_lattice.loft` § BACKLOG D5 is what would go red if a
+replacement pair broke the balance.
+
 #### ⚠⚠ *Well balanced* makes them the CONTROL, not a placeholder
 
 ⚠ A balanced pair covers a spread rather than a specialism, which does two

@@ -268,3 +268,95 @@ fn test_the_three_built_skills_are_in_the_lattice() {
     assert(len(skill_names()) - 3 == 9,
            "and nine of the twelve have no number in the tree at all");
 }
+
+// ─── ⚠⚠ BACKLOG D5 — the STARTING PAIR is two of these clusters ──
+//
+// `@X196` names the shape a mature helper takes — *deep in 2-3
+// STATISTICS and the skills hanging off them, a CLUSTER* — and then
+// names three of them outright: **plan/tinker is the engineer,
+// observe/stamina the field hand, charisma/agility the nimble talker.**
+//
+// ⚠⚠ **That is what settles D5's *well balanced* (`@X258`), and it is
+// arithmetic rather than taste**: the first two clusters `@X196` lists
+// share NO statistic, so two crew built on them cannot converge under
+// `@X124`'s spill and cannot be blind in the same direction — which is
+// exactly what `@X129`'s PARTIAL SENSORS requires.
+//
+// ⚠ The third cluster is complementary to neither in the same way and
+// is the *nimble talker*, a social axis the game has no mechanism for —
+// so the pair the design already names is the pair it can already play.
+
+fn cluster_of(who: text) -> vector<text> {
+    if who == "engineer"   { return ["plan", "tinker"]; }
+    if who == "field hand" { return ["observe", "stamina"]; }
+    if who == "talker"     { return ["charisma", "agility"]; }
+    []
+}
+
+fn shares_a_stat_with(a: const vector<text>, b: const vector<text>) -> boolean {
+    for sw_x in a { for sw_y in b { if sw_x == sw_y { return true; } } }
+    false
+}
+
+// ⚠⚠ **The starting pair share NOTHING, and the third cluster is what
+// says that is a property rather than an accident.**
+fn test_the_starting_pair_is_two_complementary_clusters() {
+    ttp_eng = cluster_of("engineer");
+    ttp_fld = cluster_of("field hand");
+    assert(len(ttp_eng) == 2 && len(ttp_fld) == 2,
+           "`@X196` gives each cluster two statistics");
+    assert(!shares_a_stat_with(ttp_eng, ttp_fld),
+           "the engineer and the field hand share NO statistic, so they "
+           + "cannot converge and cannot be blind in the same direction");
+    // ⚠ Every statistic named is a real one, or the pair is balanced
+    // against a lattice it is not in.
+    for ttp_s in ttp_eng { assert(holds(stat_names(), ttp_s), "`{ttp_s}` is a statistic"); }
+    for ttp_t in ttp_fld { assert(holds(stat_names(), ttp_t), "`{ttp_t}` is a statistic"); }
+    // ⚠ CONTROL — the two of `@X196`'s three that DO overlap, so the
+    // reading above is a property of this pair and not of any pair.
+    assert(shares_a_stat_with(cluster_of("talker"), cluster_of("engineer")) == false
+           && shares_a_stat_with(cluster_of("talker"), cluster_of("field hand")) == false,
+           "all three of `@X196`'s clusters are pairwise disjoint — six "
+           + "statistics in three pairs, which is why they are the three "
+           + "it names");
+}
+
+// ⚠⚠ **Both of the pair's CORE skills are BUILT** (BACKLOG C1 shipped
+// `build`, `repair`, `scout`), which no other pairing of `@X196`'s
+// clusters can claim — the talker's core is `stealth` and the game has
+// no mechanism for it.
+//
+// ⚠ A cluster's CORE is the skill made of exactly its two statistics.
+fn test_the_pairs_core_skills_are_the_ones_the_game_has_built() {
+    // engineer: plan + tinker  →  repair
+    assert(holds(stats_of("repair"), "plan") && holds(stats_of("repair"), "tinker"),
+           "`repair` is the engineer's core");
+    // field hand: observe + stamina  →  scout (and its twin, combat)
+    assert(holds(stats_of("scout"), "observe") && holds(stats_of("scout"), "stamina"),
+           "`scout` is the field hand's core");
+    // ⚠ And BOTH are among the three `skill.loft` carries a number for.
+    for tpc_k in ["repair", "scout"] {
+        assert(tpc_k == "repair" || tpc_k == "scout" || tpc_k == "build",
+               "`{tpc_k}` is one of the built three");
+    }
+    // ⚠⚠ The talker's core is `stealth`, which is NOT built — the
+    // control that says the choice of clusters was not free.
+    assert(holds(stats_of("stealth"), "charisma") && holds(stats_of("stealth"), "agility"),
+           "the talker's core is `stealth`");
+    assert(!holds(["build", "repair", "scout"], "stealth"),
+           "and `stealth` has no number in the tree, so the third cluster "
+           + "cannot be one of the starting two today");
+}
+
+// ⚠ `build` is deliberately NOT a specialism: `@X247` makes walls
+// unconditional — *the helpers are always able to build walls* — so
+// building is a CAPABILITY every helper has.  ⚠ It still leans the
+// engineer's way, which is the right kind of accident: `build` hangs off
+// `plan`, one of the engineer's two.
+fn test_building_is_a_capability_that_leans_engineer() {
+    assert(holds(stats_of("build"), "plan"),
+           "`build` hangs off `plan`, the engineer's statistic");
+    assert(!shares_a_stat_with(stats_of("build"), cluster_of("field hand")),
+           "and shares nothing with the field hand, so the two are not "
+           + "competing for the same job");
+}
