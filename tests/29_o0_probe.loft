@@ -1,0 +1,160 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 29 phase O0 — the probe, taken before a line of the crew's own
+// work was designed.
+//
+// ⚠⚠ **The question: what does a crew member do when nobody tells them
+// anything?**  `docs/DESIGN.md` § 9 § SEMI-AUTOMATIC BY DEFAULT says
+// *"at the start helpers are semi-automatic — they find work, and a new
+// player never has to assign anything"*, and `@X262` turns that into a
+// test every system in this game has to pass: **does it work with NO
+// input?**
+//
+// ⚠ Everything here is a reading of the tree as it stands.  The
+// assertions are written so that BUILDING the default turns them red —
+// that is the point of a probe, and `plans/29` § O0 records what they
+// said on the day they were taken.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text    = "examples/palette.json";
+const GRASS:   integer = 5;
+const WALL:    integer = 9;
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+fn pal_at(path: text) -> vector<GroundType> { load_palette(path) }
+
+// A grass plain wide enough that nothing here measures the edge of the
+// world — an unpainted hex IS sea.
+fn plain(span: integer) -> PaintedWorld {
+    p_pw = painted_empty();
+    for p_q in -span..=span {
+        for p_r in -span..=span { paint(p_pw, p_q, p_r, as_u8(GRASS)); }
+    }
+    p_pw
+}
+
+fn core_at(q: integer, r: integer) -> Hex { Hex { q: q, r: r } }
+
+// A base with one crew member at `hq, hr` and one wall ordered at
+// `sq, sr`, and nothing else in it — no wave, no enemies, no player.
+fn one_helper_one_order(p: vector<GroundType>, pw: PaintedWorld,
+                        hq: integer, hr: integer,
+                        sq: integer, sr: integer) -> WaveState {
+    oh_s = wave_state_empty();
+    oh_s.crew += [helper_new(hq, hr)];
+    order_place(p, pw, oh_s.orders, sq, sr, BUILD_GROUND, as_u8(WALL));
+    oh_s
+}
+
+// Tick `s` forward `n` times over an empty marker world.
+fn run_ticks(s: WaveState, p: vector<GroundType>, pw: PaintedWorld,
+             n: integer) -> integer {
+    rt_mw = marker_empty();
+    rt_i = 0;
+    while rt_i < n {
+        wave_tick(s, p, pw, rt_mw, core_at(0, 0));
+        rt_i += 1;
+    }
+    rt_i
+}
+
+// ─── ⚠⚠ Reading 1 — an unattended crew does NOTHING ─────────────
+
+// ⚠⚠ **THE READING THE PLAN RESTS ON.**  A crew member four hexes from
+// a wall order, left alone for longer than the longest base the corpus
+// plays, never goes and never builds.
+//
+// ⚠ Four hexes is not a hard case: a helper covers 1.667 of them a
+// tick, so the walk is three ticks against the sixty this runs.  What
+// is missing is not the speed — it is the DECISION.
+fn test_an_unattended_crew_member_never_goes_to_the_work() {
+    tau_p  = pal_at(PALETTE);
+    tau_pw = plain(10);
+    tau_s  = one_helper_one_order(tau_p, tau_pw, 4, 0, 0, 0);
+
+    run_ticks(tau_s, tau_p, tau_pw, 60);
+
+    tau_h = tau_s.crew[0] ?? Helper { };
+    assert(tau_h.q == 4 && tau_h.r == 0,
+           "sixty ticks later the crew member has not moved: "
+           + "({tau_h.q}, {tau_h.r})");
+    assert(order_at(tau_s.orders, 0, 0),
+           "and the wall four hexes away is still an order nobody took");
+    assert(order_spent(tau_s.orders, 0, 0) == 0,
+           "with not one unit of work in it: {order_spent(tau_s.orders, 0, 0)}");
+}
+
+// ⚠ **The CONTROL, and it is what makes the reading above a finding
+// rather than a broken fixture**: the identical base with the crew
+// member standing ON the site finishes the wall.  Everything works —
+// nothing chooses.
+fn test_but_a_crew_member_standing_on_it_builds_it() {
+    tbs_p  = pal_at(PALETTE);
+    tbs_pw = plain(10);
+    tbs_s  = one_helper_one_order(tbs_p, tbs_pw, 0, 0, 0, 0);
+
+    run_ticks(tbs_s, tbs_p, tbs_pw, 60);
+
+    assert(!order_at(tbs_s.orders, 0, 0),
+           "CONTROL — standing on the site, the same sixty ticks build it");
+    assert(hex_ground_name(tbs_p, tbs_pw, tbs_s.heights, 0, 0) == "wall",
+           "and the wall is there: "
+           + "{hex_ground_name(tbs_p, tbs_pw, tbs_s.heights, 0, 0)}");
+}
+
+// ⚠⚠ **And the destination is never even SET**, which says where the
+// gap is: `helper_drive` is the verb, `to_q` / `to_r` is the state it
+// writes, and a whole tick of simulation leaves them exactly where
+// `helper_new` put them.  Nothing in `src/` calls it — the `.keys`
+// script runner is its only caller in the tree.
+fn test_nothing_in_the_simulation_points_a_crew_member_anywhere() {
+    tns_p  = pal_at(PALETTE);
+    tns_pw = plain(10);
+    tns_s  = one_helper_one_order(tns_p, tns_pw, 4, 0, 0, 0);
+
+    run_ticks(tns_s, tns_p, tns_pw, 1);
+
+    tns_h = tns_s.crew[0] ?? Helper { };
+    assert(helper_arrived(tns_h),
+           "a ticked crew member is 'arrived' because it was never sent: "
+           + "({tns_h.to_q}, {tns_h.to_r})");
+    assert(tns_h.to_q == 4 && tns_h.to_r == 0,
+           "its destination is still where it was placed");
+}
+
+// ─── ⚠⚠ Reading 2 — every job is a ONE-HEX disc ─────────────────
+
+// ⚠⚠ **The crew's whole usefulness is the six hexes around wherever a
+// script left them, and all four jobs agree on the number.**  That is
+// what makes the missing decision expensive rather than cosmetic: it is
+// not that an idle helper is slightly slower, it is that a helper more
+// than one hex from a job contributes NOTHING to it, for ever.
+fn test_all_four_jobs_reach_exactly_one_hex() {
+    assert(BUILD_REACH_HEXES == 1, "building: {BUILD_REACH_HEXES}");
+    assert(VEHICLE_SALVAGE_REACH_HEXES == 1,
+           "clearing: {VEHICLE_SALVAGE_REACH_HEXES}");
+    assert(TOWER_REPAIR_REACH_HEXES == 1,
+           "repairing: {TOWER_REPAIR_REACH_HEXES}");
+    assert(TRAP_REACH_HEXES == 1, "re-arming: {TRAP_REACH_HEXES}");
+}
+
+// ─── ⚠⚠ Reading 3 — the walk is CHEAP, so the decision is the cost ──
+
+// ⚠ A crew member crosses 2.5 hexes a second, so the four-hex trip in
+// reading 1 is under two seconds of a base that runs minutes.  ⚠⚠ **The
+// design's scarce thing is the player's ATTENTION** (`@X252`), never the
+// crew's legs — and this is that stated as arithmetic, so a later phase
+// cannot quietly price the default by travel time instead.
+fn test_a_crew_member_walks_to_any_of_it_in_seconds() {
+    taw_hexes = 4.0;
+    taw_secs  = taw_hexes / HELPER_SPEED_HEX_PER_SECOND;
+    assert(taw_secs < 2.0,
+           "four hexes is {taw_secs} s of a crew member's time");
+    // The longest base the corpus plays is 320 ticks (`@M005`).
+    assert(taw_secs / TICK_SECONDS < 3.0,
+           "which is under three ticks of a base that runs three hundred");
+}
