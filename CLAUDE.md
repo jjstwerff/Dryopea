@@ -894,6 +894,7 @@ second copy here is the one that drifts.
 | [docs/EXAMPLES.md](docs/EXAMPLES.md) | ⚠ **The worked-example convention** — an index tag `@XXX-###` in a comment above a test, cited from the function.  ⚠ NEW work only |
 | [docs/PROFILING.md](docs/PROFILING.md) | How to profile the suite, the numbers of record and their date |
 | [docs/LOFT_GOTCHAS.md](docs/LOFT_GOTCHAS.md) | Every loft behaviour dryopea works around — ⚠ almost all compile clean and fail silently |
+| [docs/FORMAL.md](docs/FORMAL.md) | ⚠⚠ **What a formal RULE is, and the system that generates from one** (`@X327`, `@X328`) — `@FR-<Name>`, a **third family and a third tense**: `@X`/`@M`/`@D` are all HISTORY, a rule is timeless.  ⚠ Three tiers — PROSE, CHECKED, and **GENERATIVE**, where *the rule IS the code's input*.  ⚠ Read against `../loft`, and it carries eight of its failures |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | ⚠ **The greppable INDEX** — `@X###` decisions and `@M###` measurements, one line each.  ⚠ Write a code as `<plan>-<phase>`.  ⚠⚠ **GATED since 2026-08-28** by `scripts/tags.sh`: every citation must RESOLVE, and a row may define a RANGE |
 | [docs/DESIGN.md](docs/DESIGN.md) | Master design — towers / walls / waves / scramble / camera / HUD / economy / run shape |
 | [docs/SETTING.md](docs/SETTING.md) | Fiction — the autonomous AIs, the dormant faction wars, the quarantine, the recruitment, the pollen |
@@ -947,6 +948,9 @@ names; most of them exist because somebody did it without reading.
 | Design a base site that is not flat ground | [`docs/DESIGN.md`](docs/DESIGN.md) § Trees as terrain |
 | Find a mechanic that is designed but NOT built | [`docs/DESIGN.md`](docs/DESIGN.md) + [`plans/ROADMAP.md`](plans/ROADMAP.md) |
 | Cite a design decision, or find where one was made | [`docs/DECISIONS.md`](docs/DECISIONS.md) — ⚠ never cite a bare plan phase; write `22-S0`.  ⚠⚠ **A citation must RESOLVE** — `scripts/tags.sh` runs inside `test.sh` and fails on a dangling `@X` |
+| Write down a RULE, or ask what one IS | [`docs/FORMAL.md`](docs/FORMAL.md) (`@X327`) — ⚠⚠ **a rule is not a decision and not a measurement**: `@X`/`@M`/`@D` are all past tense, and a rule claims something about **every case including the ones nobody has run**.  ⚠ *The rules do not change to match the code; the code changes to match the rules.*  ⚠ `@FR-<Name>`, defined in a FENCED block, cited as *"Enforces @FR-X"*, **boundary-exact** because sub-rule names are prefixes |
+| Adopt the rule system, or raise the citation COUNT | ⚠⚠ **DO NOT** ([`docs/FORMAL.md`](docs/FORMAL.md) § Resolution GATES, `@X328`) — *"a tree at 76 cited → 255 cited with the same duplication underneath would read as progress while nothing had changed."*  ⚠ **The order is: evaluate the sites → de-duplicate onto one home → fix what the disagreement was causing → THEN cite.  The citation is the RECEIPT, not the task** |
+| Trust a count from a new instrument | ⚠⚠ **Not until it has been wrong once** (`@X328`) — loft's rule count moved **five times** as *"the instrument learned what it was counting"*, and dryopea reproduced it **twice in one day**: `tags.sh` could not read a RANGE row, and the `numbers.json` probe mis-parsed four relations.  **Both instruments were wrong before the tree was** |
 | Count the sites that re-assert a RULE | ⚠⚠ **grep its tag** — that is what `docs/DECISIONS.md` is for, and `scripts/tags.sh` is what makes the number trustworthy rather than a lower bound.  ⚠ [`plans/30`](plans/30-the-mob-routine/README.md) § Count the RE-ASSERTION SITES is the worked example: **twelve sites, every omission silent** |
 | Find where an OLD idea of the owner's went | [`docs/DESIGN_HISTORY.md`](docs/DESIGN_HISTORY.md) §§ 4-5 |
 
@@ -1292,7 +1296,7 @@ defined only inside a RANGE row nothing was expanding.
 - First dryopea-side P-issue gets numerous enough that prose
   references stop being practical (PROBLEMS.md currently has
   one `@D` row; trigger fires somewhere around ~20).
-- Documentation count crosses ~25 (**currently 25** — `docs/*.md`; it read
+- Documentation count crosses ~25 (**currently 26** — `docs/*.md`; it read
   "~12" until 2026-08-26 and "21" until 2026-08-27, so this trigger is
   closer than it looked and is still moving).
 - A specific drift incident makes the manual scan painful.

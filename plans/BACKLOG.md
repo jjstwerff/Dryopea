@@ -125,6 +125,20 @@ kill F2** — `crawler` measured that *greedy is not pathing*.
 | **F10** | ⚠⚠ **LAND IN THE OVERLAP** — the placement rule | S | `@X317`.  ⚠⚠ **The overlap is what makes a choice EXIST**: one area in reach is a task list, several with time for fewer is `@X197` at sortie scale.  ⚠ **No new geometry** — it is `@X300`'s bounds intersecting, and the unit is a TRIP not a radius.  ⚠⚠ The anti-pattern is already measured: `@M058`'s base standing at 378 with zero targets is *no overlap* by geography.  ⚠ **Gate**: moving the base OUT of the overlap must change which POI the player deals with — a pair whose one token is the landing hex |
 | **F9** | ⚠ **The earned VIEW** — a vista that brings its own frame | M | `@X312`.  ⚠⚠ **The default frame contains NO SKY** (`@M064`: 0.96° short of the horizon), which is what falsified the battleship clock — so the earning must be a PLACE whose geometry puts the horizon in view.  ⚠ The horizon enters at exactly **30.0°** against the follow camera's 30.96°, so it is one degree away rather than a redesign.  ⚠ *Impactful* means it tells you something: a view is `EXPLORATION.md`'s scouting done from a height |
 
+## G. The FORMAL system — `@FR-` rules, and the catalogue that generates
+
+⚠ [`docs/FORMAL.md`](../docs/FORMAL.md) is the design (`@X327`, `@X328`),
+read against `../loft`'s.  ⚠⚠ **Smallest first, and each is useful
+alone.**
+
+| # | What | Size | Why |
+|---|---|---|---|
+| **G1** | ✅ **DONE 2026-08-28** — `scripts/tags.sh`: every `@X###` / `@M###` citation resolves | XS | `@X325`.  ⚠⚠ Its first run was a FALSE ALARM (four tags defined by RANGE rows it could not read), which is the lesson rather than the bug |
+| **G2** | `@FR-` definitions — a fenced block per area doc, starting with the rules the recent design work already states | S | ⚠ `ENEMY_MOVEMENT.md`, `ERRANDS.md`, `WORLDGEN.md`.  ⚠⚠ **`HARD_WON_RULES.md` is already the closest thing dryopea has to a rules file and its rules are UNCITABLE** because they are prose |
+| **G3** | `scripts/rules.sh` — every `@FR-` citation resolves, no rule defined twice, coverage REPORTED | S | ⚠ Blocking on resolution, reporting on coverage — *adopt honestly rather than completely*.  ⚠ Read the WHOLE tree: loft's own checker reads `src/**/*.rs` only and has **24 citations under `tests/` that nothing validates** |
+| **G4** | ⚠⚠ **The RELATION form for `numbers.json`** — a citation that says HOW a constant derives from a catalogue value | S | `@X327`.  ⚠⚠ **353 numbers, nothing loads them, 23 hand-restated constants, and the relation takes FOUR unstated shapes** — `= v`, `= v × K`, `= v ÷ w`, and a wildcard family.  ***A checker cannot verify what the comment does not say.***  ⚠ It is the piece that turns the system from descriptive to GENERATIVE |
+| **G5** | The catalogue AS the generator's input — palette, blocks, roles | M | Tier 3.  ⚠ Lands with [`plans/30`](30-the-mob-routine/README.md) and group F rather than alone |
+
 ## E. MEASUREMENTS owed — the repo's own doctrine
 
 ⚠⚠ *A design is a hypothesis*, and these are claims currently resting on
