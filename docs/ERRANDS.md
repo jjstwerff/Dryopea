@@ -158,10 +158,14 @@ Owner, 2026-08-28:
 > `../crawler`, with routines to determine details from that."*
 
 ⚠ So the server's state is not a table of rates hanging in space — it is
-**a map**, at 1.5 km per hex, with the economy laid onto it; and the
-reference implementation is `crawler`'s **Ortler** region
-(`src/ortlergen.loft`, `src/overland.loft`, `src/realworld/`,
-`data/regions/`, and `plans/1-ortler-worldgen-fixture/`).
+**a map**, at 1.5 km per hex, with the economy laid onto it.
+
+⚠⚠ **[`WORLDGEN.md`](WORLDGEN.md) owns the world → scenario half**, and
+it opens with a correction to this row (`@X309`): `crawler`'s Ortler map
+is a **calibration fixture** rather than the game's world, and the game
+reads a hand-authored 9×7 array.  ⚠ It also carries the owner's SECOND
+reason for a world map — **a backdrop of real geography** (`@X312`) —
+which is what moves the recommendation to real data after all.
 
 ⚠⚠ **Which means a scenario's terrain is DERIVED, not only its
 economy** — the routines that determine detail from a coarse cell decide

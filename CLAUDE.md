@@ -901,6 +901,7 @@ second copy here is the one that drifts.
 | [docs/PROGRESSION.md](docs/PROGRESSION.md) | ⚠⚠ **REWRITTEN 2026-08-26** — the crew's skills, the station, and what an upgrade may buy.  The old *no stats* answer is superseded |
 | [docs/EXPLORATION.md](docs/EXPLORATION.md) | ⚠⚠ **Exploration IS scouting** — it ASSEMBLES rather than adding a pillar.  ⚠ § X0 points at `PROGRESSION.md`, which was rewritten under it |
 | [docs/ROBOT_ECONOMY.md](docs/ROBOT_ECONOMY.md) | ⚠ DESIGN, not built — the six robot installations whose traffic is what waves are made of, and the station capstone.  ⚠⚠ Its *no economy simulation* bullet is SUPERSEDED by `@X298`: the simulation exists, on the SERVER |
+| [docs/WORLDGEN.md](docs/WORLDGEN.md) | ⚠ DESIGN, not built — **world → scenario**, at 1.5 km a hex.  ⚠⚠ Two reasons: the economy (`@X298`) and a **BACKDROP of real geography** (`@X312`, which needs a skyline and so wants real data).  ⚠ `../crawler`'s Ortler map is a CALIBRATION FIXTURE, not its world (`@X309`) |
 | [docs/ERRANDS.md](docs/ERRANDS.md) | ⚠ DESIGN, not built — **what a mob is DOING**, between the economy's graph and the mover.  ⚠⚠ Read § WHY first: *do not simulate a world for the scenario; get believable behaviour* (`@X303`).  A mob has a RULE rather than a state, and the rule must be BOUNDABLE and CLOSED-FORM (`@X298`-`@X302`); read against `../crawler`'s mob AI |
 | [docs/MATERIALS.md](docs/MATERIALS.md) | ⚠ DESIGN, not built — what things are MADE of.  ⚠⚠ Read § The governing rule first: a material earns its place because getting it is a TRIP |
 | [docs/ENEMY_MOVEMENT.md](docs/ENEMY_MOVEMENT.md) | Enemy movement — the two steering modes, passability as a height step, bodies as terrain, retaliation |
@@ -1109,8 +1110,10 @@ names; most of them exist because somebody did it without reading.
 | Add a POINT OF INTEREST to a scenario | [`docs/ERRANDS.md`](docs/ERRANDS.md) § FEW, AND EACH ONE LOAD-BEARING (`@X305`) — ⚠⚠ **two to four, and it earns its place only if REMOVING it moves the clock**.  A POI that changes the picture and not the play is scenery |
 | Ask what happens to a POI the player destroyed | [`docs/ERRANDS.md`](docs/ERRANDS.md) (`@X304`) — ⚠⚠ **nothing is culled**: the workers still come, find out, and try to fix it, and the swarm may send the machine that does |
 | Ask why an off-screen mob is not simulated, or propose simulation LOD | [`docs/ERRANDS.md`](docs/ERRANDS.md) § The scenario GROWS (`@X299`) — ⚠⚠ **it is COMPUTED, not approximated**, so [`plans/22`](plans/22-the-field-cache/README.md)'s LOD refusal stands untouched |
-| Ask how big the world behind a scenario is | [`docs/ERRANDS.md`](docs/ERRANDS.md) § The two scales (`@X298`) — ⚠ the economy's hex is **1.5 km against dryopea's 1.5 m**, so a whole scenario is ~1 % of ONE cell |
-| Generate anything, pick a SEED, or design the world map | [`docs/ERRANDS.md`](docs/ERRANDS.md) § And the coarse map is a REAL map (`@X307`, `@X308`) — ⚠⚠ **dryopea has NO generation today**; the coarse map will be Ortler-shaped, and a planet has a GIVEN layer (author-free, because nobody designed a mountain range) and an ACCUMULATED one (`@X224`: other players are the seed).  ⚠ The gates need determinism and that is not a conflict: a seed is unknowable in advance but not un-recorded |
+| Ask how big the world behind a scenario is | [`docs/ERRANDS.md`](docs/ERRANDS.md) § The two scales (`@X298`) — ⚠ the economy's hex is **1.5 km against dryopea's 1.5 m**, so a whole scenario is ~1 % of ONE cell.  ⚠⚠ That is a CHOICE (`@X310`): `../crawler` compresses terrain 10× and thereby makes a level one whole tile |
+| Add a DISTANT VIEW, a vista, or anything on the horizon | [`docs/WORLDGEN.md`](docs/WORLDGEN.md) § THE SECOND REASON (`@X312`) — ⚠⚠ **the default frame contains NO SKY** (`@M064`, 0.96° short), which already killed the battleship clock.  A view must be EARNED and **bring its own frame**; the horizon enters at exactly 30.0° against the camera's 30.96° |
+| Judge a DERIVATION whose accuracy you cannot gate | [`docs/WORLDGEN.md`](docs/WORLDGEN.md) (`@X311`) — ⚠⚠ **replace the classifier with a PROCESS whose conservation can be gated**; `../crawler` swept a slope threshold for zero gain and shipped a talus model instead |
+| Generate anything, pick a SEED, or design the world map | [`docs/WORLDGEN.md`](docs/WORLDGEN.md) (`@X307`-`@X312`) — ⚠⚠ **dryopea has NO generation today**; the coarse map will be Ortler-shaped, and a planet has a GIVEN layer (author-free, because nobody designed a mountain range) and an ACCUMULATED one (`@X224`: other players are the seed).  ⚠ The gates need determinism and that is not a conflict: a seed is unknowable in advance but not un-recorded |
 | Turn the core OFF, or ask what the jammer switch costs | `src/jammer.loft` — ⚠⚠ **it stops the SUPPLY and never the SIEGE** |
 | Place a TRAP, or ask why re-arming one costs a trip | `src/trap.loft` — ⚠⚠ **a plate fired once is worth LESS than no plate**; the mechanic is the trip back (`@M057`) |
 | Judge whether a TRENCH is worth digging | `@M059` — ⚠⚠ **130 / 174 / 221: it outlasts the wall the same price buys, and it is a TIMER** since BACKLOG C9.  ⚠ Alone it still earns nothing; with a TOWER behind it, **335 ticks and nine of thirteen dead** (`@M060`) |
@@ -1270,7 +1273,7 @@ indexer yet.  Triggers for adding one:
 - First dryopea-side P-issue gets numerous enough that prose
   references stop being practical (PROBLEMS.md currently has
   one `@D` row; trigger fires somewhere around ~20).
-- Documentation count crosses ~25 (**currently 24** — `docs/*.md`; it read
+- Documentation count crosses ~25 (**currently 25** — `docs/*.md`; it read
   "~12" until 2026-08-26 and "21" until 2026-08-27, so this trigger is
   closer than it looked and is still moving).
 - A specific drift incident makes the manual scan painful.
