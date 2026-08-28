@@ -72,6 +72,12 @@ the scenario*, and *get realistic routes that make the mobs have a
 believable behaviour* — so **does this make behaviour more BELIEVABLE,
 or does it only simulate MORE?**  Every row below has to answer it.
 
+⚠⚠ **F0-F7 ARE NOW [`plans/30`](30-the-mob-routine/README.md)** — the
+ERRANDS half, with the invariant stated, its **twelve** silent
+re-assertion sites counted, and two of its own gates found FALSE by the
+design protocol before a line was written.  ⚠ F8+ (the WORLDGEN half)
+stays here until a plan takes it.
+
 ⚠⚠ **AND IT IS AN OLD DESIGN, AIMED AT A GAP** (`@X324`) — several years,
 with `DESIGN_HISTORY.md` § 2's 2023 notes carrying the six-neighbour rule
 already.  ⚠ **So a row dropped for convenience is a REGRESSION even when

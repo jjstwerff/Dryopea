@@ -894,7 +894,7 @@ second copy here is the one that drifts.
 | [docs/EXAMPLES.md](docs/EXAMPLES.md) | ⚠ **The worked-example convention** — an index tag `@XXX-###` in a comment above a test, cited from the function.  ⚠ NEW work only |
 | [docs/PROFILING.md](docs/PROFILING.md) | How to profile the suite, the numbers of record and their date |
 | [docs/LOFT_GOTCHAS.md](docs/LOFT_GOTCHAS.md) | Every loft behaviour dryopea works around — ⚠ almost all compile clean and fail silently |
-| [docs/DECISIONS.md](docs/DECISIONS.md) | ⚠ **The greppable INDEX** — `@X###` decisions and `@M###` measurements, one line each.  ⚠ Write a code as `<plan>-<phase>` |
+| [docs/DECISIONS.md](docs/DECISIONS.md) | ⚠ **The greppable INDEX** — `@X###` decisions and `@M###` measurements, one line each.  ⚠ Write a code as `<plan>-<phase>`.  ⚠⚠ **GATED since 2026-08-28** by `scripts/tags.sh`: every citation must RESOLVE, and a row may define a RANGE |
 | [docs/DESIGN.md](docs/DESIGN.md) | Master design — towers / walls / waves / scramble / camera / HUD / economy / run shape |
 | [docs/SETTING.md](docs/SETTING.md) | Fiction — the autonomous AIs, the dormant faction wars, the quarantine, the recruitment, the pollen |
 | [docs/DESIGN_HISTORY.md](docs/DESIGN_HISTORY.md) | 2023 prototype seeds, and where each one was routed.  ⚠⚠ § 2 gained the rule it never stated (`@X313`), and the PNG sampler it wrote off is core after all (`@X312`) |
@@ -946,7 +946,8 @@ names; most of them exist because somebody did it without reading.
 | Put a signal in the WORLD instead of on the HUD | ⚠⚠ **Measure whether it is in the DEFAULT frame first** (`@M064`) — the follow camera stops 0.96° below the horizon, so nothing overhead is ever seen, and a signal you must orbit to consult is a HUD element with a tax |
 | Design a base site that is not flat ground | [`docs/DESIGN.md`](docs/DESIGN.md) § Trees as terrain |
 | Find a mechanic that is designed but NOT built | [`docs/DESIGN.md`](docs/DESIGN.md) + [`plans/ROADMAP.md`](plans/ROADMAP.md) |
-| Cite a design decision, or find where one was made | [`docs/DECISIONS.md`](docs/DECISIONS.md) — ⚠ never cite a bare plan phase; write `22-S0` |
+| Cite a design decision, or find where one was made | [`docs/DECISIONS.md`](docs/DECISIONS.md) — ⚠ never cite a bare plan phase; write `22-S0`.  ⚠⚠ **A citation must RESOLVE** — `scripts/tags.sh` runs inside `test.sh` and fails on a dangling `@X` |
+| Count the sites that re-assert a RULE | ⚠⚠ **grep its tag** — that is what `docs/DECISIONS.md` is for, and `scripts/tags.sh` is what makes the number trustworthy rather than a lower bound.  ⚠ [`plans/30`](plans/30-the-mob-routine/README.md) § Count the RE-ASSERTION SITES is the worked example: **twelve sites, every omission silent** |
 | Find where an OLD idea of the owner's went | [`docs/DESIGN_HISTORY.md`](docs/DESIGN_HISTORY.md) §§ 4-5 |
 
 ### Progression, the crew, and what they say
@@ -1279,6 +1280,14 @@ or use `git show <commit>` / `git diff <commit>^ <commit>`.
 
 We **don't** have a loft-style `@P` tracker + `./scripts/idx`
 indexer yet.  Triggers for adding one:
+
+⚠⚠ **PARTLY BUILT 2026-08-28** (`@X325`): `scripts/tags.sh` runs inside
+`scripts/test.sh` and fails on any `@X###` / `@M###` citation that does
+not resolve to a row in `docs/DECISIONS.md` — **394 defined, 390 cited,
+all resolve**.  ⚠ It is the *indexer* half of what this section
+anticipates, and it exists because the third trigger below effectively
+fired: four tags were cited from ten files (one of them `src/`) and
+defined only inside a RANGE row nothing was expanding.
 
 - First dryopea-side P-issue gets numerous enough that prose
   references stop being practical (PROBLEMS.md currently has

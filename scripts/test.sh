@@ -57,4 +57,17 @@ if ! bash "$ROOT"/scripts/examples.sh; then
     exit 1
 fi
 
+# The DECISION-TAG gate — every `@X###` / `@M###` cited anywhere resolves
+# to a row in docs/DECISIONS.md.  ⚠ Milliseconds, and it runs beside the
+# worked-example gate for the same reason: a dangling citation is a
+# one-line fix and finding it after three minutes of tests is three
+# minutes wasted.
+#
+# ⚠⚠ It is what makes *count the sites that re-assert this rule* a QUERY
+# rather than an audit — `plans/30` § Count the RE-ASSERTION SITES is the
+# first plan to need that number to be trustworthy.
+if ! bash "$ROOT"/scripts/tags.sh; then
+    exit 1
+fi
+
 exec "$LOFT" test "$@"

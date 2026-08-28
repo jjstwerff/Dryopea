@@ -9,6 +9,15 @@ A public function is documented by **the tests that show how to use it**,
 pointed at by a stable index tag.  `scripts/examples.sh` is the gate that
 keeps the pointer honest.
 
+⚠⚠ **It has a sibling since 2026-08-28**: `scripts/tags.sh` (`@X325`) does
+the same job for the `@X###` and `@M###` families — every citation must
+resolve to a row in [`DECISIONS.md`](DECISIONS.md).  ⚠ Same argument, one
+family over: *a citation naming a rule that does not exist reads as
+authoritative and answers nothing.*  ⚠ Both run at the top of
+`scripts/test.sh`, before the suite, because a dangling pointer is a
+two-second fix and finding it after three minutes is three minutes
+wasted.
+
 ⚠ **This applies to NEW work only** (project owner, 2026-08-17).  dryopea has
 387 public functions and 1201 test functions and there is no retroactive
 sweep: a file opts in when somebody is working in it, and the gate is silent
