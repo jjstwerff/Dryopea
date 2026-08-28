@@ -124,7 +124,15 @@ fn test_the_fields_no_scenario_exercises_survive_too() {
              + "crew 2 1\nsend 0 8 1\nmember 0 off 0.5 15 45\n"
              + "remit 0 clear\n"
              + "object 7 0 top 12 player\nobject 7 1 wreck 0 gone\n"
-             + "schedule 4 6\npending 1 5.0 9.0 on\n";
+             + "schedule 4 6\npending 1 5.0 9.0 on\n"
+             // ⚠⚠ **The CLOCK** (`plans/30` R3), and it is the one field
+             // here that has already gone red rather than merely being
+             // prepared for: `compare.loft`'s `now` row fired on this
+             // file's other two tests the first time the suite ran with
+             // a clock in it, because `tick` advances one and nothing
+             // wrote it down.  ⚠ A value that is not a whole tick, so
+             // the seconds round trip is doing work.
+             + "now 12.5\n";
 
     tfn_a = editor_state_new(PALETTE);
     tfn_run = script_run(tfn_a, tfn_head + tfn_body, SHOTS);

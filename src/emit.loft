@@ -156,6 +156,27 @@ fn emit_layers(pal: vector<GroundType>, state: const WaveState) -> text {
         el_out = el_out + "order {el_o.q} {el_o.r} " + el_ow + " "
                         + "{clock_seconds_from_units(el_o.spent)}\n";
     }
+    // ⚠⚠ **THE MOMENT THE RUN HAS REACHED** (`plans/30` R3).  Written
+    // only when it is not the run's first instant, so the 50 captured
+    // scenarios that describe a starting position emit exactly what they
+    // did — and `now` in a file is a line that says *this situation is
+    // part-way through something*.
+    //
+    // ⚠⚠ **It is load-bearing rather than tidy**: a mob's position is
+    // `cycle_at(… now − slip)`, so a replay that started the clock at
+    // zero would put every routine back at the start of its round while
+    // leaving the bodies where they stood.  ⚠ `compare.loft`'s `now` row
+    // is what said so — it fired on `tests/18_s2` the first time the
+    // suite ran with a clock in it, which is sites 7 and 8 of
+    // `plans/30` § Count the RE-ASSERTION SITES going live rather than
+    // waiting.
+    //
+    // ⚠ SECONDS, because a `.keys` file is read by a person and
+    // `clock_units_from_seconds` recovers the integer exactly
+    // (`fixstep` § the authoring door).
+    if state.now != 0 {
+        el_out = el_out + "now {clock_seconds_from_units(state.now)}\n";
+    }
     // ⚠ The jammer (BACKLOG C3).  Written only when the core is DARK,
     // so a captured scenario emits exactly what it did — and `jammer
     // off` in a fixture is a line that says something happened, where
@@ -509,6 +530,14 @@ fn crop_state(state: const WaveState, centre: const Hex,
     cs_out.crew     = state.crew;
     cs_out.cargo    = state.cargo;
     cs_out.schedule = state.schedule;
+    // ⚠⚠ **The CLOCK is run-wide too** (`plans/30` R3), and it is
+    // load-bearing rather than tidy: a mob's position is
+    // `cycle_at(… now − slip)`, so a crop that reset the moment to zero
+    // would put every routine in the cropped fixture back at the start
+    // of its round while leaving the bodies where they stood.  ⚠ Site 7
+    // of `plans/30` § Count the RE-ASSERTION SITES, and
+    // `compare.loft`'s `now` row is what would say so.
+    cs_out.now      = state.now;
     cs_out
 }
 

@@ -71,6 +71,16 @@ MAP=starter_01` opens one of the three AUTHORED maps in `maps/` (BACKLOG A2,
 2026-08-27); `SCRIPT=<name>` opens any of the 50 `.keys` files in
 `tests/scripts/` + `tests/gl/` as a live starting position, cut at its first
 `tick` (`@X263`).  Bare `make play` opens the empty default slot.
+⚠⚠ **AND A ROBOT ON THE MAP CAN GO SOMEWHERE FOR A REASON**
+([`plans/30`](plans/30-the-mob-routine/README.md) R1-R3 + Rc, complete
+2026-08-28) — `Errand`'s five anchors, a role TABLE, a CLOSED-FORM cycle
+that answers *where is it at time `t`* in one modulo, and a MOVER that
+descends a field toward the anchor its BAG names.  ⚠⚠ **It is INERT and
+that is deliberate**: no scenario has a routine, so `ROLE_NONE` is what
+every `Enemy { … }` literal already means and the **920 gate measurements
+did not move**.  ⚠ R4 (home is a PLACE), R5 (the POI and its bound) and
+R7 (distraction) are what is left.
+
 ⚠⚠ **AND THE CREW WORK ON THEIR OWN** ([`plans/29`](plans/29-the-crews-own-work/README.md),
 complete 2026-08-28) — a crew member nobody has told anything takes the
 nearest of four jobs **inside their own senses** (3 hexes untrained), and
@@ -95,11 +105,11 @@ critical path is **4, the SCRAMBLE**.
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1714 green**, ~320 s on a busy box (518 s beside another suite), 134 files |
+| tests | `scripts/test.sh` | **1725 green**, ~320 s on a busy box (562 s beside another suite), 136 files |
 | scenarios | `scripts/validate.sh` | **50 scripts, 920 measurements**, ~20 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
-| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **409 defined, 405 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
-| ⚠⚠ formal rules | `scripts/rules.sh` — inside `test.sh` | **44 defined, 14 ENFORCED in 23 code sites** (`@X327`).  ⚠ Resolution GATES; coverage only REPORTS.  ⚠⚠ A doc reference is **not** an enforcing site (`@X330`) |
+| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **412 defined, 408 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
+| ⚠⚠ formal rules | `scripts/rules.sh` — inside `test.sh` | **44 defined, 16 ENFORCED in 34 code sites** (`@X327`).  ⚠ Resolution GATES; coverage only REPORTS.  ⚠⚠ A doc reference is **not** an enforcing site (`@X330`) |
 
 ⚠ `scripts/test.sh` is the canonical runner — **never `loft test` directly**
 (§ Key commands says what it does that you would otherwise skip).
@@ -263,6 +273,13 @@ thing it names.
   unmaintained decoration.  ⚠ Where the rows are ONE claim about one subject,
   the fix is not four functions but one assertion whose MESSAGE carries every
   reading (`tests/26_l0`).
+- ⚠⚠ **A CONFORMANCE GATE CANNOT SEE A PAIR THAT STOPPED TOGETHER** (`@X337`)
+  — a frozen rule agrees with a frozen body, so four equality gates read green
+  over a guard that had stopped patrolling for ever.  **Liveness is a SECOND
+  gate**, and the question it asks is the one an equality never can: *did it
+  actually get anywhere?*  ⚠ And **a gate aimed at a hazard somebody NAMED can
+  still miss it**, because the fixture may make the wrong version behave
+  identically (`@M075`).
 - ⚠⚠ **A GATE AIMED AT THE MECHANISM YOU EXPECT TO BE THE HAZARD IS NOT ONE
   AIMED AT THE HAZARD** (`@M025`) — and its own control is what said so.
   *The right code with the wrong justification* is what to look for when a
@@ -548,7 +565,7 @@ source of truth and the listing is a navigational summary of it.
 | `render.loft` | the software rasteriser over `graphics::Canvas` |
 | `build.loft` | **THE BUILD ORDER** — the only way a structure comes into existence during a run.  ⚠ Work is stored as SPENT, in INTEGER units |
 | `persist.loft` | **A PLANET — a place that REMEMBERS**.  `dryopea_planets/<planet>/<player>/world.json`; the GROUND and the MARKERS, not a run |
-| `errand.loft` | **A ROBOT GOING ABOUT ITS BUSINESS** — `Traffic`, `errand_done` / `errand_depart`, `plans/30` R1's **ROUTINE** (`Errand`'s five anchors, the role TABLE, `errand_destination`) and R2's **CYCLE** (`cycle_at` / `cycle_build` / `cycle_fault`).  ⚠ The bubble takes the errand, ONE WAY.  ⚠⚠ **The BAG steers and never a clock**, and the table is INDEXED — never a `role ==`.  ⚠⚠ **The bank does not RESTART at a leg boundary** (`@X335`) |
+| `errand.loft` | **A ROBOT GOING ABOUT ITS BUSINESS** — `Traffic`, `errand_done` / `errand_depart`, `plans/30` R1's **ROUTINE** (`Errand`'s five anchors, the role TABLE, `errand_destination`), R2's **CYCLE** (`cycle_at` / `cycle_build` / `cycle_fault`) and R3's **MOVER** (`errand_step`, `errand_fields`, `errand_cycling`).  ⚠ The bubble takes the errand, ONE WAY.  ⚠⚠ **The BAG steers and never a clock**, and the table is INDEXED — never a `role ==`.  ⚠⚠ **The bank does not RESTART at a leg boundary** (`@X335`).  ⚠⚠ **`errand_step` is the ONE DOOR that moves a mob on a cycle and it owns `slip`** (`@FR-E-One-Door`); the position is exact in its PHASE and only conditionally in its HEX (`@X336`), and **a DWELL is not a BLOCK** (`@X337`) |
 | `skill.loft` | **CREW SKILLS — build, repair, scout**.  `Skills` on `Helper`, `skill_factor`, and the DETECTION rule |
 | `endure.loft` | **ENDURANCE — work spends it, rest restores it**.  ⚠ A tired person works LESS and never stops |
 | `jammer.loft` | **THE JAMMER SWITCH — turning your own core off**.  ⚠ It stops the SUPPLY and never the SIEGE |
@@ -1116,6 +1133,7 @@ names; most of them exist because somebody did it without reading.
 | Add ambient life, or ask why a robot walks past instead of at you | `src/errand.loft` — ⚠⚠ **the bubble takes the errand, ONE WAY** |
 | Add a mob ROLE, or ask where a robot on a routine is going | `src/errand.loft` § THE ROUTINE + `@X333` — ⚠⚠ **a role is a ROW and the table is INDEXED, never a `role ==`**, and a test sweeps `src/` to say so.  ⚠ **The BAG steers and never a clock** (`@M073`): 4, 40 and 400 hexes all close; a period one column away gets 13 hexes out for ever |
 | Ask where a mob is at an arbitrary MOMENT, or add a leg to a cycle | `src/errand.loft` § THE CYCLE + `@X335` — ⚠⚠ **one modulo, O(legs), one index, and never a step forward** (`@FR-E-Closed-Form`), so an un-tracked mob is COMPUTED and `plans/22`'s LOD refusal needs no exception.  ⚠⚠ **The bank does NOT restart at a leg boundary**: `walked(t) − walked(t₀)`, never `walked(t − t₀)`, and a **DWELL is a LEG with a length, not a pause**.  ⚠ A clock period must be a whole number of ticks and is refused otherwise (`@M074`) |
+| Move a mob on a routine, or ask what `slip` pays for | `src/errand.loft` § THE MOVER + `@X336`, `@X337` — ⚠⚠ **`errand_step` is the ONE DOOR and nothing else may write a cycling mob's position** (`@FR-E-One-Door`).  ⚠⚠ **The position is exact in its PHASE and only conditionally in its HEX**: a mob whose first choice is taken walks another route of the same length and loses no time, so hex equality holds only where nothing can push a body while the DISTANCE holds everywhere.  ⚠⚠ **A DWELL is not a BLOCK** — charging `slip` while a guard waits out its clock freezes it **with every conformance count green**, so *liveness is a second gate*.  ⚠ A lost hex costs `BANK_WHOLE / rate` and a rate without a whole one is REFUSED |
 | Give a mob a JOB, a route, a home or a reason to leave one | [`docs/ERRANDS.md`](docs/ERRANDS.md) — ⚠⚠ **the bag steers, not the calendar**, and a distraction must be caused by something the player BUILT, never by being seen |
 | Simplify, drop or defer a piece of the worldgen / errand design | ⚠⚠ **READ `@X324` FIRST** ([`docs/WORLDGEN.md`](docs/WORLDGEN.md) § WHY IT IS AN OLD DESIGN) — it is aimed at a GAP, so **a piece dropped for convenience is a regression even when everything still works**: `@X320`'s edge restriction buys nothing visible alone and its absence makes the dither impossible; `@X321`'s residual looks like a detail and its absence takes the variant budget from a handful to thousands.  ⚠ **The design is not finished when it RUNS** — `@X303` and `@X323` are tests, not features |
 | Judge ANY worldgen or terrain-derivation idea | ⚠⚠ **THE TEST** ([`docs/WORLDGEN.md`](docs/WORLDGEN.md) § THE THESIS, `@X323`): *express detail from a very compact BASE SET* — so **does this add data in proportion to the detail it produces?**  If it does, it is the wrong mechanism.  ⚠ Every rule is a COMPRESSION plus a decompression that is **local, deterministic and commutative**; take one away and it stops being usable.  ⚠⚠ dryopea has done this since plan 01 — `painted.loft`'s sea-default absence, `height.loft`'s layer, `entity_view.loft`'s *nothing is STATE* |
@@ -1176,6 +1194,7 @@ names; most of them exist because somebody did it without reading.
 | Pick something up, carry it, put it down | `src/carry.loft` — ⚠ never a "carried" field on the carrier as well |
 | Add a new kind of carryable thing | a `CARGO_*` constant + a destination rule — ⚠ and NOTHING in the carrying path |
 | Add a value to a closed set a `.keys` file can carry | ⚠⚠ **the WRITER and the READER are a PAIR** (`@D007`) — `emit.loft` writes the name and `script.loft` reads it, and a kind added to one is invisible until a scenario produces it.  Three instances so far: `cargo`, `spoil`, `beacon` |
+| Add a FIELD to `WaveState`, or ask what a new one owes | ⚠⚠ **three sites and a `.keys` verb**: `wave_state_empty`, `emit.loft::crop_state` (run-wide switches are carried WHOLE), and a `compare.loft::state_diff` row.  ⚠ Add the compare row **before it can differ** — `plans/30` R3 did, and it went RED the same hour on `tests/18_s2`'s round trip (`'now: 442000000 vs 0'`), which is what earned the `now <seconds>` verb |
 | Clear rubble / collect after a tower | `src/vehicle.loft::salvage_at` — the shared chassis |
 | Place or restore a marker of any kind | `src/markers.loft::place_marker` — the ONE dispatch |
 | Add a marker kind | append a constant, bump `MARKER_KIND_COUNT`, add rows — ⚠⚠ **and the cycle grows in 47 places**: BACKLOG C4's fourth kind moved **33 `.keys` fixtures and 14 inline test scripts** by one `do cycle_kind` press.  ⚠ Each file's own `marker … spawn` assertion is what makes the omission loud |

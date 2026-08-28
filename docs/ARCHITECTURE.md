@@ -321,6 +321,15 @@ src/
                    later `ticks` band would read a collapsed premise as
                    a measurement) and `ticks <lo> <hi>`, the run's
                    CLOCK, which `ScriptRun` now carries
+                   plans/30 R3 added `now <seconds>` — the moment the
+                   run has reached, AUTHORED rather than simulated (a
+                   `tick` advances one, this states one).  ⚠⚠ It exists
+                   because `compare.loft`'s `now` row went RED on its
+                   first full run: `18_s2`'s round trip replays what
+                   `emit_keys` wrote and every tick was advancing a clock
+                   nothing wrote down.  ⚠ WRITER and READER are a PAIR
+                   (@D007) and deleting either half turns the round trip
+                   red, which is checked.
                    ⚠ **A new coordinate-carrying verb needs a row in
                    `convert.loft::keys_schemas`**, or a future lattice
                    conversion leaves it in the old labels — silently,
@@ -1683,8 +1692,47 @@ src/
                    vector<CycleLeg> holding a vector<Hex> each, because
                    [loft#974] reads a record's vector field as EMPTY
                    through an accessor.
-                   ⚠ INERT: nothing in the tick calls any of it; R3 is
-                   the mover and § Rc the conformance gate
+                   ⚠⚠ AND SINCE plans/30 R3 IT OWNS THE MOVER —
+                   cycle_hex_units, ErrandField { q, r, climb, field },
+                   errand_fields, errand_cycling, errand_step.
+                   ⚠⚠ errand_step IS THE ONE DOOR (@FR-E-One-Door):
+                   nothing else may write a cycling mob's position, and
+                   it owns `slip` — which collapses four of the twelve
+                   re-assertion sites, because they cannot forget what
+                   they cannot do.  `spawn.loft::enemy_move_to` is the
+                   ONE WRITE underneath it and is public for that reason
+                   alone; the nameable difference (@X329) is that the
+                   write knows how a position is stored and nothing
+                   about routines, and this one the reverse.
+                   ⚠⚠ THE POSITION IS EXACT IN ITS PHASE AND ONLY
+                   CONDITIONALLY IN ITS HEX (@X336): a mob whose first
+                   choice is taken walks another route of the same
+                   length and loses no time, so hex equality holds where
+                   nothing can push a body and the field DISTANCE holds
+                   everywhere.  @FR-E-Slip's "re-converges on the same
+                   hex" is about the ANCHOR, not the way there.
+                   ⚠⚠ A DWELL IS NOT A BLOCK (@X337) — cycle_phase
+                   clamps a clock leg's offset, so a guard waiting at
+                   its post loses nothing and must not slip; charging it
+                   freezes the guard for ever WITH EVERY CONFORMANCE
+                   COUNT GREEN, because a frozen rule agrees with a
+                   frozen body.  Liveness is a second gate.
+                   ⚠⚠ A LOST HEX COSTS BANK_WHOLE / rate AND THE
+                   DIVISION MUST BE EXACT — @M074's family, one subject
+                   over: rate × slip has to be a whole multiple of
+                   BANK_WHOLE or the floor disagrees at some t.
+                   cycle_fault refuses a rate without one; every shipped
+                   speed divides.
+                   ⚠ `now` IS THE MOMENT A STEP BEGINS, never the one it
+                   ends at — WaveState.now is advanced at the END of
+                   wave_tick, and the wrong order is invisible for every
+                   role whose clock leaves it dwelling.
+                   ⚠ Steps come from flow_steps then flow_sidesteps and
+                   from nothing else (@FR-E-Non-Increasing): a sidestep
+                   admitting a FURTHER hex silently breaks R5's bound.
+                   ⚠ INERT: no scenario has a routine, so errand_fields
+                   builds nothing and the fork in wave_tick is never
+                   taken — 920 gate measurements unmoved
   skill.loft       CREW SKILLS — build, repair, scout (BACKLOG C1) —
                    SKILL_EFFECT_SPAN / _HALF, Skills { build, repair,
                    scout } on Helper, skill_factor, skill_work_units,

@@ -602,6 +602,29 @@ pub struct WaveState {
     // field of the wave rather than of the session.
     scramble:    Scramble,
     traps:       TrapState,
+
+    // What time it is, in `fixstep` base units since this run began
+    // (`plans/30` R3).
+    //
+    // ⚠⚠ **The wave system has never known what time it is**, and a
+    // closed form cannot be evaluated without one: `cycle_where(e, c,
+    // now)` is the whole of `@FR-E-Rule-Not-State`, and every clock in
+    // the tick until now was a `Timer` or a `Bank` counting DOWN a
+    // duration rather than an absolute moment.
+    //
+    // ⚠⚠ **Advanced at the END of `wave_tick`**, so inside a tick it
+    // reads the moment that tick BEGINS — which is the moment a mover
+    // has to resolve a destination at, and the reason is in
+    // `errand.loft::errand_step`.  ⚠ After the call it reads the moment
+    // the tick ended, which is where every mover left its mob and
+    // therefore the moment `plans/30` § Rc asks about.
+    //
+    // ⚠⚠ **Zero is the run's first instant, which is what every
+    // `WaveState { … }` literal written before this already means**
+    // ([loft#914]'s silent default, a sixth time).  ⚠ A mob authored
+    // into a run that is already under way carries the difference in
+    // `slip`, which is what makes `slip` one field rather than two.
+    now:         integer,
 }
 
 // Factory: a fresh wave state with no enemies, a cursor at 0, the
@@ -622,6 +645,7 @@ pub fn wave_state_empty() -> WaveState {
         jammer:  jammer_new(),
         scramble: scramble_new(),
         traps:   trap_state_empty(),
+        now:     0,
     }
 }
 
@@ -1156,7 +1180,14 @@ pub fn enemy_target(e: const Enemy, pal: vector<GroundType>, pw: PaintedWorld,
 // it.  ⚠ The two updates are ONE operation: an enemy that entered
 // without leaving would block the hex behind it for the rest of the
 // tick, and the enemies behind it would never advance.
-fn enemy_move_to(e: Enemy, q: integer, r: integer, occ: Occupancy) {
+//
+// ⚠⚠ **THE ONE WRITE**, and since `plans/30` R3 it is public because a
+// second roster moves through it: `errand.loft::errand_step` is the ONE
+// DECISION for a mob on a cycle (`@FR-E-One-Door`) and this is the ONE
+// WRITE underneath it.  ⚠ The difference is nameable (`@X329`): this
+// knows how a position is stored and nothing about routines, that one
+// knows about routines and nothing about how a position is stored.
+pub fn enemy_move_to(e: Enemy, q: integer, r: integer, occ: Occupancy) {
     occupancy_leave(occ, e.q, e.r);
     occupancy_enter(occ, q, r);
     e.q = q;
@@ -2105,6 +2136,11 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     wt_desire = wave_desire(state, wt_fields, pal, pw, core);
     wt_occ    = wave_occupancy(state);
     wt_block  = wave_blockers(state);
+    // ⚠⚠ **One field per (destination, climb) among the mobs on a
+    // ROUTINE, and it is EMPTY in every scenario the tree has**
+    // (`plans/30` R3) — which is what makes the phase inert: no mob has
+    // a role, so this sweeps the roster and builds nothing.
+    wt_errand = errand_fields(state, pal, pw);
 
     // Every half of the exchange lands against the world the tick
     // STARTED with — towers shoot at where the enemies are now,
@@ -2122,6 +2158,22 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
 
     for wt_i in move_order(state, wt_fields) {
         wt_e = state.enemies[wt_i] ?? Enemy {};
+        // ⚠⚠ **A mob on a ROUTINE goes through its own door**
+        // (`plans/30` R3, `@FR-E-One-Door`): `errand_step` descends the
+        // field toward the anchor its BAG names and owns `slip`, where
+        // `enemy_tick` walks a heading or the field toward the core.
+        // ⚠ It is a fork at the ONE site that knows about both rosters,
+        // rather than a parameter threaded through `enemy_tick` — which
+        // is what keeps that function's signature, and the thirty test
+        // call sites that spell it, exactly where they were.
+        // ⚠ `errand_cycling` reads the ROLE through `errand_role`, so a
+        // robot the bubble has taken comes back here as one of the wave
+        // with no second write to remember.
+        if errand_cycling(wt_e, state.now) {
+            errand_step(wt_e, wt_errand, wt_occ, wt_block, state.now,
+                        TICK_STEP_UNITS);
+            continue;
+        }
         // ⚠ The field is passed STRAIGHT from the vector into a `const`
         // parameter.  Looking it up through an accessor that returned a
         // `FlowField` copied the whole cell hash, once per enemy — see
@@ -2459,6 +2511,18 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     // would silently make it 7, with no test able to say which was
     // meant.
     wave_stand(state, TICK_STEP_UNITS);
+
+    // ⚠⚠ **THE CLOCK, and it is the LAST line of the tick**
+    // (`plans/30` R3).  `state.now` is the moment the run has reached,
+    // so inside a tick it reads the moment that tick BEGINS — which is
+    // the moment `errand_step` must resolve a destination at.  ⚠ A mover
+    // decides where it is going and then spends the time; advancing this
+    // first would send a mob that turns at an anchor this tick down the
+    // NEXT leg for the whole of the tick before the turn, and it is
+    // invisible for every role whose clock leaves it DWELLING at its
+    // post.  ⚠ `tests/30_rc_the_conformance.loft` carries a guard with
+    // no dwell for exactly that reason.
+    state.now += TICK_STEP_UNITS;
 }
 
 // Spend one tick of every enemy's pre-walk window (plan 16 W2).

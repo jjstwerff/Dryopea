@@ -212,6 +212,34 @@ construction**.
 it, `ROLE_NONE` is 0, and every `Enemy { … }` literal in the suite goes
 on meaning a robot with no cycle at all.  The mover is R3.
 
+⚠⚠ **AND THE MOB MOVES — ONE DOOR, AND `slip` IS WHAT A DEVIATION
+COSTS** ([`plans/30`](../plans/30-the-mob-routine/README.md) R3 + Rc,
+`@M075`, `@X336`, `@X337`).  `errand_step` descends a field toward the
+anchor the mob's BAG names, steps BESIDE a companion and stands for the
+ground — F7b's own rule with the destination changed — and **nothing
+else may write a cycling mob's position**, which collapses four of the
+twelve sites that could otherwise forget the bookkeeping.  ⚠ A mob whose
+one strictly-closer step is held by the player arrives at **t = 22 000 000
+against 20 000 000 and carries exactly 2 000 000 of slip**, and a blocker
+that is not in the way changes nothing.
+
+⚠⚠ **The claim splits in two, and only the PHASE half is total**
+(`@X336`): a mob whose first choice is taken walks a **different route of
+the same length and loses no time at all**, so hex equality holds where
+nothing can push a body — **0 hexes, 0 phases and 0 legs of 320
+mob-ticks** — while the field distance to the anchor equals the rule's
+under every deviation.  That is `@FR-E-Slip`'s *re-converges on the same
+hex* read exactly, and it is R6's own correction arriving three phases
+early.
+
+⚠⚠ **And a DWELL is not a BLOCK** (`@X337`): charging `slip` for the
+ticks a guard stands at its post freezes its clock for ever **with every
+conformance count green**, because a frozen rule agrees with a frozen
+body.  ***Conformance is an equality between two things that can stop
+together, so liveness has to be asked separately*** — and two of the six
+gates now do.  ⚠ Still INERT: no scenario has a routine, so
+`errand_fields` builds nothing and the **920 measurements did not move**.
+
 ## Two rules the table above rests on
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number

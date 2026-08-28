@@ -211,9 +211,36 @@ adrift** at a step its period does not divide while the bag holds at
 being longer than any period, it is about the boundary being a thing a
 timestep can land inside.
 
-⚠ **What still awaits its phase**: `slip` is honoured by both readers and
-nothing yet WRITES it (R3), no POI owns a population (R5), and nothing in
-the tick calls any of it.
+⚠⚠ **AND R3 SHIPPED § THE MOVER, WHICH READ (E-Slip) MORE EXACTLY THAN
+IT HAD BEEN READ** (`@X336`).  `errand_step` enforces **(E-One-Door)** —
+nothing else may write a cycling mob's position and it owns `slip` — and
+its steps come from `flow_steps` then `flow_sidesteps` and nowhere else,
+which is **(E-Non-Increasing)** at a second site.  ⚠ What moved is the
+reading of (E-Slip)'s *"re-converges on the same hex"*: **it is a claim
+about the ANCHOR and not about the way there.**  A mob whose first choice
+is taken by a companion walks a **different route of the same length**
+and has lost no time at all, so it is neither on the rule's hex nor late.
+⚠⚠ **What is TOTAL is the mob's DISTANCE to its current anchor**, which
+equals the rule's under every deviation; hex equality is the special case
+of it where nothing can push a body.  ⚠ The rule's own words are
+unchanged, and (E-Boundable) is untouched because it was already stated
+in field distance.
+
+⚠⚠ **AND A DWELL IS NOT A BLOCK, WHICH IS WHERE A CONFORMANCE GATE GOES
+BLIND** (`@X337`).  A clock-steered mob waiting out its period at its
+post has lost nothing — `cycle_phase` clamps the leg's offset, so the
+rule does not spend those hexes either — and charging `slip` for them
+drags `now − slip` backwards for as long as the guard stands, freezing
+its clock for ever.  ⚠⚠ **Every conformance count stays green while it
+happens**, because a frozen rule agrees with a frozen body:
+***conformance is an equality between two things that can stop together,
+so liveness has to be asked separately.***
+
+⚠ **What still awaits its phase**: no POI owns a population (R5), a mob
+that finishes its round is still removed where it stopped rather than at
+a PLACE (R4, **(E-Home-Is-A-Place)**), and no `.keys` scenario authors a
+routine — so every rule above is enforced and none of it runs in the
+shipped content.
 
 ## ⚠⚠ The model in ten lines
 

@@ -9,6 +9,31 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
+**R3 + Rc COMPLETE 2026-08-28 — the mob MOVES, and it is still INERT.**
+R4 and R5 are startable.  ⚠ Gates: **1725 green over 136 files** (+11,
+all this phase's), `validate.sh` **50 scripts / 920 measurements** and
+`validate_gl.sh` **3 fixtures / 55 measurements**, both **UNCHANGED** —
+which is the inertness measured rather than asserted.
+
+⚠⚠ **`@M075` — the conformance gate reads 0 hexes, 0 phases and 0 legs
+of 320 mob-ticks, and it took SEVEN mutations to make it able to say
+so.**  ⚠ `@X336`: **the claim splits in two, and only the PHASE half is
+total** — a mob whose first choice is taken walks a different route of
+the same length and has lost no time at all, so hex equality holds where
+nothing can deviate a body and the DISTANCE holds everywhere.  That is
+`@FR-E-Slip`'s own *"re-converges on the same hex"* read exactly, and it
+is R6's *identical where nothing can deviate* arriving three phases
+early.  ⚠⚠ `@X337`: **a DWELL is not a BLOCK** — charging `slip` for the
+ticks a guard stands at its post freezes its clock for ever **with every
+conformance count green**, because a frozen rule agrees with a frozen
+body.  ⚠ Conformance is an equality between two things that can stop
+together; **liveness has to be asked separately**, and two of the six
+gates now do.  ⚠ Two more findings: **a lost hex must be a whole number
+of base units** (`cycle_fault` refuses a rate that has not got one —
+`@M074`'s family, one subject over) and **the mover resolves its
+destination at the moment the step BEGINS**, which is invisible for
+every role whose clock leaves it dwelling.
+
 **R2 COMPLETE 2026-08-28 — the cycle is closed-form, and it is still
 INERT.**  R3, R4 and R5 are startable.  ⚠ Gates: **1714 green over 134
 files** (+8, all this phase's) and `validate.sh` **50 scripts / 920
@@ -194,11 +219,11 @@ behaviour and clocks, gated by scenarios and counts.
 | **R0** — the four probes | XS | `tests/30_r0_probe.loft` (5) + readings below | ✅ **ALL FOUR ANSWERED 2026-08-28** |
 | **R1** — `Errand`: five anchors, and the BAG steers | S | `tests/30_r1_the_errand.loft` (9) | ✅ **COMPLETE 2026-08-28** — `@M073`, `@X333`, `@X334` |
 | **R2** — the cycle is CLOSED-FORM | S | `tests/30_r2_the_cycle.loft` (8) — ⚠ the equality gate above | ✅ **COMPLETE 2026-08-28** — `@M074`, `@X335` |
-| **R3** — deviation, and `slip` | M | `tests/30_r3_the_deviation.loft` | **STARTABLE** — ⚠⚠ **R0 probe 1 says it needs a FIELD**, and `@X335` says it must not lose a hex at an anchor |
+| **R3** — deviation, and `slip` | M | `tests/30_r3_the_deviation.loft` (5) | ✅ **COMPLETE 2026-08-28** — `@M075`, `@X336`, `@X337` |
 | **R4** — home is a PLACE | S | a scenario: a robot walks home and leaves the roster there | **STARTABLE** |
 | **R5** — the POI, its population, its BOUND | M | ⚠ the containment gate above | **STARTABLE** — ⚠ **R0 probe 3 is ANSWERED and the bound is named** |
 | **R6** — CULL / EVALUATE / MATERIALISE | M | ⚠ the `R` vs `2R` gate **and its differ-control** | Blocked on R5 |
-| **Rc** — the CONFORMANCE gate | S | ⚠⚠ every mob on a cycle is where its rule says, every tick, over the whole corpus | ⚠ lands **with R3**, and guards every phase after it |
+| **Rc** — the CONFORMANCE gate | S | `tests/30_rc_the_conformance.loft` (6) | ✅ **COMPLETE 2026-08-28** — ⚠ and it needed a LIVENESS gate beside it (`@X337`) |
 | **R7** — distraction: the hauler and your heap | M | a scenario pair + the *merely seen* negative control | Blocked on R5 |
 | **R8** — what a routine is WORTH | S | a scenario pair, one token apart | Blocked on R7 |
 
@@ -532,6 +557,11 @@ gate that lands with it.
 
 ## R3 — deviation, and `slip`
 
+✅ **COMPLETE 2026-08-28** — `src/errand.loft` § THE MOVER,
+`src/spawn.loft` (`WaveState.now`, the fork in `wave_tick`, a public
+`enemy_move_to`), `tests/30_r3_the_deviation.loft` (5 tests), `@X336`,
+`@X337`, `@M075`.
+
 ⚠ F7b's *blocked by a COMPANION → step beside; blocked by the GROUND →
 stand* for errand movers.  ⚠⚠ **The rule exists and the FIELD was
 missing** — `spawn.loft:1222` says so itself, *"having no field to say
@@ -563,6 +593,122 @@ straight crossings of the authored maps arrive, and **44 of the 80
 failures are painted terrain** rather than the map's edge — so a leg is a
 descent of a field toward its anchor, not a line.  ⚠ `@X331`'s bound
 survives unchanged because a field distance is a distance.
+
+### What was built, and the four things the phase decided
+
+⚠⚠ **`@X336` — THE CLAIM SPLITS IN TWO, AND ONLY THE PHASE HALF IS
+TOTAL.**  § Invariant gate and § Rc both say *the mob is on
+`cycle_at(t − slip)`*, and building the mover showed that is exact only
+where nothing can push a body:
+
+> ⚠ a mob whose first choice is taken by a companion walks a **different
+> route of the same length** and has **lost no time at all**, so it is
+> neither on the rule's hex nor late.
+
+⚠ `@FR-E-Slip` already said so and the plan had read it too strongly: *"a
+body pushed off its cycle **re-converges on the same hex**"* is a claim
+about where it ENDS UP — the anchor — and not about where it stands on
+the way.  ⚠⚠ **What is total is the DISTANCE**: a mob's field distance to
+its current anchor equals the rule's, under every deviation, at every
+moment.  Hex equality is the special case of it where nothing blocked.
+⚠ That is the currency `@FR-E-Boundable` is already stated in, so R5's
+bound is untouched — and it is **R6's *identical where nothing can
+deviate a body* arriving three phases early**, which is the reading to
+carry into R5 rather than rediscover in R6.
+
+⚠⚠ **`@X337` — A DWELL IS NOT A BLOCK, AND CONFORMANCE CANNOT SEE THE
+DIFFERENCE.**  The first mover charged `slip` for every released hex it
+could not spend, which is right for a blocked mob and **wrong for a guard
+standing at its post**: `cycle_phase` clamps a clock leg's offset at the
+leg's own length, so those hexes are ones the RULE does not spend either.
+⚠ Charging them drags `now − slip` backwards for as long as the guard
+stands, its clock never flips, and **the guard freezes at its first post
+with every conformance count green** — because a frozen rule agrees with
+a frozen body.
+
+> ⚠⚠ **Conformance is an equality between two things that can stop
+> together.  LIVENESS has to be asked separately.**
+
+⚠ Two of § Rc's six gates now do: *nothing blocked it so nothing slipped*
+(slip is **0** and both anchors are reached) and *a mob that stood is
+exactly that late*.  ⚠ The measurement is the mutation's: a guard that
+slips while dwelling reads **112 000 000 units of slip, ONE anchor and a
+reach of 4** where the true one reads 0 / 2 / 4.
+
+⚠⚠ **A LOST HEX MUST BE A WHOLE NUMBER OF BASE UNITS** — `@M074`'s family
+with a different subject.  For `cycle_walked(rate, t − slip)` to be
+exactly one hex short at **every** later `t`, `rate × slip` has to be a
+whole multiple of `BANK_WHOLE`; otherwise the floor disagrees wherever
+the fraction falls under the remainder.  ⚠ So one lost hex costs
+`BANK_WHOLE / rate` and `cycle_fault` **refuses a rate that has not got
+one**.  Every shipped speed — 1.0, 1.5 and 2.5 hex/s — divides exactly,
+which is why the constraint has never been felt and exactly why it needs
+a gate rather than a comment (`@M014`).
+
+⚠⚠ **AND THE MOVER RESOLVES ITS DESTINATION AT THE MOMENT THE STEP
+BEGINS**, never at the moment it ends — `tests/30_r2_the_cycle.loft`'s
+harness contract, which the first version of `wave_tick` broke by
+advancing the clock at the TOP of the tick.  ⚠ It is **invisible for
+every role whose clock leaves it DWELLING at its post**, and the shipped
+guard dwells eleven ticks in fifteen, so § Rc carries a **guard with no
+dwell at all** — a miner walks exactly 10 hexes in the guard's fifteen
+ticks — and that member alone reads **34 hexes and 34 phases adrift**
+when the clock moves to the top.  ⚠ `WaveState.now` is therefore *the
+moment the run has reached*, advanced at the END of the tick.
+
+### ⚠⚠ And the TRIPWIRE fired the same hour it was laid
+
+⚠⚠ **Sites 7, 8 and 9 went LIVE rather than waiting.**  R1 put `route`
+into `compare.loft` as *a tripwire, here before it can differ*, and R3
+put `now` beside it on the same argument — *nothing in the corpus
+advances a clock any measurement reads*.  ⚠ **That was wrong within the
+hour**: `tests/18_s2`'s round trip plays a scenario, writes it down with
+`emit_keys` and replays it, and every `tick` in the corpus was advancing
+a clock nothing wrote — **`'now: 442000000 vs 0'`**, on two of its six
+tests, the first time the suite ran with a clock in it.
+
+⚠ **The answer was the one the plan had already written down**: a `.keys`
+verb and never a looser comparison.  `emit_keys` writes `now <seconds>`
+when the moment is not the run's first, `script.loft` reads it back, and
+**the writer and the reader are a PAIR** (`@D007`) — deleting either half
+turns the round trip red, which is checked.  ⚠ `crop_state` carries it
+whole with the other run-wide switches, because a crop that reset the
+moment would put every routine in the cropped fixture back at the start
+of its round while leaving the bodies where they stood.
+
+⚠⚠ **The reading is about the tripwire, not about the clock**: a
+comparison added *before anything could tell* cost one line and found a
+real gap on its first full run.  The banked carry's row one file over did
+exactly the same thing, and this is the second instance.
+
+### ⚠⚠ Seven mutations, and THREE of them moved the gate
+
+⚠ `CLAUDE.md` § a gate that reads PERFECT is as suspect as one that reads
+wrong — both files were green on their first run.
+
+| mutation | caught by the first version? |
+|---|---|
+| the slip increment deleted | ✅ 555 of 1149 swept moments |
+| a sidestep counted as progress | ✅ same |
+| slip charged in TICKS instead of hexes | ⚠ **only by the cross-product** — at the shipped 1.5 hex/s a tick IS a hex |
+| no sidestep at all | ✅ 9 of 18 runs never arrived |
+| the divisibility refusal deleted | ✅ |
+| the mover ignores companions | ✅ |
+| **the sidestep may go FURTHER** | ❌ **no** — see below |
+| **a dwelling guard slips** | ❌ **no** — `@X337` |
+| **the clock advances at the top** | ❌ **no** — until the zero-dwell guard |
+
+⚠⚠ **The sidestep widening is the one `@X331` predicted and the file
+still could not see** — replacing `flow_sidesteps` with every neighbour,
+the exact change `@X331` calls *"harmless-looking and it silently breaks
+R5's bound and R6's equality"*, changed **nothing**, because on the
+fixture's axis the first free neighbour in direction order happens to be
+an equal one anyway.  ⚠ Seeing it needs a mob whose **equal ring is full
+while the hexes behind it are open**, so the only thing left to take is a
+step backwards — and the first attempt at that gate hemmed the further
+hexes in too, which makes a mover that would walk backwards stand still
+for the same reason the right one does.  ⚠⚠ **The instrument was wrong
+twice before the tree was**, which is `@X328` reproduced a third time.
 
 ## R4 — home is a PLACE
 

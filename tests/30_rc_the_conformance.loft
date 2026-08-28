@@ -1,0 +1,446 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 30 phase Rc — the CONFORMANCE gate, landing with R3.
+//
+// ⚠⚠ **THE PLAN'S ONE CONSTITUTIVE TEST.**  It is not evidence that the
+// invariant holds — it is *the only reason the design works*, and any of
+// the twelve sites in `plans/30` § Count the RE-ASSERTION SITES
+// forgetting turns it red.  ⚠ Every one of those twelve fails SILENTLY:
+// a forgotten `slip` does not throw, the mob simply arrives early.
+//
+// ── ⚠⚠ THE CLAIM IS TWO CLAIMS, AND R3 IS WHY ───────────────────
+//
+// The plan wrote it as one — *every mob on a cycle satisfies
+// `cycle_at(e, now) == (e.q, e.r)`* — and building the mover showed that
+// it is exact only where nothing can push a body:
+//
+//   * ⚠⚠ **PHASE conformance is TOTAL**: a mob's distance to its current
+//     anchor is the rule's distance to it, under every deviation, always;
+//   * ⚠⚠ **HEX conformance is total where nothing can deviate a body**,
+//     and false where something can — because a mob whose first choice
+//     is taken walks a DIFFERENT route of the same length and has lost
+//     no time at all.
+//
+// ⚠ `@FR-E-Slip` already says so: a body pushed off its cycle
+// *"re-converges on the same hex"* — the ANCHOR — which is a claim about
+// where it ends up and not about where it stands on the way.  ⚠⚠ And it
+// is R6's *identical where nothing can deviate a body* arriving three
+// phases early, which is the reading to carry into R5.
+//
+// ── ⚠⚠ The gate's own controls, and it needs THREE ──────────────
+//
+// 1. ⚠ It must COUNT what it looked at.  `cycle_where` answers a
+//    robot's OWN hex when it has no cycle, so the equality is trivially
+//    true for every robot in every scenario today and a corpus with
+//    nothing on a cycle reads green (`CLAUDE.md` § A gate whose reading
+//    is already saturated).
+// 2. ⚠⚠ The BUBBLE control: a mob the scrambler has taken must drop OUT
+//    of the count — that is site 5 of the twelve, and the reading is the
+//    count going to zero while the roster still has live robots in it.
+// 3. ⚠ The DEVIATION control: the blocked corpus must show hex
+//    disagreements, or the two claims above are indistinguishable and
+//    the file is asserting one thing twice.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+
+const RC_TICK: integer = 2000000;
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+
+// ─── The worlds — one plain, one that BENDS ─────────────────────
+
+// ⚠⚠ **The bend is R0 probe 1 made into a fixture** (`@M071`): only 10
+// of 90 straight crossings of the authored maps arrive, so a corpus of
+// open plains would gate a cycle that walked through cliffs.
+fn rc_world(bend: boolean) -> PaintedWorld {
+    rw2_pw = painted_empty();
+    for rw2_r in 0..=8 {
+        for rw2_q in 0..=20 {
+            if bend && rw2_q == 8 && rw2_r <= 6 { continue; }
+            paint(rw2_pw, rw2_q, rw2_r, as_u8(GRASS));
+        }
+    }
+    rw2_pw
+}
+
+fn rc_home() -> Hex { Hex { q: 1,  r: 4 } }
+fn rc_work() -> Hex { Hex { q: 15, r: 4 } }
+
+// ⚠⚠ **The core is off in the sea, 45 hexes away, and that is what
+// keeps the corpus on its cycles**: the scrambler bubble is 25 hexes and
+// `wave_cutoff` sweeps the roster at the top of every tick, so a core
+// any nearer would take every mob's errand and the gate would be
+// counting an empty set.  ⚠ The bubble control below moves it in
+// deliberately.
+fn rc_far_core()  -> Hex { Hex { q: 60, r: 4 } }
+fn rc_near_core() -> Hex { Hex { q: 5,  r: 4 } }
+
+fn rc_gatherer() -> Errand {
+    errand_at(ROLE_GATHER, rc_home(), rc_work(), Hex { q: 0, r: 0 })
+}
+
+fn rc_guard() -> Errand {
+    errand_at(ROLE_GUARD, Hex { q: 1, r: 7 }, Hex { q: 5, r: 7 },
+              Hex { q: 1, r: 7 })
+}
+
+// ⚠⚠ **A guard with NO DWELL, and it is the only reason the mover's
+// `now` contract is visible at all.**  The shipped guard's ten-second
+// period buys 15 hexes at the robot's pace and its post is four away, so
+// it stands at the post for eleven ticks of every fifteen — and a mover
+// that resolved its destination a tick late would turn a tick late into
+// a dwell that was going to swallow it.  ⚠ A MINER walks exactly 10
+// hexes in those fifteen ticks, so this one arrives on the very tick its
+// clock flips and there is no slack left to hide in (`@M013`: sweep the
+// NEIGHBOURS of the shipped value).
+fn rc_tight_guard() -> Errand {
+    errand_at(ROLE_GUARD, Hex { q: 1, r: 7 }, Hex { q: 11, r: 7 },
+              Hex { q: 1, r: 7 })
+}
+
+fn rc_field(pw: PaintedWorld, kind: u8, to: const Hex) -> FlowField {
+    flow_build(load_palette(PALETTE), pw, height_layer_empty(), kind, to)
+}
+
+// ─── ⚠ The harness — a real tick, and every mob checked in it ────
+
+// Run a roster of `count` mobs on one routine through `wave_tick`, and
+// check every one of them at the end of every tick.
+//
+// Answers (mobs looked at, HEX disagreements, PHASE disagreements, LEG
+// disagreements, the first disagreement).
+//
+// ⚠⚠ **It goes through `wave_tick` and not through `errand_step`**, which
+// is the whole point of § Rc: the twelve sites are in the TICK — the
+// cutoff sweep, the move order, the deaths, the consequences — and a
+// gate that drove the mover directly would exercise one of them.
+fn rc_run(pw: PaintedWorld, er: const Errand, role: integer, kind: u8,
+          count: integer, park: const Hex, core: const Hex,
+          ticks: integer) -> (integer, integer, integer, integer, text) {
+    rcr_row = errand_role_of(role);
+    rcr_pal = load_palette(PALETTE);
+    rcr_c   = cycle_build(er, rcr_row, rcr_pal, pw, height_layer_empty(),
+                          kind);
+    rcr_st  = wave_state_empty();
+    rcr_at  = errand_anchor(er, rcr_row.laden);
+    rcr_i   = 0;
+    while rcr_i < count {
+        rcr_st.enemies += [Enemy { q: rcr_at.q, r: rcr_at.r, kind: kind,
+                                   alive: true, errand: true, route: er }];
+        rcr_i += 1;
+    }
+    if park.q >= 0 { vehicle_place(rcr_st.player, park.q, park.r); }
+
+    rcr_rate  = bank_rate(enemy_speed(kind));
+    rcr_seen  = 0;
+    rcr_hex   = 0;
+    rcr_phase = 0;
+    rcr_leg   = 0;
+    rcr_say   = "";
+    rcr_t     = 0;
+    while rcr_t < ticks {
+        wave_tick(rcr_st, rcr_pal, pw, marker_empty(), core);
+        rcr_t += 1;
+        for rcr_e in rcr_st.enemies {
+            // ⚠⚠ **THE FILTER, and control 1 depends on it**: a robot
+            // the bubble took reads `ROLE_NONE` here and `cycle_where`
+            // would answer its own hex, which is trivially true.
+            rcr_r2 = errand_role_of(errand_role(rcr_e));
+            if rcr_r2.empty == ANCHOR_NONE { continue; }
+            rcr_seen += 1;
+            rcr_want = cycle_where(rcr_e, rcr_c, rcr_st.now);
+            if rcr_want.q != rcr_e.q || rcr_want.r != rcr_e.r {
+                rcr_hex += 1;
+                if rcr_say == "" {
+                    rcr_say = " hex, tick {rcr_t}: body "
+                              + "({rcr_e.q},{rcr_e.r}), rule "
+                              + "({rcr_want.q},{rcr_want.r})";
+                }
+            }
+            // ⚠ The PHASE: both hexes measured against the SAME field,
+            // the one toward the anchor the mob is making for now.
+            rcr_job = errand_destination(rcr_e, rcr_st.now);
+            rcr_dh = flow_distance(rc_field(pw, kind,
+                                            Hex { q: rcr_job.q, r: rcr_job.r }),
+                                   rcr_e.q, rcr_e.r);
+            rcr_dr = flow_distance(rc_field(pw, kind,
+                                            Hex { q: rcr_job.q, r: rcr_job.r }),
+                                   rcr_want.q, rcr_want.r);
+            if rcr_dh != rcr_dr {
+                rcr_phase += 1;
+                if rcr_say == "" {
+                    rcr_say = " phase, tick {rcr_t}: body {rcr_dh} from the "
+                              + "anchor, rule {rcr_dr} (slip "
+                              + "{rcr_e.route.slip})";
+                }
+            }
+            // ⚠ And the LEG, because two legs of one round share every
+            // hex at their join — `@M074` found that the leg index is
+            // invisible in a position and visible only here.
+            rcr_ph = cycle_phase(rcr_c, rcr_r2, rcr_rate,
+                                 rcr_st.now - rcr_e.route.slip);
+            rcr_ra = rcr_c.anchors[rcr_ph.0] ?? ANCHOR_NONE;
+            if rcr_ra != errand_leg(rcr_r2, rcr_e.route, rcr_st.now) {
+                rcr_leg += 1;
+                if rcr_say == "" {
+                    rcr_say = " leg, tick {rcr_t}: the rule is on the leg "
+                              + "ending at {rcr_ra}, the bag names "
+                              + "{errand_leg(rcr_r2, rcr_e.route, rcr_st.now)}";
+                }
+            }
+        }
+    }
+    (rcr_seen, rcr_hex, rcr_phase, rcr_leg, rcr_say)
+}
+
+fn rc_nowhere() -> Hex { Hex { q: 0 - 1, r: 0 - 1 } }
+
+// ─── ⚠⚠ THE GATE — every mob, every tick, over the corpus ───────
+
+// @DRY-166 — every mob on a cycle is where its rule says it is
+fn test_every_mob_on_a_cycle_is_where_its_rule_says() {
+    tem_seen  = 0;
+    tem_hex   = 0;
+    tem_phase = 0;
+    tem_leg   = 0;
+    tem_say   = "";
+    // ⚠ Six runs: two worlds × three classes, one mob each, nothing that
+    // can push it.  ⚠ The three classes are the timestep cross-product
+    // (`@M030`): the robot releases exactly one hex a tick and its carry
+    // is zero for ever, the scout releases 1, 2, 2 and the miner 0, 1, 1.
+    for tem_b in [false, true] {
+        for tem_k in [ENEMY_KIND_REGULAR, ENEMY_KIND_SCOUT,
+                      ENEMY_KIND_MINER] {
+            tem_g = rc_run(rc_world(tem_b), rc_gatherer(), ROLE_GATHER,
+                           as_u8(tem_k), 1, rc_nowhere(), rc_far_core(), 40);
+            tem_seen  += tem_g.0;
+            tem_hex   += tem_g.1;
+            tem_phase += tem_g.2;
+            tem_leg   += tem_g.3;
+            if tem_say == "" && tem_g.4 != "" {
+                tem_say = " bend={tem_b} kind={tem_k}:" + tem_g.4;
+            }
+        }
+    }
+    // ⚠ And a GUARD, which is the one role a clock steers — its leg
+    // boundary is a TIME and lands inside a step where a bag's lands
+    // exactly (`@M074`), so a corpus of carriers alone would not have
+    // asked the harder question.
+    tem_gd = rc_run(rc_world(false), rc_guard(), ROLE_GUARD,
+                    as_u8(ENEMY_KIND_REGULAR), 1, rc_nowhere(),
+                    rc_far_core(), 40);
+    tem_seen  += tem_gd.0;
+    tem_hex   += tem_gd.1;
+    tem_phase += tem_gd.2;
+    tem_leg   += tem_gd.3;
+    if tem_say == "" && tem_gd.4 != "" { tem_say = " guard:" + tem_gd.4; }
+
+    // ⚠⚠ **And the guard with NO DWELL** — the corpus member that makes
+    // the mover's *resolve at the moment the step BEGINS* rule visible.
+    tem_tg = rc_run(rc_world(false), rc_tight_guard(), ROLE_GUARD,
+                    as_u8(ENEMY_KIND_MINER), 1, rc_nowhere(),
+                    rc_far_core(), 40);
+    tem_seen  += tem_tg.0;
+    tem_hex   += tem_tg.1;
+    tem_phase += tem_tg.2;
+    tem_leg   += tem_tg.3;
+    if tem_say == "" && tem_tg.4 != "" { tem_say = " tight guard:" + tem_tg.4; }
+
+    // ⚠⚠ **The count is the control** — 320 mob-ticks, and a corpus in
+    // which nothing was on a cycle would read 0 and be green for any
+    // implementation.
+    assert(tem_hex == 0 && tem_phase == 0 && tem_leg == 0
+           && tem_seen == 320,
+           "every mob on a cycle must be exactly where its rule says: "
+           + "{tem_hex} hexes, {tem_phase} phases and {tem_leg} legs of "
+           + "{tem_seen} mob-ticks disagree;{tem_say}");
+}
+
+// @DRY-167 — a deviated body keeps its PHASE and loses its HEX
+fn test_a_deviated_body_keeps_its_phase_and_loses_its_hex() {
+    // ⚠⚠ **THE CONTROL THAT SEPARATES THE TWO CLAIMS.**  Without a
+    // corpus that can deviate a body, *hex equality* and *phase
+    // equality* are the same assertion written twice, and the file above
+    // would be green for a mover that had no sidestep at all.
+    //
+    // ⚠ Two sources of deviation, and they are different sites: THREE
+    // mobs on one routine start stacked and push each other (occupancy),
+    // and the PLAYER parked on the route pushes one (the blocker map) —
+    // `plans/30` R3's *one actor, ONE occupancy rule* is what makes them
+    // the same answer.
+    tad_pack = rc_run(rc_world(false), rc_gatherer(), ROLE_GATHER,
+                      as_u8(ENEMY_KIND_REGULAR), 3, rc_nowhere(),
+                      rc_far_core(), 40);
+    tad_park = rc_run(rc_world(false), rc_gatherer(), ROLE_GATHER,
+                      as_u8(ENEMY_KIND_REGULAR), 1, Hex { q: 2, r: 4 },
+                      rc_far_core(), 40);
+
+    assert(tad_pack.2 == 0 && tad_pack.3 == 0 && tad_pack.1 > 0
+           && tad_park.2 == 0 && tad_park.3 == 0 && tad_park.1 > 0
+           && tad_pack.0 == 120 && tad_park.0 == 40,
+           "a deviated body keeps its PHASE and loses its HEX: three "
+           + "stacked mobs read {tad_pack.1} hex and {tad_pack.2} phase "
+           + "disagreements of {tad_pack.0} mob-ticks; a parked player "
+           + "reads {tad_park.1} and {tad_park.2} of {tad_park.0}"
+           + "{tad_pack.4}{tad_park.4}");
+}
+
+// @DRY-168 — the bubble is the one exit, and it empties the gate
+fn test_a_mob_the_bubble_took_leaves_the_gate() {
+    // ⚠⚠ **Site 5 of the twelve, and the reading is the COUNT.**  The
+    // core moves from 45 hexes out to 4, so `wave_cutoff` takes every
+    // mob's errand on the first tick — and `errand_role` answering
+    // `ROLE_NONE` is what drops it out of the gate.  ⚠ A gate that did
+    // not filter would read GREEN here rather than red, because
+    // `cycle_where` answers a robot's own hex when it has no cycle: the
+    // failure this control catches is a gate measuring nothing.
+    // ⚠ ONE mob, because two on one routine start STACKED and push each
+    // other — that is the deviation the test above is for, and it would
+    // read here as hex disagreements that have nothing to do with the
+    // bubble.
+    tmb_out = rc_run(rc_world(false), rc_gatherer(), ROLE_GATHER,
+                     as_u8(ENEMY_KIND_REGULAR), 1, rc_nowhere(),
+                     rc_far_core(), 20);
+    tmb_in  = rc_run(rc_world(false), rc_gatherer(), ROLE_GATHER,
+                     as_u8(ENEMY_KIND_REGULAR), 1, rc_nowhere(),
+                     rc_near_core(), 20);
+    assert(tmb_out.0 == 20 && tmb_in.0 == 0
+           && tmb_out.1 == 0 && tmb_out.2 == 0 && tmb_out.3 == 0,
+           "the bubble is the one exit: a far core leaves {tmb_out.0} "
+           + "mob-ticks on their cycles and a near one leaves "
+           + "{tmb_in.0};{tmb_out.4}");
+}
+
+// @DRY-169 — nothing in the shipped corpus is on a cycle, and it is inert
+fn test_a_roster_with_no_routine_is_the_game_it_always_was() {
+    // ⚠⚠ **The phase's inertness, asserted rather than promised.**  Every
+    // `Enemy { … }` literal in the tree omits `route`, so [loft#914]'s
+    // silent default makes it `ROLE_NONE` — the gate looks at nothing,
+    // `errand_fields` builds nothing, and `wave_tick` forks the way it
+    // always did.  ⚠ That is why `validate.sh`'s 920 measurements cannot
+    // move, and it is the claim to re-read if they ever do.
+    tar_st = wave_state_empty();
+    tar_st.enemies += [Enemy { q: 1, r: 4, kind: as_u8(ENEMY_KIND_REGULAR),
+                               alive: true }];
+    tar_st.enemies += [Enemy { q: 2, r: 4, kind: as_u8(ENEMY_KIND_REGULAR),
+                               alive: true, errand: true }];
+    tar_flds = errand_fields(tar_st, load_palette(PALETTE), rc_world(false));
+    tar_n = 0;
+    for tar_e in tar_st.enemies {
+        if errand_cycling(tar_e, 0) { tar_n += 1; }
+    }
+    // ⚠ The control: the same roster with a routine on it DOES answer,
+    // so this is reading the default and not a function that always says
+    // no.
+    tar_st.enemies += [Enemy { q: 3, r: 4, kind: as_u8(ENEMY_KIND_REGULAR),
+                               alive: true, errand: true,
+                               route: rc_gatherer() }];
+    tar_more = errand_fields(tar_st, load_palette(PALETTE), rc_world(false));
+    tar_m = 0;
+    for tar_e2 in tar_st.enemies {
+        if errand_cycling(tar_e2, 0) { tar_m += 1; }
+    }
+    assert(tar_n == 0 && len(tar_flds) == 0 && tar_m == 1
+           && len(tar_more) == 1,
+           "a roster with no routine costs the tick nothing: {tar_n} mobs "
+           + "cycling and {len(tar_flds)} fields built, against {tar_m} and "
+           + "{len(tar_more)} once one has a routine");
+}
+
+// ─── ⚠⚠ WHAT CONFORMANCE CANNOT SEE — a mob that is FROZEN ──────
+
+// Drive one mob and answer (its `slip`, how many of its two anchors it
+// ever stood on, the furthest it got from where it started).
+fn rc_live(pw: PaintedWorld, er: const Errand, role: integer, kind: u8,
+           stand: integer, ticks: integer) -> (integer, integer, integer) {
+    rcl_row = errand_role_of(role);
+    rcl_st  = wave_state_empty();
+    rcl_at  = errand_anchor(er, rcl_row.laden);
+    rcl_st.enemies += [Enemy { q: rcl_at.q, r: rcl_at.r, kind: kind,
+                               alive: true, errand: true, route: er,
+                               stand: timer_armed(stand) }];
+    rcl_a = errand_anchor(er, rcl_row.empty);
+    rcl_b = errand_anchor(er, rcl_row.laden);
+    rcl_ha = false;
+    rcl_hb = false;
+    rcl_far = 0;
+    rcl_t = 0;
+    while rcl_t < ticks {
+        wave_tick(rcl_st, load_palette(PALETTE), pw, marker_empty(),
+                  rc_far_core());
+        rcl_t += 1;
+        for rcl_e in rcl_st.enemies {
+            if rcl_e.q == rcl_a.q && rcl_e.r == rcl_a.r { rcl_ha = true; }
+            if rcl_e.q == rcl_b.q && rcl_e.r == rcl_b.r { rcl_hb = true; }
+            rcl_d = lat_distance(Hex { q: rcl_e.q, r: rcl_e.r }, rcl_at);
+            if rcl_d > rcl_far { rcl_far = rcl_d; }
+        }
+    }
+    rcl_n = 0;
+    if rcl_ha { rcl_n += 1; }
+    if rcl_hb { rcl_n += 1; }
+    rcl_e2 = rcl_st.enemies[0] ?? Enemy { };
+    (rcl_e2.route.slip, rcl_n, rcl_far)
+}
+
+// @DRY-170 — a mob nothing blocked has NO slip, and a guard patrols
+fn test_nothing_blocked_it_so_nothing_slipped() {
+    // ⚠⚠ **THE GATE THE CONFORMANCE TEST STRUCTURALLY CANNOT BE.**  A
+    // mover that charged `slip` for the ticks a guard DWELLS at its post
+    // drags `now − slip` backwards for as long as it stands, so the
+    // clock never flips and the guard is frozen — with every count in
+    // § the conformance gate green, because a frozen rule agrees with a
+    // frozen body.  ⚠ Conformance is an equality between two things that
+    // can stop together; **liveness has to be asked separately.**
+    tnb_bag = rc_live(rc_world(true), rc_gatherer(), ROLE_GATHER,
+                      as_u8(ENEMY_KIND_REGULAR), 0, 60);
+    tnb_grd = rc_live(rc_world(false), rc_guard(), ROLE_GUARD,
+                      as_u8(ENEMY_KIND_REGULAR), 0, 60);
+    tnb_tgt = rc_live(rc_world(false), rc_tight_guard(), ROLE_GUARD,
+                      as_u8(ENEMY_KIND_MINER), 0, 60);
+    assert(tnb_bag.0 == 0 && tnb_bag.1 == 2 && tnb_bag.2 > 0
+           && tnb_grd.0 == 0 && tnb_grd.1 == 2 && tnb_grd.2 == 4
+           && tnb_tgt.0 == 0 && tnb_tgt.1 == 2 && tnb_tgt.2 == 10,
+           "nothing blocked them, so nothing slipped, and all three must "
+           + "reach BOTH anchors: carrier slip {tnb_bag.0} anchors "
+           + "{tnb_bag.1} reach {tnb_bag.2}; guard {tnb_grd.0} / "
+           + "{tnb_grd.1} / {tnb_grd.2}; tight guard {tnb_tgt.0} / "
+           + "{tnb_tgt.1} / {tnb_tgt.2}");
+}
+
+// @DRY-171 — a mob that stood is exactly that late, and nothing more
+fn test_a_mob_that_stood_is_exactly_that_late() {
+    // ⚠ The pre-walk window (plan 16 W2) is TIME a mob did not spend
+    // walking, so it is `slip` and nothing else — and the reading is an
+    // EQUALITY rather than an inequality: five ticks armed is five ticks
+    // of slip, to the unit.
+    // ⚠ Twelve ticks, which is SHORT of the fourteen-hex leg — a run
+    // long enough for both to arrive would saturate the reading and the
+    // control would be measuring the leg's length (`CLAUDE.md` § A gate
+    // whose reading is already saturated).
+    tms_still = rc_live(rc_world(false), rc_gatherer(), ROLE_GATHER,
+                        as_u8(ENEMY_KIND_REGULAR), 5 * RC_TICK, 12);
+    // ⚠ The control: the same mob with nothing armed slips nothing and
+    // gets further, so this is reading the window and not a mob that
+    // could not move at all.
+    tms_off = rc_live(rc_world(false), rc_gatherer(), ROLE_GATHER,
+                      as_u8(ENEMY_KIND_REGULAR), 0, 12);
+    // ⚠⚠ And the CONFORMANCE has to survive it, which is the half that
+    // makes `slip += elapsed` the right answer rather than merely a
+    // plausible one.
+    tms_conf = rc_run(rc_world(false), rc_gatherer(), ROLE_GATHER,
+                      as_u8(ENEMY_KIND_REGULAR), 1, rc_nowhere(),
+                      rc_far_core(), 30);
+    assert(tms_still.0 == 5 * RC_TICK && tms_off.0 == 0
+           && tms_still.2 == tms_off.2 - 5
+           && tms_conf.1 == 0 && tms_conf.2 == 0 && tms_conf.3 == 0,
+           "a mob that stood is exactly that late: slip {tms_still.0} "
+           + "against an armed {5 * RC_TICK}, reach {tms_still.2} against "
+           + "an unarmed {tms_off.2} (slip {tms_off.0})");
+}

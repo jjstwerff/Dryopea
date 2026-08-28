@@ -704,7 +704,7 @@ pub fn cycle_at(c: const Cycle, row: const Role, rate: integer,
 // on a cycle would otherwise read green
 // (`CLAUDE.md` § A gate whose reading is already saturated).
 //
-// Example: @DRY-156, @DRY-160
+// Example: @DRY-156, @DRY-160, @DRY-166, @DRY-167, @DRY-168
 pub fn cycle_where(e: const Enemy, c: const Cycle, now: integer) -> Hex {
     cwh_row = errand_role_of(errand_role(e));
     // ⚠ The ROW is asked and never the role id — the table is indexed
@@ -833,6 +833,17 @@ pub fn cycle_fault(c: const Cycle, row: const Role, rate: integer) -> text {
         return "the round is {len(c.path)} hexes long and its period says "
                + "{c.period}";
     }
+    // ⚠⚠ **A LOST HEX MUST BE A WHOLE NUMBER OF BASE UNITS** (§ THE
+    // MOVER), and it is `@M074`'s family with a different subject: for
+    // `cycle_walked(rate, t − slip)` to be exactly one hex short at
+    // EVERY later `t`, `rate × slip` has to be a whole multiple of
+    // `BANK_WHOLE`.  A rate that cannot express *one hex late* as a time
+    // is an authoring error, named here rather than measured later as a
+    // mob drifting a hex ahead of its own rule.
+    if cycle_hex_units(rate) <= 0 {
+        return "a rate of {rate} does not make a hex a whole number of "
+               + "base units, so a deviation cannot be paid for exactly";
+    }
     if row.period > 0 {
         // ⚠⚠ **A CLOCK PERIOD MUST BE A WHOLE NUMBER OF TICKS**, and
         // `@M074` is what it costs when it is not: a leg boundary in
@@ -930,6 +941,305 @@ pub fn errand_table_fault() -> text {
     ""
 }
 
+// ─── ⚠⚠ THE MOVER — the ONE DOOR that writes a mob's position ───
+//
+// Plan 30 R3, and `@FR-E-One-Door` is the whole shape of it: *exactly
+// one function moves a mob on a cycle, and it owns `slip`.*  ⚠ § Count
+// the RE-ASSERTION SITES lists **twelve** places that could write a
+// position and forget the bookkeeping, and **every omission is silent**
+// — a forgotten `slip` does not fail to compile and does not throw, the
+// mob simply arrives early.  So four of the twelve are collapsed by
+// there being nothing else that may move a mob at all.
+//
+// ⚠ **It adds no mover.**  `enemy_step`'s engage branch has descended a
+// field toward the core since plan 11 F5, and F7b's *blocked by a
+// COMPANION → step beside; blocked by the GROUND → stand* is the rule
+// this reuses with the destination changed.  What approach mode never
+// had is the FIELD — `enemy_walk_heading` says so itself, *"having no
+// field to say which way beside is"* — and an anchor supplies one.
+//
+// ── ⚠⚠ WHAT IS EXACT, AND IT IS THE PHASE RATHER THAN THE HEX ───
+//
+// ⚠⚠ **`@FR-E-Slip` says a body pushed off its cycle *re-converges on
+// the same hex* — the ANCHOR — and it does NOT say the body is on the
+// rule's hex while it is being pushed.**  That distinction is this
+// section's finding and it is worth stating before the code:
+//
+//   * a mob nothing has pushed walks `flow_steps[0]` every step, which
+//     is exactly what `flow_route` built the round out of, so it stands
+//     on `cycle_at`'s hex at the end of every tick — **hex equality is
+//     total in a world with nothing to deviate it**;
+//   * a mob that takes a DIFFERENT strictly-closer step because a
+//     companion is on the first is on another route of the same length.
+//     It loses no time and it is not on the rule's hex;
+//   * a mob that can only SIDESTEP loses exactly one hex of progress,
+//     and that is what `slip` pays for.
+//
+// ⚠⚠ **So the invariant that is total is the PHASE**: a mob's distance
+// to its current anchor equals the rule's distance to it, always, for
+// every deviation.  Hex equality is the special case of it where nothing
+// blocked.  ⚠ That is what R5's bound needs (`@FR-E-Boundable` is stated
+// in field distance) and what `plans/30` § Rc gates.
+//
+// ── ⚠⚠ A LOST HEX IS A WHOLE NUMBER OF BASE UNITS, OR IT IS NOT EXACT ─
+//
+// ⚠⚠ **The one arithmetic constraint in the phase, and it is `@M074`'s
+// family with a different subject.**  For `cycle_walked(rate, t − slip)`
+// to be *exactly* one hex short for **every** later `t`, `rate × slip`
+// has to be a whole multiple of `BANK_WHOLE` — otherwise the floor
+// disagrees at the `t` values whose fraction falls under the remainder,
+// and the mob is a hex ahead of its own rule for part of every step.
+//
+// ⚠ So one lost hex costs `BANK_WHOLE / rate` units and the division
+// must be EXACT.  `cycle_hex_units` is that number, `cycle_fault`
+// refuses a rate that has not got one, and every speed the game ships —
+// 1.0, 1.5 and 2.5 hex/s — divides `BANK_WHOLE` exactly.  ⚠⚠ **A speed
+// that does not is an authoring error named at construction**, exactly
+// as a clock period that is not a whole number of ticks is.
+//
+// ⚠ **Time the mob did not spend walking needs no such division**: the
+// pre-walk window freezes the mob and `slip += elapsed` freezes `t −
+// slip` with it, which is exact at any rate and any timestep.
+
+// How many base units one hex of walking is worth at `rate` — 0 when
+// the rate has no such number.
+//
+// ⚠⚠ **Zero means REFUSE, not free**: a rate that does not divide
+// `BANK_WHOLE` cannot express *one hex late* as a time at all, and a
+// caller that treated 0 as *no delay* would let a blocked mob keep its
+// place in the rule.  `cycle_fault` is where it is turned into a
+// refusal, so the mover never meets one.
+//
+// Example: @DRY-161
+pub fn cycle_hex_units(rate: integer) -> integer {
+    if rate <= 0 { return 0; }
+    if ((BANK_WHOLE % rate) ?? 1) != 0 { return 0; }
+    (BANK_WHOLE / rate) ?? 0
+}
+
+// One destination's field for this tick, and the class that reads it.
+//
+// ⚠ Keyed by the HEX and the CLIMB LIMIT — the same key `ClassField`
+// uses one field over, for the same reason (`spawn.loft` § The fields):
+// `climb_limit` is the class's whole contribution to passability, so two
+// classes agreeing on it produce identical fields and building both is
+// duplicated work that also invites them to drift.
+pub struct ErrandField {
+    q:     integer,
+    r:     integer,
+    climb: float,
+    field: FlowField,
+}
+
+// A field for every distinct (destination, climb limit) among the mobs
+// running a routine — each built once.
+//
+// ⚠⚠ **EMPTY when nothing is on a routine, which is every scenario in
+// the tree today** — so the tick pays nothing for this and the 920 gate
+// measurements cannot move.  That is the phase's inertness, constructed
+// rather than promised.
+//
+// ⚠ `@M072` is what makes it affordable when it is not empty: a sweep
+// over an authored map is **~500 cells** and a mob asks for at most
+// three anchors, so a handful of POIs is a handful of sweeps.  ⚠⚠ It is
+// rebuilt every tick and that is a stepstone: `plans/22`'s cache, keyed
+// by exactly this pair, is where it stops being one, and `@X299`'s POI
+// is where the cycle stops being rebuilt with it.
+//
+// Example: @DRY-169
+pub fn errand_fields(state: const WaveState, pal: vector<GroundType>,
+                     pw: PaintedWorld) -> vector<ErrandField> {
+    ef2_out: vector<ErrandField> = [];
+    for ef2_e in state.enemies {
+        if !ef2_e.alive { continue; }
+        ef2_job = errand_destination(ef2_e, state.now);
+        if !ef2_job.found { continue; }
+        ef2_c = climb_limit(ef2_e.kind);
+        if errand_fields_have(ef2_out, ef2_job.q, ef2_job.r, ef2_c) { continue; }
+        ef2_out += [ErrandField {
+            q: ef2_job.q, r: ef2_job.r, climb: ef2_c,
+            field: flow_build(pal, pw, state.heights, ef2_e.kind,
+                              Hex { q: ef2_job.q, r: ef2_job.r }),
+        }];
+    }
+    ef2_out
+}
+
+fn errand_fields_have(fields: const vector<ErrandField>, q: integer,
+                      r: integer, climb: float) -> boolean {
+    efh_seen = false;
+    for efh_f in fields {
+        if efh_f.q == q && efh_f.r == r && efh_f.climb == climb {
+            efh_seen = true;
+        }
+    }
+    efh_seen
+}
+
+// Is this robot running a routine that has somewhere to go?
+//
+// ⚠⚠ **THE DISPATCH, and it goes through `errand_destination` rather
+// than through a flag** — so a robot the bubble has taken answers false
+// here for the same reason it answers `ROLE_NONE` to `errand_role`, and
+// site 5 of § Count the RE-ASSERTION SITES still has no second write to
+// forget.  ⚠ A role whose row has no anchors answers false as well,
+// which is `ROLE_NONE` and therefore the whole roster today.
+//
+// Example: @DRY-168, @DRY-169
+pub fn errand_cycling(e: const Enemy, now: integer) -> boolean {
+    ecy_job = errand_destination(e, now);
+    ecy_job.found
+}
+
+// Move one mob on a routine by the hexes this timestep owes it — and
+// pay for every one it could not spend.
+//
+// ⚠⚠ **THE ONE DOOR** (`@FR-E-One-Door`).  Nothing else may write
+// `e.q` / `e.r` for a mob on a cycle, and `slip` is owned here so that
+// there is no site left that could forget it.  ⚠ `enemy_move_to` is the
+// one WRITE and this is the one DECISION — the nameable difference
+// (`@X329`) is that the write keeps `Occupancy` true and knows nothing
+// about routines, while this knows nothing about how a position is
+// stored.
+//
+// ⚠⚠ **`now` is the moment the step BEGINS, never the one it ends at.**
+// A mover decides where it is going and then spends the time; resolving
+// the destination at the END would send a body down the leg it is about
+// to be turned onto for the whole of the step before the turn.  ⚠ It is
+// `tests/30_r2_the_cycle.loft`'s harness contract, and the two forms are
+// indistinguishable for every role whose clock leaves it DWELLING at its
+// post — which every shipped one does, so the corpus carries a guard
+// with no dwell at all to keep the branch visible (`@M013`).
+//
+// ⚠ **The pre-walk window is TIME the mob did not spend walking**, so it
+// is `slip` and nothing else: `enemy_tick` returns before banking, so
+// freezing `now − slip` with it is exact at any rate and any timestep.
+//
+// ⚠ A hex the world refuses is SPENT and never re-banked, exactly as
+// `enemy_tick` spends one — an errand mob held up by a queue must not
+// store the hexes and then cross the map in one tick.  What is different
+// is that the spending is RECORDED, which is the whole of `slip`.
+//
+// Example: @DRY-162, @DRY-163, @DRY-164, @DRY-165, @DRY-170, @DRY-171
+pub fn errand_step(e: Enemy, fields: const vector<ErrandField>,
+                   occ: Occupancy, blockers: const BlockerMap,
+                   now: integer, elapsed: integer) {
+    if !e.alive { return; }
+    if enemy_standing(e) {
+        e.route.slip += elapsed;
+        return;
+    }
+    es2_row  = errand_role_of(errand_role(e));
+    es2_cost = cycle_hex_units(bank_rate(enemy_speed(e.kind)));
+    es2_left = enemy_bank(e, enemy_speed(e.kind), elapsed);
+    while es2_left > 0 {
+        if errand_hex(e, fields, occ, blockers, es2_row, now) {
+            e.route.slip += es2_cost;
+        }
+        es2_left -= 1;
+    }
+}
+
+// One hex of a routine: descend the field toward the leg's anchor, and
+// turn the bag over on arrival.  Answers whether the mob LOST the hex.
+//
+// ⚠⚠ **The destination is re-read for every hex and so is the field**,
+// which is `@X335`: a mob that walks past an anchor spends its remaining
+// hexes on the NEXT leg and never loses them at the turn.  A field
+// chosen once per tick would send a mob that arrived mid-tick on down
+// the leg it had just finished.
+//
+// ⚠ **The arrival is asked AFTER the step**, exactly as
+// `tests/30_r2_the_cycle.loft`'s stepped harness asks it — the rule and
+// the body have to flip the bag at the same hex or they are describing
+// two different mobs.
+//
+// ── ⚠⚠ A DWELL IS NOT A BLOCK, AND THE DIFFERENCE IS `slip` ─────
+//
+// ⚠⚠ **A mob standing ON its own destination has not lost anything**,
+// and the check before the step is what says so rather than being the
+// authoring guard it looks like.  A carrier can never be there — the
+// arrival after its last step already turned the bag over and named the
+// other anchor — so the only mob this can be is a CLOCK-steered one
+// waiting out its period at its post.
+//
+// ⚠ **The rule agrees, by clamping**: `cycle_phase` caps a clock leg's
+// offset at the leg's own length, so the hexes a dwelling guard's bank
+// keeps releasing are ones the RULE does not spend either.  Charging
+// `slip` for them would drag `now − slip` backwards for as long as the
+// guard stood, and its clock would then never flip at all — a guard
+// frozen at its post with **every conformance count green**, because
+// the frozen rule agrees with the frozen body.
+fn errand_hex(e: Enemy, fields: const vector<ErrandField>,
+              occ: Occupancy, blockers: const BlockerMap,
+              row: const Role, now: integer) -> boolean {
+    errand_arrive(e.route, row, Hex { q: e.q, r: e.r }, now);
+    ehx_job = errand_destination_of(row, e.route, now);
+    if !ehx_job.found { return false; }
+    if ehx_job.q == e.q && ehx_job.r == e.r { return false; }
+    ehx_c  = climb_limit(e.kind);
+    ehx_on = false;
+    for ehx_f in fields {
+        // ⚠ The field is passed STRAIGHT from the vector into a `const`
+        // parameter and never bound to a local — a whole-value bind
+        // COPIES the cell hash, per mob, per hex (`spawn.loft` § Reading
+        // a class's field WITHOUT copying it: **2250x**).
+        if ehx_f.q == ehx_job.q && ehx_f.r == ehx_job.r
+            && ehx_f.climb == ehx_c {
+            ehx_on = errand_descend(e, ehx_f.field, occ, blockers);
+        }
+    }
+    if ehx_on { errand_arrive(e.route, row, Hex { q: e.q, r: e.r }, now); }
+    !ehx_on
+}
+
+// One step down a field toward its destination — closer if anything
+// closer is free, BESIDE if only a companion stopped it, and standing
+// still otherwise.  Answers whether the distance actually fell.
+//
+// Enforces @FR-E-Non-Increasing: the two lists it reads are
+// `flow_steps` (strictly closer) and `flow_sidesteps` (exactly equal),
+// so a mob's distance to its anchor can never grow.  ⚠⚠ That is not a
+// detail of the sidestep — R0 probe 3 (`@X331`) is what makes R5's bound
+// exist at all, and a variant admitting a FURTHER neighbour would look
+// harmless here and silently take the bound with it.
+//
+// ⚠ **It is the same rule as `enemy_step`'s engage branch and it asks
+// the same two questions in the same order**, which is what `plans/30`
+// R3's *one actor, ONE occupancy rule* means: `crawler` paid for the
+// other answer — *"one actor cannot have two contradictory occupancy
+// rules across its two states.  A sleeping monster is not terrain."*
+//
+// ⚠ No `can_step` here, and deliberately: the field already refused
+// every hex this class cannot enter, exactly as the engage branch's
+// does.  The desire field is the one that needs the second question,
+// because walls are passable in it.
+fn errand_descend(e: Enemy, f: const FlowField, occ: Occupancy,
+                  blockers: const BlockerMap) -> boolean {
+    edd_d = flow_distance(f, e.q, e.r);
+    if edd_d >= FLOW_UNREACHABLE { return false; }
+    if edd_d == 0 { return false; }
+    for edd_t in flow_steps(f, e.q, e.r) {
+        if occupancy_taken(occ, edd_t.q, edd_t.r) { continue; }
+        if blocker_taken(blockers, edd_t.q, edd_t.r) { continue; }
+        enemy_move_to(e, edd_t.q, edd_t.r, occ);
+        return true;
+    }
+    // ⚠ Every closer step the field offered was one the GROUND allowed,
+    // so nothing being free can only mean a body — which is F7b's
+    // unambiguous case and the one *beside* is the answer to.
+    for edd_s in flow_sidesteps(f, e.q, e.r) {
+        if occupancy_taken(occ, edd_s.q, edd_s.r) { continue; }
+        if blocker_taken(blockers, edd_s.q, edd_s.r) { continue; }
+        enemy_move_to(e, edd_s.q, edd_s.r, occ);
+        // ⚠⚠ It MOVED and it made no progress, and the caller pays for
+        // the difference — a sidestep is a hex of the round the mob
+        // still owes, which is exactly what `slip` is.
+        return false;
+    }
+    false
+}
+
 // ─── Where a robot's business ENDS ──────────────────────────────
 
 // Has this robot finished its business here?
@@ -952,6 +1262,21 @@ pub fn errand_done(e: const Enemy, pal: vector<GroundType>, pw: PaintedWorld,
                    hl: const HeightLayer) -> boolean {
     if !e.errand { return false; }
     if !e.alive  { return false; }
+    // ⚠⚠ **A ROBOT ON A ROUTINE IS NEVER DONE BY BUMPING INTO
+    // SOMETHING** (`plans/30` R3).  Its business is a CYCLE and not a
+    // heading, so *it can go no further this way* is not the end of it —
+    // the mover walks it round whatever stopped it.  ⚠ Site 4 of
+    // `plans/30` § Count the RE-ASSERTION SITES is *`errand_depart`
+    // removes at the wrong time*, and without this line a hauler whose
+    // spawn heading happened to face a cliff would be swept off the
+    // roster on its first tick, mid-round, with nothing to see.
+    // ⚠ **The ROW is asked and never the role id** (`@X333`) — *this
+    // role has no cycle* is exactly *its legs go nowhere*.
+    // ⚠ R4 is where a routine gains its own ending: a mob that finishes
+    // its round leaves the roster at HOME (`@FR-E-Home-Is-A-Place`), and
+    // this guard is what stops the heading answering first.
+    ed_row = errand_role_of(errand_role(e));
+    if ed_row.empty != ANCHOR_NONE { return false; }
     ed_from = Hex { q: e.q, r: e.r };
     ed_to   = lat_neighbour(ed_from, e.heading as integer);
     !can_step(pal, pw, hl, e.kind, ed_from, ed_to)

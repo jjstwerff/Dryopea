@@ -2402,6 +2402,29 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         return "";
     }
 
+    // ⚠⚠ **THE MOMENT THE RUN HAS REACHED**, in seconds (`plans/30` R3)
+    // — the reader half of the pair `emit_keys` writes, and the writer
+    // and the reader are a PAIR (`@D007`).
+    //
+    // ⚠ A scenario that says nothing starts at the run's first instant,
+    // which is what every `.keys` file in the corpus means today.  ⚠ It
+    // is needed because a mob's position is `cycle_at(… now − slip)`:
+    // a replay that started the clock at zero would put every routine
+    // back at the start of its round while leaving the bodies where the
+    // file put them.
+    //
+    // ⚠ It AUTHORS and never simulates — `tick` is what advances a
+    // clock, and this states one, the same split `tower` and `jammer`
+    // keep.
+    if sc_cmd == "now" {
+        if sc_argc != 1 { return "now needs <seconds>"; }
+        sc_nw = (tok[1] ?? "") as float?;
+        if sc_nw == null { return "now: <seconds> must be a number"; }
+        if (sc_nw ?? 0.0) < 0.0 { return "now: a run cannot start before it began"; }
+        run.play.wave.now = clock_units_from_seconds(sc_nw ?? 0.0);
+        return "";
+    }
+
     // The jammer switch, as a STATE (BACKLOG C3) — `paint`'s shape and
     // for `paint`'s reason: a scenario says what it WANTS, so a reader
     // can tell what a line does without replaying the file.  The KEY is

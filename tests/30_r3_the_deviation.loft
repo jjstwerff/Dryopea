@@ -1,0 +1,408 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 30 phase R3 — deviation, and `slip`.
+//
+// ⚠⚠ **THE PHASE'S CLAIM IS THAT A DEVIATION COSTS TIME AND NEVER A
+// DESTINATION** (`@FR-E-Slip`), and the exact form of it is not the one
+// the plan first wrote down.  ⚠ `@FR-E-Slip` says a body pushed off its
+// cycle *"re-converges on the same hex"* — the ANCHOR — and it does
+// **not** say the body is standing on the rule's hex while it is being
+// pushed.  It cannot: a mob whose first choice is taken walks a
+// DIFFERENT route of the same length, and it has lost no time at all.
+//
+// ⚠⚠ **So what is exact is the PHASE**: a mob's distance to its current
+// anchor is exactly the rule's, always, under every deviation.  Hex
+// equality is the special case of that where nothing blocked, and it is
+// gated in `tests/30_rc_the_conformance.loft` where the rest of the tick
+// can break it.  This file gates the arithmetic:
+//
+//     flow_distance(anchor, mob at t) == L − cycle_walked(rate, t − slip)
+//
+// ⚠ **Swept over the CROSS-PRODUCT** (`CLAUDE.md` § THE INSTRUMENT IS A
+// CROSS-PRODUCT, `@M030`): three shipped classes × three step lengths ×
+// clear and blocked.  The three classes are not decoration — at the
+// robot's 1.5 hex/s a tick is exactly one hex and **the bank's carry is
+// zero for ever**, so the shipped speed cannot see its own rounding
+// (`@M014`); the scout releases 1, 2, 2 and the miner 0, 1, 1.
+//
+// ── ⚠⚠ Why the fixture is an AXIS ───────────────────────────────
+//
+// On a hex axis the field offers exactly ONE strictly-closer neighbour
+// and two equal ones (`CLAUDE.md` § A corridor cannot see F5c either),
+// so a single blocker in front of a mob leaves it **no closer step at
+// all** and forces the sidestep.  ⚠ Off the axis there are two closer
+// neighbours, the mob simply takes the other one, and `slip` never moves
+// — which is a real behaviour and is why the negative control below is a
+// blocker that is not in the way rather than no blocker at all.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+
+// One tick, in base units.  ⚠ Spelled out rather than derived from
+// `TICK_STEP_UNITS`, because a file-scope const initialised from a
+// sibling module's const PANICS the compiler ([loft#962]).
+const R3_TICK: integer = 2000000;
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+
+// ─── The world — open ground, and a route along a ROW ────────────
+
+fn r3_world() -> PaintedWorld {
+    rw_pw = painted_empty();
+    for rw_r in 0..=6 {
+        for rw_q in 0..=12 {
+            paint(rw_pw, rw_q, rw_r, as_u8(GRASS));
+        }
+    }
+    rw_pw
+}
+
+fn r3_home() -> Hex { Hex { q: 0,  r: 3 } }
+fn r3_work() -> Hex { Hex { q: 10, r: 3 } }
+
+fn r3_gatherer() -> Errand {
+    errand_at(ROLE_GATHER, r3_home(), r3_work(), Hex { q: 0, r: 0 })
+}
+
+// Both anchors' fields, as the tick builds them.
+//
+// ⚠ Built by hand rather than through `errand_fields` so this file can
+// drive `errand_step` with nothing else in the way; `errand_fields` is
+// what `tests/30_rc_the_conformance.loft` exercises through `wave_tick`.
+fn r3_fields(kind: u8) -> vector<ErrandField> {
+    rf_pal = load_palette(PALETTE);
+    rf_out: vector<ErrandField> = [];
+    rf_out += [ErrandField {
+        q: r3_work().q, r: r3_work().r, climb: climb_limit(kind),
+        field: flow_build(rf_pal, r3_world(), height_layer_empty(), kind,
+                          r3_work()),
+    }];
+    rf_out += [ErrandField {
+        q: r3_home().q, r: r3_home().r, climb: climb_limit(kind),
+        field: flow_build(rf_pal, r3_world(), height_layer_empty(), kind,
+                          r3_home()),
+    }];
+    rf_out
+}
+
+fn r3_work_field(kind: u8) -> FlowField {
+    flow_build(load_palette(PALETTE), r3_world(), height_layer_empty(), kind,
+               r3_work())
+}
+
+// ─── ⚠ The harness — one mob, driven by the ONE DOOR ────────────
+
+// Walk one gatherer from home toward its face, with `block` held by the
+// player (`-1` for nobody), until it arrives or the span runs out.
+//
+// Answers (arrival time in base units or −1, its `slip`, phase
+// disagreements, moments looked at, the first disagreement, the hex it
+// took its FIRST step onto).
+//
+// ⚠⚠ **The phase check is the whole gate and it runs every chunk**:
+// `L − cycle_walked(rate, t − slip)` is the rule's remaining distance,
+// and `flow_distance` is the body's.  A mover that forgot a `slip` would
+// read one hex short here from the moment it was blocked, which is the
+// silent failure `plans/30` § Count the RE-ASSERTION SITES is about.
+fn r3_run(kind: u8, chunk: integer, block: const Hex) -> (integer, integer,
+                                                          integer, integer,
+                                                          text, Hex) {
+    rr2_e = Enemy { q: r3_home().q, r: r3_home().r, kind: kind,
+                    alive: true, errand: true, route: r3_gatherer() };
+    rr2_occ = occupancy_empty();
+    occupancy_enter(rr2_occ, rr2_e.q, rr2_e.r);
+    rr2_blk = blocker_empty();
+    if block.q >= 0 { blocker_set(rr2_blk, block.q, block.r, BLOCKER_PLAYER); }
+
+    rr2_rate = bank_rate(enemy_speed(kind));
+    rr2_len  = flow_distance(r3_work_field(kind), r3_home().q, r3_home().r);
+    rr2_t    = 0;
+    rr2_at   = 0 - 1;
+    rr2_bad  = 0;
+    rr2_seen = 0;
+    rr2_say  = "";
+    rr2_one  = Hex { q: 0 - 1, r: 0 - 1 };
+    rr2_n    = 0;
+    while rr2_n < 400 && rr2_at < 0 {
+        rr2_t += chunk;
+        errand_step(rr2_e, r3_fields(kind), rr2_occ, rr2_blk, rr2_t, chunk);
+        rr2_n += 1;
+        rr2_seen += 1;
+        if rr2_one.q < 0 && (rr2_e.q != r3_home().q || rr2_e.r != r3_home().r) {
+            rr2_one = Hex { q: rr2_e.q, r: rr2_e.r };
+        }
+        // ⚠ The RULE's remaining distance on this leg, against the
+        // BODY's.  ⚠ Only while the mob is still on the outward leg —
+        // arrival flips the bag and the anchor with it.
+        rr2_want = rr2_len - cycle_walked(rr2_rate, rr2_t - rr2_e.route.slip);
+        rr2_got  = flow_distance(r3_work_field(kind), rr2_e.q, rr2_e.r);
+        if rr2_got != rr2_want {
+            rr2_bad += 1;
+            if rr2_say == "" {
+                rr2_say = " first at t={rr2_t}: body {rr2_got} from the "
+                          + "anchor, rule {rr2_want} (slip {rr2_e.route.slip})";
+            }
+        }
+        if rr2_e.q == r3_work().q && rr2_e.r == r3_work().r { rr2_at = rr2_t; }
+    }
+    (rr2_at, rr2_e.route.slip, rr2_bad, rr2_seen, rr2_say, rr2_one)
+}
+
+fn r3_nowhere() -> Hex { Hex { q: 0 - 1, r: 0 - 1 } }
+
+// ─── ⚠⚠ THE HEADLINE — it goes round, and slip is the whole delay ─
+
+// @DRY-162 — a mob steps around a blocker, arrives, and slip IS the delay
+fn test_a_mob_steps_round_a_blocker_and_slip_is_the_whole_delay() {
+    tam_kind = as_u8(ENEMY_KIND_REGULAR);
+    // ⚠ (1,3) is the ONE strictly-closer neighbour of home on this axis,
+    // so the mob has no closer step at all and must go beside.
+    tam_clear = r3_run(tam_kind, R3_TICK, r3_nowhere());
+    tam_block = r3_run(tam_kind, R3_TICK, Hex { q: 1, r: 3 });
+    // ⚠⚠ **The negative control, and it is a blocker that is not in the
+    // way rather than no blocker**: a mob that had simply routed round
+    // the obstruction would read the same clock as the clear run, and a
+    // gate that could not tell those apart is measuring the fixture.
+    tam_aside = r3_run(tam_kind, R3_TICK, Hex { q: 1, r: 0 });
+
+    // ⚠ At 1.5 hex/s a tick is EXACTLY one hex, which is the one speed
+    // where the plan's own words — *arrival tick minus the undisturbed
+    // arrival tick equals `slip`* — are literally a subtraction.
+    tam_gap = tam_block.0 - tam_clear.0;
+    assert(tam_clear.0 > 0 && tam_block.0 > 0
+           && tam_clear.1 == 0 && tam_block.1 > 0
+           && tam_gap == tam_block.1
+           && tam_clear.2 == 0 && tam_block.2 == 0
+           && tam_aside.0 == tam_clear.0 && tam_aside.1 == 0
+           && (tam_block.5.q != tam_clear.5.q || tam_block.5.r != tam_clear.5.r),
+           "a blocked mob still arrives and slip is the WHOLE delay: "
+           + "clear at t={tam_clear.0} slip {tam_clear.1}, blocked at "
+           + "t={tam_block.0} slip {tam_block.1} (delay {tam_gap}), "
+           + "aside at t={tam_aside.0} slip {tam_aside.1}; phase "
+           + "disagreements {tam_clear.2}/{tam_block.2};{tam_block.4} — "
+           + "first step clear ({tam_clear.5.q},{tam_clear.5.r}) vs blocked "
+           + "({tam_block.5.q},{tam_block.5.r})");
+}
+
+// ─── ⚠⚠ THE PHASE — exact over the whole cross-product ──────────
+
+// @DRY-163 — the rule's remaining distance IS the body's, at every speed
+fn test_the_phase_is_exact_at_every_speed_and_step() {
+    tpe_bad  = 0;
+    tpe_seen = 0;
+    tpe_late = 0;
+    tpe_say  = "";
+    for tpe_k in [ENEMY_KIND_REGULAR, ENEMY_KIND_SCOUT, ENEMY_KIND_MINER] {
+        // ⚠ A whole tick, half of one, and a length that divides neither
+        // the tick nor a hex at any of the three speeds.
+        for tpe_ch in [2000000, 1000000, 137113] {
+            for tpe_b in [0 - 1, 1] {
+                tpe_g = r3_run(as_u8(tpe_k), tpe_ch,
+                               Hex { q: tpe_b, r: 3 });
+                tpe_bad  += tpe_g.2;
+                tpe_seen += tpe_g.3;
+                if tpe_g.0 < 0 { tpe_late += 1; }
+                if tpe_say == "" && tpe_g.4 != "" {
+                    tpe_say = " kind {tpe_k}, {tpe_ch}-unit chunks:" + tpe_g.4;
+                }
+            }
+        }
+    }
+    // ⚠⚠ **The vacuity controls**: every one of the eighteen runs must
+    // have ARRIVED (a mob that never left home agrees with a rule that
+    // never moves), the sweep must have looked at hundreds of moments,
+    // and the three speeds must genuinely differ — a cross-product whose
+    // members are the same instrument is one instrument.
+    assert(tpe_bad == 0 && tpe_late == 0 && tpe_seen > 300
+           && cycle_hex_units(bank_rate(SCOUT_SPEED_HEX_PER_SECOND))
+              != cycle_hex_units(bank_rate(MINER_SPEED_HEX_PER_SECOND)),
+           "the rule's remaining distance must BE the body's: {tpe_bad} of "
+           + "{tpe_seen} swept moments disagree and {tpe_late} of 18 runs "
+           + "never arrived;{tpe_say}");
+}
+
+// ─── ⚠⚠ ONE ACTOR, ONE OCCUPANCY RULE ──────────────────────────
+
+// @DRY-164 — a robot treats a companion the same on an errand and cut off
+fn test_one_actor_asks_occupancy_the_same_in_both_states() {
+    // ⚠⚠ **`crawler` paid for the other answer**: *"one actor cannot have
+    // two contradictory occupancy rules across its two states.  A
+    // sleeping monster is not terrain."*  ⚠ The two states here are the
+    // same robot on the same hex with the same field — one running a
+    // routine toward (10,3), one CUT OFF with the core at (10,3) — and
+    // the only difference between the runs is which door moved it.
+    toa_kind = as_u8(ENEMY_KIND_REGULAR);
+    toa_pal  = load_palette(PALETTE);
+
+    toa_mob = Enemy { q: 0, r: 3, kind: toa_kind, alive: true,
+                      errand: true, route: r3_gatherer() };
+    toa_cut = Enemy { q: 0, r: 3, kind: toa_kind, alive: true };
+    toa_occ = occupancy_empty();
+    occupancy_enter(toa_occ, 0, 3);
+    occupancy_enter(toa_occ, 1, 3);          // the companion in the way
+    toa_oc2 = occupancy_empty();
+    occupancy_enter(toa_oc2, 0, 3);
+    occupancy_enter(toa_oc2, 1, 3);
+
+    errand_step(toa_mob, r3_fields(toa_kind), toa_occ, blocker_empty(),
+                R3_TICK, R3_TICK);
+    enemy_tick(toa_cut, toa_pal, r3_world(), height_layer_empty(),
+               r3_work_field(toa_kind), flow_empty(), toa_oc2,
+               blocker_empty(), R3_TICK);
+
+    // ⚠ The control: with nobody in the way both take the SAME closer
+    // step, so the equality above is reading the occupancy rule and not
+    // two movers that happen to agree about standing still.
+    toa_fmob = Enemy { q: 0, r: 3, kind: toa_kind, alive: true,
+                       errand: true, route: r3_gatherer() };
+    toa_fcut = Enemy { q: 0, r: 3, kind: toa_kind, alive: true };
+    toa_fo1 = occupancy_empty();
+    occupancy_enter(toa_fo1, 0, 3);
+    toa_fo2 = occupancy_empty();
+    occupancy_enter(toa_fo2, 0, 3);
+    errand_step(toa_fmob, r3_fields(toa_kind), toa_fo1, blocker_empty(),
+                R3_TICK, R3_TICK);
+    enemy_tick(toa_fcut, toa_pal, r3_world(), height_layer_empty(),
+               r3_work_field(toa_kind), flow_empty(), toa_fo2,
+               blocker_empty(), R3_TICK);
+
+    assert(toa_mob.q == toa_cut.q && toa_mob.r == toa_cut.r
+           && toa_fmob.q == toa_fcut.q && toa_fmob.r == toa_fcut.r
+           && toa_fmob.q == 1 && toa_fmob.r == 3
+           && (toa_mob.q != 1 || toa_mob.r != 3),
+           "one actor, one occupancy rule: blocked the errand mob went to "
+           + "({toa_mob.q},{toa_mob.r}) and the cut-off robot to "
+           + "({toa_cut.q},{toa_cut.r}); free they went to "
+           + "({toa_fmob.q},{toa_fmob.r}) and ({toa_fcut.q},{toa_fcut.r})");
+}
+
+// ─── ⚠⚠ A LOST HEX MUST BE A WHOLE NUMBER OF BASE UNITS ─────────
+
+// @DRY-161 — a rate that cannot pay for a deviation is refused
+fn test_a_rate_that_cannot_pay_for_a_hex_is_refused() {
+    // ⚠⚠ **`@M074`'s family with a different subject.**  For
+    // `cycle_walked(rate, t − slip)` to be exactly one hex short at
+    // EVERY later `t`, `rate × slip` must be a whole multiple of
+    // `BANK_WHOLE` — otherwise the floor disagrees wherever the fraction
+    // falls under the remainder, and the mob is a hex ahead of its own
+    // rule for part of every step.
+    trc_c: vector<Hex> = [];
+    for trc_i in 0..6 { trc_c += [Hex { q: trc_i, r: 0 }]; }
+    trc_cyc = Cycle { anchors: [ANCHOR_WORK, ANCHOR_HOME],
+                      lengths: [3, 3], path: trc_c, period: 6 };
+    trc_row = errand_role_of(ROLE_GATHER);
+
+    // ⚠ Every SHIPPED speed divides `BANK_WHOLE` exactly, which is why
+    // this constraint has never been felt — and is exactly why it needs
+    // a gate rather than a comment (`@M014`: a guard can be invisible at
+    // the value you shipped).
+    trc_ok = 0;
+    for trc_sp in [ENEMY_SPEED_HEX_PER_SECOND, SCOUT_SPEED_HEX_PER_SECOND,
+                   MINER_SPEED_HEX_PER_SECOND] {
+        if cycle_hex_units(bank_rate(trc_sp)) > 0 { trc_ok += 1; }
+    }
+    // ⚠ 0.7 hex/s is the neighbour that does NOT: 3e12 / 700000 is not a
+    // whole number, and `cycle_fault` is where that becomes a refusal.
+    trc_bad = bank_rate(0.7);
+    assert(trc_ok == 3 && cycle_hex_units(trc_bad) == 0
+           && cycle_hex_units(0) == 0
+           && cycle_fault(trc_cyc, trc_row, trc_bad) != ""
+           && cycle_fault(trc_cyc, trc_row,
+                          bank_rate(ENEMY_SPEED_HEX_PER_SECOND)) == "",
+           "a lost hex must be a whole number of base units: {trc_ok} of 3 "
+           + "shipped speeds divide, 0.7 hex/s answers "
+           + "{cycle_hex_units(trc_bad)} and is refused as "
+           + "'{cycle_fault(trc_cyc, trc_row, trc_bad)}'");
+}
+
+// ─── ⚠⚠ A SIDESTEP MAY NEVER TAKE A MOB FURTHER ────────────────
+
+// Home's EQUAL-distance neighbours — the hexes a legal sidestep may use,
+// and no others.
+//
+// ⚠⚠ **Only the equal ones, and that is the whole instrument.**  Hemming
+// the FURTHER ones in as well leaves a mob with nowhere at all to go, and
+// then a mover that would have walked backwards stands still for the
+// same reason the right one does — which is how the first version of
+// this gate read green against the mutation it was written for.
+fn r3_ring(kind: u8) -> vector<Hex> {
+    rrg_out: vector<Hex> = [];
+    rrg_d = flow_distance(r3_work_field(kind), r3_home().q, r3_home().r);
+    for rrg_n in lat_neighbours(r3_home()) {
+        if flow_distance(r3_work_field(kind), rrg_n.q, rrg_n.r) == rrg_d {
+            rrg_out += [Hex { q: rrg_n.q, r: rrg_n.r }];
+        }
+    }
+    rrg_out
+}
+
+// Hem a mob in and answer (its distance to the face after `ticks`, the
+// worst distance it ever reached, whether it ever left home).
+//
+// ⚠ `equal_free` leaves ONE equal-distance neighbour open, which is the
+// control: the same fixture with one door has to let the mob through it.
+fn r3_hemmed(kind: u8, equal_free: boolean, ticks: integer)
+        -> (integer, integer, boolean) {
+    rhm_e = Enemy { q: r3_home().q, r: r3_home().r, kind: kind,
+                    alive: true, errand: true, route: r3_gatherer() };
+    rhm_occ = occupancy_empty();
+    occupancy_enter(rhm_occ, rhm_e.q, rhm_e.r);
+    rhm_blk = blocker_empty();
+    // ⚠ The one strictly-closer hex is held by the PLAYER, so the mob is
+    // pushed onto the equal ring — the axis is what makes there be only
+    // one, and exactly two equal ones (`CLAUDE.md` § A corridor cannot
+    // see F5c either).  ⚠ The three hexes BEHIND it are deliberately
+    // left open.
+    blocker_set(rhm_blk, 1, 3, BLOCKER_PLAYER);
+    rhm_skip = equal_free;
+    for rhm_h in r3_ring(kind) {
+        if rhm_skip { rhm_skip = false; continue; }
+        occupancy_enter(rhm_occ, rhm_h.q, rhm_h.r);
+    }
+    rhm_d0   = flow_distance(r3_work_field(kind), rhm_e.q, rhm_e.r);
+    rhm_worst = rhm_d0;
+    rhm_t    = 0;
+    rhm_i    = 0;
+    while rhm_i < ticks {
+        rhm_t += R3_TICK;
+        errand_step(rhm_e, r3_fields(kind), rhm_occ, rhm_blk, rhm_t, R3_TICK);
+        rhm_d = flow_distance(r3_work_field(kind), rhm_e.q, rhm_e.r);
+        if rhm_d > rhm_worst { rhm_worst = rhm_d; }
+        rhm_i += 1;
+    }
+    (flow_distance(r3_work_field(kind), rhm_e.q, rhm_e.r), rhm_worst,
+     rhm_e.q != r3_home().q || rhm_e.r != r3_home().r)
+}
+
+// @DRY-165 — a sidestep holds the distance and can never grow it
+fn test_a_sidestep_never_takes_a_mob_further_from_its_anchor() {
+    // ⚠⚠ **THIS GATE WAS ADDED BECAUSE A MUTATION WALKED PAST THE REST
+    // OF THE FILE.**  Replacing `flow_sidesteps` with every neighbour —
+    // the exact widening `@X331` says *"looks harmless and silently
+    // breaks R5's bound and R6's equality"* — changed NOTHING in the
+    // runs above, because on this axis the first free neighbour in
+    // direction order happens to be an equal one anyway.  ⚠ Seeing it
+    // needs a mob whose equal ring is FULL, so the only free neighbours
+    // left are the ones that go backwards.
+    tsn_kind = as_u8(ENEMY_KIND_REGULAR);
+    tsn_hem  = r3_hemmed(tsn_kind, false, 12);
+    // ⚠ The control: one equal hex left open and the same mob moves —
+    // otherwise this is a gate over a mob that could not move at all,
+    // which every implementation satisfies (`CLAUDE.md` § A gate whose
+    // reading is already saturated).
+    tsn_door = r3_hemmed(tsn_kind, true, 12);
+    tsn_ring = len(r3_ring(tsn_kind));
+
+    assert(tsn_hem.0 == 10 && tsn_hem.1 == 10 && !tsn_hem.2
+           && tsn_door.2 && tsn_door.1 <= 10 && tsn_ring == 2,
+           "@FR-E-Non-Increasing: hemmed in, the mob must hold its "
+           + "distance — ended {tsn_hem.0}, worst {tsn_hem.1}, moved "
+           + "{tsn_hem.2}; with one equal hex open it must MOVE and still "
+           + "never grow — moved {tsn_door.2}, worst {tsn_door.1}; the "
+           + "ring is {tsn_ring} hexes");
+}

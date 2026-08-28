@@ -469,6 +469,26 @@ pub fn state_diff(a: const WaveState, b: const WaveState) -> text {
     if sd_d != "" { return sd_d; }
     sd_o = orders_diff(a.orders, b.orders);
     if sd_o != "" { return sd_o; }
+    // ⚠⚠ **The CLOCK** (`plans/30` R3).  Two runs standing in the same
+    // place at different moments are not in the same state, because a
+    // mob's position is `cycle_at(… now − slip)` and `now` is half of
+    // that argument.
+    //
+    // ⚠⚠ **IT WENT RED ON ITS FIRST FULL RUN**, which is sites 7, 8 and
+    // 9 of `plans/30` § Count the RE-ASSERTION SITES going live rather
+    // than waiting: `tests/18_s2`'s round trip plays a scenario, writes
+    // it down and replays it, and every `tick` advanced a clock that
+    // nothing wrote — `'now: 442000000 vs 0'`.
+    //
+    // ⚠ **The answer was a `.keys` verb and never a looser comparison**:
+    // `emit_keys` writes `now <seconds>` and `script.loft` reads it, and
+    // the writer and the reader are a PAIR (`@D007`).  ⚠ Which is what
+    // the row is FOR — it was added the same hour as the field, before
+    // anything could tell, exactly as the banked carry's was one file
+    // over.
+    if a.now != b.now {
+        return "now: {a.now} vs {b.now}";
+    }
     // ⚠ The core's own switch (BACKLOG C3).  Two runs are not in the
     // same state when one of them has stopped sending waves and paying
     // for salvage — and it is read through `jammer_on` rather than off

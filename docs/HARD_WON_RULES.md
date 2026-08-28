@@ -641,6 +641,37 @@ wrong justification** is what to look for when a gate refuses to fail.
 ⚠ The other direction is plan 12 B3's fence tripwire: written to go red the
 day a steering rule landed, still green when it did (`@M020`).
 
+⚠⚠ **A CONFORMANCE GATE CANNOT SEE A PAIR THAT STOPPED TOGETHER — SO
+LIVENESS IS A SECOND GATE** (`plans/30` R3, `@X337`, `@M075`).  A mob's
+position is checked against the closed form that predicts it, at the end
+of every tick, over a corpus — and a mover that charged `slip` for the
+ticks a guard DWELLS at its post drags `now − slip` backwards for as long
+as the guard stands, so its clock never flips and it freezes at its first
+post.  ⚠⚠ **Every conformance count stayed green**, because a frozen rule
+agrees with a frozen body: the mutation reads **112 000 000 units of
+slip, ONE anchor reached and a range of 4** where the true mover reads
+**0 / 2 / 4**, and four equality gates saw none of it.
+⚠ It is a NEW shape of *a gate that reads perfect is as suspect as one
+that reads wrong*: not a gate that cannot fail, but a gate **whose two
+sides fail together**.  ⚠ The question to add is the one an equality can
+never ask — ***did it actually get anywhere?***  Two of that phase's six
+gates are liveness: *nothing blocked it, so nothing slipped* and *a mob
+that stood is exactly that late*.
+
+⚠⚠ **AND A GATE AIMED AT A NAMED HAZARD CAN STILL MISS IT, BECAUSE THE
+FIXTURE MAKES THE WRONG VERSION BEHAVE IDENTICALLY** (`plans/30` R3,
+`@M075`).  `@X331` names one change by hand — *a sidestep that admits a
+FURTHER neighbour looks harmless and silently breaks R5's bound* — and
+making it moved **nothing** in a five-test file written around it: on the
+fixture's hex AXIS the first free neighbour in direction order happens to
+be an equal-distance one anyway, so both versions take the same hex.
+⚠ Seeing it needs a mob whose EQUAL ring is FULL while the hexes BEHIND
+it are OPEN, so a step backwards is the only thing left to take.  ⚠⚠ And
+**the first version of that gate hemmed the further hexes in too**, which
+makes a mover that would walk backwards stand still for the same reason
+the right one does — *the instrument was wrong twice before the tree was*
+(`@X328`).
+
 ⚠⚠ **A COST GATE CAN BE A COUNT INSTEAD OF A CLOCK, AND USUALLY SHOULD
 BE** (plan 25 M4, `@M029`).  M4 was specified as a timing RATIO — the
 `11_f8` shape — and the clock could not carry it: two IDENTICAL
