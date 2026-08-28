@@ -1,0 +1,134 @@
+# a-wall-cut-from-rock — BACKLOG C6, and it is the TOP of a triple.
+#
+# `a-wall-cut-from-sand.keys`, `a-base-the-player-builds.keys` and this
+# file are the same file except for ONE token on five lines — the
+# palette index the band is painted with:
+#
+#     palette 4  →  the band is SAND    falls at 153
+#     palette 5  →  the band is GRASS   falls at 174   (`@M050`)
+#     palette 7  →  the band is ROCK    falls at 220   (`@M061`)
+#
+# Same wall, same core, same spawn, same wave list, same crew, same
+# drive, same number of ticks spent before the wave — so every
+# difference is the GROUND's and can be nothing else (`plans/12` § B7).
+#
+# ── ⚠⚠ What it is measuring ─────────────────────────────────────
+#
+# **A wall is as strong as the ground it was cut from.**  The crew do
+# not haul (`build.loft` has a helper stand at the site and spend
+# seconds), so the stone comes from where they are standing, and
+# `damage.loft::footing_of` reads the sturdiest ground the wall
+# touches.  The palette's SLOPE ladder is the hardness ladder — an
+# angle of repose is how well a material holds itself up — and it had
+# been carried since plan 01 with nothing reading it, exactly as `drop`
+# was before BACKLOG C5.
+#
+# ⚠ **+90 ticks over a bare base against grass's +44** — twice the
+# wall, for the same ten helper-seconds a hex, because the map put rock
+# there.  ⚠⚠ And 220 is within a tick of the TRENCH's 221 (`@M059`),
+# which is where the ceiling was priced: the best wall and a trench cost
+# the same and buy the same clock, so choosing between them is about
+# what a barrier DOES rather than which is stronger.
+#
+# ── ⚠⚠ And the honest limit: the MAP chose, not the player ───────
+#
+# Nothing here is a decision anybody made in play.  The band is
+# authored rock, the wall goes where it always went, and the player got
+# a better wall for free.  ⚠ **The footing is a map-authoring lever
+# until a map puts the good ground somewhere awkward** — which is
+# `PROGRESSION.md` § G3's racing line, and a change to `maps/` rather
+# than to any code.
+
+echo a wall cut from rock: the same wall, on ground worth twice as much
+
+do toggle_mode
+
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+do cycle_kind
+do cycle_kind
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 11 0
+marker 11 0 spawn 3
+
+count markers 2 2
+do toggle_mode
+
+palette 7
+drag -3 -2 12 -2
+drag -3 -1 12 -1
+drag -3 0 12 0
+drag -3 1 12 1
+drag -3 2 12 2
+count painted 80 80
+# The band is rock from end to end — the ONE token, and the only thing
+# that differs from `a-base-the-player-builds.keys`.
+kind 8 0 rock
+
+# The crew, sitting on the line the player is about to draw.
+crew 5 -1
+crew 5 1
+
+# ── The build (or not) ──────────────────────────────────────────
+park 5 -2
+paint on
+drive 5 2
+tick 6
+count orders 5 5
+paint off
+
+# Park clear of the line so the trail is not rubbed out, and let the
+# crew work.  60 helper-seconds over two helpers is 30 s = 45 ticks.
+drive 0 0
+tick 50
+count orders 0 0
+count painted 80 80
+# ⚠⚠ The whole band, hex by hex — because a wall with ONE gap in it
+# buys nothing at all (`plans/12` § B7 measured a gate at +1 tick), so
+# *five* is the number that matters rather than *some*.
+kind 5 -2 wall
+kind 5 -1 wall
+kind 5 0 wall
+kind 5 1 wall
+kind 5 2 wall
+
+# ⚠⚠ **The mechanic, read exactly, before a single robot arrives.**
+#
+# ⚠ A COLUMN is not a straight run on this lattice: constant `q` with
+# `r` varying ZIGZAGS, because row parity flips which delta each
+# direction index carries, so every middle hex is a turning pair and
+# takes `BRACE_FULL` (`damage.loft` § "Straight" is a DIRECTION-INDEX
+# opposition).  A wall a player drags down the screen is a
+# crinkle-crankle wall and is stronger for it.
+#
+# So the middle of this column is the full `wall_hp` times its footing:
+# **100 on grass, 50 on sand, 200 on rock.**  This one is 200.
+hp 5 0 200 200
+
+
+# ── The waves — identical to `an-undefended-base` ───────────────
+wave 5
+count alive 5 5
+
+tick 22
+wave 8
+count alive 13 13
+
+# ── The clock ───────────────────────────────────────────────────
+#
+# ⚠⚠ **130 against 174 — the wall the player DREW is worth +44 ticks,
+# a third of the base's life** (`@M050`).  Same ground, same core, same
+# spawn, same wave list, same crew, same drive, same ticks spent — one
+# token apart.
+fall 900
+ticks 216 224
+
+# ⚠ Nothing died on the way, exactly as in the grass version — a wall
+# buys ticks, never income.
+count alive 13 13
+snap c6_a_wall_cut_from_rock

@@ -291,9 +291,19 @@ name.**
 
 ### ⚠ But four rows in it are load-bearing and should survive the cut
 
-- **The ROCK TYPES differ, and the builder cares.**  *Granite — hard to
-  cut, very sturdy.  Sand rock — brittle.  Volcanic rock — easy to
-  handle.*  ⚠⚠ That is § The first cut is the expensive one given a
+- **The ROCK TYPES differ, and the builder cares.**  ✅ **BUILT
+  2026-08-28** — BACKLOG C6, [`src/damage.loft`](../src/damage.loft)
+  § Footing, `@X284`.  ⚠⚠ **And none of the three names shipped**: there
+  is no granite, no sand rock and no volcanic rock in the palette, and
+  there did not need to be — what the palette carries is a **slope**
+  ladder nothing had ever read, and an angle of repose *is* how well a
+  material holds itself up.  ⚠ **The same wall falls at 153 / 174 / 220
+  on sand, grass and rock** (`@M061`), so the ground is worth four times
+  itself end to end.  ⚠ **The map chooses, not the player**, until a map
+  puts the good ground somewhere awkward — which is § The first cut is
+  the expensive one's racing line and a change to `maps/`.
+  *Granite — hard to cut, very sturdy.  Sand rock — brittle.  Volcanic
+  rock — easy to handle.*  ⚠⚠ That is § The first cut is the expensive one given a
   terrain axis: **where you build decides what your walls cost AND what
   they are worth**, over a palette [`GROUND_TYPES.md`](GROUND_TYPES.md)
   already has.  It is the cheapest interesting material rule available

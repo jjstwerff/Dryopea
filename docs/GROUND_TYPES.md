@@ -484,6 +484,13 @@ for the dryopea palette:
 2. **Slope / drop value.**  The same enum drives the upstream
    height solver — sand is gentle, steep_rock is sheer; water is
    sea-level, waterfall has the biggest drop.
+   ⚠⚠ **And `slope` has a SECOND reader since 2026-08-28** (BACKLOG C6,
+   [`src/damage.loft`](../src/damage.loft) § Footing): **a wall is as
+   strong as the ground it was cut from**, and a slope is an angle of
+   repose — which is exactly how well a material holds itself up.  Sand
+   halves a wall, a hill or better doubles it, and the same wall falls
+   at 153 / 174 / 220 (`@M061`).  ⚠ The solver is still plan 02's; this
+   is a local reading of one column, the way `moat.loft` reads `drop`.
 3. **Material flags.**  The same enum gates buildability, ground
    traversal, and water rendering.  No separate "walkable" or
    "buildable" layer — those flags are *properties of the type*.

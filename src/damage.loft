@@ -419,11 +419,19 @@ pub fn structure_base_hp(pal: vector<GroundType>, pw: PaintedWorld,
 // a neighbour is built or broken.  That is what makes a perimeter
 // unzip from a breach rather than fail hex by independent hex, and it
 // is why nothing caches it.
+//
+// ⚠ **The BRACING is the half that moves; the FOOTING deliberately does
+// not** (BACKLOG C6, § The BEST ground within reach) — a maximum over
+// the neighbouring ground cannot fall when a wall beside it breaks.
 pub fn structure_max_hp(pal: vector<GroundType>, pw: PaintedWorld,
                         q: integer, r: integer) -> float {
     smh_base = structure_base_hp(pal, pw, q, r);
     if smh_base <= 0.0 { return 0.0; }
-    smh_base * brace_factor(brace_of(pal, pw, q, r))
+    // ⚠⚠ **Two factors, and they are about two different things**
+    // (BACKLOG C6): the BRACING is the shape of the wall and moves when
+    // a neighbour is built or broken; the FOOTING is the rock it was cut
+    // from and does not.  See § Footing.
+    smh_base * brace_factor(brace_of(pal, pw, q, r)) * footing_of(pal, pw, q, r)
 }
 
 // Is there something here that CAN be broken?
@@ -466,6 +474,184 @@ pub fn rubble_height_of(pal: vector<GroundType>, pw: PaintedWorld,
     rho_h = painted_height_of(pal, pw, q, r);
     if !structure_breakable(pal, pw, q, r) { return 0.0; }
     rho_h * RUBBLE_HEIGHT_FRACTION
+}
+
+// ─── ⚠⚠ Footing: what the wall was CUT FROM (BACKLOG C6) ───────
+//
+// `docs/MATERIALS.md` § The 2023 catalogue keeps one row it calls
+// load-bearing — *granite is hard to cut and very sturdy; sand rock is
+// brittle* — and names the cheapest way to have it: **the ground kind
+// you dug is the wall's strength**, over a `structure_max_hp` that is
+// already a per-kind figure scaled by the world.
+//
+// This is that, as a SECOND factor beside the bracing.  The pair is one
+// idea said twice: **bracing is what holds a wall up SIDEWAYS, footing
+// is what holds it up from BELOW.**  Both are computed from the world
+// rather than stored, both multiply the kind's figure, and neither is
+// cached.
+//
+// ── ⚠⚠ WHY IT IS THE GROUND AROUND THE WALL AND NOT UNDER IT ────
+//
+// *Under it* is the reading the design asks for and it is **not
+// available** — § What the hex becomes is a DECISION already says why:
+// painting `wall` overwrote whatever was there, and `MapFile` cannot
+// grow a second kind per hex to remember it ([loft#876] caps the JSON
+// cast at 6 fields).  ⚠ It cannot be recorded in a runtime layer
+// either, and that is the constraint that decided this: **a wall's
+// strength has to be recoverable from the SAVED world**, which holds
+// the painted kinds and the markers and nothing else (BACKLOG B3).  A
+// footing kept beside the world would be lost on reload and the same
+// wall would have two strengths.
+//
+// ⚠ So the footing must be a function of the painted world, and there
+// are exactly two candidates: the wall's own KIND, or its
+// surroundings.  This takes the surroundings, and the fiction agrees —
+// **the crew do not haul.**  `build.loft` has a helper stand at the
+// site and spend seconds; there is no stone convoy, so the stone comes
+// from where the crew are standing.
+//
+// ── ⚠⚠ The BEST ground within reach, and MONOTONICITY is why ────
+//
+// Six neighbours, and the STURDIEST of them wins: *the crew cut the
+// best stone they can reach.*
+//
+// ⚠ The alternative readings — the mean, or the weakest — are not
+// wrong about materials, they are wrong about TIME.  A wall that
+// breaks paints `BROKEN_GROUND` on its hex, so a neighbour that
+// contributed nothing while it was a wall starts contributing an
+// ORDINARY footing the moment it falls: under a mean or a minimum a
+// standing wall would get weaker because the wall beside it broke.
+// ⚠⚠ **That is a surprise nobody designed**, and it would compound the
+// unzip `brace_of` already produces.  A maximum cannot do it: adding a
+// value can only raise a maximum, and `BROKEN_GROUND` is the ordinary
+// figure, so a breach leaves every wall still standing exactly as
+// strong as it was.
+//
+// ⚠ `structure_max_hp`'s note — *it moves when a neighbour is built or
+// broken* — stays true of the BRACING and is deliberately false of the
+// footing.  One factor is about the shape of the wall, which changes;
+// the other is about the rock, which does not.
+//
+// ⚠⚠ **A break can still RAISE a footing, and that is the other end of
+// the same property.**  `break_structure` paints `BROKEN_GROUND` on the
+// hex, so a neighbour that offered no stone while it was a wall offers
+// an ORDINARY footing once it falls: a brittle perimeter stops being
+// brittle where it has already been breached.  That is a self-limiting
+// unzip, the opposite of the one bracing produces — and it is the
+// existing *a broken wall leaves the default ground* simplification
+// showing through a sharper number rather than a rule added here.
+
+// What a footing multiplies by where there is no ground to read.
+//
+// ⚠ **1.0 is ORDINARY, not "off"** — it is `grass`'s own figure, and
+// `numbers.json`'s 100 was measured on grass.  A wall whose neighbours
+// are all sea, all rubble or all wall gets the game exactly as it was,
+// which is what let this land without moving a gate measurement:
+// **every wall hex in the corpus and in the three authored maps
+// answers 1.0** (`@M061`) — most because their neighbours are grass,
+// and fourteen because they are wall ENDS reaching into unpainted sea.
+pub const FOOTING_ORDINARY: float = 1.0;
+
+// The band a footing is clamped to.
+//
+// ⚠⚠ **CHOSEN, and priced against the two things it decides**, the rule
+// `docs/PROGRESSION.md` § P2 states for any number a feature needs.
+// The palette's slope ladder — sand 2, grass 6, hill 12, rock 20,
+// steep_rock 40 — is far steeper than a wall's HP should be, so the
+// ratio is clamped rather than followed:
+//
+//   | ground     | slope | ratio | footing | braced `wall` HP |
+//   |------------|-------|-------|---------|------------------|
+//   | sand       | 2     | 0.33  | **0.5** | 50               |
+//   | grass      | 6     | 1.00  | **1.0** | 100 — the reference |
+//   | hill       | 12    | 2.00  | **2.0** | 200              |
+//   | rock       | 20    | 3.33  | 2.0     | 200 — clamped    |
+//   | steep_rock | 40    | 6.67  | 2.0     | 200 — clamped    |
+//
+// ⚠ **The ceiling is priced against the TRENCH** (`@M059`).  A trench
+// costs the same ten helper-seconds a hex as a wall and buys 221 ticks
+// where a grass wall buys 174; at 2.0 the best wall lands about there,
+// so the two are a choice about what a barrier DOES rather than a
+// ranking.  Let the ceiling rise and the trench stops being worth
+// digging anywhere the rock is good.
+//
+// ⚠ **The floor is priced against one robot.**  50 HP is fifty seconds
+// of a single regular (`ENEMY_DAMAGE_TO_WALL_PER_SECOND` is 1.0), so a
+// sand wall is a delay and never a barrier — which is what *sand rock
+// is brittle* has to mean to be worth saying.
+//
+// ⚠ The palette's top three all reach the ceiling, deliberately: past
+// a hill, rock is rock.  That is `skill.loft`'s curve saturating on the
+// EFFECT rather than on the level (`@X278`), and a fourth grade would
+// be a number with nothing to spend it on.
+pub const FOOTING_BRITTLE: float = 0.5;
+pub const FOOTING_STURDY:  float = 2.0;
+
+// The footing a palette KIND offers, or 0.0 where it offers none.
+//
+// ⚠ **0.0 means "not ground", exactly as `structure_kind_hp`'s 0.0
+// means "not a structure"** — it is not a footing of zero.  Water,
+// structures and rubble all carry a null `slope`, so none of them is
+// stone anybody could cut: a wall beside a moat is founded on whatever
+// else it touches, and a wall beside a heap of its own masonry is not
+// founded on the heap.
+//
+// ⚠ **`grass` is the reference and it is read from the palette**, not
+// written here.  It is `BROKEN_GROUND` — this file's existing answer to
+// *the default ground* — so the two cannot drift, and a modder who
+// re-slopes the palette keeps a grass wall at exactly `WALL_HP`.
+// ⚠ A reference with no slope of its own answers `FOOTING_ORDINARY`
+// everywhere: a palette whose default ground is not ground has no
+// material rule to give, which is the same shape as
+// `passable.loft::hex_ground` falling back on a palette too short to
+// hold `rubble`.
+// Example: @DRY-135
+pub fn ground_footing(pal: vector<GroundType>, kind: u8) -> float {
+    gf_e = pal[kind as integer] ?? GroundType {};
+    gf_s = gf_e.slope ?? -1;
+    if gf_s <= 0 { return 0.0; }
+    gf_r = (pal[BROKEN_GROUND] ?? GroundType {}).slope ?? -1;
+    if gf_r <= 0 { return FOOTING_ORDINARY; }
+    gf_f = (gf_s as float) / (gf_r as float);
+    if gf_f < FOOTING_BRITTLE { return FOOTING_BRITTLE; }
+    if gf_f > FOOTING_STURDY  { return FOOTING_STURDY; }
+    gf_f
+}
+
+// The footing under the structure at (q, r) — the sturdiest ground it
+// touches, and `FOOTING_ORDINARY` where it touches none.
+//
+// ⚠ Every neighbour comes from `lat_neighbour`, the rule `brace_of`
+// keeps for the same reason: there is no constant (dq, dr) table in
+// odd-r, because the delta depends on row parity.
+//
+// ⚠ It answers for ANY hex, structure or not — a caller that asks about
+// grass gets the ground grass is cut from, which is meaningless rather
+// than wrong.  `structure_max_hp` is the one place it means something,
+// and it guards on the base HP first.
+pub fn footing_of(pal: vector<GroundType>, pw: PaintedWorld,
+                  q: integer, r: integer) -> float {
+    fo_best = 0.0;
+    for fo_d in 0..6 {
+        fo_nb = lat_neighbour(Hex { q: q, r: r }, fo_d);
+        fo_f  = ground_footing(pal, lookup_painted(pw, fo_nb.q, fo_nb.r));
+        if fo_f > fo_best { fo_best = fo_f; }
+    }
+    if fo_best <= 0.0 { return FOOTING_ORDINARY; }
+    fo_best
+}
+
+// What a footing is called, for a message a player or a failing script
+// can read — the same job `brace_name` does for the other factor.
+//
+// ⚠ Banded against the ORDINARY figure rather than against the three
+// values the shipped palette happens to produce: the function is
+// continuous, so a re-sloped palette answers 1.5 and this still names
+// it.
+pub fn footing_name(footing: float) -> text {
+    if footing < FOOTING_ORDINARY { return "brittle"; }
+    if footing > FOOTING_ORDINARY { return "sturdy"; }
+    "ordinary"
 }
 
 // ─── The break ──────────────────────────────────────────────────

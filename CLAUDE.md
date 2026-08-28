@@ -57,7 +57,7 @@ comes back.  ⚠ The HUD is one number and `docs/DESIGN.md` § HUD says it shoul
 be — no wave counter, no health bar, no minimap; everything else is diegetic.
 ⚠⚠ **`MAP=` and `SCRIPT=` are what give it a base to be.**  `make play
 MAP=starter_01` opens one of the three AUTHORED maps in `maps/` (BACKLOG A2,
-2026-08-27); `SCRIPT=<name>` opens any of the 43 `.keys` files in
+2026-08-27); `SCRIPT=<name>` opens any of the 45 `.keys` files in
 `tests/scripts/` + `tests/gl/` as a live starting position, cut at its first
 `tick` (`@X263`).  Bare `make play` opens the empty default slot.
 ⚠⚠ **THE PLAYER CAN BUILD** ([`plans/27`](plans/27-building/README.md),
@@ -74,8 +74,8 @@ critical path is **4, the SCRAMBLE**.
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1600 green**, ~320 s on a busy box, 119 files |
-| scenarios | `scripts/validate.sh` | **40 scripts, 791 measurements**, ~20 s |
+| tests | `scripts/test.sh` | **1610 green**, ~320 s on a busy box, 120 files |
+| scenarios | `scripts/validate.sh` | **42 scripts, 827 measurements**, ~20 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
 
 ⚠ `scripts/test.sh` is the canonical runner — **never `loft test` directly**
@@ -388,7 +388,7 @@ scripts/validate_gl.sh the-ground    # just one
 make play
 # One of the three AUTHORED maps in maps/ (BACKLOG A2) — repo content.
 make play MAP=starter_01
-# Open one of the 43 `.keys` scenarios as a live starting position
+# Open one of the 45 `.keys` scenarios as a live starting position
 # (BACKLOG A1).  ⚠ `script=`, never `--script` — loft strips a leading
 # `--` argument as its own and the entry would open a MAP of that name.
 make play SCRIPT=a-base-that-plays-its-list
@@ -1061,10 +1061,11 @@ names; most of them exist because somebody did it without reading.
 | Goal | Start here |
 |---|---|
 | Build something, or ask what a build ORDER is | `src/build.loft` — ⚠ check `order_erase` before adding a thing to build |
-| Ask how strong a wall hex is | `src/damage.loft::structure_max_hp` — ⚠ `numbers.json`'s 100 is the BRACED number |
+| Ask how strong a wall hex is | `src/damage.loft::structure_max_hp` — ⚠ `numbers.json`'s 100 is the BRACED number, and since BACKLOG C6 it is **braced AND founded**: bracing holds a wall up sideways, FOOTING holds it up from below |
 | Ask how much a wall has left | `src/damage.loft::structure_hp` — ⚠ 0.0 answers both *broken* and *never a structure* |
 | Break a wall | `src/damage.loft::break_structure` — the one site, and it does both halves |
 | Judge whether a DEFENCE is worth building | [`plans/12`](plans/12-combat-resolution/README.md) § B7 — 69 / 112 / 128 ticks |
+| Ask what a wall is MADE of, or why the ground matters | `src/damage.loft` § Footing (`@X284`) — ⚠⚠ **the palette's `slope` read at last**; 153 / 174 / 220 on sand, grass and rock, and the STURDIEST hex in reach wins |
 | Ask whether a tower can HIT something | `src/tower.loft::tower_sees` — ⚠ never a "which kinds block" table |
 | Ask why a tower is not shooting | `src/tower.loft::tower_sight_fault`; `tower_black` is the other answer |
 | Bring a spent tower back | `src/tower.loft::tower_repair_tick` — ⚠ it refills the MAGAZINE, never the CHARGE |

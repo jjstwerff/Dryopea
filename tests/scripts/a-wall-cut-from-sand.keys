@@ -1,0 +1,119 @@
+# a-wall-cut-from-sand — BACKLOG C6, and it is the BOTTOM of a triple.
+#
+# `a-base-the-player-builds.keys` with one token changed on five lines:
+# the band is painted `sand` instead of `grass`, so the wall the crew
+# raise is cut from sand and is worth half of one cut from grass.
+#
+#     palette 4  →  the band is SAND    falls at 153
+#     palette 5  →  the band is GRASS   falls at 174   (`@M050`)
+#     palette 7  →  the band is ROCK    falls at 220   (`@M061`)
+#
+# ⚠ **A wall on sand buys +23 ticks where the same wall on grass buys
+# +44** — half, which is `FOOTING_BRITTLE` arriving in the clock.
+#
+# ── ⚠⚠ Why the whole band has to be sand ────────────────────────
+#
+# `footing_of` takes the STURDIEST ground the wall touches — *the crew
+# cut the best stone they can reach* — so one hex of sand beside a wall
+# changes nothing at all, and a probe measured exactly that: the same
+# scenario with a single sand column next to the wall line falls at
+# **174**, to the tick.
+#
+# ⚠⚠ That is the cost of a maximum, and it is deliberate: the mean and
+# the minimum both make a standing wall get WEAKER when the wall beside
+# it breaks, because a break paints ordinary ground where a wall used to
+# be.  **Brittleness is therefore a property of a REGION and never of a
+# hex**, which is what *sand rock is brittle* has to mean to be worth
+# saying.
+
+echo a wall cut from sand: the same wall, on ground worth half as much
+
+do toggle_mode
+
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+do cycle_kind
+do cycle_kind
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 11 0
+marker 11 0 spawn 3
+
+count markers 2 2
+do toggle_mode
+
+palette 4
+drag -3 -2 12 -2
+drag -3 -1 12 -1
+drag -3 0 12 0
+drag -3 1 12 1
+drag -3 2 12 2
+count painted 80 80
+# The band is sand from end to end — the ONE token, and the only thing
+# that differs from `a-base-the-player-builds.keys`.
+kind 8 0 sand
+
+# The crew, sitting on the line the player is about to draw.
+crew 5 -1
+crew 5 1
+
+# ── The build (or not) ──────────────────────────────────────────
+park 5 -2
+paint on
+drive 5 2
+tick 6
+count orders 5 5
+paint off
+
+# Park clear of the line so the trail is not rubbed out, and let the
+# crew work.  60 helper-seconds over two helpers is 30 s = 45 ticks.
+drive 0 0
+tick 50
+count orders 0 0
+count painted 80 80
+# ⚠⚠ The whole band, hex by hex — because a wall with ONE gap in it
+# buys nothing at all (`plans/12` § B7 measured a gate at +1 tick), so
+# *five* is the number that matters rather than *some*.
+kind 5 -2 wall
+kind 5 -1 wall
+kind 5 0 wall
+kind 5 1 wall
+kind 5 2 wall
+
+# ⚠⚠ **The mechanic, read exactly, before a single robot arrives.**
+#
+# ⚠ A COLUMN is not a straight run on this lattice: constant `q` with
+# `r` varying ZIGZAGS, because row parity flips which delta each
+# direction index carries, so every middle hex is a turning pair and
+# takes `BRACE_FULL` (`damage.loft` § "Straight" is a DIRECTION-INDEX
+# opposition).  A wall a player drags down the screen is a
+# crinkle-crankle wall and is stronger for it.
+#
+# So the middle of this column is the full `wall_hp` times its footing:
+# **100 on grass, 50 on sand, 200 on rock.**  This one is 50.
+hp 5 0 50 50
+
+
+# ── The waves — identical to `an-undefended-base` ───────────────
+wave 5
+count alive 5 5
+
+tick 22
+wave 8
+count alive 13 13
+
+# ── The clock ───────────────────────────────────────────────────
+#
+# ⚠⚠ **130 against 174 — the wall the player DREW is worth +44 ticks,
+# a third of the base's life** (`@M050`).  Same ground, same core, same
+# spawn, same wave list, same crew, same drive, same ticks spent — one
+# token apart.
+fall 900
+ticks 149 157
+
+count alive 13 13
+snap c6_a_wall_cut_from_sand

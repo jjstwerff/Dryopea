@@ -410,6 +410,23 @@ parity flips which delta each direction carries — so a "vertical" wall
 a player drags is a crinkle-crankle wall and is stronger for it.
 Measured, not reasoned about; `tests/12_b3_bracing.loft` states it.
 
+⚠⚠ **And the GROUND is the other factor** (BACKLOG C6, `@X284`).
+`structure_max_hp` is the kind's figure scaled by **bracing and
+footing** — *bracing is what holds a wall up sideways, footing is what
+holds it up from below*.  A wall is as strong as the ground it was cut
+from, and the palette's SLOPE ladder is that number: sand halves a
+wall, a hill or better doubles it, and the same wall falls at
+**153 / 174 / 220** on sand, grass and rock (`@M061`).
+
+⚠ The footing is the **sturdiest ground the wall touches**, not the
+ground under it — that was overwritten by the paint and cannot be
+recovered from a saved world.  The crew do not haul, so the stone comes
+from where they are standing.  ⚠ A maximum is what keeps it monotone: a
+mean or a minimum would make a standing wall get weaker when the wall
+beside it broke, because a break paints the default ground where a wall
+used to be.  ⚠ One hex of sand therefore changes nothing — brittleness
+is a property of a REGION.
+
 `wall.wall_hp` (100) is the *braced* figure.  **A wall hex with no
 support from either side is easier to push over, and has less HP
 for it** — the same reason a free-standing straight fence topples

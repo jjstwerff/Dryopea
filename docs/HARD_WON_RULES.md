@@ -120,6 +120,33 @@ mechanic needed a constant of its own.  ⚠ On land and on the `sea` the
 depth is 0.0, so it is the old `rise > 0` unchanged everywhere anybody
 has ever painted — 745 gate measurements did not move.
 
+⚠⚠ **WHAT A DERIVED VALUE MAY BE DERIVED FROM IS DECIDED BY WHAT
+SURVIVES A SAVE** (BACKLOG C6, `@X284`).  *A wall is as strong as the
+ground it was cut from* has one obvious reading — the ground UNDER it —
+and it is unavailable twice over: painting `wall` overwrote the hex, and
+a runtime layer beside the world cannot hold it either, because **a
+wall's strength has to be recoverable from the SAVED world** or the same
+wall has two strengths across a reload.  ⚠ dryopea saves the painted
+kinds and the markers and nothing else, so a persistent derived value
+has exactly two possible inputs: the hex's own KIND, or its
+surroundings.  ⚠ **Ask that question before designing the rule, not
+after** — it eliminated three of the four candidate mechanisms here in
+one line, and it is the same question `plans/07` § Evaluated asks as
+*authored → a layer, derived → recompute, runtime → sim state*.
+
+⚠⚠ **A COMBINING RULE OVER NEIGHBOURS IS A CHOICE ABOUT TIME, NOT ABOUT
+THE QUANTITY** (BACKLOG C6).  Mean, minimum and maximum all read as
+plausible ways to score "the ground around this wall", and they are not
+interchangeable: a break paints the DEFAULT ground where a wall used to
+be, so under a mean or a minimum **a standing wall would get weaker
+because the wall beside it broke**.  A maximum cannot fall, so it
+cannot produce that surprise at all.  ⚠ The price is paid at the other
+end and is worth knowing: a maximum means one hex of the weak material
+changes nothing, so **brittleness is a property of a REGION and never of
+a hex** — measured at 174 ticks, to the tick, against the same scenario
+with one sand column added.  ⚠ Ask *what happens to this when the world
+changes underneath it* before picking the combinator.
+
 ⚠⚠ **A TARGET NOTHING CAN NAME IS NOT A TARGET THAT LANDS NOTHING**
 (BACKLOG C9, `@X283`).  The backlog row for *besiegers shovel a trench
 shut* named its own mechanism — *"a moat has no HP, so a besieger's

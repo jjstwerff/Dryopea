@@ -1,0 +1,306 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// BACKLOG C6 — the rock decides the wall.
+//
+// ⚠⚠ **The claim: a wall is as strong as the ground it was cut from.**
+// `docs/MATERIALS.md` § The 2023 catalogue keeps *granite is very
+// sturdy, sand rock is brittle* as one of four rows worth surviving the
+// cut, and calls it the cheapest material rule available because the
+// palette and `structure_max_hp` both already exist.
+//
+// ── ⚠⚠ WHAT THE PALETTE ACTUALLY HAS, AND WHAT IT DOES NOT ──────
+//
+// **There is no granite, no sand rock and no volcanic rock**, and that
+// is the C1 case again (`@X112`: check the number EXISTS before scaling
+// it).  What the palette has is a SLOPE ladder — sand 2, grass 6, hill
+// 12, rock 20, steep_rock 40 — carried since plan 01 and, like `drop`
+// before BACKLOG C5, **read by nothing**.
+//
+// ⚠ It is the same ladder under another name: a slope is an angle of
+// repose, and an angle of repose is how well a material holds itself
+// up.  Sand runs out flat; rock stands sheer.  So this phase reads the
+// column that exists rather than inventing three that do not.
+//
+// ── ⚠⚠ AND WHY THE FOOTING IS AROUND THE WALL, NOT UNDER IT ─────
+//
+// *Under it* is what the design asks for and it is not available:
+// painting `wall` overwrote the hex, and `damage.loft` § What the hex
+// becomes has said since plan 12 B2 that `MapFile` cannot grow a second
+// kind per hex to remember it.  ⚠ **A runtime layer cannot hold it
+// either, and that is the constraint that decided the shape** — a
+// wall's strength has to be recoverable from the SAVED world, which
+// holds the painted kinds and the markers and nothing else, or the same
+// wall would have two strengths across a reload.
+//
+// So the footing is a function of the painted world, the crew do not
+// haul, and the stone comes from where they are standing.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SCRIPTS: text = "tests/scripts";
+const SHOTS:   text = "tests/actual";
+const SEA:        integer = 0;
+const WATER:      integer = 1;
+const SAND:       integer = 4;
+const GRASS:      integer = 5;
+const HILL:       integer = 6;
+const ROCK:       integer = 7;
+const STEEP_ROCK: integer = 8;
+const WALL:       integer = 9;
+const WALL_HIGH:  integer = 10;
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+
+// ⚠ Every helper takes an argument.  A zero-argument function in a test
+// file is COLLECTED AS A TEST (`CLAUDE.md` § Loft language gotchas).
+fn pal_at(path: text) -> vector<GroundType> { load_palette(path) }
+
+// One wall hex at (0, 0) with `ring` painted all around it, on a world
+// that is otherwise that same ground.
+//
+// ⚠ A STUB by construction — no structure neighbours — so `brace_of`
+// answers the same for every fixture here and the only thing that moves
+// between them is the footing.
+fn lone_wall(ring: integer) -> PaintedWorld {
+    lw_pw = painted_empty();
+    for lw_q in -2..=2 {
+        for lw_r in -2..=2 { paint(lw_pw, lw_q, lw_r, as_u8(ring)); }
+    }
+    paint(lw_pw, 0, 0, as_u8(WALL));
+    lw_pw
+}
+
+// ─── The ladder ─────────────────────────────────────────────────
+
+// @DRY-135 — ⚠⚠ **The palette's own slope, read as a hardness.**  The
+// ratio is against `grass`, because `numbers.json`'s 100 was measured on
+// grass and `BROKEN_GROUND` is already this file's answer to *the
+// default ground*.
+fn test_the_slope_ladder_is_a_hardness_ladder() {
+    ttl_pal = pal_at(PALETTE);
+    assert(ground_footing(ttl_pal, as_u8(SAND))  == FOOTING_BRITTLE,
+           "sand is brittle: {ground_footing(ttl_pal, as_u8(SAND))}");
+    assert(ground_footing(ttl_pal, as_u8(GRASS)) == FOOTING_ORDINARY,
+           "grass is the reference: {ground_footing(ttl_pal, as_u8(GRASS))}");
+    assert(ground_footing(ttl_pal, as_u8(HILL))  == FOOTING_STURDY,
+           "a hill already reaches the ceiling: {ground_footing(ttl_pal, as_u8(HILL))}");
+    assert(ground_footing(ttl_pal, as_u8(ROCK))  == FOOTING_STURDY,
+           "and rock is clamped to it: {ground_footing(ttl_pal, as_u8(ROCK))}");
+    assert(ground_footing(ttl_pal, as_u8(STEEP_ROCK)) == FOOTING_STURDY,
+           "as is a cliff: {ground_footing(ttl_pal, as_u8(STEEP_ROCK))}");
+}
+
+// ⚠⚠ **0.0 means NOT GROUND, and it is not a footing of zero** — the
+// same distinction `structure_kind_hp` draws with the same value.  Every
+// one of these carries a null `slope`, so none of them is stone anybody
+// could cut.
+fn test_only_ground_offers_a_footing() {
+    tog_pal = pal_at(PALETTE);
+    for tog_k in [SEA, WATER, WALL, WALL_HIGH, GROUND_RUBBLE] {
+        assert(ground_footing(tog_pal, as_u8(tog_k)) == 0.0,
+               "kind {tog_k} is not stone: {ground_footing(tog_pal, as_u8(tog_k))}");
+    }
+    // The control that says the reading works at all.
+    assert(ground_footing(tog_pal, as_u8(ROCK)) > 0.0,
+           "CONTROL — rock is");
+}
+
+// ⚠ The three grades have names, so a failing script says which.
+fn test_a_footing_has_a_name() {
+    assert(footing_name(FOOTING_BRITTLE)  == "brittle",  "brittle");
+    assert(footing_name(FOOTING_ORDINARY) == "ordinary", "ordinary");
+    assert(footing_name(FOOTING_STURDY)   == "sturdy",   "sturdy");
+    // ⚠ Banded, not enumerated: the function is continuous, so a
+    // re-sloped palette answering 1.5 is still named.
+    assert(footing_name(1.5) == "sturdy", "and a value between grades");
+}
+
+// ─── What it does to a wall ─────────────────────────────────────
+
+// ⚠⚠ **THE HEADLINE, in the currency `numbers.json` uses.**  A lone
+// stub wall is `WALL_HP * BRACE_FACTOR_STUB` = 15 on grass, and the rock
+// under it is what moves it — half on sand, double on anything from a
+// hill up.
+fn test_the_rock_decides_the_wall() {
+    trd_pal  = pal_at(PALETTE);
+    trd_base = WALL_HP * BRACE_FACTOR_STUB;
+    assert(structure_max_hp(trd_pal, lone_wall(GRASS), 0, 0) == trd_base,
+           "a wall cut from grass is the figure the game was tuned on: "
+           + "{structure_max_hp(trd_pal, lone_wall(GRASS), 0, 0)} of {trd_base}");
+    assert(structure_max_hp(trd_pal, lone_wall(SAND), 0, 0) == trd_base * 0.5,
+           "sand halves it: {structure_max_hp(trd_pal, lone_wall(SAND), 0, 0)}");
+    assert(structure_max_hp(trd_pal, lone_wall(ROCK), 0, 0) == trd_base * 2.0,
+           "rock doubles it: {structure_max_hp(trd_pal, lone_wall(ROCK), 0, 0)}");
+    // ⚠ Four times between the two ends, which is the whole spread the
+    // player can find on a map — and it is bigger than the 3.3x
+    // `brace_factor` spends on the shape of the wall.
+    assert(structure_max_hp(trd_pal, lone_wall(ROCK), 0, 0)
+           == structure_max_hp(trd_pal, lone_wall(SAND), 0, 0) * 4.0,
+           "so the ground is worth four times as much as itself, end to end");
+}
+
+// ⚠⚠ **THE BEST ground within reach, and the reason is MONOTONICITY.**
+// One rock hex touching a wall is enough; the mean or the minimum would
+// have made a standing wall get WEAKER when the wall beside it broke,
+// because a break paints `BROKEN_GROUND` where a wall used to be.
+fn test_the_crew_cut_the_best_stone_within_reach() {
+    tbs_pal = pal_at(PALETTE);
+    tbs_pw  = lone_wall(SAND);
+    assert(footing_of(tbs_pal, tbs_pw, 0, 0) == FOOTING_BRITTLE,
+           "all sand, so brittle: {footing_of(tbs_pal, tbs_pw, 0, 0)}");
+    // One hex of rock, anywhere on the ring.
+    paint(tbs_pw, 1, 0, as_u8(ROCK));
+    assert(footing_of(tbs_pal, tbs_pw, 0, 0) == FOOTING_STURDY,
+           "one hex of rock in reach is enough: "
+           + "{footing_of(tbs_pal, tbs_pw, 0, 0)}");
+    // ⚠ The control the rule exists for: turning a neighbour into
+    // ORDINARY ground — which is exactly what a break does — cannot pull
+    // it back down.
+    paint(tbs_pw, -1, 0, as_u8(BROKEN_GROUND));
+    assert(footing_of(tbs_pal, tbs_pw, 0, 0) == FOOTING_STURDY,
+           "and a neighbour breaking into ordinary ground does not "
+           + "weaken it: {footing_of(tbs_pal, tbs_pw, 0, 0)}");
+}
+
+// ⚠ A wall with nothing to be cut from is ORDINARY, never zero — which
+// is what kept the corpus still: 14 of its 102 wall hexes are ends
+// reaching into unpainted sea.
+fn test_a_wall_with_no_ground_in_reach_is_ordinary() {
+    tng_pal = pal_at(PALETTE);
+    tng_pw  = painted_empty();
+    paint(tng_pw, 0, 0, as_u8(WALL));
+    assert(footing_of(tng_pal, tng_pw, 0, 0) == FOOTING_ORDINARY,
+           "a wall alone in the sea: {footing_of(tng_pal, tng_pw, 0, 0)}");
+    assert(structure_max_hp(tng_pal, tng_pw, 0, 0)
+           == WALL_HP * BRACE_FACTOR_STUB,
+           "so it is worth exactly what it was before C6");
+    // ⚠ And the same for a wall walled in on every side — no ground,
+    // no stone, ordinary.
+    for tng_d in 0..6 {
+        tng_nb = lat_neighbour(Hex { q: 0, r: 0 }, tng_d);
+        paint(tng_pw, tng_nb.q, tng_nb.r, as_u8(WALL));
+    }
+    assert(footing_of(tng_pal, tng_pw, 0, 0) == FOOTING_ORDINARY,
+           "and a wall inside a block of wall: "
+           + "{footing_of(tng_pal, tng_pw, 0, 0)}");
+}
+
+// ⚠ It scales the KIND's figure, so a `wall_high` on rock is worth
+// twice a `wall_high` on grass exactly as a `wall` is — one rule, and
+// no second table per structure kind.
+fn test_it_scales_every_structure_kind() {
+    tse_pal = pal_at(PALETTE);
+    tse_g = lone_wall(GRASS);
+    tse_r = lone_wall(ROCK);
+    paint(tse_g, 0, 0, as_u8(WALL_HIGH));
+    paint(tse_r, 0, 0, as_u8(WALL_HIGH));
+    assert(structure_max_hp(tse_pal, tse_g, 0, 0) == WALL_HIGH_HP * BRACE_FACTOR_STUB,
+           "a high wall on grass: {structure_max_hp(tse_pal, tse_g, 0, 0)}");
+    assert(structure_max_hp(tse_pal, tse_r, 0, 0)
+           == structure_max_hp(tse_pal, tse_g, 0, 0) * 2.0,
+           "and double on rock: {structure_max_hp(tse_pal, tse_r, 0, 0)}");
+}
+
+// ⚠ Ground is not a structure, so nothing here gives grass HP — the
+// guard `structure_max_hp` has always had, restated because this phase
+// added a factor in front of it.
+fn test_footing_never_gives_the_ground_hp() {
+    tfg_pal = pal_at(PALETTE);
+    tfg_pw  = lone_wall(ROCK);
+    assert(structure_max_hp(tfg_pal, tfg_pw, 2, 2) == 0.0,
+           "rock beside a wall is still rock: "
+           + "{structure_max_hp(tfg_pal, tfg_pw, 2, 2)}");
+    assert(!structure_breakable(tfg_pal, tfg_pw, 2, 2),
+           "and nothing can chew it");
+}
+
+// ─── ⚠⚠ Why nothing that exists moved ───────────────────────────
+
+// ⚠⚠ **A BREAK RAISES ITS NEIGHBOURS' FOOTING, AND THAT IS THE OTHER
+// END OF THE MONOTONICITY.**  `break_structure` paints `BROKEN_GROUND`
+// — grass, `damage.loft`'s *least surprising thing to find under a heap
+// of masonry* — so a hex that offered no stone while it was a wall
+// offers ORDINARY stone once it falls.
+//
+// ⚠ A maximum can only rise, so this cannot weaken anything; what it
+// does is make a brittle perimeter **stop being brittle where it has
+// already been breached**, which is a self-limiting unzip and the
+// opposite of the one `brace_of` produces.  ⚠ It is the existing
+// "a broken wall leaves the default ground" simplification showing
+// through a sharper number, exactly as `wallet.loft`'s newest-deposit
+// rule does — not something this phase introduced.
+fn test_a_break_can_only_raise_a_footing() {
+    tbr_pal = pal_at(PALETTE);
+    tbr_pw  = lone_wall(SAND);
+    paint(tbr_pw, 1, 0, as_u8(WALL));
+    assert(footing_of(tbr_pal, tbr_pw, 0, 0) == FOOTING_BRITTLE,
+           "a sand wall beside a wall is brittle: "
+           + "{footing_of(tbr_pal, tbr_pw, 0, 0)}");
+    break_structure(tbr_pal, tbr_pw, damage_layer_empty(),
+                    height_layer_empty(), 1, 0);
+    assert(footing_of(tbr_pal, tbr_pw, 0, 0) == FOOTING_ORDINARY,
+           "and the neighbour breaking leaves ORDINARY ground under it, "
+           + "which raises it: {footing_of(tbr_pal, tbr_pw, 0, 0)}");
+}
+
+// @M061 — ⚠⚠ **THE CORPUS IS THIS PHASE'S CONTROL, and it says so hex
+// by hex.**  Every wall in every scenario written before C6 is founded
+// on ORDINARY ground, which is why all 791 gate measurements stood.
+//
+// ⚠ **103 walls with the save paths attached and 102 without**, which
+// is the runner's own setup showing through: `round-trip.keys` saves,
+// clears and reloads, so a session with nowhere to save it ends one
+// wall short.  The attached figure is the real one.
+//
+// ⚠⚠ **A scenario that starts exercising the mechanic has to
+// re-baseline this deliberately rather than by surprise** — paint a
+// hill next to a wall anywhere in `tests/scripts/` and this goes red
+// naming the file and the hex.
+//
+// ⚠ **C6's own two scenarios are SKIPPED, and not to make this pass.**
+// A sweep reads each scenario where it ENDED, and both of those end
+// with the base fallen and walls broken — so their survivors are
+// founded on the `BROKEN_GROUND` their neighbours left (§ A break can
+// only raise a footing) and would read ordinary anyway.  What gates
+// THEIR ground is the exact `hp 5 0` each one takes before a single
+// robot arrives: 50 on sand, 200 on rock.
+fn test_no_scenario_written_before_c6_is_founded_on_anything_else() {
+    tec_pal   = pal_at(PALETTE);
+    tec_walls = 0;
+    tec_files = 0;
+    for tec_f in validate_script_names(SCRIPTS) {
+        if tec_f == "a-wall-cut-from-rock" || tec_f == "a-wall-cut-from-sand" {
+            continue;
+        }
+        // ⚠ With a save path ATTACHED, the way `validate_one` builds a
+        // session — `round-trip.keys` saves, clears and reloads, and
+        // without one its reload restores nothing and the scenario
+        // fails to play at all (`tests/18_s2` § 1 keeps the same note).
+        tec_s = editor_state_new(PALETTE);
+        editor_state_attach(tec_s, "{SHOTS}/{tec_f}.c6.json",
+                            "{SHOTS}/{tec_f}.c6_markers.json");
+        tec_r = script_run_file(tec_s, "{SCRIPTS}/{tec_f}.keys", SHOTS);
+        assert(tec_r.ok, "{tec_f}: {script_describe(tec_r)}");
+        tec_files += 1;
+
+        for tec_h in tec_s.pw.painted {
+            if !structure_breakable(tec_pal, tec_s.pw, tec_h.q, tec_h.r) { continue; }
+            tec_walls += 1;
+            tec_ft = footing_of(tec_pal, tec_s.pw, tec_h.q, tec_h.r);
+            assert(tec_ft == FOOTING_ORDINARY,
+                   "{tec_f} ({tec_h.q}, {tec_h.r}) is founded on "
+                   + "{footing_name(tec_ft)} ground — the corpus is C6's "
+                   + "control, and something has painted rock beside a wall");
+        }
+    }
+    // ⚠ The sweep must have swept something: a directory read that
+    // answered nothing would make every assertion above vacuous, which
+    // is the refusal `validate.loft` makes about being green over no
+    // scripts at all.
+    assert(tec_files == 40, "the forty scenarios that predate C6: {tec_files}");
+    assert(tec_walls == 103, "and their 103 wall hexes: {tec_walls}");
+}

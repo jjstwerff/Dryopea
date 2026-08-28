@@ -860,6 +860,8 @@ src/
                    damage_apply / damage_taken / damage_clear / count,
                    structure_max_hp / structure_breakable / structure_hp,
                    rubble_height_of, break_structure, damage_resolve,
+                   plus C6's FOOTING — ground_footing / footing_of /
+                   footing_name, FOOTING_BRITTLE / _ORDINARY / _STURDY.
                    plus B4's `enemy_max_hp` / `body_source` / the
                    `BODY_HEIGHT_METRES` a death drops and B5b's
                    `ENEMY_HEIGHT_METRES` / `enemy_height` (the class→
@@ -873,6 +875,42 @@ src/
                    with no interior; the standing height is what a
                    tower aims at, and aiming at the FEET instead puts
                    the canonical shot exactly on the LOS boundary.
+                   ⚠⚠ A WALL IS AS STRONG AS THE GROUND IT WAS CUT
+                   FROM (BACKLOG C6, @X284).  `structure_max_hp` is now
+                   kind x bracing x FOOTING, and the pair is one idea
+                   said twice: bracing is what holds a wall up
+                   SIDEWAYS, footing is what holds it up from BELOW.
+                   ⚠⚠ THE ROCK KINDS THE DESIGN NAMES DO NOT EXIST —
+                   no granite, no sand rock, no volcanic.  What the
+                   palette has is a SLOPE ladder (sand 2, grass 6, hill
+                   12, rock 20, steep_rock 40) read by nothing since
+                   plan 01, exactly as `drop` was before C5; an angle
+                   of repose IS how well a material holds itself up.
+                   ⚠⚠ THE FOOTING IS THE GROUND AROUND THE WALL, NOT
+                   UNDER IT, AND PERSISTENCE DECIDED IT.  *Under it*
+                   was overwritten by the paint (§ What the hex becomes)
+                   and `MapFile` cannot remember it; a runtime layer
+                   cannot either, because a wall's strength has to be
+                   recoverable from the SAVED world or the same wall
+                   has two strengths across a reload.  That leaves the
+                   wall's own kind or its surroundings, and the crew do
+                   not haul — so the stone comes from where they stand.
+                   ⚠ THE STURDIEST IN REACH WINS, FOR MONOTONICITY: a
+                   mean or a minimum would make a standing wall get
+                   WEAKER when the wall beside it broke, because a
+                   break paints BROKEN_GROUND where a wall used to be.
+                   A maximum cannot fall.  ⚠ The other end is real and
+                   recorded: a break RAISES its neighbours' footing, so
+                   a brittle perimeter stops being brittle where it has
+                   been breached — a self-limiting unzip.
+                   ⚠ The band is CHOSEN: 2.0 priced against the TRENCH
+                   (@M059 — the best wall and a trench cost the same
+                   and buy the same clock), 0.5 against one regular's
+                   100 s.  The palette's top three all reach the
+                   ceiling deliberately (@X278's saturation).
+                   ⚠ 153 / 174 / 220 for the same wall on sand, grass
+                   and rock (@M061) — and ONE HEX of sand changes
+                   nothing, so brittleness is a property of a REGION.
                    ⚠ It stores damage TAKEN, not HP remaining, for the
                    reason `height.loft` stores a RISE: a miss has to
                    mean something useful, and "HP remaining" reads as
