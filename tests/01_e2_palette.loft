@@ -140,7 +140,15 @@ fn test_load_palette_flags() {
 
     assert(!tlp_f[8].drainage,       "steep_rock drainage = false");
     assert(!tlp_f[8].walk_ground,    "steep_rock walk_ground = false");
-    assert( tlp_f[8].walk_vehicle,   "steep_rock walk_vehicle = true");
+    // ⚠⚠ **FALSE since BACKLOG C10**, and it is the one row where the
+    // two columns used to disagree for a reason that was not water.  A
+    // 0.4 m hover clearance does not clear a cliff, and the flag was
+    // unearned because the cliff has no HEIGHT to be stopped by —
+    // `height_override` is null and the `slope` 40 above waits on
+    // plan 02 — so `walk_ground: false` carries the whole of *this is a
+    // cliff*.  ⚠ `maps/the_gap_03.keys` rests on this line: flip it and
+    // *the gap is the only way through for anybody* stops being true.
+    assert(!tlp_f[8].walk_vehicle,   "steep_rock walk_vehicle = false");
     assert(!tlp_f[8].buildable,      "steep_rock buildable = false");
 
     assert( tlp_f[5].walk_ground,    "grass walk_ground = true");

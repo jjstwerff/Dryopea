@@ -526,6 +526,40 @@ pub fn hex_walkable(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightL
     hw_e.walk_ground
 }
 
+// Is this hex's SURFACE one a hovering mover can be over?
+//
+// `@D006`, BACKLOG C10.  `docs/GROUND_TYPES.md` § The master palette
+// has said since plan 01 that *walkable (vehicle) is true even for
+// `steep_rock` and `waterfall` because the floating vehicle hovers
+// above terrain; per-agent-type traversal is the design* — and until
+// C10 **no code in the tree read the column.**
+//
+// ⚠ Bound to a local for the reason `hex_walkable` is: a field read off
+// a call's result in TAIL position answers the absent sentinel
+// ([loft#877]), which here would say nothing hovers anywhere.
+//
+// ⚠⚠ **The two columns differ for the four WATER kinds and nothing
+// else**, and that is a statement C10 had to make true: `steep_rock`
+// carried `walk_vehicle: true` on the strength of *the floating vehicle
+// hovers above terrain*, and a 0.4 m clearance does not clear a cliff.
+// The flag was unearned because the cliff has no HEIGHT to be stopped
+// by — `height_override` is null and the `slope` 40 that should raise it
+// waits on plan 02 — so `walk_ground: false` was the only thing carrying
+// *this is a cliff*.  ⚠ It flips back the day a cliff is tall.
+// Example: @DRY-137
+pub fn hex_hoverable(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+                     q: integer, r: integer) -> boolean {
+    hh_e = hex_ground(pal, pw, hl, q, r);
+    hh_e.walk_vehicle
+}
+
+// Which column decides what a surface is for this mover.
+fn surface_carries(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+                   hover: boolean, q: integer, r: integer) -> boolean {
+    if hover { return hex_hoverable(pal, pw, hl, q, r); }
+    hex_walkable(pal, pw, hl, q, r)
+}
+
 // Why this class cannot stand on this hex's SURFACE — "" when it can.
 //
 // The surface question alone, with no height in it: sea is not a
@@ -596,8 +630,34 @@ pub fn can_step(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer
 // ground is.
 pub fn can_climb(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
                  climb: float, from: const Hex, to: const Hex) -> boolean {
-    if !hex_walkable(pal, pw, hl, from.q, from.r) { return false; }
-    if !hex_walkable(pal, pw, hl, to.q, to.r) { return false; }
+    can_travel(pal, pw, hl, climb, false, from, to)
+}
+
+// The same rule for something that HOVERS — `@D006`, BACKLOG C10.
+//
+// ⚠⚠ **A second DOOR over one implementation, never a second rule.**
+// Plan 11 F1's *one passability rule, per-class DATA* is what stops the
+// mover and the field disagreeing about what ground is, and two
+// independent traversals would be exactly that.  `can_travel` is the
+// rule; this and `can_climb` are the two ways of asking it, named for
+// their callers.
+//
+// ⚠ **The surface is the only thing that differs.**  A hovering mover
+// still obeys the height rule — it rides `VEHICLE_CLIMB_METRES` of
+// clearance over the local terrain, so a 3.0 m `wall` stops it exactly
+// as it stops a robot, and a trench it drops into is a climb OUT it
+// may not have.  What changes is which surfaces exist for it at all.
+pub fn can_hover(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+                 climb: float, from: const Hex, to: const Hex) -> boolean {
+    can_travel(pal, pw, hl, climb, true, from, to)
+}
+
+// The rule both doors are.  `hover` picks which column of the palette
+// says what a surface is — `walk_ground` or `walk_vehicle`.
+fn can_travel(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+              climb: float, hover: boolean, from: const Hex, to: const Hex) -> boolean {
+    if !surface_carries(pal, pw, hl, hover, from.q, from.r) { return false; }
+    if !surface_carries(pal, pw, hl, hover, to.q, to.r) { return false; }
     climb_ok(hex_height(pal, pw, hl, from.q, from.r),
              hex_height(pal, pw, hl, to.q, to.r), climb)
 }

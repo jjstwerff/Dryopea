@@ -129,28 +129,36 @@ fn drove_to(kind: integer, climb: float, hexes: integer) -> integer {
     dt_at.q
 }
 
-// @DRY-129 — ⚠⚠ **`walk_vehicle` is read by NOTHING**, and this is the
-// reading that says so.  The design intends the vehicle and the crew to
-// HOVER — every water kind carries `walk_vehicle: true` — but
-// `can_climb` refuses a step whose either end fails `hex_walkable`, and
-// that answers `walk_ground`.  So a hovering mover stops one hex SHORT
-// of flat sea at height 0.0, and always has.
+// @DRY-129 — ⚠⚠ **THE READING THAT CHANGED, AND IT IS THE ONE C5 WAS
+// DESIGNED AROUND.**
 //
-// ⚠ It is pinned rather than fixed: making the vehicle read
-// `walk_vehicle` is a change to the ONE passability rule and to what
-// every existing map means, not a line in a moat file.
-fn test_water_stops_the_player_and_the_crew_at_any_depth() {
-    assert(drove_to(SEA, CLIMB_VEHICLE, 6) == -1,
-           "a hovering mover stops one hex short of FLAT sea: "
-           + "{drove_to(SEA, CLIMB_VEHICLE, 6)}");
-    assert(drove_to(WATER, CLIMB_VEHICLE, 6) == -1,
-           "and stops in exactly the same place at a trench: "
+// This test pinned `@D006`: *`walk_vehicle` is read by NOTHING*, so a
+// hovering mover stopped one hex SHORT of flat sea at height 0.0, and a
+// 3.0 m boost did not lift it over a 1 m ditch.  **BACKLOG C10 read the
+// column**, and what comes back is exactly the design C5's probe
+// falsified — the probe was right about the CODE and the design was
+// right about the GAME.
+//
+// ⚠⚠ **The depth IS the cost, because the crew and the player hover and
+// fall in.**  A hovering mover crosses flat sea for free, drops into a
+// trench for free — a drop always is — and then owes the climb back
+// out, which `CLIMB_VEHICLE` (0.4 m) does not have and
+// `VEHICLE_BOOST_CLIMB_METRES` (3.0 m) does.
+fn test_a_hovering_mover_falls_into_a_trench_and_boosts_out() {
+    // Flat water is no obstacle at all: nothing to climb either way.
+    assert(drove_to(SEA, CLIMB_VEHICLE, 6) == 3,
+           "a hovering mover crosses FLAT sea: {drove_to(SEA, CLIMB_VEHICLE, 6)}");
+    // ⚠ A trench catches it: it enters (a drop is free) and stops there,
+    // one hex further than it used to get, on the hex it fell into.
+    assert(drove_to(WATER, CLIMB_VEHICLE, 6) == 0,
+           "and falls INTO a trench rather than stopping short of it: "
            + "{drove_to(WATER, CLIMB_VEHICLE, 6)}");
     // ⚠⚠ The half that matters to a player: boost is `docs/PLAYING.md`'s
-    // *"only way out of a base you have sealed"*, and against water it
-    // buys NOTHING — a climb cannot answer a surface question.
-    assert(drove_to(WATER, VEHICLE_BOOST_CLIMB_METRES, 6) == -1,
-           "and a boost does not lift you over it: "
+    // *"only way out of a base you have sealed"*, and it answers a
+    // trench now — 3.0 m against the metre a `water` hex sits below its
+    // bank.
+    assert(drove_to(WATER, VEHICLE_BOOST_CLIMB_METRES, 6) == 3,
+           "and a boost carries it across: "
            + "{drove_to(WATER, VEHICLE_BOOST_CLIMB_METRES, 6)}");
     // The control that says the drive itself works.
     assert(drove_to(GRASS, CLIMB_VEHICLE, 6) == 3,

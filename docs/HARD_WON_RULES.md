@@ -76,36 +76,60 @@ it (`@M019`).
 always a walkable surface, so an enemy at the water's edge besieges
 nothing.
 
-⚠⚠ **`walk_vehicle` IS READ BY NOTHING, SO WATER STOPS EVERYBODY —
-INCLUDING THE PLAYER** (`@D006`, BACKLOG C5, 2026-08-27).
-`examples/palette.json` marks every water and cliff kind
-`walk_vehicle: true`, and [`GROUND_TYPES.md`](GROUND_TYPES.md) § The
-master palette states the intent outright — *"the floating vehicle
-hovers above terrain; per-agent-type traversal is the design"*.  **No
-code reads that column.**  `passable.loft::can_climb` refuses a step
-whose *either* end fails `hex_walkable`, and `hex_walkable` answers
-`walk_ground` for every caller; `vehicle.loft::drive_along` — the shared
-chassis the player and every helper use — asks `can_climb`.  Measured: a
-hover-climb drive east along a painted strip stops **one hex short of a
-`sea` tile whose height is 0.0**, and raising the climb to the boost's
-3.0 m stops it in exactly the same place.
+⚠⚠ **THE CHASSIS FLOATS, AND THE DEPTH IS WHAT IT COSTS** (`@D006`,
+BACKLOG C10, 2026-08-28).  `vehicle.loft::drive_along` — the shared
+chassis the player and every helper use — asks `can_hover`, which reads
+the palette's `walk_vehicle` column.  A hovering mover crosses flat sea
+for free, **falls INTO a trench** because a drop always is free, and
+then owes the climb back out: `CLIMB_VEHICLE` is 0.4 m and does not have
+it, `VEHICLE_BOOST_CLIMB_METRES` is 3.0 m and does.  ⚠ So the palette's
+0-1-3-8 is priced against the boost — `water` and `rapids` are trenches
+a boost leaves, a `waterfall` is a hole nothing gets out of — which is
+the same removability ordering `moat.loft` reaches from the FILL side.
 
-⚠⚠ **And the lesson is about the PROBE, not about the field.**  BACKLOG
-C5's whole feature was designed around *the depth is what stops a moat
-being free, because the crew HOVER and fall in* — a coherent story,
-supported by the palette, by the design document, and by the field's own
-name, and **false**.  ⚠ It cost a twelve-line probe to find out before a
-line of the feature shipped, and it would have cost a shipped mechanic
-to find out afterwards.  *A field that exists is not a field that is
-read*, and the cheapest way to tell is to drive the thing.
+⚠⚠ **IT READ THE OTHER WAY FOR TWENTY-PLUS PLANS, AND THE LESSON IS
+ABOUT THE PROBE.**  BACKLOG C5's whole feature was designed around *the
+depth is what stops a moat being free, because the crew HOVER and fall
+in*, and a twelve-line probe falsified it before a line shipped:
+`can_climb` refused a step whose either end failed `hex_walkable`, and
+`hex_walkable` answered `walk_ground` for everybody, so **no code in the
+tree read the column**.  ⚠ **The probe was right about the CODE and the
+design was right about the GAME** — which is the shape worth
+remembering: *a field that exists is not a field that is read*, and
+finding that out does not mean the design was wrong.
 
-⚠ It is PINNED rather than fixed.  `passable.loft` § Where the climb
-limits come from already predicts the change — *"the day a class reads
-`walk_vehicle` instead, this gains a kind and both of those go red"* —
-`tests/11_f6` pins *one climb ⇒ one distance field* on a class's whole
-contribution being its climb, and giving the vehicle a second movement
-axis changes what every authored map means (an island base becomes
-drivable).  BACKLOG C10.
+⚠⚠ **AND THE FIX WAS SMALLER THAN EVERY DOCUMENT PREDICTED, INCLUDING
+THE ONE THAT PINNED IT** (`@M063`).  `PROBLEMS.md` called it *a change
+to the ONE passability rule and to what every existing map means*, and
+`passable.loft` predicted *the day a class reads `walk_vehicle` instead,
+`tests/11_f6` goes red*.  **Neither held.**  It is one rule with two
+DOORS — `can_climb` takes a CLIMB rather than a kind, and the flow
+fields are built for ENEMIES only, so the vehicle was never in one — and
+it moved not one of 833 gate measurements.  ⚠ `tests/11_f6` compares the
+regular against an unknown kind, **both of which walk**, so its warning
+never pointed at the hazard it named: `@M025`'s *a gate aimed at the
+mechanism you expect to be the hazard is not one aimed at the hazard*.
+
+⚠⚠ **WHAT DID NEED DECIDING WAS INVISIBLE TO EVERY GATE.**
+`steep_rock` carried `walk_vehicle: true` on the strength of *the
+floating vehicle hovers above terrain*, and a 0.4 m clearance does not
+clear a cliff — the flag was unearned because **the cliff has no HEIGHT
+to be stopped by**, so `walk_ground: false` was carrying the whole of
+*this is a cliff* until plan 02's solver lands.  Reading the column
+without correcting it made a massif drivable, and
+[`maps/the_gap_03.keys`](../maps/the_gap_03.keys) says in its own header
+that *the gap is the only way through for anybody, in either direction*
+— **and no measurement anywhere could see it**, because no scenario
+drives the player at a cliff.  ⚠ A consequence a gate cannot reach is
+found by reading what the CONTENT claims about itself, not by running
+it.
+
+⚠ **And one test was reading an ARTEFACT.**
+`tests/19_p3_the_clock.loft` asserted the crew drove to `q = 14` — the
+end of a painted corridor — which was the SHORE stopping it, because an
+unpainted hex is sea.  A hovering chassis has no shore, so the number is
+now the MOVER: 3 hex/s over eighteen ticks is thirty-six hexes, which
+says it moved on every tick rather than that it ran out of world.
 
 ⚠⚠ **A PILE IS A SURFACE ONLY ONCE IT CLEARS THE WATER** (BACKLOG C5,
 `src/moat.loft`).  `hex_ground`'s threshold is the hex's own **depth**,

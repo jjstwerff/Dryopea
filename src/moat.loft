@@ -32,17 +32,26 @@
 // `can_climb` — so a hovering mover looked like the one thing a depth
 // could bite.
 //
-// ⚠⚠ **`walk_vehicle` IS READ BY NOTHING.**  `can_climb` refuses a step
-// whose either end fails `hex_walkable`, and `hex_walkable` answers
-// `walk_ground` for everybody — so **the player and the crew have never
-// been able to enter water at all**, at any depth, boosting or not.
-// Measured, not reasoned: a hover-climb drive east across a painted
-// strip stops one hex SHORT of a `sea` tile whose height is 0.0
-// (`tests/c5_the_moat.loft` § What the probe killed keeps the reading).
+// ⚠⚠ **`walk_vehicle` WAS READ BY NOTHING**, and that is what the probe
+// found: `can_climb` refused a step whose either end failed
+// `hex_walkable`, and `hex_walkable` answered `walk_ground` for
+// everybody, so the player and the crew could not enter water at all,
+// at any depth, boosting or not.
 //
-// So a moat is an absolute, symmetric barrier the day it is dug, and
-// the depth changes nothing about who may cross an EMPTY one.  ⚠ The
-// two consequences that survive are the two this file is for:
+// ⚠⚠ **AND BACKLOG C10 FIXED IT ON 2026-08-28, SO THE WRONG VERSION
+// ABOVE IS RIGHT AGAIN** (`@D006`, `@X286`).  The probe was right about
+// the CODE and the design was right about the GAME: `drive_along` asks
+// `can_hover` now, so a hovering mover crosses flat sea for free, falls
+// INTO a trench — a drop always is free — and owes a climb out that
+// 0.4 m of clearance has not and a 3.0 m boost has.  **The depth IS the
+// cost.**  ⚠ The reading is kept rather than deleted because *a field
+// that exists is not a field that is read* is what the probe bought,
+// and it cost twelve lines to learn before a feature shipped on it.
+//
+// ⚠ The two consequences below were derived while the barrier was
+// absolute and both SURVIVE, which is why they are still what this file
+// is for — the waterline is about the FILL and the drawing is about the
+// bank, and neither depends on who may cross:
 //
 //   ⚠⚠ **what it takes to FILL** — `passable.loft::hex_ground` reads
 //     the depth as its waterline, so a pile is a surface only once it
@@ -58,11 +67,12 @@
 //
 // ── ⚠ And the hazard the same probe exposed ─────────────────────
 //
-// ⚠⚠ **A player who rings themselves in a trench cannot get out — and
-// unlike a wall, BOOST does not answer it.**  `docs/PLAYING.md` calls
-// boost *"the only way out of a base you have sealed"*, and that is
-// true of walls, whose tops are walkable; water is not a surface at any
-// height, so a 3.0 m climb buys nothing against a 1 m ditch.
+// ⚠⚠ **A player who rings themselves in a trench needs a BOOST to get
+// out** — and until BACKLOG C10 could not get out at all.
+// `docs/PLAYING.md` calls boost *"the only way out of a base you have
+// sealed"*, and since C10 that is true of trenches as well as of walls:
+// a `water` hex sits one metre below its bank and a boost is 3.0 m.
+// ⚠ The crew have no boost, so it is still one-way for them.
 //
 // That is recorded rather than guarded, and on the design's own
 // grounds: `docs/GROUND_TYPES.md` § Entrances already makes *you MUST

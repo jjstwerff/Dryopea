@@ -67,11 +67,15 @@ drag    9   8   23   8
 # it nor ever chew through it.  starter_01's `wall` is 3 m of masonry
 # with HP and it comes down.
 #
-# ⚠ It stops the VEHICLE too — measured, not assumed.  `walk_vehicle` is
-# true for all twelve palette kinds and NOTHING READS IT yet
-# (`src/passable.loft` § walk_ground is NOT passability), so the rock is
-# no more passable to the player than to the robots.  The gap is the
-# only way through for anybody, in either direction.
+# ⚠⚠ **It stops the VEHICLE too, and since BACKLOG C10 that rests on ONE
+# PALETTE LINE.**  The chassis hovers now (`@D006` closed) — it reads
+# `walk_vehicle` rather than `walk_ground` — and `steep_rock` carries
+# `walk_vehicle: false`, because a 0.4 m hover clearance does not clear
+# a cliff and a cliff has no HEIGHT to be stopped by until plan 02's
+# slope solver lands.  ⚠ Flip that line and this map loses its meaning:
+# **the gap is the only way through for anybody, in either direction**,
+# and `tests/c10_the_hover.loft` § A cliff is not terrain you hover over
+# is what keeps that sentence true.
 palette 8
 drag    6  -8    8  -8
 drag    6  -7    8  -7

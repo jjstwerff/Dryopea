@@ -1,0 +1,88 @@
+# a-trench-you-fall-into — BACKLOG C10, `@D006` closed, and it is
+# BACKLOG C5's own headline arriving two phases late.
+#
+# ⚠⚠ **C5 was designed around *the depth is the COST, because the crew
+# and the player HOVER and fall in*, and a probe falsified it before a
+# line shipped** (`@X282`): `walk_vehicle` was read by NOTHING, so the
+# player was stopped by flat sea exactly as a robot is and a 3.0 m boost
+# did not cross a 1 m ditch.
+#
+# ⚠ **The probe was right about the CODE and the design was right about
+# the GAME.**  With the column read, this file is that design:
+#
+#   1. the vehicle drives east and **falls INTO the trench** — a drop is
+#      free, so it enters the hex it used to stop one short of;
+#   2. it is **still there twenty ticks later**, because climbing the
+#      metre back out wants more than `hover_clearance_idle` (0.4 m) has;
+#   3. **boost is the way out** — 3.0 m against one metre — which makes
+#      `docs/PLAYING.md`'s *the only way out of a base you have sealed*
+#      true of trenches again, as it always was of walls.
+#
+# ⚠ **And the crew cannot do (3).**  They share the chassis and the
+# hover, and they have no boost — so a helper that drives into a trench
+# is in it for the run.  That is the cost `a-base-behind-a-moat.keys`
+# records from the other side, and here it is the same rule producing it
+# rather than a separate refusal.
+
+echo a trench you fall into: the depth is the cost, and boost is the way out
+
+do toggle_mode
+do cycle_kind
+click 0 0
+marker 0 0 target
+count markers 1 1
+do toggle_mode
+
+palette 5
+drag -3 -2 12 -2
+drag -3 -1 12 -1
+drag -3 0 12 0
+drag -3 1 12 1
+drag -3 2 12 2
+count painted 80 80
+
+# A one-hex trench right across the lane, a metre below the bank.
+palette 1
+drag 5 -2 5 2
+kind 5 0 water
+count painted 80 80
+
+# ── 1. It falls IN ──────────────────────────────────────────────
+#
+# ⚠ (5, 0), not (4, 0): before C10 the vehicle stopped one hex SHORT of
+# the water it could not enter.  Now it enters and the trench keeps it.
+park 0 0
+drive 11 0
+tick 6
+vehicle 5 0
+
+# ── 2. And it stays ─────────────────────────────────────────────
+#
+# ⚠⚠ Twenty more ticks — sixty hexes of allowance — pointed at the far
+# side, and it has not moved: the climb OUT is a metre and a cruising
+# hover has 0.4 m.
+tick 20
+vehicle 5 0
+
+# ── 3. Boost is the way out ─────────────────────────────────────
+#
+# ⚠ 3.0 m against the metre the hex sits below its bank, and it does not
+# merely leave the trench — it finishes the drive it was on.
+boost
+tick 4
+vehicle 11 0
+
+# ── ⚠ And the crew have no boost ────────────────────────────────
+#
+# The same chassis, the same hover, one thing missing.  A helper sent
+# across is in the trench for the run — which is what
+# `a-base-behind-a-moat.keys` records as *the crew dug themselves in*,
+# produced here by the rule rather than by a separate refusal.
+crew 0 1
+send 0 11 1
+tick 8
+helper 0 5 1
+tick 20
+helper 0 5 1
+
+snap c10_a_trench_you_fall_into

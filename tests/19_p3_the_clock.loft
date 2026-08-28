@@ -319,8 +319,22 @@ fn test_waves_arrive_on_the_wall_clock() {
 
     assert(twa_ps.ticks == 18,
            "twelve seconds is eighteen ticks: {twa_ps.ticks}");
-    assert(twa_ps.wave.player.q == 14,
-           "the crew drove to the spawn marker: q = {twa_ps.wave.player.q}");
+    // ⚠⚠ **It drove PAST the marker, and that is a better reading than
+    // the one this line used to take.**  It asserted `q == 14` — the end
+    // of the painted corridor — which was the SHORE stopping it: an
+    // unpainted hex is sea, and until BACKLOG C10 sea stopped the
+    // chassis exactly as it stops a robot.  The chassis hovers now
+    // (`@D006`), so nothing out there stops it and the number is the
+    // MOVER instead: eighteen ticks at `VEHICLE_SPEED_HEX_PER_SECOND`
+    // (3.0 hex/s) over twelve seconds is thirty-six hexes, so this says
+    // it moved on every one of the eighteen rather than that it ran out
+    // of world.
+    assert(twa_ps.wave.player.q == 36,
+           "the crew drove for the whole twelve seconds — 3 hex/s over "
+           + "18 ticks: q = {twa_ps.wave.player.q}");
+    assert(twa_ps.wave.player.q > 14,
+           "and passed the spawn marker at 14 on the way, which is what "
+           + "provoked the list below");
     assert(wave_schedule_running(twa_ps.wave.schedule),
            "standing there provoked the list");
     assert(wave_schedule_sent(twa_ps.wave.schedule) >= 1,

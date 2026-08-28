@@ -30,11 +30,19 @@
 // ── Passability: the vehicle is a CLIMB and nothing else ────────
 //
 // `passable.loft` asks two questions — is the SURFACE one this class
-// holds, and is the STEP within its climb.  For a hover unit the first
-// is a no-op: **`walk_vehicle` is `true` for every one of the twelve
-// palette entries**, sea and `steep_rock` included, because it hovers
-// over them.  So the height step is its whole passability, and its
-// climb is its hover clearance straight out of `numbers.json`.
+// holds, and is the STEP within its climb.  A hover unit answers the
+// first from `walk_vehicle` rather than `walk_ground`
+// (`can_hover`, BACKLOG C10), and its climb is its hover clearance
+// straight out of `numbers.json`.
+//
+// ⚠⚠ **The surface question is NOT a no-op, and this comment said it
+// was until 2026-08-28.**  The two columns differ for the four WATER
+// kinds — sea, water, rapids, waterfall — and agree everywhere else,
+// including `steep_rock`: a 0.4 m clearance does not clear a cliff.
+// So the vehicle's whole difference from a robot is that it floats on
+// water, and **the height step is still what decides everything else**
+// — a 3 m `wall` stops it and a 3.0 m boost clears it, exactly as
+// before.
 //
 // That is why there is no passability code in this file.  The rule is
 // `passable.loft`'s, the vehicle is a third KIND, and a second
@@ -574,7 +582,10 @@ pub fn drive_along(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLa
     for da_h in lat_line(from, to) {
         if da_first { da_first = false; continue; }
         if da_left <= 0 { return da_at; }
-        if !can_climb(pal, pw, hl, climb, da_at, da_h) { return da_at; }
+        // ⚠⚠ `can_hover`, not `can_climb` — the chassis FLOATS
+        // (`@D006`, BACKLOG C10).  The height rule is unchanged; what
+        // differs is which surfaces exist for it at all.
+        if !can_hover(pal, pw, hl, climb, da_at, da_h) { return da_at; }
         da_at   = da_h;
         da_left -= 1;
     }

@@ -57,7 +57,7 @@ comes back.  ⚠ The HUD is one number and `docs/DESIGN.md` § HUD says it shoul
 be — no wave counter, no health bar, no minimap; everything else is diegetic.
 ⚠⚠ **`MAP=` and `SCRIPT=` are what give it a base to be.**  `make play
 MAP=starter_01` opens one of the three AUTHORED maps in `maps/` (BACKLOG A2,
-2026-08-27); `SCRIPT=<name>` opens any of the 46 `.keys` files in
+2026-08-27); `SCRIPT=<name>` opens any of the 47 `.keys` files in
 `tests/scripts/` + `tests/gl/` as a live starting position, cut at its first
 `tick` (`@X263`).  Bare `make play` opens the empty default slot.
 ⚠⚠ **THE PLAYER CAN BUILD** ([`plans/27`](plans/27-building/README.md),
@@ -74,8 +74,8 @@ critical path is **4, the SCRAMBLE**.
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1618 green**, ~320 s on a busy box, 121 files |
-| scenarios | `scripts/validate.sh` | **43 scripts, 833 measurements**, ~20 s |
+| tests | `scripts/test.sh` | **1626 green**, ~320 s on a busy box, 122 files |
+| scenarios | `scripts/validate.sh` | **44 scripts, 843 measurements**, ~20 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
 
 ⚠ `scripts/test.sh` is the canonical runner — **never `loft test` directly**
@@ -155,13 +155,21 @@ thing it names.
   `can_step(n, a)`: the sweep runs outward and the enemy walks inward.
 - ⚠ **You attack what you could STAND on and cannot climb** — an enemy at the
   water's edge besieges nothing.
-- ⚠⚠ **`walk_vehicle` IS READ BY NOTHING, so WATER STOPS EVERYBODY** (`@D006`,
-  BACKLOG C5) — the palette says the vehicle and the crew hover over water and
-  cliffs, and no code reads that column: `can_climb` refuses a step whose
-  *either* end fails `hex_walkable`, which answers `walk_ground`.  A hover-climb
-  drive stops **one hex short of flat sea** and a 3.0 m boost does not cross a
-  1 m ditch.  ⚠ A moat is therefore an absolute SYMMETRIC barrier, and the first
-  thing the player can build that they cannot get back over.
+- ⚠⚠ **THE CHASSIS FLOATS AND THE DEPTH IS THE COST** (`@D006` closed by
+  BACKLOG C10, `@X286`) — `drive_along` asks `can_hover`, so the player and
+  the crew cross flat sea for free, **fall INTO a trench** (a drop always is
+  free) and then owe a climb out that 0.4 m has not and a 3.0 m boost has.
+  ⚠ So *boost is the only way out of a base you have sealed* is true of
+  trenches again, and the palette's 0-1-3-8 is priced against the boost:
+  `water` and `rapids` are trenches a boost leaves, a `waterfall` is a hole
+  nothing gets out of.  ⚠ ONE rule, two DOORS — `can_travel` is the rule,
+  and a second traversal is what plan 11 F1 forbids, not a second door.
+  ⚠⚠ **`steep_rock.walk_vehicle` went FALSE**, and it is a correction: a
+  0.4 m clearance does not clear a cliff, and a cliff has no HEIGHT to be
+  stopped by until plan 02 — so `walk_ground: false` was carrying the whole
+  of *this is a cliff*, and `the_gap_03`'s *the gap is the only way through
+  for anybody* depends on it.  The two columns now differ for the four
+  WATER kinds and nothing else.
 - ⚠⚠ **A PILE IS A SURFACE ONLY ONCE IT CLEARS THE WATER** (`src/moat.loft`) —
   `hex_ground`'s threshold is the hex's own DEPTH, not zero, which is what gives
   the palette's `drop` a job: `water`'s 1 m swallows **two bodies**.  ⚠ On land
@@ -388,7 +396,7 @@ scripts/validate_gl.sh the-ground    # just one
 make play
 # One of the three AUTHORED maps in maps/ (BACKLOG A2) — repo content.
 make play MAP=starter_01
-# Open one of the 46 `.keys` scenarios as a live starting position
+# Open one of the 47 `.keys` scenarios as a live starting position
 # (BACKLOG A1).  ⚠ `script=`, never `--script` — loft strips a leading
 # `--` argument as its own and the entry would open a MAP of that name.
 make play SCRIPT=a-base-that-plays-its-list
@@ -750,13 +758,13 @@ docs/           ⚠ **listed once, in § Documentation index below** — a
                 second copy of this listing is the one that drifts, and this
                 one had grown three EXPLORATION.md rows saying three things.
 
-PROBLEMS.md             — dryopea-internal bugs (@D-prefixed; ⚠ ONE row open — @D006,
-                          `walk_vehicle` is read by NOTHING, so the vehicle and the crew
-                          are stopped by flat sea exactly as a robot is.  @D001-@D005 fixed,
-                          and ⚠⚠ @D002 closed 2026-08-28 by BACKLOG C7: the wheel moved a
-                          number NO RENDERER READ, so the picture was identical at z1 and
-                          z6 — and the fix is `view_ppm(cam)` plus making the base scale
-                          PRIVATE, because a test cannot stop the next caller reaching for it)
+PROBLEMS.md             — dryopea-internal bugs (@D-prefixed; ⚠ NOTHING is open —
+                          @D002 and @D006 were the last two and BACKLOG C7 and C10
+                          closed both on 2026-08-28.  ⚠⚠ @D006 is the one worth
+                          reading: it called itself "not a patch" and predicted
+                          `tests/11_f6` would go red, and NEITHER held — it moved
+                          not one of 833 measurements, while the thing that DID
+                          need deciding was invisible to every gate)
 QUESTIONS_FOR_LOFT.md   — outbound queue to loft (Open / Submitted / Resolved)
 README.md               — public project intro
 loft.toml               — package manifest (depends on graphics)
@@ -1033,7 +1041,7 @@ names; most of them exist because somebody did it without reading.
 | Ask what a besieger does at a trench, or why a moat is not permanent | `src/moat.loft` § What a besieger shovels — ⚠⚠ **a moat is a TIMER** (130 / 174 / 221), and a trench in front of a TOWER is what it is for |
 | Add an obstacle a wave should be able to REMOVE | `src/flow.loft::sweep_ground` — ⚠⚠ **the desire field, never `wave_damage` alone**; a hex it does not admit is never named as a target |
 | Ask why the crew cannot dig spoil back out | `src/vehicle.loft` § SPOIL IS NOT SALVAGE — ⚠⚠ **a clearer takes the WHOLE pile**, so it measured as an OFF SWITCH (`@M059`) |
-| Ask whether the player or the crew can cross water | ⚠⚠ **No — at any depth, boosting or not** (`@D006`); `walk_vehicle` is read by nothing |
+| Ask whether the player or the crew can cross water | ⚠⚠ **Yes — they HOVER** (`@D006` closed by BACKLOG C10).  Flat sea is free; a trench they fall into wants a BOOST to leave and a `waterfall` never lets go; a cliff still refuses everybody |
 | Ask whether a hex is free of enemies | `src/occupancy.loft` |
 | Ask who on the PLAYER's side is standing on a hex | `src/occupancy.loft::blocker_at` |
 | Ask what STARTS the wave list | `src/spawn.loft::wave_provoke_step` — ⚠ two thresholds, 10 and 12 |

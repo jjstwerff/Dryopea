@@ -68,7 +68,7 @@ palette right; everything downstream is cheap.
 | 5 | **grass** | `#4caf50` (vibrant green) | land | 6 | — | yes | yes | yes | — |
 | 6 | **hill** | `#8b6240` (warm brown) | land | 12 | — | yes (slowed) | yes | yes | **forest** (tree overlay) |
 | 7 | **rock** | `#b0b0b0` (light grey) | land | 20 | — | yes (slow, awkward) | yes | yes | **flat wall faces** (gridmesh T4 vertical slope-faces, visually like built walls) |
-| 8 | **steep_rock** | `#555555` (dark grey) | land | 40 | — | **no** (impassable) | yes (vehicle hovers) | no | — |
+| 8 | **steep_rock** | `#555555` (dark grey) | land | 40 | — | **no** (impassable) | **no** (⚠ a 0.4 m hover does not clear a cliff — BACKLOG C10; it flips back the day plan 02 gives a cliff a HEIGHT to be stopped by) | no | — |
 | 9 | **wall** *(placeholder colour)* | `#d04848` (red) | structure | — | — | yes (top is walkable) | yes | no (no stacking) | (later) destructible HP, repair |
 | 10 | **wall_high** *(placeholder colour)* | `#7a1818` (dark red) | structure | — | — | yes (top is walkable) | yes | no | (later) destructible HP, more |
 | 11 | **rubble** *(placeholder colour, never painted)* | `#8878a8` (violet-grey) | debris | — | — | yes (a heap is walkable) | yes | no | (later) one entry per source material |
@@ -93,16 +93,30 @@ palette right; everything downstream is cheap.
 > - **Walkable (ground)** for `steep_rock` is the impassable
 >   gate that funnels ground mobs through gaps — the same gate
 >   that blocks them from climbing a built wall.
-> - **Walkable (vehicle)** is true even for `steep_rock` and
->   `waterfall` because the floating vehicle hovers above
->   terrain; per-agent-type traversal is the design (DESIGN.md
->   § Systems #4).  ⚠⚠ **THIS COLUMN IS READ BY NOTHING**
->   (`@D006`, found 2026-08-27): `passable.loft::can_climb`
->   refuses a step whose either end fails `hex_walkable`, and
->   that answers `walk_ground` for every caller — so the vehicle
->   and the crew are stopped by flat sea exactly as a robot is,
->   and a 3.0 m boost does not cross a 1 m ditch.  The column
->   states the design; the code has never implemented it.
+> - **Walkable (vehicle)** is what a HOVERING mover may be over;
+>   per-agent-type traversal is the design (DESIGN.md § Systems
+>   #4).  ⚠⚠ **THE COLUMN IS READ SINCE 2026-08-28** (`@D006`
+>   closed by BACKLOG C10): `passable.loft::hex_hoverable` is its
+>   reader and `vehicle.loft::drive_along` — the shared chassis
+>   the player and every helper use — asks `can_hover`.
+>   ⚠ **The height rule is untouched.**  Hovering buys nothing
+>   against a rise: a 3 m `wall` still stops a cruising vehicle
+>   and a 3.0 m boost still clears it.  What changes is which
+>   surfaces exist for it at all — so a hovering mover crosses
+>   flat sea for free, **falls INTO a trench** (a drop always is
+>   free) and then owes the climb back out, which 0.4 m of
+>   clearance has not and a 3.0 m boost has.
+>   ⚠⚠ **`steep_rock` is now FALSE here, and it is a correction
+>   rather than an exception.**  The flag stood on *the floating
+>   vehicle hovers above terrain*, and a 0.4 m clearance does not
+>   clear a cliff — it was unearned because **the cliff has no
+>   height to be stopped by**: `height_override` is null and the
+>   `slope` 40 that should raise it waits on plan 02, so
+>   `walk_ground: false` was carrying the whole of *this is a
+>   cliff*.  It flips back the day a cliff is tall.  ⚠ The two
+>   columns therefore differ for the four WATER kinds and nothing
+>   else: **the vehicle's whole difference from a robot is that
+>   it floats on water.**
 > - **Buildable** is gated by both type and slope.  Towers,
 >   walls, and bridges can be placed on land types only, and
 >   only where slope is below the build threshold.  `steep_rock`

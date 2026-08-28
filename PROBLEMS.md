@@ -44,59 +44,63 @@ Severity tiers:
 
 ## Open
 
-⚠ One row.  `@D002` was the other and BACKLOG C7 closed it on
-2026-08-28.
+⚠ **Nothing is open today.**  `@D002` was closed by BACKLOG C7 and
+`@D006` by BACKLOG C10, both on 2026-08-28.
+
+## Fixed
 
 ### @D006 — `walk_vehicle` is read by nothing, so the hovering movers cannot cross water
 
-- **Status:** OPEN.  Found and PINNED 2026-08-27 (BACKLOG C5), not fixed —
-  the fix is a change to the ONE passability rule and to what every
-  existing map means, which is not a line in a moat file.
+- **Status:** **FIXED** 2026-08-28, BACKLOG C10 — `passable.loft` gained
+  `hex_hoverable` and `can_hover`, and `vehicle.loft::drive_along` — the
+  shared chassis the player and every helper use — asks the second door.
 - **Severity:** Medium, and it went up the day the player could BUILD
-  water.  A trench the player closes is closed to them for the run, and
-  boost cannot answer it.
+  water.
 - **Found while:** BACKLOG C5, probing the claim the moat feature was
   designed around — *the depth is what stops the moat being free,
   because the crew HOVER and fall in*.  The probe falsified it, which is
   the whole reason it was written before the feature.
-- **Repro:** drive east along a painted grass strip whose middle hex is
-  `sea` (height **0.0**), with `CLIMB_VEHICLE` and six hexes of
-  allowance.  The mover stops **one hex short of it**.  Raise the climb
-  to `VEHICLE_BOOST_CLIMB_METRES` (3.0) and it stops in the same place.
-- **Expected:** [`docs/GROUND_TYPES.md`](docs/GROUND_TYPES.md) § The
-  master palette says *"Walkable (vehicle) is true even for `steep_rock`
-  and `waterfall` because the floating vehicle hovers above terrain;
-  per-agent-type traversal is the design"*, and every water and cliff
-  kind carries `walk_vehicle: true` in
-  [`examples/palette.json`](examples/palette.json).
-- **Observed:** `passable.loft::can_climb` refuses a step whose *either*
-  end fails `hex_walkable`, and `hex_walkable` answers `walk_ground` for
-  every caller.  `vehicle.loft::drive_along` — the shared chassis the
-  player and every helper use — asks `can_climb`, so **`walk_vehicle` is
-  read by no code in the tree**.  The vehicle is stopped by flat sea and
-  by `steep_rock` exactly as a robot is.
-- **⚠ Why it is not simply a bug to fix here:** `passable.loft`
-  § Where the climb limits come from already predicts it —
-  *"The day a class reads `walk_vehicle` instead, this gains a kind and
-  both of those go red"* — and `tests/11_f6_height_step.loft` pins
-  **one climb ⇒ one distance field** on the strength of a class's whole
-  contribution being its climb.  Giving the vehicle a second movement
-  axis changes what every authored map means (an island base becomes
-  drivable) and is a decision about the SIMULATION, not a patch.
-- **⚠ What it costs today:** the vehicle cannot cross a one-hex ditch or
-  reach an island, and BACKLOG C5's trench is the first thing the player
-  can build that they cannot get back over.
-  [`docs/PLAYING.md`](docs/PLAYING.md) says so in the row that offers it,
-  and [`src/moat.loft`](src/moat.loft) § And the hazard the same probe
-  exposed carries the argument for recording it rather than guarding it.
-- **Test:** [`tests/c5_the_moat.loft`](tests/c5_the_moat.loft)
-  `test_water_stops_the_player_and_the_crew_at_any_depth` — the reading,
-  with the control that says the drive itself works (the same drive over
-  grass crosses).  ⚠ It pins the CURRENT behaviour, so it is the test
-  that must be rewritten when this is fixed rather than the one that
-  proves the fix.
-
-## Fixed
+- **Observed:** `can_climb` refused a step whose *either* end failed
+  `hex_walkable`, and `hex_walkable` answered `walk_ground` for every
+  caller — so the vehicle was stopped by flat sea and by `steep_rock`
+  exactly as a robot is.
+- **⚠⚠ The probe was right about the CODE and the design was right about
+  the GAME.**  With the column read, C5's headline comes back exactly:
+  a hovering mover crosses flat sea for free, **drops into a trench for
+  free** — a drop always is — and then owes the climb back out, which
+  `CLIMB_VEHICLE` (0.4 m) does not have and
+  `VEHICLE_BOOST_CLIMB_METRES` (3.0 m) does.  ⚠ So `docs/PLAYING.md`'s
+  *boost is the only way out of a base you have sealed* is true of
+  trenches again, and the palette's 0-1-3-8 is priced against the boost
+  for the first time: `water` and `rapids` are trenches a boost leaves
+  and a `waterfall` is a hole nothing gets out of.
+- **⚠⚠ It was SMALLER than this entry predicted, and the reason is
+  worth keeping.**  *A change to the ONE passability rule* — it is one
+  rule with two doors over one implementation, because `can_climb` takes
+  a CLIMB rather than a kind and the flow fields are built for ENEMIES
+  only.  Nothing that walks moved: not a field, not a mover, not one of
+  the 833 gate measurements.  ⚠ And `tests/11_f6`'s *give a class a
+  second movement axis and this goes red* did NOT fire — it compares the
+  regular against an unknown kind, both of which walk, so the pin never
+  pointed at the hazard its comment named (`@M025`'s shape).
+- **⚠ One palette edit, and it is not a tidying.**  `steep_rock` carried
+  `walk_vehicle: true` on the strength of *the floating vehicle hovers
+  above terrain*, and a 0.4 m clearance does not clear a cliff.  The
+  flag was unearned because the cliff has **no HEIGHT to be stopped
+  by** — `height_override` is null and the `slope` 40 that should raise
+  it waits on plan 02 — so `walk_ground: false` was the only thing
+  carrying *this is a cliff*.  Reading the column without that edit
+  would have made a massif drivable, and
+  [`maps/the_gap_03.keys`](maps/the_gap_03.keys) states in its own
+  header that **the gap is the only way through for anybody, in either
+  direction**.  ⚠ It flips back the day a cliff is tall.
+- **Test:** [`tests/c10_the_hover.loft`](tests/c10_the_hover.loft) and
+  [`tests/scripts/a-trench-you-fall-into.keys`](tests/scripts/a-trench-you-fall-into.keys)
+  — falls in, is still there twenty ticks later, boosts out, and the
+  crew who share the chassis and have no boost do not.  ⚠
+  `tests/c5_the_moat.loft` `@DRY-129` was the test that PINNED this
+  defect and is rewritten rather than deleted: it is the same drive
+  reading the other answer.
 
 ### @D002 — `cam.zoom` changes no pixel: the wheel moves a number no renderer reads
 

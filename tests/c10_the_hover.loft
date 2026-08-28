@@ -1,0 +1,266 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// BACKLOG C10 — `@D006`: the chassis FLOATS.
+//
+// ⚠⚠ **The defect: `walk_vehicle` was read by nothing.**  Every water
+// kind has carried `walk_vehicle: true` since plan 01 and
+// `docs/GROUND_TYPES.md` § The master palette has called *per-agent-type
+// traversal* the design for as long — while `can_climb` refused a step
+// whose either end failed `hex_walkable`, and `hex_walkable` answered
+// `walk_ground` for everybody.  So the player and the crew were stopped
+// by flat sea exactly as a robot is, and a 3.0 m boost did not cross a
+// 1 m ditch.
+//
+// ── ⚠⚠ WHAT THE FIX GIVES BACK, AND IT IS C5's OWN HEADLINE ─────
+//
+// BACKLOG C5 was designed around *the depth is the COST, because the
+// crew and the player HOVER and fall in*, and a probe falsified it
+// before a line shipped (`@X282`).  ⚠ **The probe was right about the
+// CODE and the design was right about the GAME**: with the column read,
+// a hovering mover crosses flat sea for free, drops into a trench for
+// free — a drop always is — and then owes the climb back out, which
+// `CLIMB_VEHICLE` does not have and `VEHICLE_BOOST_CLIMB_METRES` does.
+//
+// ⚠ So `docs/PLAYING.md`'s *boost is the only way out of a base you have
+// sealed* is true of trenches again, and it was true of walls all along.
+//
+// ── ⚠⚠ AND THE ONE PALETTE EDIT, WHICH IS NOT A TIDYING ─────────
+//
+// `steep_rock` carried `walk_vehicle: true` on the strength of *the
+// floating vehicle hovers above terrain* — and a 0.4 m hover clearance
+// does not clear a cliff.  ⚠ The flag was unearned because **the cliff
+// has no HEIGHT to stop anything with**: `height_override` is null and
+// the `slope` 40 that should raise it waits on plan 02's solver, so
+// `walk_ground: false` is the only thing carrying "this is a cliff".
+// Reading the column without that edit would have made a massif
+// drivable — and `maps/the_gap_03.keys` states in its own header that
+// **the gap is the only way through for anybody, in either direction**.
+// § A cliff is not terrain you hover over is the gate.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SEA:        integer = 0;
+const WATER:      integer = 1;
+const RAPIDS:     integer = 2;
+const WATERFALL:  integer = 3;
+const GRASS:      integer = 5;
+const STEEP_ROCK: integer = 8;
+const WALL:       integer = 9;
+const WALL_HIGH:  integer = 10;
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+fn pal_at(path: text) -> vector<GroundType> { load_palette(path) }
+
+// A grass strip -4..4 with one hex of `kind` in the middle at (0, 0).
+//
+// ⚠ Painted the whole way, because an unpainted hex IS sea — a driving
+// test that runs out of ground measures the edge of the world.
+fn strip(kind: integer) -> PaintedWorld {
+    s_pw = painted_empty();
+    for s_q in -4..=4 { paint(s_pw, s_q, 0, as_u8(GRASS)); }
+    paint(s_pw, 0, 0, as_u8(kind));
+    s_pw
+}
+
+// How far east a mover of `climb` gets driving the strip, given six
+// hexes of allowance.  3 is "crossed", 0 is "fell into the middle
+// hex", -1 is "stopped short of it".
+//
+// ⚠ `drive_along` is the shared chassis: the player and every helper use
+// it, so one probe answers for both and the two cannot drift.
+fn drove(kind: integer, climb: float) -> integer {
+    d_at = drive_along(pal_at(PALETTE), strip(kind), height_layer_empty(),
+                       Hex { q: -3, r: 0 }, Hex { q: 3, r: 0 }, 6, climb);
+    d_at.q
+}
+
+// ─── The column, read ───────────────────────────────────────────
+
+// @DRY-137 — ⚠⚠ **The vehicle's whole difference from a robot is that
+// it floats on water**, and after C10's one palette edit the two
+// columns say exactly that and nothing else.
+fn test_the_two_columns_differ_only_on_water() {
+    ttc_pal = pal_at(PALETTE);
+    ttc_pw  = painted_empty();
+    ttc_hl  = height_layer_empty();
+    ttc_diff = 0;
+    for ttc_k in 0..PALETTE_SIZE {
+        paint(ttc_pw, 0, 0, as_u8(ttc_k));
+        ttc_g = hex_walkable(ttc_pal, ttc_pw, ttc_hl, 0, 0);
+        ttc_v = hex_hoverable(ttc_pal, ttc_pw, ttc_hl, 0, 0);
+        if ttc_g != ttc_v {
+            ttc_diff += 1;
+            assert(ttc_v && !ttc_g,
+                   "kind {ttc_k} differs the right way round — a hovering "
+                   + "mover can go where a walking one cannot, never the "
+                   + "reverse");
+            assert((ttc_pal[ttc_k] ?? GroundType {}).sub_palette == "water",
+                   "and only WATER differs: kind {ttc_k} is "
+                   + "`{(ttc_pal[ttc_k] ?? GroundType {}).name}`");
+        }
+    }
+    assert(ttc_diff == 4,
+           "sea, water, rapids and waterfall — four kinds: {ttc_diff}");
+}
+
+// ⚠⚠ **A CLIFF IS NOT TERRAIN YOU HOVER OVER**, and the reason is that
+// it has no height to be stopped by.  `steep_rock`'s `height_override`
+// is null and its `slope` 40 waits on plan 02, so `walk_ground: false`
+// is the only thing carrying *this is a cliff* — and the vehicle has to
+// read the same refusal or a massif stops being one.
+//
+// ⚠ `maps/the_gap_03.keys` says in its own header that the gap is the
+// only way through **for anybody, in either direction**; this is that
+// sentence, gated.
+fn test_a_cliff_is_not_terrain_you_hover_over() {
+    tac_pal = pal_at(PALETTE);
+    tac_pw  = painted_empty();
+    paint(tac_pw, 0, 0, as_u8(STEEP_ROCK));
+    assert(!hex_hoverable(tac_pal, tac_pw, height_layer_empty(), 0, 0),
+           "a cliff carries nothing, hovering or not");
+    assert(drove(STEEP_ROCK, CLIMB_VEHICLE) == -1,
+           "so a massif stops the vehicle short: "
+           + "{drove(STEEP_ROCK, CLIMB_VEHICLE)}");
+    assert(drove(STEEP_ROCK, VEHICLE_BOOST_CLIMB_METRES) == -1,
+           "and a boost does not answer it either: "
+           + "{drove(STEEP_ROCK, VEHICLE_BOOST_CLIMB_METRES)}");
+    // ⚠ CONTROL — the same drive over the sea beside it DOES cross, so
+    // the refusal above is the cliff and not the drive.
+    assert(drove(SEA, CLIMB_VEHICLE) == 3,
+           "CONTROL — flat sea in the same slot crosses: "
+           + "{drove(SEA, CLIMB_VEHICLE)}");
+}
+
+// ─── ⚠⚠ The depth is the cost ───────────────────────────────────
+
+// **THE MECHANIC, and it is BACKLOG C5's headline arriving two phases
+// late.**  Flat water is free; a trench catches you; boost is the way
+// out.  ⚠ Every reading is the SAME drive with one token changed, so
+// the differences are the ground's and can be nothing else.
+fn test_flat_water_is_free_and_a_trench_is_a_trap() {
+    assert(drove(SEA, CLIMB_VEHICLE) == 3,
+           "flat sea costs nothing — there is no rise either way: "
+           + "{drove(SEA, CLIMB_VEHICLE)}");
+    assert(drove(WATER, CLIMB_VEHICLE) == 0,
+           "a metre-deep trench catches it ON the hex it fell into: "
+           + "{drove(WATER, CLIMB_VEHICLE)}");
+    assert(drove(WATER, VEHICLE_BOOST_CLIMB_METRES) == 3,
+           "and boost carries it across: "
+           + "{drove(WATER, VEHICLE_BOOST_CLIMB_METRES)}");
+    // ⚠ The control that says the trap is the DEPTH and not the water:
+    // sea and water are the same surface and differ only in `drop`.
+    assert(drove(SEA, CLIMB_VEHICLE) != drove(WATER, CLIMB_VEHICLE),
+           "CONTROL — two water kinds, one drop apart, two answers");
+}
+
+// ⚠⚠ **A drop is free and a climb is not**, which is the asymmetry the
+// whole mechanic rests on — `passable.loft` § It is asymmetric.  Read
+// both directions across the same bank.
+fn test_you_fall_in_for_free_and_pay_to_get_out() {
+    typ_pal = pal_at(PALETTE);
+    typ_pw  = strip(WATER);
+    typ_hl  = height_layer_empty();
+    assert(can_hover(typ_pal, typ_pw, typ_hl, CLIMB_VEHICLE,
+                     Hex { q: -1, r: 0 }, Hex { q: 0, r: 0 }),
+           "in, at a cruise");
+    assert(!can_hover(typ_pal, typ_pw, typ_hl, CLIMB_VEHICLE,
+                      Hex { q: 0, r: 0 }, Hex { q: 1, r: 0 }),
+           "and not out again");
+    assert(can_hover(typ_pal, typ_pw, typ_hl, VEHICLE_BOOST_CLIMB_METRES,
+                     Hex { q: 0, r: 0 }, Hex { q: 1, r: 0 }),
+           "until it boosts");
+}
+
+// ⚠⚠ **THE DEPTH IS A LADDER AND THE BOOST IS WHERE IT ENDS.**  The
+// palette's 0-1-3-8 is priced against `VEHICLE_BOOST_CLIMB_METRES` for
+// the first time here: sea is free, `water` and `rapids` are trenches a
+// boost leaves, and a `waterfall` is a hole nothing gets out of.
+//
+// ⚠ That is the same removability ordering `moat.loft` states for what
+// the player may ORDER — `water` and only `water` — and the two land on
+// it from different directions: one prices the FILL in bodies, this one
+// prices the CLIMB in metres.
+fn test_the_depth_ladder_ends_at_the_boost() {
+    ttd_pal = pal_at(PALETTE);
+    assert(moat_depth(ttd_pal[WATER]  ?? GroundType {}) <= VEHICLE_BOOST_CLIMB_METRES,
+           "a boost leaves a `water` trench");
+    assert(moat_depth(ttd_pal[RAPIDS] ?? GroundType {}) <= VEHICLE_BOOST_CLIMB_METRES,
+           "and `rapids`, exactly — 3.0 against 3.0");
+    assert(moat_depth(ttd_pal[WATERFALL] ?? GroundType {}) > VEHICLE_BOOST_CLIMB_METRES,
+           "and a `waterfall` is a hole nothing gets out of: "
+           + "{moat_depth(ttd_pal[WATERFALL] ?? GroundType {})} m against "
+           + "{VEHICLE_BOOST_CLIMB_METRES}");
+    // The drive says the same thing, which is what makes the arithmetic
+    // above a claim about the GAME rather than about the palette.
+    assert(drove(RAPIDS, VEHICLE_BOOST_CLIMB_METRES) == 3,
+           "rapids: {drove(RAPIDS, VEHICLE_BOOST_CLIMB_METRES)}");
+    assert(drove(WATERFALL, VEHICLE_BOOST_CLIMB_METRES) == 0,
+           "waterfall: {drove(WATERFALL, VEHICLE_BOOST_CLIMB_METRES)}");
+}
+
+// ─── What did NOT change ────────────────────────────────────────
+
+// ⚠⚠ **The height rule is untouched, and this is the control that says
+// the change is about SURFACES alone.**  A `wall` stops a cruising
+// vehicle and a boost clears it, exactly as before C10 — hovering buys
+// nothing against a rise.
+fn test_hovering_buys_nothing_against_a_rise() {
+    assert(drove(WALL, CLIMB_VEHICLE) == -1,
+           "a 3 m wall still stops it: {drove(WALL, CLIMB_VEHICLE)}");
+    assert(drove(WALL, VEHICLE_BOOST_CLIMB_METRES) == 3,
+           "and boost is exactly a wall: "
+           + "{drove(WALL, VEHICLE_BOOST_CLIMB_METRES)}");
+    assert(drove(WALL_HIGH, VEHICLE_BOOST_CLIMB_METRES) == -1,
+           "while a high wall refuses even that: "
+           + "{drove(WALL_HIGH, VEHICLE_BOOST_CLIMB_METRES)}");
+}
+
+// ⚠⚠ **NOTHING ON LEGS MOVED**, which is why the wave, the fields and
+// every one of the 833 gate measurements stood.  `can_climb` is the
+// ground door and answers exactly what it always did.
+fn test_no_walking_mover_moved() {
+    tnw_pal = pal_at(PALETTE);
+    tnw_hl  = height_layer_empty();
+    for tnw_k in [SEA, WATER, RAPIDS, WATERFALL, STEEP_ROCK] {
+        assert(!can_climb(tnw_pal, strip(tnw_k), tnw_hl, CLIMB_INSECT,
+                          Hex { q: -1, r: 0 }, Hex { q: 0, r: 0 }),
+               "kind {tnw_k} still refuses everything on legs, even an "
+               + "insect with a 3 m climb");
+        assert(!can_stand(tnw_pal, strip(tnw_k), tnw_hl,
+                          as_u8(ENEMY_KIND_REGULAR), 0, 0),
+               "and a robot cannot stand on it");
+    }
+    // ⚠ The CONTROL: the hovering door answers differently for the
+    // water kinds, so the refusals above are the ground rule and not a
+    // world nothing can enter.
+    assert(can_hover(tnw_pal, strip(SEA), tnw_hl, CLIMB_VEHICLE,
+                     Hex { q: -1, r: 0 }, Hex { q: 0, r: 0 }),
+           "CONTROL — the same step hovering is allowed");
+}
+
+// ⚠ One rule, two doors — the thing plan 11 F1 exists to protect.  On
+// every surface where the two columns AGREE, the two doors must answer
+// identically for any climb, or the mover and the field could disagree
+// about what ground is.
+fn test_one_rule_two_doors() {
+    torl_pal = pal_at(PALETTE);
+    torl_pw  = painted_empty();
+    torl_hl  = height_layer_empty();
+    for torl_k in 0..PALETTE_SIZE {
+        paint(torl_pw, -1, 0, as_u8(GRASS));
+        paint(torl_pw, 0, 0, as_u8(torl_k));
+        torl_g = hex_walkable(torl_pal, torl_pw, torl_hl, 0, 0);
+        torl_v = hex_hoverable(torl_pal, torl_pw, torl_hl, 0, 0);
+        if torl_g == torl_v {
+            assert(can_climb(torl_pal, torl_pw, torl_hl, CLIMB_INSECT,
+                             Hex { q: -1, r: 0 }, Hex { q: 0, r: 0 })
+                   == can_hover(torl_pal, torl_pw, torl_hl, CLIMB_INSECT,
+                                Hex { q: -1, r: 0 }, Hex { q: 0, r: 0 }),
+                   "kind {torl_k}: the columns agree, so the doors must");
+        }
+    }
+}

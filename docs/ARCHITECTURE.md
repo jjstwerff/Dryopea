@@ -1005,10 +1005,17 @@ src/
                    silently halve the player.
                    ⚠ **No passability code here.**  A hover unit's
                    climb is its clearance (`CLIMB_VEHICLE`, 0.4 m) and
-                   the player is a third KIND in `passable.loft` —
-                   `walk_vehicle` is true for all twelve palette
-                   entries, so the height step is its whole
-                   passability.
+                   the player is a third KIND in `passable.loft`.
+                   ⚠⚠ THE CHASSIS FLOATS (BACKLOG C10, @D006, @X286):
+                   `drive_along` asks `can_hover`, which reads
+                   `walk_vehicle` rather than `walk_ground`.  The two
+                   columns differ for the four WATER kinds and nothing
+                   else, so the vehicle's whole difference from a robot
+                   is that it floats on water — and the HEIGHT step
+                   still decides everything else: a 3 m wall stops it,
+                   a 3.0 m boost clears it.  ⚠ A trench takes it (a
+                   drop is free) and the climb OUT is what 0.4 m has
+                   not and a boost has.
                    ⚠ **It DRIVES, never routes** — `lat_line` to where
                    it is pointed, stopping at the first refused step.
                    A flow field would be the machine choosing the way,
@@ -1416,6 +1423,16 @@ src/
                    nothing, or the first crew member to die in a
                    corridor would be a free wall with no HP left
   passable.loft    may a class of enemy make this move? (plan 11 F1 +
+                   ⚠⚠ TWO DOORS, ONE RULE (BACKLOG C10, @X286):
+                   `can_travel` is the rule; `can_climb` asks it
+                   for something that WALKS and `can_hover` for
+                   something that FLOATS, and `hex_walkable` /
+                   `hex_hoverable` are the two surface columns.
+                   Plan 11 F1 forbids a second TRAVERSAL, not a
+                   second door — two independent rules is how a
+                   mover and a field come to disagree about what
+                   ground is.  ⚠ Only `vehicle.loft::drive_along`
+                   hovers; every field and every enemy walks.
                    F6) — the enemy KIND discriminants + climb_limit()
                    + hex_height() + can_stand() / can_step() /
                    can_occupy(), each with a `*_fault` twin that names
@@ -1782,13 +1799,19 @@ src/
                    ⚠⚠ A PROBE FALSIFIED THIS FILE'S HEADLINE BEFORE IT
                    SHIPPED.  It was designed as *the depth is the COST,
                    because the crew and the player HOVER and fall in* —
-                   and `walk_vehicle` is read by NOTHING (@D006):
-                   `can_climb` refuses a step whose either end fails
+                   and `walk_vehicle` WAS read by NOTHING (@D006):
+                   `can_climb` refused a step whose either end failed
                    `hex_walkable`, which answers `walk_ground` for
-                   everybody.  So nobody has ever been able to enter
-                   water, an EMPTY moat is an absolute symmetric
-                   barrier at any depth, and the drop's whole job is
-                   the WATERLINE.
+                   everybody.
+                   ⚠⚠ BACKLOG C10 FIXED IT 2026-08-28, SO THE
+                   FALSIFIED VERSION IS RIGHT AGAIN (@X286): the probe
+                   was right about the CODE and the design was right
+                   about the GAME.  `drive_along` asks `can_hover`, so
+                   a hovering mover crosses flat sea for free, falls
+                   INTO a trench and owes a climb out that 0.4 m has
+                   not and a 3.0 m boost has — THE DEPTH IS THE COST.
+                   ⚠ The drop's other job, the WATERLINE, is what this
+                   file is for and does not depend on who may cross.
                    ⚠⚠ A PILE IS A SURFACE ONLY ONCE IT CLEARS THE
                    WATER (`passable.loft::hex_ground`), so the depth is
                    how much a moat SWALLOWS — water's 1 m is two bodies
