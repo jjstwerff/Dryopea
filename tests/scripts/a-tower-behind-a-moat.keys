@@ -1,0 +1,138 @@
+# a-tower-behind-a-moat — BACKLOG C9, and it is the answer to the
+# sentence `a-base-behind-a-moat.keys` used to end on.
+#
+# That file is this file minus THREE lines — a tower marker at (2, 0)
+# and its load — so the difference in the clock is the tower's and can
+# be nothing else (`plans/12` § B7's rule).
+#
+#     a trench alone          falls at 221, all 13 alive
+#     a trench and a tower    falls at 335, NINE of them dead
+#
+# ── ⚠⚠ What a trench is FOR, once something fills it ─────────────
+#
+# `@M058` read the moat as a stalemate and it was right to: *a wave
+# that cannot reach you cannot die*, so the trench bought the whole run
+# and earned nothing.  BACKLOG C9 fills it, and that one change turns
+# the sentence inside out — **a besieger has to STAND at a fixed
+# distance and dig**, which is the most shootable thing a robot can do.
+#
+# ⚠ So the trench's real job is not the barrier.  It is a kill zone
+# with a floor under it: the wave parks itself at a range you chose,
+# for as long as it takes to shovel a metre of spoil, and the only
+# question left is whether your tower kills diggers faster than they
+# dig.  ⚠⚠ **The magazine is what answers it here** — thirty shots is a
+# tower's whole load (`plans/16` § W4), and the base falls when it runs
+# out rather than when the trench does.
+#
+# ⚠ **The crew are still in it** and still cannot dig themselves out —
+# `salvage_at` refuses spoil (`vehicle.loft` § SPOIL IS NOT SALVAGE) —
+# so the cost `a-base-behind-a-moat.keys` records is unchanged.
+
+echo a tower behind a moat: the wave parks in the kill zone and digs
+
+do toggle_mode
+
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+do cycle_kind
+click 2 0
+marker 2 0 tower
+
+do cycle_kind
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 11 0
+marker 11 0 spawn 3
+
+count markers 3 3
+do toggle_mode
+
+palette 5
+drag -3 -2 12 -2
+drag -3 -1 12 -1
+drag -3 0 12 0
+drag -3 1 12 1
+drag -3 2 12 2
+count painted 80 80
+
+# The tower is loaded before anybody moves.
+top 2 0 on
+shots 2 0 0 0
+
+# The crew, sitting on the line the player is about to draw.
+crew 5 -1
+crew 5 1
+
+# ── The dig ─────────────────────────────────────────────────────
+park 5 -2
+dig on
+drive 5 2
+tick 6
+count orders 5 5
+dig off
+
+# Park clear of the line so the trail is not rubbed out, and let the
+# crew work.  A trench owes a wall's 10 s a hex — `build.loft`
+# § BUILD_MOAT_UNITS chose that so the player's question is what it
+# DOES rather than what it costs — so 50 helper-seconds over two
+# helpers is 25 s, the same 45-tick window the wall version uses.
+drive 0 0
+tick 50
+count orders 0 0
+count painted 80 80
+# ⚠⚠ The whole band, hex by hex — a barrier with ONE gap in it buys
+# nothing at all (`plans/12` § B7 measured a gate at +1 tick), so
+# *five* is the number that matters rather than *some*.
+kind 5 -2 water
+kind 5 -1 water
+kind 5 0 water
+kind 5 1 water
+kind 5 2 water
+
+# ⚠ The crew are in it.  They stood on the line to dig it and a helper
+# on finished water cannot leave — the cost, stated where it happens.
+helper 0 5 -1
+helper 1 5 1
+
+
+# ── The waves — identical to `an-undefended-base` ───────────────
+wave 5
+count alive 5 5
+
+tick 22
+wave 8
+count alive 0 13
+
+# ── ⚠⚠ What the tower makes of it ──────────────────────────────
+#
+# **335 ticks against the same trench's 221, and NINE of the thirteen
+# die in front of it** (`@M060`).  The magazine is what ends it: thirty
+# shots is a tower's whole load (`plans/16` § W4), and the four that
+# are left walk in over the hex the wave dug.
+fall 900
+ticks 331 339
+count alive 4 4
+shots 2 0 30 30
+
+# ⚠ The line, hex by hex: four of the five were dug at, one was never
+# reached, and the one that went over the waterline is where they came
+# through.  ⚠ A trench is filled by whoever is STANDING at it, so
+# killing the diggers is killing the clock — which is the loop this
+# scenario exists to show.
+pile 5 -1 1.0 2.0
+pile 5 2 0.0 0.0
+
+# ⚠⚠ **And the wallet still reads zero, because the base FELL** — a
+# tower buys ticks, not a win.  What C9 changed is the sentence
+# `a-base-behind-a-moat.keys` used to end on: a wave that cannot reach
+# you *can* now die, because it has to stand at a fixed distance and
+# dig.  Where those bodies can be COLLECTED from is the far bank, and
+# reaching it costs the player the same hex the wave opened.
+wallet 0 0
+pile 7 0 0.4 0.6
+
+snap c9_a_tower_behind_a_moat

@@ -57,7 +57,7 @@ comes back.  ⚠ The HUD is one number and `docs/DESIGN.md` § HUD says it shoul
 be — no wave counter, no health bar, no minimap; everything else is diegetic.
 ⚠⚠ **`MAP=` and `SCRIPT=` are what give it a base to be.**  `make play
 MAP=starter_01` opens one of the three AUTHORED maps in `maps/` (BACKLOG A2,
-2026-08-27); `SCRIPT=<name>` opens any of the 41 `.keys` files in
+2026-08-27); `SCRIPT=<name>` opens any of the 43 `.keys` files in
 `tests/scripts/` + `tests/gl/` as a live starting position, cut at its first
 `tick` (`@X263`).  Bare `make play` opens the empty default slot.
 ⚠⚠ **THE PLAYER CAN BUILD** ([`plans/27`](plans/27-building/README.md),
@@ -74,8 +74,8 @@ critical path is **4, the SCRAMBLE**.
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1586 green**, ~320 s on a busy box, 118 files |
-| scenarios | `scripts/validate.sh` | **39 scripts, 766 measurements**, ~20 s |
+| tests | `scripts/test.sh` | **1600 green**, ~320 s on a busy box, 119 files |
+| scenarios | `scripts/validate.sh` | **40 scripts, 791 measurements**, ~20 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
 
 ⚠ `scripts/test.sh` is the canonical runner — **never `loft test` directly**
@@ -388,7 +388,7 @@ scripts/validate_gl.sh the-ground    # just one
 make play
 # One of the three AUTHORED maps in maps/ (BACKLOG A2) — repo content.
 make play MAP=starter_01
-# Open one of the 41 `.keys` scenarios as a live starting position
+# Open one of the 43 `.keys` scenarios as a live starting position
 # (BACKLOG A1).  ⚠ `script=`, never `--script` — loft strips a leading
 # `--` argument as its own and the entry would open a MAP of that name.
 make play SCRIPT=a-base-that-plays-its-list
@@ -503,7 +503,7 @@ source of truth and the listing is a navigational summary of it.
 | `endure.loft` | **ENDURANCE — work spends it, rest restores it**.  ⚠ A tired person works LESS and never stops |
 | `jammer.loft` | **THE JAMMER SWITCH — turning your own core off**.  ⚠ It stops the SUPPLY and never the SIEGE |
 | `trap.loft` | **A TRAP THAT DOES NOT AUTOMATICALLY RESET** — placed in advance, fires ONCE, re-armed by a standing vehicle.  ⚠ The trigger is a CROSSING, never a standing position |
-| `moat.loft` | **A MOAT — the one hex whose surface is BELOW the ground around it**, the palette's `drop` read at last.  ⚠⚠ Its depth decides ONE thing: how much it takes to FILL |
+| `moat.loft` | **A MOAT — the one hex whose surface is BELOW the ground around it**, the palette's `drop` read at last, and what a besieger shovels into one.  ⚠⚠ Its depth decides ONE thing: how much it takes to FILL — so it is a TIMER |
 | `font.loft` | **THE FONT — the ONE seam to `graphics::draw_text`**.  ⚠ The path is ABSOLUTE and that is enforced at the door |
 | `picker.loft` / `hud.loft` / `editor_mode.loft` / `chunks.loft` / `history.loft` | palette UI, HUD (⚠ and **the ONE number the game shows** — the wallet), the mode flag, the dirty-chunk set, undo/redo |
 | `spawn.loft` | **the tick** — `WaveState`, `wave_tick`, enemy movement, targeting, deaths, the schedule, `TICK_SECONDS` |
@@ -1031,6 +1031,9 @@ names; most of them exist because somebody did it without reading.
 | Ask what a hex's SURFACE is (vs what is painted on it) | `src/passable.loft::hex_ground`; `hex_surface_index` for the palette index |
 | Raise a hex at runtime (bodies, broken walls) | `src/height.loft` — the rubble LAYER, never a repaint |
 | Dig a MOAT, or ask what water's `drop` is for | `src/moat.loft` — ⚠⚠ **the depth decides ONE thing: how much it takes to FILL** |
+| Ask what a besieger does at a trench, or why a moat is not permanent | `src/moat.loft` § What a besieger shovels — ⚠⚠ **a moat is a TIMER** (130 / 174 / 221), and a trench in front of a TOWER is what it is for |
+| Add an obstacle a wave should be able to REMOVE | `src/flow.loft::sweep_ground` — ⚠⚠ **the desire field, never `wave_damage` alone**; a hex it does not admit is never named as a target |
+| Ask why the crew cannot dig spoil back out | `src/vehicle.loft` § SPOIL IS NOT SALVAGE — ⚠⚠ **a clearer takes the WHOLE pile**, so it measured as an OFF SWITCH (`@M059`) |
 | Ask whether the player or the crew can cross water | ⚠⚠ **No — at any depth, boosting or not** (`@D006`); `walk_vehicle` is read by nothing |
 | Ask whether a hex is free of enemies | `src/occupancy.loft` |
 | Ask who on the PLAYER's side is standing on a hex | `src/occupancy.loft::blocker_at` |
@@ -1043,7 +1046,7 @@ names; most of them exist because somebody did it without reading.
 | Add ambient life, or ask why a robot walks past instead of at you | `src/errand.loft` — ⚠⚠ **the bubble takes the errand, ONE WAY** |
 | Turn the core OFF, or ask what the jammer switch costs | `src/jammer.loft` — ⚠⚠ **it stops the SUPPLY and never the SIEGE** |
 | Place a TRAP, or ask why re-arming one costs a trip | `src/trap.loft` — ⚠⚠ **a plate fired once is worth LESS than no plate**; the mechanic is the trip back (`@M057`) |
-| Judge whether a TRENCH is worth digging | `@M058` — ⚠⚠ **it buys the whole run and EARNS NOTHING**: 378 ticks against a wall's 174, on the opening 200 points |
+| Judge whether a TRENCH is worth digging | `@M059` — ⚠⚠ **130 / 174 / 221: it outlasts the wall the same price buys, and it is a TIMER** since BACKLOG C9.  ⚠ Alone it still earns nothing; with a TOWER behind it, **335 ticks and nine of thirteen dead** (`@M060`) |
 | Advance the GAME | `src/play.loft` — ⚠ never call `wave_tick` directly, and never spell a count as `n * TICK_SECONDS` |
 | Ask whether a session is LIVE, or start one | `src/play.loft::play_mode` — ⚠ it gates the CLOCK, never the seam |
 | Advance the game by TIME, or change the tick's length | `fixstep::clock_advance` / `clock_step`; `TICK_STEP_UNITS` in `spawn.loft` |

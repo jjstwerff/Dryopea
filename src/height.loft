@@ -118,6 +118,22 @@ pub const RUBBLE_MASONRY:  integer = 2;   // a structure that broke
 // stacked layer earning its place.
 pub const RUBBLE_CARGO:    integer = 3;   // a hauler died with a load on
 
+// The SPOIL a besieger shovels into a trench (BACKLOG C9).
+//
+// ⚠⚠ **It is the one source nothing DIED to make**, and that is what
+// makes it a fifth variant rather than `RUBBLE_MASONRY` wearing a
+// different hat.  Masonry is *a mess the player made*; spoil is a mess
+// the WAVE made, in the player's trench, and the two are told apart by
+// a player who is deciding whether a heap is worth the trip
+// (`wallet.loft::loot_rate` prices both at nothing, for two different
+// reasons).
+//
+// ⚠ `moat.loft` § What a besieger shovels is where it comes from, and
+// it is the only producer: nothing dies in a trench, so a moat hex
+// carries spoil and nothing else until the fill clears the waterline
+// and robots can be killed standing on it.
+pub const RUBBLE_SPOIL:    integer = 4;   // a besieger filled a trench in
+
 // The source's name, for a message a player or a failing script can
 // read.  An unknown source names its number rather than guessing at a
 // material nobody chose — the same rule
@@ -127,6 +143,7 @@ pub fn rubble_source_name(source: u8) -> text {
     if source == RUBBLE_CARAPACE as u8 { return "carapace"; }
     if source == RUBBLE_MASONRY  as u8 { return "masonry"; }
     if source == RUBBLE_CARGO    as u8 { return "cargo"; }
+    if source == RUBBLE_SPOIL    as u8 { return "spoil"; }
     "source {source as integer}"
 }
 

@@ -980,6 +980,21 @@ src/
                    no helper salvage RATE: `numbers.json` § helper has
                    none, and a second constant would be a tunable the
                    plan invented.
+                   ⚠⚠ SPOIL IS NOT SALVAGE (BACKLOG C9, @M059).
+                   `collectable` refuses `RUBBLE_SPOIL` and the search
+                   skips to the NEXT-deepest heap rather than giving
+                   up.  The reason is measured: the bite is
+                   `min(rate * dt, pile)`, so a clearer takes the WHOLE
+                   pile whenever the pile is smaller than one bite, and
+                   a crew member clears FIFTY times faster than a
+                   besieger shovels — one helper in reach would hold a
+                   trench open for ever at any fill rate the design can
+                   tolerate.  ⚠ The counter-play is the kill zone
+                   instead (@M060), not the spade.  ⚠ A pile is named
+                   by its NEWEST deposit, so a robot killed on a filled
+                   trench renames the heap `wreckage` and the player
+                   may collect it — which re-opens the trench and pays
+                   for it.
                    V4 added boost: `vehicle_boost` / _boosting /
                    _boost_ready / _climb / _speed, four hexes a tick and
                    a 3.0 m climb for 2 s, then 5 s of cooldown armed as
@@ -1284,12 +1299,33 @@ src/
                    `flow_desire` (F7) is the SAME sweep with the climb
                    lifted (`FLOW_CLIMB_ANY`) — where an enemy wants to
                    go when it has no route.  One field for every class,
-                   because the class only ever contributed its climb
+                   because the class only ever contributed its climb.
+                   ⚠⚠ `sweep_ground` (BACKLOG C9, @X283) is what the
+                   two sweeps differ in besides the climb, and it is
+                   the desire field's rule said out loud: AN OBSTACLE
+                   THE WAVE CAN REMOVE IS PASSABLE IN IT.  A wall
+                   always was — its top is walkable, so lifting the
+                   climb was enough — and a TRENCH is not a surface at
+                   any height, so the NODE rule widens for it.
+                   ⚠ Without it the siege cannot SEE a moat: an
+                   unadmitted hex is never offered by `flow_steps`, so
+                   `enemy_target` names the besieger's own hex and a
+                   branch in `wave_damage` would be dead code.
+                   ⚠ The SEA is not a moat (`moat_at` is false at drop
+                   0), so § Three states' termination argument — every
+                   passable hex is a painted one — is untouched.
+                   ⚠ ROUTING passes `false` and is unchanged: a routing
+                   field that crossed trenches would walk robots INTO
+                   the water, because a metre is inside `climb_ok`
   height.loft      the RUBBLE layer — what runtime has piled on the map
                    (plan 11 F6, named by plan 12 B1).  HeightLayer +
                    height_raise (metres AND a source) / height_clear /
                    height_rise / height_piled / height_source / count,
-                   plus RUBBLE_WRECKAGE / _CARAPACE / _MASONRY.
+                   plus RUBBLE_WRECKAGE / _CARAPACE / _MASONRY /
+                   _CARGO / _SPOIL.  ⚠ SPOIL is the one nothing died to
+                   make — what a besieger shovels into a trench
+                   (BACKLOG C9) — so `loot_rate` pays 0 for it and
+                   `salvage_at` refuses to pick it up at all.
                    A sparse map of metres ADDED to what the palette
                    paints, so a pile on grass and a pile on a wall are
                    one arithmetic.  ⚠ It ACCUMULATES (bodies do) and a
@@ -1718,17 +1754,53 @@ src/
                    list of what may be built at all was already there.
                    ⚠ The trench costs a wall's 10 s deliberately —
                    equal, so the choice is about what it DOES.
-                   ⚠⚠ AND NOTHING FILLS ONE YET: a moat has no HP so
-                   `structure_breakable` is false, and nothing can die
-                   in one, so the waterline rule is correct and
-                   unexercised by the runtime.  Besiegers shovelling a
-                   trench shut is BACKLOG C9.
-                   ⚠⚠ WHAT IT IS WORTH IS THE WHOLE RUN, AND IT EARNS
-                   NOTHING (@M058): 378 ticks still standing against a
-                   wall's 174 and a bare base's 130 — on exactly the
-                   opening 200 points, 13 robots alive, ZERO targets.
-                   A wave that cannot reach you cannot die, and salvage
-                   is the only income
+                   ⚠⚠ BESIEGERS SHOVEL IT SHUT (BACKLOG C9, @X283) —
+                   MOAT_FILL_DAMAGE_PER_METRE, moat_spoil_metres,
+                   moat_fill, moat_left_to_fill; and elsewhere,
+                   `flow.loft::sweep_ground`, `wave_damage`'s second
+                   verb, `height.loft::RUBBLE_SPOIL` and
+                   `vehicle.loft`'s refusal of it.  A moat is a TIMER.
+                   ⚠⚠ THE BACKLOG ROW'S MECHANISM WAS WRONG AND A PROBE
+                   SAID SO.  It read *a besieger's target lands
+                   nothing* — but water fails `hex_walkable`, so a moat
+                   hex is not a node in the DESIRE field either and
+                   `enemy_target` names the besieger's OWN hex.  A
+                   branch at `wave_damage` alone would have been dead
+                   code; the work is in the desire SWEEP.
+                   ⚠ The rule that sweep always followed, said out
+                   loud: AN OBSTACLE THE WAVE CAN REMOVE IS PASSABLE IN
+                   IT.  A wall is (the lifted climb was how that got
+                   expressed); a trench is, and water is not a surface
+                   at any height, so the NODE rule is what widened.
+                   ⚠ The SEA is not a moat, so the field still stops at
+                   the coast and § Three states' unbounded-plane
+                   argument is untouched.  Routing is UNCHANGED.
+                   ⚠⚠ A TRENCH IS A WALL THAT CANNOT BE UNBRACED — the
+                   rate is priced at the FULL WALL_HP per metre, the
+                   figure a wall reaches only closed into a ring,
+                   because a hole has no ends to unzip from.  ⚠ Metres
+                   per DAMAGE, never per depth: that is what keeps the
+                   drop the timer, so a waterfall wants 1200 ticks of
+                   one regular against a corpus whose longest base is
+                   320.  ⚠ ONE door, no per-class table — a besieger
+                   digs with the tool it chews with.
+                   ⚠⚠ SPOIL IS NOT SALVAGE (@M059).  The row promised
+                   `salvage_at` its trip and it measured as an OFF
+                   SWITCH: the bite is min(rate * dt, pile), so a
+                   clearer takes the WHOLE pile whenever the pile is
+                   smaller than one bite, and one helper in reach would
+                   hold a trench open for ever at any fill rate the
+                   design can tolerate.  ⚠ loot_rate pays 0 for spoil
+                   and the DEFAULT pays, so the row is what stops
+                   *letting the enemy fill your trench* being income.
+                   ⚠⚠ WHAT IT IS WORTH: 130 / 174 / 221 (@M059) — the
+                   trench is +47 over the wall the same ten
+                   helper-seconds a hex would have bought.  It still
+                   EARNS nothing alone, because a wave standing at a
+                   trench is a wave nothing is shooting at — ⚠⚠ and
+                   with a TOWER behind it that inverts: 335 ticks and
+                   NINE of thirteen dead (@M060), because a besieger
+                   has to stand at a fixed distance and dig
   font.loft        THE FONT — the ONE seam to graphics::draw_text
                    (BACKLOG B1) — TEXT_FONT_FILE, Font { handle, path,
                    loaded }, font_load / font_load_from / font_ready /

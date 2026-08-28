@@ -455,13 +455,22 @@ append-only policy below, for geometry whose height comes from
 the runtime layer rather than from the palette (`pillar` /
 `cliff`) or the terrain solver (`flat` / `ramp`).
 
-**One entry, three eventual ones.**  Source material —
-wreckage, carapace, masonry — is a closed set with one value per
-hex, which is a legitimate ground-type axis; the layer already
-stores which, so the split is a palette row and a lookup.  What
-a pile *contains* — several salvageable types at once — is open
-and multiple per hex, so it is not a ground type at all and
-waits for plan 06's stacked layer.
+**One entry, five eventual ones.**  Source material —
+wreckage, carapace, masonry, cargo and **spoil** — is a closed
+set with one value per hex, which is a legitimate ground-type
+axis; the layer already stores which, so the split is a palette
+row and a lookup.  What a pile *contains* — several salvageable
+types at once — is open and multiple per hex, so it is not a
+ground type at all and waits for plan 06's stacked layer.
+
+⚠ **`spoil` is the one nothing died to make** (BACKLOG C9): it is
+what a besieger shovels into a trench, and
+[`src/wallet.loft`](../src/wallet.loft)`::loot_rate` prices it at
+nothing — otherwise *letting the enemy fill your moat* would be an
+income stream with no kills in it.  ⚠⚠ `salvage_at` refuses to
+pick it up at all, which is a rule about the SOURCE rather than
+about the surface: a filled trench is re-dug, never collected
+(`@M059`).
 
 ## What the colour does — three jobs in one
 

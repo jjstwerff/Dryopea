@@ -248,10 +248,12 @@ fn test_nothing_on_legs_stands_in_water_at_any_depth() {
     }
 }
 
-// ⚠⚠ **A moat has nothing to chew**, which is the other half of what
-// makes it not a wall: a besieger's target lands no damage, so the
-// barrier never wears through.  ⚠ The cost of that is in
-// `moat.loft` § It does not fill — a base nothing reaches earns nothing.
+// ⚠⚠ **A moat has nothing to CHEW**, which is the other half of what
+// makes it not a wall — and since BACKLOG C9 that is exactly why
+// `wave_damage` needed a second verb rather than a second rate: a
+// besieger at a trench shovels it (`moat_fill`) where a besieger at a
+// wall damages it, and `structure_breakable` is the one question that
+// tells them apart.
 fn test_a_moat_is_not_a_structure() {
     tam_pal = pal();
     assert(!structure_breakable(tam_pal, strip(WATER), 0, 0),
@@ -441,10 +443,18 @@ fn test_the_three_scenarios_are_on_disk() {
     }
 }
 
-// @DRY-133 — ⚠⚠ THE READING.  Time bought, income given up: the base
-// behind a trench is still standing after 378 ticks where the walled
-// one fell at 174, and its wallet has not moved off the opening 200.
-fn test_a_trench_buys_the_run_and_earns_nothing() {
+// @DRY-133 — ⚠⚠ THE READING: **130 / 174 / 221**, a trench outlasting
+// the wall the same ten helper-seconds a hex would have bought.
+//
+// ⚠⚠ **It read *still standing at 378* until BACKLOG C9** (`@M058`),
+// because nothing filled a trench and a wave that cannot reach you
+// cannot die.  C9 makes a besieger shovel it shut, so the barrier is a
+// TIMER — and this assertion is where the two readings meet.  ⚠ The
+// half that did NOT change is the income: the wave is still whole when
+// the base falls, because a wave standing at a trench is a wave nothing
+// is shooting at.  `a-tower-behind-a-moat.keys` is the answer to that
+// (`@M060`), and it is deliberately not this file's.
+fn test_a_trench_outlasts_the_wall_and_still_earns_nothing() {
     tat_is = editor_state_new(PALETTE);
     tat_bs = editor_state_new(PALETTE);
     tat_ms = editor_state_new(PALETTE);
@@ -458,29 +468,35 @@ fn test_a_trench_buys_the_run_and_earns_nothing() {
 
     // ⚠ Pinned, because a scenario with its measurements deleted still
     // reports ok.
-    assert(tat_m.checks == 21,
-           "behind-a-moat made {tat_m.checks} measurements, expected 21");
+    assert(tat_m.checks == 20,
+           "behind-a-moat made {tat_m.checks} measurements, expected 20");
 
     // ⚠⚠ ONE assertion carrying every reading, because the three rows
     // are ONE claim about one subject and loft abandons a function at
     // its first failed assertion (`tests/26_l0`'s shape).
+    tat_mt = tat_m.play.ticks;
     assert(tat_i.play.ticks == 130
            && tat_b.play.ticks == 174
-           && tat_m.play.ticks > 300
+           && tat_mt == 221
            && wallet_left(tat_i.play.wave.wallet) <= 0.0
            && wallet_left(tat_b.play.wave.wallet) <= 0.0
-           && wallet_left(tat_m.play.wave.wallet) == WALLET_STARTING_POINTS,
+           && wallet_left(tat_m.play.wave.wallet) <= 0.0,
            "nothing={tat_i.play.ticks} ticks / {wallet_left(tat_i.play.wave.wallet)} pt, "
            + "wall={tat_b.play.ticks} / {wallet_left(tat_b.play.wave.wallet)}, "
-           + "trench={tat_m.play.ticks} / {wallet_left(tat_m.play.wave.wallet)} "
-           + "— a trench must outlast a wall AND earn nothing");
+           + "trench={tat_mt} / {wallet_left(tat_m.play.wave.wallet)} "
+           + "— a trench must outlast a wall, and all three must FALL");
 }
 
-// ⚠⚠ **The control the clock cannot give**: the wave STOPPED rather
-// than went round or chewed through.  A wall ends the run four hexes
-// broken (`tests/27_c5`); a trench ends it whole, with the whole wave
-// alive on the far bank and nothing to attack.
-fn test_the_wave_stopped_at_the_bank_with_nothing_to_bite() {
+// ⚠⚠ **The control the clock cannot give**: the wave came through what
+// it DUG, rather than round the line or through a hole in it.
+//
+// ⚠ A wall ends its run four hexes BROKEN (`tests/27_c5`); a trench
+// ends its run with all five hexes still painted `water` and a metre of
+// spoil standing in one of them.  That pair is what says a trench is
+// filled rather than destroyed — the PAINTED layer is untouched, which
+// is `height.loft`'s rubble-is-a-LAYER rule doing the work
+// (BACKLOG C9).
+fn test_the_wave_came_through_what_it_dug() {
     tws_s = editor_state_new(PALETTE);
     tws_r = script_run_file(tws_s, MOAT, SHOTS);
     assert(tws_r.ok, "it runs: {script_describe(tws_r)}");
@@ -491,9 +507,23 @@ fn test_the_wave_stopped_at_the_bank_with_nothing_to_bite() {
         if lookup_painted(tws_s.pw, 5, tws_i) == tws_water { tws_left += 1; }
     }
     assert(tws_left == 5,
-           "all five hexes of trench are still there — there is nothing to chew: "
-           + "{tws_left} of 5");
+           "all five hexes are still PAINTED as trench — a moat is filled, "
+           + "never broken: {tws_left} of 5");
 
+    // ⚠ And exactly one of them is over the waterline: the wave needs
+    // one way through and stops digging the rest the moment it has it.
+    tws_over = 0;
+    for tws_j in -2..3 {
+        if can_stand(tws_s.picker.palette, tws_s.pw, tws_r.play.wave.heights,
+                     ENEMY_KIND_REGULAR as u8, 5, tws_j) { tws_over += 1; }
+    }
+    assert(tws_over == 1,
+           "and ONE of them is ground again — the hex they came through: "
+           + "{tws_over} of 5");
+
+    // ⚠⚠ The income half is UNCHANGED by C9 and that is the cost the
+    // triple records: a wave standing at a trench is a wave nothing is
+    // shooting at.  `a-tower-behind-a-moat.keys` is what inverts it.
     tws_alive = 0;
     for tws_e in tws_r.play.wave.enemies {
         if tws_e.alive { tws_alive += 1; }

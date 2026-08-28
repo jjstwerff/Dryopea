@@ -109,6 +109,7 @@ use palette;
 use painted;
 use height;
 use passable;
+use moat;
 
 // No route to the core.
 //
@@ -225,12 +226,14 @@ pub fn flow_build(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLay
                   kind: u8, core: Hex) -> FlowField {
     // ⚠ Bound, not returned as a bare tail call — see § A struct
     // cannot ride home on two tail calls, below.
-    fb_out = flow_sweep(pal, pw, hl, climb_limit(kind), core);
+    fb_out = flow_sweep(pal, pw, hl, climb_limit(kind), false, core);
     fb_out
 }
 
 // Where an enemy WANTS to go when it has no route at all — the same
-// sweep with the climb lifted, so walls are passable.
+// sweep over both obstacles the wave can remove: the climb lifted so
+// walls are passable, and trenches counted as ground so a moat is
+// (`sweep_ground`).
 //
 // Plan 11 phase F7, and `docs/ENEMY_MOVEMENT.md` § Sealing the
 // perimeter is what it is for: *"Blocked enemies still want the core,
@@ -248,7 +251,7 @@ pub fn flow_build(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLay
 // `hex_walkable`'s note is watching for.
 pub fn flow_desire(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
                    core: Hex) -> FlowField {
-    fd_out = flow_sweep(pal, pw, hl, FLOW_CLIMB_ANY, core);
+    fd_out = flow_sweep(pal, pw, hl, FLOW_CLIMB_ANY, true, core);
     fd_out
 }
 
@@ -262,12 +265,50 @@ pub fn flow_empty() -> FlowField {
     FlowField { cells: [], core: Hex { q: 0, r: 0 }, climb: 0.0, truncated: false }
 }
 
+// What this sweep counts as ground.
+//
+// ── ⚠⚠ An obstacle the wave can REMOVE is passable in the DESIRE
+//    field (BACKLOG C9) ────────────────────────────────────────────
+//
+// That is the rule `flow_desire` has always followed; until C9 it only
+// ever had to be said about the CLIMB.  A wall's top is walkable, so
+// nothing but the climb refused it and lifting the climb was the whole
+// of *"walls are passable"*.  A trench is the other kind of obstacle
+// the wave can remove — `moat.loft::moat_fill` shovels it shut — and
+// water is not a surface at any height, so it is the NODE rule that
+// has to widen for it and not the edge rule.
+//
+// ⚠⚠ **Without this the siege cannot even SEE a moat.**  A moat hex
+// that is not a node is never offered by `flow_steps`, so
+// `enemy_target` answers the besieger's own hex and `wave_damage` gets
+// nothing to act on — measured before C9 shipped a line, and it is why
+// the fill is not one branch in `wave_damage`
+// (`moat.loft` § What a besieger shovels).
+//
+// ⚠ **The SEA is not a moat, so the field still stops at the coast.**
+// § Three states rests the sweep's termination on *"every passable hex
+// is a painted one"*, and `moat_at` is false at drop 0 — which is
+// every unpainted hex and the whole open sea.  A predicate that
+// answered *is this water* would expand the frontier over an unbounded
+// plane, which is exactly the case `FLOW_MAX_CELLS` was written to
+// turn into a named fault.
+//
+// ⚠ Routing passes `false` and gets `hex_walkable` unchanged.  A
+// routing field that crossed trenches would walk robots INTO the
+// water: the depth is only 1 m, so `climb_ok` would happily allow the
+// step back out.
+fn sweep_ground(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+                besiege: boolean, q: integer, r: integer) -> boolean {
+    if hex_walkable(pal, pw, hl, q, r) { return true; }
+    besiege && moat_at(pal, pw, q, r)
+}
+
 // The sweep both fields are.  `climb` is the only thing that differs
 // between routing and desire.
 fn flow_sweep(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
-              climb: float, core: Hex) -> FlowField {
+              climb: float, besiege: boolean, core: Hex) -> FlowField {
     fb_f = FlowField { cells: [], core: core, climb: climb, truncated: false };
-    if !hex_walkable(pal, pw, hl, core.q, core.r) { return fb_f; }
+    if !sweep_ground(pal, pw, hl, besiege, core.q, core.r) { return fb_f; }
 
     fb_f.cells[core.q, core.r] = FlowCell {
         q: core.q, r: core.r, dist: 0,
@@ -299,7 +340,7 @@ fn flow_sweep(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
             // the field decides every enemy's route, so every exact
             // clock in it (247, 248, 321, 537 …) moves if this is
             // wrong by a single cell.
-            if !hex_walkable(pal, pw, hl, fb_h.q, fb_h.r) { continue; }
+            if !sweep_ground(pal, pw, hl, besiege, fb_h.q, fb_h.r) { continue; }
             fb_hh = hex_height(pal, pw, hl, fb_h.q, fb_h.r);
 
             for fb_dir in 0..6 {
@@ -308,7 +349,7 @@ fn flow_sweep(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
                 // equal, because BFS reaches every cell by a shortest
                 // route first.
                 if fb_f.cells[fb_n.q, fb_n.r] != null { continue; }
-                if !hex_walkable(pal, pw, hl, fb_n.q, fb_n.r) { continue; }
+                if !sweep_ground(pal, pw, hl, besiege, fb_n.q, fb_n.r) { continue; }
 
                 // ⚠ The neighbour's height, once, for BOTH the step
                 // test and the cell it is about to be written into —

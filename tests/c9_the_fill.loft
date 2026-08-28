@@ -1,0 +1,431 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// BACKLOG C9 — besiegers shovel a trench shut.
+//
+// ⚠⚠ **The claim: a moat is a TIMER, not a barrier nothing can
+// break.**  A wave stopped at a trench fills it in, the spoil clears
+// the waterline `src/moat.loft` already priced in bodies, and the hex
+// is ground again.
+//
+// ── ⚠⚠ WHAT THE PROBE FOUND, AND WHY IT MOVED THE WORK ──────────
+//
+// The BACKLOG row named the mechanism and the mechanism was not
+// there.  It read *"a moat has no HP, so a besieger's target lands
+// nothing and the wave just stands there… this is one branch at
+// `wave_damage`, the one site that already computes a siege target"* —
+// which assumes a target is NAMED and then wasted.
+//
+// ⚠⚠ **No target is named at all.**  Water fails `hex_walkable`, so a
+// moat hex is not a node in the DESIRE field either; `flow_steps` never
+// offers it, and `enemy_target` answers the besieger's own hex.  A
+// branch at `wave_damage` alone would have been dead code.  § The
+// desire field keeps the reading that says so, as the pair that would
+// go red if the widening were reverted.
+//
+// ⚠ So the work is in `flow.loft::sweep_ground`, and it is the rule
+// that sweep always followed said out loud: **an obstacle the wave can
+// REMOVE is passable in the desire field.**  A wall is one and the
+// lifted climb was how that got expressed; a trench is the other, and
+// water is not a surface at any height, so the NODE rule is what had
+// to widen.
+//
+// ── ⚠⚠ AND THE SECOND MEASUREMENT KILLED THE ROW'S COUNTER-PLAY ─
+//
+// The row also promised this *"gives `salvage_at` (dig it back out)
+// its trip"*.  ⚠⚠ **It gives it an OFF SWITCH** (`@M059`): the bite is
+// `min(rate * dt, pile)`, so a clearer takes the WHOLE pile whenever
+// the pile is smaller than one bite, and a crew member clears fifty
+// times faster than a besieger shovels.  ⚠ One helper in reach holds
+// every hex it touches at zero for ever, at ANY fill rate the design
+// could tolerate — so a moat with anybody standing at it would have
+// been permanent again and C9 would have shipped as a no-op on its own
+// scenario.  `vehicle.loft` § SPOIL IS NOT SALVAGE is the guard that
+// answers it, and § Spoil below is the gate.
+
+#cwd
+
+use dryopea;
+
+const PALETTE:   text    = "examples/palette.json";
+const SEA:       integer = 0;
+const WATER:     integer = 1;
+const RAPIDS:    integer = 2;
+const WATERFALL: integer = 3;
+const GRASS:     integer = 5;
+const WALL:      integer = 9;
+
+// The longest base the corpus can play, in ticks — `@M005`, and the
+// clock every *"this class never opens a perimeter"* claim is measured
+// against (`spawn.loft` § The scout's figure is chosen to LOSE that
+// race).
+const LONGEST_BASE_TICKS: integer = 320;
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+
+// ⚠ Every helper here takes an argument, including this one.  A
+// zero-argument function in a test file is COLLECTED AS A TEST
+// (`CLAUDE.md` § Loft language gotchas), so it inflates the suite
+// total while asserting nothing.
+fn pal_at(path: text) -> vector<GroundType> { load_palette(path) }
+
+fn entry_of(pal: vector<GroundType>, i: integer) -> GroundType {
+    pal[i] ?? GroundType {}
+}
+
+// A grass band five rows deep from `q = -3` to `q = 12`, cut across
+// `q = 5` by a column of `kind`.  The core sits at (0, 0) and the
+// spawn fourteen hexes east of it.
+//
+// ⚠ Painted the whole way: an unpainted hex IS sea, and a walking test
+// that runs out of ground measures the edge of the world.
+fn band(pal_kind: integer) -> PaintedWorld {
+    b_pw = painted_empty();
+    for b_r in -2..=2 {
+        for b_q in -3..=14 { paint(b_pw, b_q, b_r, as_u8(GRASS)); }
+    }
+    for b_r2 in -2..=2 { paint(b_pw, 5, b_r2, as_u8(pal_kind)); }
+    b_pw
+}
+
+fn core_at(q: integer, r: integer) -> Hex { Hex { q: q, r: r } }
+
+fn westbound(q: integer, r: integer, kind: integer) -> Enemy {
+    Enemy { q: q, r: r, kind: as_u8(kind), heading: 3 as u8, alive: true }
+}
+
+// ─── The number, and where it comes from ────────────────────────
+
+// ⚠⚠ **The derivation, gated rather than commented.**  A trench hex
+// costs a besieger the FULL `WALL_HP` per metre — the braced figure a
+// wall reaches only when it is closed into a ring — because a hole in
+// the ground has no ends to unzip from.  ⚠ The constant is written as
+// a literal because [loft#962] panics on a const initialised from a
+// sibling module's const, so this assertion is what keeps the two
+// together.
+fn test_a_trench_is_a_wall_that_cannot_be_unbraced() {
+    assert(MOAT_FILL_DAMAGE_PER_METRE == WALL_HP,
+           "a metre of trench is a full wall hex: "
+           + "{MOAT_FILL_DAMAGE_PER_METRE} vs {WALL_HP}");
+    // What a STRAIGHT five-hex fence actually presents, which is the
+    // thing the player is choosing between at the same ten
+    // helper-seconds a hex.
+    assert(WALL_HP * BRACE_FACTOR_END == 30.0,
+           "a fence's loose end: {WALL_HP * BRACE_FACTOR_END}");
+    assert(WALL_HP * BRACE_FACTOR_STRAIGHT == 60.0,
+           "and its straight middle: {WALL_HP * BRACE_FACTOR_STRAIGHT}");
+    assert(MOAT_FILL_DAMAGE_PER_METRE > WALL_HP * BRACE_FACTOR_STRAIGHT,
+           "so every hex of a trench outlasts the best hex of a straight fence");
+}
+
+// @DRY-134 — ⚠⚠ **ONE door and no per-class table.**  A besieger digs
+// with the tool it chews with, so the miner is the best digger and the
+// scout is nearly useless at it for free — exactly as at a wall, and
+// without the third per-class row `passable.loft` § ONE AI, per-class
+// DATA refuses.
+fn test_a_besieger_digs_with_the_tool_it_chews_with() {
+    tbd_reg = moat_spoil_metres(enemy_damage_to_wall(as_u8(ENEMY_KIND_REGULAR)));
+    assert(tbd_reg == 0.01, "a regular shovels 0.01 m a second: {tbd_reg}");
+    assert(moat_spoil_metres(enemy_damage_to_wall(as_u8(ENEMY_KIND_MINER)))
+           == tbd_reg * 3.0, "and a miner three times that");
+    assert(moat_spoil_metres(enemy_damage_to_wall(as_u8(ENEMY_KIND_SCOUT)))
+           == tbd_reg / 10.0, "and a scout a tenth");
+    assert(moat_spoil_metres(0.0) == 0.0, "and nothing for no bite");
+}
+
+// ⚠⚠ **The depth is the TIMER, which is why the rate is metres per
+// DAMAGE and never metres per depth.**  Scale the rate by the depth
+// and every trench fills in the same time, and the palette's 1-3-8
+// would decide nothing again.
+//
+// ⚠ The two kinds a player may NOT order price themselves out in a
+// MEASUREMENT rather than in a rule: a lone regular needs 150 ticks of
+// shovelling for the `water` trench it may dig and **1200** for a
+// `waterfall`, against a corpus whose longest base is 320.  ⚠ The
+// figures are the SHOVELLING alone — the wave's own clock adds the
+// walk, and `moat_resolve` adds the one tick every consequence in this
+// game lands on.
+fn test_the_depth_is_the_timer() {
+    ttd_pal  = pal_at(PALETTE);
+    ttd_rate = moat_spoil_metres(enemy_damage_to_wall(as_u8(ENEMY_KIND_REGULAR)));
+    ttd_water = moat_depth(entry_of(ttd_pal, WATER)) / (ttd_rate * TICK_SECONDS);
+    ttd_fall  = moat_depth(entry_of(ttd_pal, WATERFALL)) / (ttd_rate * TICK_SECONDS);
+    assert(ttd_water == 150.0, "one regular fills a trench in 150 ticks: {ttd_water}");
+    assert(ttd_fall == 1200.0, "and a waterfall in 1200: {ttd_fall}");
+    assert(ttd_water < LONGEST_BASE_TICKS as float,
+           "so the trench the player digs is a timer inside a real base");
+    assert(ttd_fall > (LONGEST_BASE_TICKS * 3) as float,
+           "and authored water stays terrain, said as arithmetic");
+}
+
+// ─── ⚠⚠ The desire field — what the probe found ─────────────────
+
+// ⚠⚠ **The pair the whole phase rests on.**  A trench is a node in the
+// desire field and the SEA is not, and the second half is the control:
+// a predicate that answered *is this water* would expand the frontier
+// over an unbounded plane, which is the case `FLOW_MAX_CELLS` exists to
+// turn into a named fault.  Revert `sweep_ground` and the first
+// assertion goes red while the control stays green.
+fn test_a_trench_is_a_desire_node_and_the_sea_is_not() {
+    tat_pal = pal_at(PALETTE);
+    tat_hl  = height_layer_empty();
+
+    tat_d = flow_desire(tat_pal, band(WATER), tat_hl, core_at(0, 0));
+    assert(flow_reachable(tat_d, 5, 0), "the trench is in the desire field");
+    assert(flow_reachable(tat_d, 6, 0),
+           "and so is the far bank behind it, which is what gives a "
+           + "besieger a gradient to arrive on");
+    assert(!tat_d.truncated, "and the sweep terminated: {flow_count(tat_d)} cells");
+
+    // ⚠ The CONTROL — the same column painted `sea`, whose drop is 0.
+    tat_s = flow_desire(tat_pal, band(SEA), tat_hl, core_at(0, 0));
+    assert(!flow_reachable(tat_s, 5, 0),
+           "the open sea is not a trench and the field stops at the coast");
+    assert(!flow_reachable(tat_s, 6, 0), "so nothing beyond it is wanted either");
+    assert(!tat_s.truncated, "and that sweep terminated too: {flow_count(tat_s)}");
+}
+
+// ⚠⚠ **The widening must not leak into ROUTING**, and this is the
+// negative control that says it did not.  A routing field that crossed
+// trenches would walk robots INTO the water — the depth is only a
+// metre, so `climb_ok` would happily allow the step back out.
+fn test_the_routing_field_still_refuses_a_trench() {
+    trf_pal = pal_at(PALETTE);
+    trf_f = flow_build(trf_pal, band(WATER), height_layer_empty(),
+                       as_u8(ENEMY_KIND_REGULAR), core_at(0, 0));
+    assert(!flow_reachable(trf_f, 5, 0), "no robot routes through a trench");
+    assert(!flow_reachable(trf_f, 6, 0), "nor to anything behind one");
+    // The control that says the field itself works.
+    assert(flow_reachable(trf_f, 4, 0), "CONTROL — the near bank routes home");
+}
+
+// The consequence at the one site that reads it: a besieger on the far
+// bank names the trench, where before C9 it named its own hex.
+//
+// ⚠ It is the SIEGE branch, so `enemy_engaged` must be true — the
+// enemy is inside the bubble with no route, which is exactly what a
+// trench across its road produces.
+fn test_a_besieger_at_the_bank_names_the_trench() {
+    tab_pal = pal_at(PALETTE);
+    tab_pw  = band(WATER);
+    tab_hl  = height_layer_empty();
+    tab_f = flow_build(tab_pal, tab_pw, tab_hl,
+                       as_u8(ENEMY_KIND_REGULAR), core_at(0, 0));
+    tab_d = flow_desire(tab_pal, tab_pw, tab_hl, core_at(0, 0));
+
+    tab_t = enemy_target(westbound(6, 0, ENEMY_KIND_REGULAR),
+                         tab_pal, tab_pw, tab_hl, tab_f, tab_d);
+    assert(tab_t.q == 5 && tab_t.r == 0,
+           "it besieges the trench in front of it: ({tab_t.q}, {tab_t.r})");
+    assert(moat_at(tab_pal, tab_pw, tab_t.q, tab_t.r),
+           "and what it names is a trench rather than a structure");
+    assert(!structure_breakable(tab_pal, tab_pw, tab_t.q, tab_t.r),
+           "which is why `wave_damage` needed a second verb: there is "
+           + "nothing here to take damage");
+}
+
+// ─── The waterline handoff ──────────────────────────────────────
+
+// ⚠ **Nothing but a trench can be filled**, and the guard is the SEA:
+// an unpainted world is sea everywhere, so an unguarded fill called
+// with a target off the perimeter would raise the open water into a
+// causeway.
+fn test_only_a_trench_can_be_filled() {
+    tot_pal = pal_at(PALETTE);
+    tot_hl  = height_layer_empty();
+    assert(moat_fill(tot_pal, band(WATER), tot_hl, 5, 0, 0.5),
+           "a trench takes spoil");
+    assert(height_rise(tot_hl, 5, 0) == 0.5, "half a metre of it");
+    assert(height_source(tot_hl, 5, 0) == RUBBLE_SPOIL, "and it is spoil");
+
+    assert(!moat_fill(tot_pal, band(SEA), tot_hl, 5, 0, 0.5),
+           "the sea is not a trench");
+    assert(!moat_fill(tot_pal, band(GRASS), tot_hl, 5, 0, 0.5),
+           "nor is flat ground");
+    assert(!moat_fill(tot_pal, band(WALL), tot_hl, 5, 0, 0.5),
+           "nor is a wall — a structure is CHEWED, never shovelled");
+    assert(!moat_fill(tot_pal, band(WATER), tot_hl, 5, 0, 0.0),
+           "and a bite of nothing lands nothing");
+}
+
+// How much is left to dig, read forwards — and it agrees with
+// `hex_ground`'s threshold to the last grain.
+fn test_what_is_left_to_fill() {
+    twl_pal = pal_at(PALETTE);
+    twl_pw  = band(WATER);
+    twl_hl  = height_layer_empty();
+    assert(moat_left_to_fill(twl_pal, twl_pw, twl_hl, 5, 0) == 1.0,
+           "a fresh trench wants its whole metre");
+    moat_fill(twl_pal, twl_pw, twl_hl, 5, 0, 0.75);
+    assert(moat_left_to_fill(twl_pal, twl_pw, twl_hl, 5, 0) == 0.25,
+           "three quarters in, a quarter left");
+    moat_fill(twl_pal, twl_pw, twl_hl, 5, 0, 0.25);
+    assert(moat_left_to_fill(twl_pal, twl_pw, twl_hl, 5, 0) == 0.0,
+           "filled to the brim, nothing LEFT and still not a surface");
+    assert(!can_stand(twl_pal, twl_pw, twl_hl, as_u8(ENEMY_KIND_REGULAR), 5, 0),
+           "which is `c5_the_moat`'s *two bodies fill it to the brim and "
+           + "no further*, read the other way round");
+    assert(moat_left_to_fill(twl_pal, twl_pw, twl_hl, 0, 0) == 0.0,
+           "and dry ground wants nothing");
+}
+
+// ⚠⚠ **The handoff itself**: the spoil clears the waterline, the
+// SURFACE flips to rubble, and the wave walks over what it dug.
+// Nothing here is new code — it is `hex_ground`'s threshold, correct
+// and unexercised since C5, meeting its first runtime producer.
+fn test_the_spoil_clears_the_waterline() {
+    tsc_pal = pal_at(PALETTE);
+    tsc_pw  = band(WATER);
+    tsc_hl  = height_layer_empty();
+
+    moat_fill(tsc_pal, tsc_pw, tsc_hl, 5, 0, 1.0);
+    assert(hex_surface_index(tsc_pal, tsc_pw, tsc_hl, 5, 0) == WATER,
+           "at the brim it is still water");
+    assert(!can_step(tsc_pal, tsc_pw, tsc_hl, as_u8(ENEMY_KIND_REGULAR),
+                     Hex { q: 6, r: 0 }, Hex { q: 5, r: 0 }),
+           "and nothing steps into it");
+
+    moat_fill(tsc_pal, tsc_pw, tsc_hl, 5, 0, 0.5);
+    assert(hex_surface_index(tsc_pal, tsc_pw, tsc_hl, 5, 0) == GROUND_RUBBLE,
+           "one more shovel and the surface is rubble");
+    assert(can_step(tsc_pal, tsc_pw, tsc_hl, as_u8(ENEMY_KIND_REGULAR),
+                    Hex { q: 6, r: 0 }, Hex { q: 5, r: 0 }),
+           "and the wave walks over what it dug");
+    // ⚠ And the ROUTE opens on its own: `wave_tick` rebuilds the field
+    // every tick, so nothing had to be told the barrier was gone.
+    tsc_f = flow_build(tsc_pal, tsc_pw, tsc_hl,
+                       as_u8(ENEMY_KIND_REGULAR), core_at(0, 0));
+    assert(flow_reachable(tsc_f, 6, 0),
+           "and the routing field re-opens with no second mechanism");
+}
+
+// ─── ⚠⚠ Spoil — the source, and the farm it would have been ─────
+
+// ⚠⚠ **The load-bearing line is the DEFAULT, not the constant.**
+// `loot_rate` pays `LOOT_POINTS_PER_METRE` for any source it has not
+// been told about, so a fifth source added without a row would have
+// made *letting the enemy fill your trench* an income stream — dig,
+// wait, collect, repeat, with no kills at all.
+fn test_spoil_pays_nothing_and_an_unlisted_source_would() {
+    assert(loot_rate(RUBBLE_SPOIL) == 0.0,
+           "spoil pays nothing: {loot_rate(RUBBLE_SPOIL)}");
+    assert(loot_rate(RUBBLE_MASONRY) == 0.0,
+           "as your own broken wall does, for the same reason");
+    assert(loot_rate(RUBBLE_WRECKAGE) == LOOT_POINTS_PER_METRE,
+           "CONTROL — a dead machine pays, so the refusal is a choice");
+    assert(loot_rate(99) == LOOT_POINTS_PER_METRE,
+           "and the DEFAULT pays, which is what makes the row necessary");
+    assert(rubble_source_name(as_u8(RUBBLE_SPOIL)) == "spoil",
+           "and it has a name a failing script can read");
+}
+
+// ⚠⚠ **`salvage_at` refuses spoil**, and `@M059` is why: a clearer
+// takes the WHOLE pile whenever the pile is smaller than one bite, so
+// one crew member in reach would hold a trench open for ever at any
+// fill rate the design could tolerate.
+//
+// ⚠ It skips to the NEXT-deepest rather than giving up, which is the
+// half that keeps a heap of bodies beside a filled trench collectable.
+fn test_a_clearer_refuses_spoil_and_takes_the_next_heap() {
+    tac_hl = height_layer_empty();
+    height_raise(tac_hl, 5, 0, 2.0, as_u8(RUBBLE_SPOIL));
+    tac_got = salvage_at(Hex { q: 5, r: 0 }, tac_hl, TICK_SECONDS);
+    assert(tac_got.metres == 0.0, "spoil is not picked up: {tac_got.metres}");
+    assert(height_rise(tac_hl, 5, 0) == 2.0, "and it is still all there");
+
+    // A body on the bank beside it — shallower, and taken anyway.
+    height_raise(tac_hl, 4, 0, 0.5, as_u8(RUBBLE_WRECKAGE));
+    tac_next = salvage_at(Hex { q: 5, r: 0 }, tac_hl, TICK_SECONDS);
+    assert(tac_next.source == RUBBLE_WRECKAGE,
+           "the next-deepest heap is taken instead: {tac_next.source}");
+    assert(tac_next.metres > 0.0, "and it really came away");
+    assert(height_rise(tac_hl, 5, 0) == 2.0, "with the spoil untouched");
+}
+
+// ⚠ `emit.loft` WRITES a pile's source name, so a source this reader
+// cannot parse makes a captured situation unreadable.  ⚠ `cargo` had
+// been writable and unreadable since plan 23 K0 and is fixed in the
+// same line.
+fn test_every_source_emit_writes_can_be_read_back() {
+    for tes_s in [RUBBLE_WRECKAGE, RUBBLE_CARAPACE, RUBBLE_MASONRY,
+                  RUBBLE_CARGO, RUBBLE_SPOIL] {
+        tes_n = rubble_source_name(as_u8(tes_s));
+        tes_s2 = editor_state_new(PALETTE);
+        tes_run = script_run(tes_s2, "raise 1 1 0.5 " + tes_n);
+        assert(tes_run.ok,
+               "`raise 1 1 0.5 {tes_n}` is a line a script can read: "
+               + tes_run.message);
+        assert(height_source(tes_run.play.wave.heights, 1, 1) == tes_s,
+               "and it comes back as the source it named: {tes_n}");
+    }
+}
+
+// ─── The wave, doing it ─────────────────────────────────────────
+
+// `n` enemies of `kind` standing at the near bank of a five-hex
+// trench.  Answers the tick the line first became something a robot
+// could stand on, or 0 if it never did.
+//
+// ⚠ **`wave_tick` and nothing narrower** — the fill rides the tick's
+// own bite, so a test that called `moat_fill` by hand would measure the
+// arithmetic and not the game.
+fn opens_at(n: integer, kind: integer, limit: integer) -> integer {
+    oa_pal = pal_at(PALETTE);
+    oa_pw  = band(WATER);
+    oa_mw  = marker_empty();
+    oa_s   = wave_state_empty();
+    for oa_i in 0..n {
+        oa_s.enemies += [westbound(6, (oa_i % 5) - 2, kind)];
+    }
+    oa_open = 0;
+    for oa_t in 1..=limit {
+        if oa_open > 0 { continue; }
+        wave_tick(oa_s, oa_pal, oa_pw, oa_mw, core_at(0, 0));
+        // ⚠ ANY hex of the line, not row 0 — a wave breaks through
+        // wherever two of them happen to share a target, and which hex
+        // that is is the siege's business rather than this gate's.
+        for oa_r in -2..=2 {
+            if oa_open == 0 && can_stand(oa_pal, oa_pw, oa_s.heights,
+                                         as_u8(ENEMY_KIND_REGULAR), 5, oa_r) {
+                oa_open = oa_t;
+            }
+        }
+    }
+    oa_open
+}
+
+// ⚠⚠ **A wave opens its OWN way through a trench, and the per-class
+// rate is what decides how long it takes** — the whole mechanism
+// through the one entry that drives it.
+//
+// ⚠ **The scout's row is the control that matters**, and it is
+// `spawn.loft` § The scout's figure is chosen to LOSE that race said
+// about a trench instead of a wall: five scouts do not open a five-hex
+// trench inside 400 ticks, against a corpus whose longest base is 320.
+// A class with no wall-breaking role has no trench-filling one either,
+// and it falls out of the one rate rather than being written twice.
+fn test_the_wave_digs_itself_across() {
+    ttw_mine = opens_at(5, ENEMY_KIND_MINER, 400);
+    ttw_reg  = opens_at(5, ENEMY_KIND_REGULAR, 400);
+    ttw_sct  = opens_at(5, ENEMY_KIND_SCOUT, 400);
+    assert(ttw_mine == 25,
+           "five miners dig through in {ttw_mine} ticks");
+    assert(ttw_reg == 76,
+           "five regulars take three times as long: {ttw_reg}");
+    assert(ttw_sct == 0,
+           "and five scouts never get through at all: {ttw_sct}");
+    assert(ttw_reg > LONGEST_BASE_TICKS / 5,
+           "so a trench is a real fraction of a real base's clock");
+}
+
+// ⚠ **More of them is sooner**, which is what makes a trench's worth
+// depend on the wave that meets it — the same statement `@M020` makes
+// about a wall's face, arriving through the shared siege machinery
+// rather than through anything this phase wrote.
+fn test_a_bigger_wave_digs_faster() {
+    tab_five = opens_at(5, ENEMY_KIND_REGULAR, 400);
+    tab_ten  = opens_at(10, ENEMY_KIND_REGULAR, 400);
+    assert(tab_ten < tab_five,
+           "ten regulars beat five: {tab_ten} against {tab_five}");
+    assert(tab_ten > 0, "and they do get through");
+}

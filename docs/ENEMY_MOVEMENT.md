@@ -358,6 +358,40 @@ single-chokepoint reading of wall HP vs nibble DPS suggests.
 `wall HP`, `nibble DPS` and `wave size` are one tuning set, not
 three numbers ([`NUMBERS.md`](NUMBERS.md)).
 
+## A trench is the other obstacle a besieger removes
+
+⚠ **Built.**  BACKLOG C9, `@X283`.  A wave stopped at a moat does not
+stand there: it **shovels the trench shut**, and the hex is ground again
+once the spoil clears the waterline
+([`src/moat.loft`](../src/moat.loft) § What a besieger shovels).  So a
+moat is a **TIMER** — 130 / 174 / **221** ticks for nothing, a five-hex
+wall and a five-hex trench (`@M059`).
+
+⚠⚠ **The rule it added is about the DESIRE FIELD, not about damage**:
+*an obstacle the wave can REMOVE is passable in it.*  A wall always was
+— a wall's top is walkable, so lifting the climb was enough — and a
+trench is not a surface at any height, so the sweep's NODE rule is what
+widened ([`src/flow.loft`](../src/flow.loft)`::sweep_ground`).  ⚠ Before
+that, a moat hex was not in the desire field at all, so `flow_steps`
+never offered it and `enemy_target` named the besieger's own hex: **the
+siege could not SEE a moat**, and no amount of code in `wave_damage`
+would have changed that.  ⚠ The **sea** is not a moat, so the sweep
+still stops at the coast; ROUTING is untouched.
+
+⚠ **A trench is a wall that cannot be UNBRACED**, and that is the rate:
+a metre of trench costs a besieger the full `wall_hp` (100), the figure
+a wall reaches only closed into a ring, because a hole in the ground has
+no ends to unzip from.  The rate is metres per DAMAGE and never per
+depth, so a class digs with the tool it chews with and the palette's
+`drop` stays the timer.
+
+⚠⚠ **And what a trench is FOR is the kill zone, not the barrier.**  A
+besieger has to stand at a fixed distance and dig, which is the most
+shootable thing a robot can do — a tower behind a trench is **335 ticks
+and nine of thirteen dead** (`@M060`), where the trench alone is 221
+with all thirteen alive.  That is `@M058`'s *a wave that cannot reach
+you cannot die*, inverted.
+
 ## A wall's HP is structural, not a constant
 
 ⚠ **Built.**  Plan 12 B2 made a wall breakable and B3 made its HP

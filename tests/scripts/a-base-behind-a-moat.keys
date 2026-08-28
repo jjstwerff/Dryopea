@@ -1,40 +1,54 @@
-# a-base-behind-a-moat — BACKLOG C5, and it is the THIRD of a triple.
+# a-base-behind-a-moat — BACKLOG C5, filled in by C9, and it is the
+# THIRD of a triple.
 #
 # `a-base-nobody-builds.keys`, `a-base-the-player-builds.keys` and this
 # file are the same file except for ONE token on one line:
 #
 #     paint off   →   nobody builds        falls at 130
 #     paint on    →   a five-hex WALL      falls at 174   (`@M050`)
-#     dig on      →   a five-hex TRENCH    ⚠⚠ does not fall at all
+#     dig on      →   a five-hex TRENCH    falls at 221   (`@M059`)
 #
 # Same ground, same core, same spawn, same wave list, same crew, same
 # drive, same number of ticks spent before the wave — so every
 # difference below is the trench's and can be nothing else
 # (`plans/12` § B7's rule).
 #
-# ── ⚠⚠ What it costs, and the scenario says all three ────────────
+# ── ⚠⚠ What C9 changed, and it is the whole reading ──────────────
 #
-# A wall is a barrier you may walk along; a trench is a CUT, and the
-# reading is that it cuts EVERYTHING:
+# ⚠⚠ **This file used to say the base never fell: 378 ticks, still
+# standing, on exactly the opening 200 points** (`@M058`).  A wave that
+# cannot reach you cannot die, so the trench bought the whole run and
+# earned nothing — time bought, income given up, all of it.
 #
-#   1. **the wave stops and never gets through** — water is not a
-#      surface (`walk_ground: false`), so nothing on legs enters one,
-#      and it has no HP, so there is nothing to chew.  The base does not
-#      fall inside 300 ticks where the walled one fell at 174;
-#   2. ⚠⚠ **and it earns NOTHING** — nothing that cannot reach you can
-#      die, so no body drops, no heap is collected, and the wallet is
-#      still on exactly its opening 200.  A wall's 174 ticks are ticks
-#      the player was PAID for; these are not.  ⚠ That is `@M056`'s
-#      jammer trade one mechanic over: time bought, income given up;
+# **BACKLOG C9 fills it.**  A besieger stopped at a trench shovels it
+# shut (`src/moat.loft` § What a besieger shovels), so the barrier is a
+# TIMER: **+47 ticks over the wall the same ten helper-seconds a hex
+# would have bought, and +91 over nothing.**  ⚠ The trench is a wall
+# that cannot be UNBRACED — a fence presents 30 HP at its loose ends
+# and a hole in the ground has no ends — which is what those 47 ticks
+# are, priced.
+#
+# ── ⚠ What it still costs, and the scenario says all three ───────
+#
+#   1. **it earns nothing while it holds** — the wave stands at the far
+#      bank digging, and nothing that cannot reach you dies, so the
+#      wallet does not move until the wave is through.  ⚠ With a TOWER
+#      behind it that stops being true, and it is the whole point:
+#      `a-tower-behind-a-moat.keys` is the same trench with something
+#      shooting across it;
+#   2. ⚠⚠ **the crew dug themselves in** — they stood on the line to
+#      work it, and a helper on finished water cannot leave.  ⚠ Since
+#      C9 they cannot dig themselves out either: `salvage_at` refuses
+#      SPOIL, because a clearer takes the whole pile whenever the pile
+#      is smaller than one bite and one helper in reach would hold a
+#      trench open for ever (`vehicle.loft` § SPOIL IS NOT SALVAGE).
+#      What frees them is the wave finishing the job;
 #   3. ⚠⚠ **and the player cannot get back over it.**  `docs/PLAYING.md`
 #      calls boost *"the only way out of a base you have sealed"* and
 #      that is true of WALLS, whose tops are walkable — a climb cannot
 #      answer a surface question, so a 3.0 m boost does not cross a 1 m
-#      ditch.  The drive east at the end goes nowhere.
-#
-# ⚠ **The crew dug themselves in**, which is the same rule from the
-# inside: they stood on the line to work it, and a helper on a finished
-# trench is on it for the run.
+#      ditch.  ⚠ Measured in `tests/c5_the_moat.loft` rather than here —
+#      see the note at the foot of this file.
 
 echo behind a moat: a trench drawn by driving, dug by the crew
 
@@ -110,22 +124,36 @@ count alive 13 13
 
 # ── The clock, and what it was bought with ──────────────────────
 #
-# ⚠⚠ **300 ticks and the base is still standing**, against 174 for the
-# wall and 130 for nothing — and the wallet has not moved off its
-# opening 200, because nothing that cannot reach you ever dies.
-tick 300
-ticks 375 385
-wallet 200 200
-count alive 13 13
-# Stopped at the far bank, one hex east of the trench, attacking
-# nothing: a moat has no HP, so the siege has nowhere to bite.
-count targets 0 0
+# ⚠⚠ **130 / 174 / 221 — the trench is worth +47 ticks over the wall
+# the same price would have bought, and it is a TIMER rather than a
+# wall nothing can break** (`@M059`).  The wave stops at the far bank,
+# digs, and comes through what it dug.
+fall 900
+ticks 218 224
 
-# ⚠⚠ And the player cannot follow them.  Point the vehicle at the
-# spawn and give it ten ticks — thirty hexes of allowance — and it is
-# still on the near side.
-drive 11 0
-tick 10
-vehicle 4 0
+# ⚠⚠ **It earned NOTHING on the way**, which is the cost that survives
+# C9: all thirteen are still alive when the base falls, because a wave
+# standing at a trench is a wave nothing is shooting at.  That is the
+# sentence `a-tower-behind-a-moat.keys` is the answer to.
+count alive 13 13
+
+# The line the wave came through, and the four it did not.  ⚠ It breaks
+# where two besiegers happen to share a hex, so the reading is *one
+# hex over the waterline and the rest under it* rather than a named
+# row.
+pile 5 1 1.0 2.0
+pile 5 2 0.0 0.0
+
+# ⚠ **The drive-east control lived HERE and has moved into
+# `tests/c5_the_moat.loft` § What the probe killed** (`@DRY-129`).  It
+# used to say *the player cannot follow the wave back across* by
+# pointing the vehicle at the spawn after the run; that worked while the
+# base never fell, and since C9 it falls with the wave standing on the
+# core — so the vehicle is killed and RESPAWNED at (0, 0) mid-drive, and
+# the reading became a fact about how many robots reached the core.
+# ⚠⚠ **A control whose answer depends on something it is not about is
+# not a control**, and the unit test measures the same claim directly:
+# a hover-climb drive stops one hex short of flat sea, and a 3.0 m boost
+# does not cross a 1 m ditch.
 
 snap c5_a_base_behind_a_moat

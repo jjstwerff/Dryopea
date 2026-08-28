@@ -418,6 +418,32 @@ pub fn vehicle_hexes_per_tick(v: const Vehicle, elapsed: integer) -> integer {
 // kill zone, driving into it while it is still a kill zone — which is
 // the test `CLAUDE.md` § What dryopea is applies to every mechanic.
 //
+// ── ⚠⚠ SPOIL IS NOT SALVAGE, AND A MEASUREMENT IS WHY (C9) ──────
+//
+// BACKLOG C9's row predicted this function would be the counter-play
+// to a trench being shovelled shut — *drive out and dig it back out*.
+// **It measured as an OFF SWITCH instead** (`@M059`).  The bite is
+// `min(rate * dt, pile)`, so a clearer takes the WHOLE pile whenever
+// the pile is smaller than one bite — and a wave shovels two orders of
+// magnitude slower than a crew member clears.  One helper in reach
+// therefore wipes every trench hex it touches to zero for ever, at any
+// fill rate the design could tolerate, and a moat with anybody standing
+// at it is permanent again.
+//
+// ⚠ So spoil is refused here, and the counter-play is the one the
+// trench was always for: **a wave stopped at a trench is a wave
+// standing still in front of your towers.**  `@M060` is that measured
+// — the moat converts *a wave that cannot reach you cannot die* into a
+// kill zone the wave parks itself in.
+//
+// ⚠ It skips to the NEXT-deepest rather than giving up, so a heap of
+// bodies beside a filled trench is still collected.  ⚠ And a pile is
+// named by its NEWEST deposit (`height.loft`), so a robot killed on a
+// filled trench renames the whole heap `wreckage` and the player may
+// collect it — which re-opens the trench and pays for it.  That is the
+// existing one-source-per-hex simplification showing through, and here
+// it reads as a reward for holding the line rather than as a defect.
+//
 // ⚠ **ONE heap a tick, the deepest in reach.**  Not all seven: a
 // vehicle that cleared its whole neighbourhood at full rate each would
 // tidy a wave's worth of dead in a single pass, and the pressure this
@@ -425,6 +451,15 @@ pub fn vehicle_hexes_per_tick(v: const Vehicle, elapsed: integer) -> integer {
 // have.  Deepest-first because a ramp is made by the tallest pile, so
 // that is the one worth eating; ties break by direction order after
 // the vehicle's own hex, which keeps a scripted run repeatable.
+// May what is piled at (q, r) be picked up at all?
+//
+// Everything but SPOIL — see § SPOIL IS NOT SALVAGE.  An empty hex
+// answers true and contributes nothing, because `height_rise` is 0.0
+// there and the caller is comparing depths.
+fn collectable(hl: const HeightLayer, q: integer, r: integer) -> boolean {
+    height_source(hl, q, r) != RUBBLE_SPOIL
+}
+
 // What one tick of clearing produced: how much, and what of.
 //
 // ⚠ Both halves, because the caller needs both and reading the source
@@ -468,13 +503,16 @@ pub fn vehicle_salvage(v: const Vehicle, hl: HeightLayer,
 // crew member a different figure from another.
 pub fn salvage_at(at: const Hex, hl: HeightLayer, tick_seconds: float) -> Salvage {
     vs_best  = Hex { q: at.q, r: at.r };
-    vs_deep  = height_rise(hl, at.q, at.r);
-
-    vs_src = height_source(hl, at.q, at.r);
+    vs_deep  = 0.0;
+    vs_src   = -1;
+    if collectable(hl, at.q, at.r) {
+        vs_deep = height_rise(hl, at.q, at.r);
+        vs_src  = height_source(hl, at.q, at.r);
+    }
     for vs_d in 0..6 {
         vs_n    = lat_neighbour(at, vs_d);
         vs_rise = height_rise(hl, vs_n.q, vs_n.r);
-        if vs_rise > vs_deep {
+        if vs_rise > vs_deep && collectable(hl, vs_n.q, vs_n.r) {
             vs_deep = vs_rise;
             vs_best = vs_n;
             vs_src  = height_source(hl, vs_n.q, vs_n.r);

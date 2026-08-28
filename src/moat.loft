@@ -94,25 +94,25 @@
 // and gains its profile by this term growing a chain rather than by
 // anything here being replaced.
 //
-// ⚠⚠ **AND NOTHING FILLS ONE YET, which is the honest limit of this.**
-// A moat has no HP, so `structure_breakable` is false and a besieger
-// targeting one lands nothing — enemies stack against the bank and
-// stand there.  Nothing dies IN a trench either, because nothing can be
-// in one, so no body falls in.  The waterline rule is therefore
-// **correct and unexercised by the runtime**: it is what `raise` in a
-// `.keys` file meets, and what the first thing that fills a moat will
-// meet.
+// ⚠⚠ **AND SOMETHING FILLS ONE — see § What a besieger shovels, at the
+// foot of this file** (BACKLOG C9).  This paragraph read *nothing fills
+// one yet, which is the honest limit of this* until 2026-08-28, and the
+// limit it named was real: a moat has no HP, so `structure_breakable`
+// is false, and nothing dies IN a trench because nothing can be in one,
+// so the waterline rule was correct and **unexercised by the runtime**.
 //
-// ⚠ That is not a stalemate the design has to fear — a base nothing
-// reaches is a base where nothing dies, so there is no salvage, and
-// salvage is the run's only income.  A player who rings themselves in
-// has bought time they cannot spend, which is `@M056`'s jammer trade
-// one mechanic over.  ⚠ *Besiegers shovelling a trench shut* is the
-// follow-on that would close it, and it is a BACKLOG row with its
-// argument here rather than a gap nobody wrote down.
+// ⚠ What closed it is not what this file predicted.  The BACKLOG row's
+// own mechanism was falsified by a probe (`@X283`), the fill lives in
+// the DESIRE SWEEP rather than in `wave_damage` alone, and the
+// stalemate this paragraph called *not a stalemate the design has to
+// fear* turned out to be worth closing for a better reason than the
+// clock: **a besieger stopped at a trench has to stand at a fixed
+// distance and dig**, which is the most shootable thing a robot can do
+// (`@M060`).
 
 use palette;
 use painted;
+use height;
 
 // How many metres of depth one unit of palette `drop` is worth.
 //
@@ -184,4 +184,152 @@ pub fn moat_depth_at(pal: vector<GroundType>, pw: const PaintedWorld,
 pub fn moat_at(pal: vector<GroundType>, pw: const PaintedWorld,
                q: integer, r: integer) -> boolean {
     moat_depth_at(pal, pw, q, r) > 0.0
+}
+
+// ─── ⚠⚠ What a besieger shovels (BACKLOG C9) ────────────────────
+//
+// § What this file deliberately does NOT do named *nothing fills one*
+// as this file's honest limit, and this is the follow-on that closes it: **a trench a wave is standing at
+// gets filled in, so a moat is a TIMER rather than a wall nothing can
+// break.**
+//
+// ⚠⚠ **The BACKLOG row's stated mechanism was wrong and a probe said
+// so** (`@X283`).  It read *"a moat has no HP, so a besieger's target
+// lands nothing"* — which assumes a target is NAMED and then wasted.
+// It is not: water fails `hex_walkable`, so a moat hex is not a node in
+// the DESIRE field either, `flow_steps` never offers it, and
+// `enemy_target` answers the enemy's own hex.  A branch at
+// `wave_damage` alone would have been dead code
+// (`tests/c9_the_fill.loft` § What the probe found keeps the reading).
+//
+// ⚠ **So the change is in the DESIRE SWEEP first**, and it is the rule
+// that sweep was always following said out loud: *an obstacle the wave
+// can REMOVE is passable in it.*  A wall is (break it) and the lifted
+// climb is how that was expressed, because a wall's top is walkable
+// and only the climb refused it.  A trench is too (fill it) and needs
+// the NODE rule widened, because water is not a surface at any height.
+// ⚠ The sea is not a moat, so the field still stops at the coast and
+// `flow.loft`'s unbounded-plane argument is untouched.
+
+// How much damage-to-a-wall one metre of trench is worth.
+//
+// ⚠ **DERIVED from `damage.loft::WALL_HP`, and the derivation is the
+// design**: a trench hex costs a besieger the FULL 100, the braced
+// figure a wall reaches only when it is closed into a ring.
+//
+// ⚠⚠ **A trench is a wall that cannot be UNBRACED.**  `damage.loft`
+// § Bracing exists because a free-standing fence topples at its loose
+// ends — a straight five-hex wall presents 60 HP in the middle and 30
+// at the ends, and *"a fence UNZIPS from its ends"*.  A hole in the
+// ground has no ends, no neighbours to lean on, and nothing to lose:
+// dig a straight line and every hex of it is worth the full figure.
+// That is what the player is buying for the ten helper-seconds
+// `BUILD_MOAT_UNITS` charges — the same price as a wall, for a barrier
+// whose weakest hex is its strongest.
+//
+// ⚠ It is written as a literal rather than as `WALL_HP`, and that is
+// [loft#962]: a `const` initialised from a SIBLING MODULE's const,
+// imported through `use dryopea;`, panics the compiler on both
+// backends.  ⚠ `tests/c9_the_fill.loft` asserts the two are equal, so
+// the derivation is gated rather than commented.
+pub const MOAT_FILL_DAMAGE_PER_METRE: float = 100.0;
+
+// The metres of spoil a besieger shovels for `damage` points of the
+// bite it would otherwise have taken out of a wall.
+//
+// ⚠⚠ **One door, and no per-class table** — the rule
+// `passable.loft` § ONE AI, per-class DATA states: a class's whole
+// mechanical difference is what it does to a wall and how fast it
+// arrives, and a third row here would have broken it.  A besieger digs
+// with the tool it chews with, so the miner is the best digger and the
+// scout is nearly useless at it for free, exactly as at a wall.
+//
+// ⚠ **It is metres per DAMAGE and never metres per depth**, which is
+// what makes the drop the timer: a `rapids` trench at 3 m costs three
+// times a `water` one and a `waterfall` sixteen bodies' worth of
+// shovelling.  Scale the rate by the depth instead and every trench
+// fills in the same time, and the palette's 1-3-8 would decide nothing
+// again.
+// Example: @DRY-134
+pub fn moat_spoil_metres(damage: float) -> float {
+    damage / MOAT_FILL_DAMAGE_PER_METRE
+}
+
+// Shovel `metres` of spoil into the trench at (q, r).  Answers whether
+// there was a trench there to fill.
+//
+// ⚠ **Guarded on `moat_at` rather than trusted**, and the guard is the
+// SEA: an unpainted world is sea everywhere, so an unguarded fill
+// called with a target off the perimeter would raise the open water
+// into a causeway.  A moat is a hex somebody dug.
+//
+// ⚠ It goes through `height_raise`, so this needs no rule of its own:
+// the layer accumulates, the newest deposit names the pile, and
+// `passable.loft::hex_ground` decides when the spoil clears the
+// waterline and the hex becomes ground again.  ⚠ **Nothing caps it at
+// the waterline** — it does not need to, because a filled trench is a
+// step the wave takes, so `enemy_target` stops naming it on the tick
+// after it crosses.
+pub fn moat_fill(pal: vector<GroundType>, pw: const PaintedWorld, hl: HeightLayer,
+                 q: integer, r: integer, metres: float) -> boolean {
+    if metres <= 0.0 { return false; }
+    if !moat_at(pal, pw, q, r) { return false; }
+    height_raise(hl, q, r, metres, RUBBLE_SPOIL as u8? ?? 0);
+    true
+}
+
+// Fold a tick's SHOVELLING into the world's rubble layer, and answer
+// how many trenches took some.
+//
+// ⚠⚠ **This is why the fill is a two-step and not one write**, and it
+// is `damage.loft::damage_resolve`'s shape for the same reason.
+// `wave_damage` runs BEFORE the movers, off the world the tick started
+// with, and `spawn.loft` § The consequences land LAST is the rule that
+// makes a scripted run repeatable: *a hex raised mid-loop would change
+// the world for the enemies the roster happened to visit later and not
+// for the ones it visited first.*
+//
+// ⚠ A trench is exactly that hazard, and worse than a body is: it is
+// what `enemy_target` READS.  Shovelling straight into `state.heights`
+// would make the second besieger's target depend on whether the first
+// one's spoil had just cleared the waterline — the roster's ORDER
+// deciding the siege, which `ENEMY_MOVEMENT.md` § The tick resolves
+// once names as the invariant everything else rests on.
+//
+// ⚠ So the tick's bites accumulate in a layer of their own and land
+// here, with the deaths and the breaks — and the wave crosses on tick
+// N+1, exactly as it walks over a body and routes through a breach on
+// tick N+1.
+pub fn moat_resolve(spoil: const HeightLayer, hl: HeightLayer) -> integer {
+    mr_n = 0;
+    for mr_c in spoil.cells {
+        if mr_c.metres > 0.0 {
+            height_raise(hl, mr_c.q, mr_c.r, mr_c.metres, RUBBLE_SPOIL as u8? ?? 0);
+            mr_n += 1;
+        }
+    }
+    mr_n
+}
+
+// How much MORE spoil the trench at (q, r) needs before it is ground
+// again — 0.0 where there is no trench, or where one is already full.
+//
+// ⚠ The waterline is `hex_ground`'s threshold and this is the same
+// arithmetic read forwards, for a caller that wants the REMAINING work
+// rather than the verdict.  ⚠ **Nothing in `src/` calls it yet** — the
+// runtime only ever needs the verdict — and it is here so that the one
+// place the threshold is spelled out stays one place: a crew remark, a
+// HUD reading or a `.keys` measurement that wanted *how much more* would
+// otherwise write `depth - rise` inline and own a second copy of the
+// rule.  `tests/c9_the_fill.loft` § What is left to fill is what keeps
+// it honest against `hex_ground`.  ⚠ It is strictly MORE than the depth that
+// clears it (`rise > depth`, not `>=`), so a trench filled to exactly
+// its brim still wants a grain — which is what
+// `tests/c5_the_moat.loft` measured as *two bodies fill it to the brim
+// and no further*.
+pub fn moat_left_to_fill(pal: vector<GroundType>, pw: const PaintedWorld,
+                         hl: const HeightLayer, q: integer, r: integer) -> float {
+    mlf_d = moat_depth_at(pal, pw, q, r);
+    if mlf_d <= 0.0 { return 0.0; }
+    max(mlf_d - height_rise(hl, q, r), 0.0)
 }

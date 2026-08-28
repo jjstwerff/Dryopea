@@ -31,6 +31,7 @@ use markers;
 use palette;
 use painted;
 use height;
+use moat;
 use passable;
 use flow;
 use occupancy;
@@ -1041,11 +1042,19 @@ fn enemy_walk_desire(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
 // core."*  This says WHICH hex; the damage is combat's, and nothing
 // here takes any.
 //
-// ⚠ **You attack what you could stand on and cannot climb.**  The
-// target is always a hex whose SURFACE is walkable — a wall's top, a
-// body pile — so an enemy at the water's edge is not besieging the
-// sea.  In the siege branch that is free (every cell of the desire
-// field is walkable by construction); approach mode has to ask.
+// ⚠ **You attack what you could stand on, or what you could fill in.**
+// The target is a hex whose SURFACE is walkable — a wall's top, a body
+// pile — or a TRENCH, which is the one obstacle you get onto by
+// removing it (BACKLOG C9).  Either way an enemy at the water's edge
+// is not besieging the SEA: `moat_at` is false at drop 0, so the open
+// water is neither.
+//
+// ⚠⚠ **The siege branch used to get that for free and no longer
+// does.**  Until C9 every cell of the desire field was walkable by
+// construction, so this rule needed no code here; `flow.loft`
+// § sweep_ground now admits trenches as well, and the guarantee it
+// hands back is the wider one — *every cell is a hex the wave can
+// stand on OR remove*.  Approach mode still has to ask for itself.
 //
 // Returning the enemy's own hex for "nothing" follows `flow_step`'s
 // convention: a caller that ignores the answer attacks nobody rather
@@ -1709,7 +1718,29 @@ pub fn wave_traps(state: WaveState, mw: const MarkerWorld,
 // — recording it anyway would fill the ledger with entries that can
 // never resolve, and would make `damage_count` mean something other
 // than "structures under attack".
+//
+// ── ⚠⚠ A TRENCH IS SHOVELLED, NOT CHEWED (BACKLOG C9) ───────────
+//
+// The wave meets two kinds of obstacle it can remove, and this is the
+// one site that tells them apart.  A structure takes DAMAGE and breaks;
+// a moat has no HP and never will, so a besieger at one fills it in —
+// `moat.loft::moat_fill` puts the same tick's bite into the height
+// layer as spoil, and `passable.loft::hex_ground` decides when the
+// spoil clears the waterline and the trench is ground again.
+//
+// ⚠ **The bite is the SAME number**, converted once by
+// `moat_spoil_metres`, so a class digs with the tool it chews with and
+// no per-class row was added (`passable.loft` § ONE AI, per-class
+// DATA).
+//
+// ⚠ It is an `else`, and that is exact rather than tidy: no palette
+// entry carries both a `height_override` and a `drop`
+// (`passable.loft::painted_height_of`), so a hex is a structure or a
+// trench and never both.  ⚠ Note that a trench under enough spoil is
+// neither — its SURFACE is rubble and the wave walks over it, so it
+// stops being a target rather than becoming a second case here.
 fn wave_damage(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
+               spoil: HeightLayer,
                fields: const vector<ClassField>, desire: const FlowField) {
     for wd_e in state.enemies {
         if wd_e.alive {
@@ -1731,6 +1762,15 @@ fn wave_damage(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
                     if wd_t.q != wd_e.q || wd_t.r != wd_e.r {
                         if structure_breakable(pal, pw, wd_t.q, wd_t.r) {
                             damage_apply(state.damage, wd_t.q, wd_t.r, wd_bite);
+                        } else {
+                            // ⚠⚠ Into the tick's OWN layer, never
+                            // `state.heights` — `moat.loft::moat_resolve`
+                            // says why, and it is the roster-order
+                            // invariant: a trench is what `enemy_target`
+                            // READS, so a bite landed here would decide
+                            // the next besieger's target.
+                            moat_fill(pal, pw, spoil, wd_t.q, wd_t.r,
+                                      moat_spoil_metres(wd_bite));
                         }
                     }
                 }
@@ -2034,7 +2074,11 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     // besieging enemies bite the wall in front of them, and the ones
     // that have arrived bleed the wallet.
     wave_fire(state, pal, pw, mw);
-    wave_damage(state, pal, pw, wt_fields, wt_desire);
+    // ⚠ The tick's shovelling accumulates HERE and lands with the other
+    // consequences (`moat_resolve`, below) — a `damage.cells` for
+    // trenches, and for the same reason.
+    wt_spoil = height_layer_empty();
+    wave_damage(state, pal, pw, wt_spoil, wt_fields, wt_desire);
     wave_nibble(state, core);
     wave_block(state, wt_fields, wt_occ, wt_block);
 
@@ -2237,6 +2281,15 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     errand_depart(state, pal, pw, state.heights);
 
     damage_resolve(pal, pw, state.damage, state.heights);
+
+    // ⚠ **A trench takes its tick's spoil HERE, beside the breaks**
+    // (BACKLOG C9), and it is the same statement: what the wave did to
+    // the perimeter this tick is the world tick N+1 walks into.  ⚠ After
+    // `damage_resolve` for the reason that pass is ordered at all —
+    // both write the rubble layer and a hex that takes both in one tick
+    // is named by the LATER deposit, so fixing the order is what makes
+    // it repeatable.
+    moat_resolve(wt_spoil, state.heights);
 
     // ⚠ **A finished structure appears HERE, with the deaths and the
     // breaks** (plan 27 C2) — the same rule they follow, so the wall a

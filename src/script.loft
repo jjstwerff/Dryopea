@@ -71,8 +71,10 @@
 //                              RUNTIME — what a body does when it
 //                              falls and a wall does when it breaks
 //                              (plan 11 F6, plan 12 B1).  `source` is
-//                              wreckage (the default), carapace or
-//                              masonry.  Accumulates; never saved
+//                              wreckage (the default), carapace,
+//                              masonry, cargo or spoil — every name
+//                              `emit.loft` can WRITE.  Accumulates;
+//                              never saved
 //   clear <q> <r>              take the whole pile away, leaving the
 //                              hex exactly as the map paints it — the
 //                              layer's defining property (plan 12 B1)
@@ -1986,8 +1988,15 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
             sc_sname = tok[4] ?? "";
             if sc_sname == "carapace" { sc_src = RUBBLE_CARAPACE; }
             else if sc_sname == "masonry" { sc_src = RUBBLE_MASONRY; }
+            // ⚠ `cargo` and `spoil` are here because `emit.loft` WRITES
+            // them: `emit_layers` names a pile with `rubble_source_name`,
+            // so a source this reader cannot parse makes a captured
+            // situation unreadable.  Cargo has been writable and
+            // unreadable since plan 23 K0; spoil arrives with BACKLOG C9.
+            else if sc_sname == "cargo" { sc_src = RUBBLE_CARGO; }
+            else if sc_sname == "spoil" { sc_src = RUBBLE_SPOIL; }
             else if sc_sname != "wreckage" {
-                return "raise: unknown source '{sc_sname}' — wreckage, carapace, masonry";
+                return "raise: unknown source '{sc_sname}' — wreckage, carapace, masonry, cargo, spoil";
             }
         }
         sc_rq = sc_v[0] ?? 0;

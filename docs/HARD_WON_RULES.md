@@ -120,6 +120,51 @@ mechanic needed a constant of its own.  ⚠ On land and on the `sea` the
 depth is 0.0, so it is the old `rise > 0` unchanged everywhere anybody
 has ever painted — 745 gate measurements did not move.
 
+⚠⚠ **A TARGET NOTHING CAN NAME IS NOT A TARGET THAT LANDS NOTHING**
+(BACKLOG C9, `@X283`).  The backlog row for *besiegers shovel a trench
+shut* named its own mechanism — *"a moat has no HP, so a besieger's
+target lands nothing… one branch at `wave_damage`"* — and a twelve-line
+probe falsified it before a line shipped, the same way C5's headline
+went.  **No target is named at all**: water fails `hex_walkable`, so a
+moat hex is not a node in the **desire** field either, `flow_steps` never
+offers it, and `enemy_target` answers the besieger's own hex.  A branch
+at `wave_damage` would have been dead code, and the work was one
+predicate up, in the sweep.  ⚠ The rule that came out of it is worth more
+than the fix: **an obstacle the wave can REMOVE is passable in the desire
+field** — a wall is (and the lifted climb was how that had always been
+expressed, because a wall's top is walkable and only the climb refused
+it); a trench is, and water is not a surface at any height, so the NODE
+rule is what widens.  ⚠ The **sea** is not a moat, which is what keeps
+the sweep off an unbounded plane, and ROUTING is untouched.
+
+⚠⚠ **A NEW EFFECT GOES WHERE THE CONSEQUENCES LAND, AND THE TEST IS
+WHETHER ANYTHING IN THE TICK *READS* WHAT IT WRITES** (BACKLOG C9,
+`moat.loft::moat_resolve`).  `wave_damage` runs BEFORE the movers, and
+writing damage there is safe because nothing in the move loop reads the
+damage ledger — the BREAK lands last.  Shovelling spoil there is not:
+the height layer is what `enemy_target` reads, so a bite landed inline
+made **the second besieger's target depend on whether the first one's
+spoil had just cleared the waterline**, and the roster's ORDER would
+have decided the siege.  ⚠ The fix is `damage_resolve`'s shape — a
+tick's bites accumulate in a layer of their own and land with the
+deaths and the breaks — and it cost the clock exactly one tick.  ⚠ The
+question to ask of any new pre-move effect is not *is it commutative*
+but *does anything later in this tick read the thing it writes*.
+
+⚠⚠ **A CLEARER TAKES THE WHOLE PILE, SO "THE PLAYER CAN UNDO IT" IS AN
+OFF SWITCH RATHER THAN A TRIP** (`@M059`, `vehicle.loft` § SPOIL IS NOT
+SALVAGE).  `salvage_at`'s bite is `min(rate * dt, pile)`, and a crew
+member clears **fifty times** faster than a besieger shovels — so any
+pile smaller than one bite goes to zero the moment anybody is in reach.
+Measured: with the two helpers that dug the trench standing in it, **300
+ticks of siege left 0.0133 m of spoil**, and C9 would have shipped as a
+no-op on its own headline scenario.  ⚠⚠ **The ratio is not tunable out
+of it** — a fill fast enough to beat a wipe is a fill that opens the
+trench in a dozen ticks — so the answer was to refuse the source, not to
+move the rate.  ⚠ **Price the counter-play against the CAPACITY before
+believing it is a cost**, the same way § A gate whose reading is already
+saturated says to price the supply.
+
 ⚠ **ONE AI, per-class DATA — and it is a design rule, not an accident.**
 *Bosses are not special in their AI; their size and their options are
 different, and that is what makes them special events* (project owner,

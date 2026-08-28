@@ -176,6 +176,16 @@ pub const LOOT_POINTS_PER_METRE: float = 20.0;
 // broken wall is a mess you made.  Paying for masonry would have made
 // demolishing your own perimeter an income stream.
 //
+// ⚠⚠ **SPOIL pays nothing for the same reason and a sharper one**
+// (BACKLOG C9).  A besieger shovelling a trench shut is the wave doing
+// work IN the player's base, and the player's counter-play is to drive
+// out and dig it back out (`vehicle.loft::salvage_at`).  Paying for
+// that would make **letting the enemy fill your trench** an income
+// stream — dig, wait, collect, repeat — which is the perimeter
+// exploit one mechanic over, and it needs no kills at all.  ⚠ The
+// default here PAYS, so a source added without a row is the farm: this
+// line is the one that is load-bearing, not the constant.
+//
 // ⚠ A pile is named by its NEWEST deposit (`height.loft`'s rule), so
 // masonry dropped onto a heap of wreckage makes the whole heap
 // worthless until it is cleared and re-piled.  That is the layer's
@@ -196,6 +206,7 @@ pub const LOOT_CARGO_MULTIPLIER: float = 3.0;
 
 pub fn loot_rate(source: integer) -> float {
     if source == RUBBLE_MASONRY { return 0.0; }
+    if source == RUBBLE_SPOIL   { return 0.0; }
     if source == RUBBLE_CARGO   { return LOOT_POINTS_PER_METRE * LOOT_CARGO_MULTIPLIER; }
     LOOT_POINTS_PER_METRE
 }
