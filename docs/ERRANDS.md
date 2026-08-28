@@ -97,7 +97,7 @@ runtime rule that varied with what the player can see is the thing
 >
 > — project owner, 2026-08-28
 
-## ⚠⚠ The model in nine lines
+## ⚠⚠ The model in ten lines
 
 Read these first; everything below is the argument for one of them, and
 § WHY is what they are all for.
@@ -128,6 +128,10 @@ Read these first; everything below is the argument for one of them, and
 9. ⚠⚠ **THE RESULT IS THE SNAPSHOT, CHANGED** (`@X306`) — POI states and
    denied throughput back to the WORLD, the `Manifest` to the PLAYER, and
    half of it shipped with [`plans/28`](../plans/28-the-scramble/README.md).
+10. ⚠⚠ **THE COARSE MAP IS A REAL MAP** (`@X307`), Ortler-shaped, and a
+   planet has **two layers** (`@X308`): the GIVEN, which is author-free
+   because nobody designed a mountain range, and the ACCUMULATED, which
+   is what players did.
 
 ## ⚠⚠ The two scales, and the ratio is the whole architecture  `@X298`
 
@@ -145,6 +149,82 @@ Owner, 2026-08-28:
 | **a scenario** (a sortie) | **1.5 m** (`HEX_DIAMETER`) | ground, walls, mobs — the game |
 
 **A thousand to one, linear.  A million to one, by area.**
+
+### ⚠⚠ And the coarse map is a REAL map, not an abstraction  `@X307`
+
+Owner, 2026-08-28:
+
+> *"there will be a world map in 1.5 km eventually like the ortler map in
+> `../crawler`, with routines to determine details from that."*
+
+⚠ So the server's state is not a table of rates hanging in space — it is
+**a map**, at 1.5 km per hex, with the economy laid onto it; and the
+reference implementation is `crawler`'s **Ortler** region
+(`src/ortlergen.loft`, `src/overland.loft`, `src/realworld/`,
+`data/regions/`, and `plans/1-ortler-worldgen-fixture/`).
+
+⚠⚠ **Which means a scenario's terrain is DERIVED, not only its
+economy** — the routines that determine detail from a coarse cell decide
+what ground a base lands on, and § The two scales' ratio is the size of
+the derivation: **one coarse hex has to produce a million fine ones.**
+
+⚠ dryopea has **no procedural generation of any kind today** — the three
+maps in `maps/` are authored `.keys` files built into committed `.json`
+pairs, and there is no seed anywhere in `src/`.  So this is a first, and
+two written rules already govern it:
+
+- ⚠⚠ **`@X224` — other players are the SEED.**  *"If the seed is a number
+  the author chose then the author knows the world; if it is what other
+  people did, the author cannot know it, because it has not happened
+  yet."*  ⚠ And it is not randomness: player history has no expectation
+  to compute.
+- ⚠⚠ **And the GATES need it deterministic**, which sounds like a
+  conflict and is not: **a seed is unknowable in advance but not
+  un-recorded.**  Once a cell is generated its seed is a concrete value,
+  and [`plans/18`](../plans/18-scenario-capture/README.md) already turns
+  any reached state into a `.keys` fixture — so the gates test *a* world
+  exactly, while live worlds come from history nobody can precompute.
+
+⚠ It also closes a loop with § The compact RESULT: **`@X306`'s delta IS
+the player history `@X224` wants as a seed**, so the two rulings are the
+same mechanism read from opposite ends.
+
+#### ⚠⚠ TWO LAYERS — the GIVEN and the ACCUMULATED  `@X308`
+
+Owner, 2026-08-28:
+
+> *"this will be populated by user actions, yes.  But we have something
+> to draw on the planet at the start."*
+
+⚠⚠ **This fills a real gap in `@X224`**: *other players are the seed*
+cannot be the whole story for the FIRST player on a fresh planet, because
+there is no history yet.  So a planet has two layers and they are not the
+same kind of thing:
+
+| | what it is | who wrote it | when |
+|---|---|---|---|
+| **the GIVEN** | the terrain, and the initial installation graph | derived once — the Ortler-shaped half | **t = 0**, the same for everybody |
+| **the ACCUMULATED** | raided POIs, denied routes, abandoned bases, caches | ⚠ **the players** (`@X224`, `@X174`) | every finished sortie (`@X306`) |
+
+⚠⚠ **And the reason a real-world map is the right GIVEN is that it is an
+AUTHOR-FREE SEED.**  Nobody designed the Ortler massif; it was imported.
+So `@X224`'s requirement — *"I do not want to know what to find before I
+boot up the game"* — is met **even at t = 0**, by a layer that has a
+history nobody in this project invented.
+
+> ⚠⚠ **A heightmap is not authored, so importing one buys the
+> anti-optimisation property before a single player has done anything.**
+
+⚠ It also satisfies `@X244`'s *scale must not be assumed*: a
+five-player world and a capped public one are different places, and
+**the given layer has to carry the whole game on its own** — a planet
+nobody has played yet must already be worth landing on.
+
+⚠ **And it is CONTENT, so its licence travels with it** — the rule
+[`assets/README.md`](../assets/README.md) already keeps for the one
+binary the game loads.  Real-world elevation data has a provenance and a
+term, and the day a region lands in `data/` is the day that has to be
+written down beside it.
 
 ⚠⚠ **So a scenario does not contain the graph — it contains ONE CELL of
 it, and only part of one.**  Measured against dryopea's own lattice:
