@@ -47,6 +47,7 @@ use errand;
 use skill;
 use endure;
 use jammer;
+use scramble;
 use waves;
 use fixstep;
 
@@ -569,6 +570,15 @@ pub struct WaveState {
     orders:      BuildLayer,
     traffic:     Traffic,
     jammer:      Jammer,
+
+    // Has the player left, and how far through the countdown are they
+    // (`plans/28` S1).
+    //
+    // ⚠⚠ **The run's ENDING lives here rather than on `PlayState`**,
+    // because a scenario has to be able to author it and `state_diff`
+    // has to be able to see it — the same reasons the jammer above is a
+    // field of the wave rather than of the session.
+    scramble:    Scramble,
     traps:       TrapState,
 }
 
@@ -588,6 +598,7 @@ pub fn wave_state_empty() -> WaveState {
         orders:  build_layer_empty(),
         traffic: traffic_new(),
         jammer:  jammer_new(),
+        scramble: scramble_new(),
         traps:   trap_state_empty(),
     }
 }
@@ -2138,6 +2149,21 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     // it after would let a crew tidy a kill zone the instant it filled,
     // and would make the ordering of these three lines load-bearing.
     vehicle_tick(state.player, pal, pw, state.heights, TICK_STEP_UNITS);
+
+    // ⚠⚠ **THE LAUNCH IS STEPPED HERE, right after the player moved**
+    // (`plans/28` S1) — so it reads the hex the vehicle ENDED this tick
+    // on, exactly as the salvage and the upkeep below do.  A countdown
+    // that read the pre-move position would arm a tick late on the way
+    // in and cancel a tick late on the way out.
+    //
+    // ⚠ **It does not touch the schedule and must not**: `DESIGN.md` § 4
+    // calls the countdown a HAZARD WINDOW — enemies that reach the core
+    // keep nibbling while the player sits inside.  ⚠⚠ And nothing here
+    // ends the base on the game's own initiative (`@X293`): this fires
+    // only because the player drove in and stayed.
+    scramble_step(state.scramble,
+                  vehicle_in_core(state.player, core),
+                  TICK_STEP_UNITS);
 
     // ⚠ **The crew takes its turn with the player** (plan 14 H1), for
     // the same reason and in the same place: they are the same chassis

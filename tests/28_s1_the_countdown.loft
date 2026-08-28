@@ -1,0 +1,210 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 28 phase S1 — the countdown, and the position that starts it.
+//
+// ⚠⚠ **The rule the whole plan keeps**: *the base never ends itself; it
+// is always the player's decision to stop* (`@X293`).  So the countdown
+// fires only because somebody drove in and stayed, exiting cancels it,
+// and nothing in the tick hurries them.
+//
+// ── ⚠⚠ Where "inside the core" is ───────────────────────────────
+//
+// `DESIGN.md` § 4 has a 7-hex prism with six faces and an opening you
+// drive **through**; `plans/28` § S0 measured that none of it exists —
+// the core is one marker on one hex and a drive across it does not
+// notice.  ⚠ So the position is **the core's own hex**, which earns its
+// place by being distinguishable from *within `CARGO_REACH_HEXES`*,
+// where every other core interaction happens:
+//
+// > **Beside the core you TRADE; on the core you LEAVE.**
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+fn pal_at(path: text) -> vector<GroundType> { load_palette(path) }
+
+fn core_at(q: integer, r: integer) -> Hex { Hex { q: q, r: r } }
+
+// A band of grass with the core at (0, 0) and the player wherever the
+// caller parks them.
+fn based(pw: PaintedWorld, mw: MarkerWorld) -> WaveState {
+    for b_q in -6..=6 {
+        for b_r in -3..=3 { paint(pw, b_q, b_r, as_u8(GRASS)); }
+    }
+    place_marker(mw, 0, 0, MARKER_KIND_TARGET as u8, 0 as u8);
+    wave_state_empty()
+}
+
+// ─── ⚠⚠ The position ────────────────────────────────────────────
+
+// **On the core, not beside it** — and the control is the hex where a
+// beacon is bought, which is a different interaction and must stay one.
+fn test_inside_the_core_is_its_own_hex() {
+    tic_v = vehicle_empty();
+    assert(!vehicle_in_core(tic_v, core_at(0, 0)),
+           "a vehicle that was never placed is not inside anything, even "
+           + "at the origin — `parked` is what says it is in the world");
+
+    vehicle_place(tic_v, 0, 0);
+    assert(vehicle_in_core(tic_v, core_at(0, 0)), "on the core: inside");
+
+    vehicle_place(tic_v, 1, 0);
+    assert(!vehicle_in_core(tic_v, core_at(0, 0)),
+           "and one hex away is NOT — which is where a beacon is bought, "
+           + "so trading and leaving are different positions");
+    assert(lat_distance(core_at(0, 0), Hex { q: 1, r: 0 }) <= CARGO_REACH_HEXES,
+           "and that hex really is within the trading reach: the two "
+           + "rules are distinguishable rather than merely different");
+}
+
+// ─── ⚠⚠ The countdown ──────────────────────────────────────────
+
+// @DRY-138 — **six seconds is nine ticks, exactly**, and the arming
+// tick is not one of them: a countdown that fired on the tick it started
+// would make the duration a lie at any tick length where one tick covers
+// it.
+fn test_the_countdown_is_nine_ticks_and_the_arming_tick_is_not_one() {
+    tcn_sc = scramble_new();
+    assert(!scramble_counting(tcn_sc) && !scramble_gone(tcn_sc),
+           "a fresh base has nobody leaving it");
+
+    // Tick 1: the player is inside, so it ARMS and does not spend.
+    assert(!scramble_step(tcn_sc, true, TICK_STEP_UNITS),
+           "the arming tick does not fire");
+    assert(scramble_counting(tcn_sc), "and the countdown is running");
+    assert(scramble_left(tcn_sc)
+           == clock_units_from_seconds(LAUNCH_COUNTDOWN_SECONDS),
+           "with the whole duration left: {scramble_left(tcn_sc)}");
+
+    // ⚠ Nine more, and the ninth is the one that fires.
+    tcn_fired = 0;
+    for tcn_i in 1..=9 {
+        if scramble_step(tcn_sc, true, TICK_STEP_UNITS) { tcn_fired = tcn_i; }
+    }
+    assert(tcn_fired == 9,
+           "it fires on the NINTH spending tick: {tcn_fired}");
+    assert(scramble_gone(tcn_sc), "and the player is gone");
+}
+
+// ⚠ The arithmetic behind the nine, stated so a tuning change fails
+// here rather than in a scenario's tick count.
+fn test_six_seconds_is_a_whole_number_of_ticks() {
+    tss_units = clock_units_from_seconds(LAUNCH_COUNTDOWN_SECONDS);
+    assert(tss_units == TICK_STEP_UNITS * 9,
+           "6.0 s is exactly nine ticks with no remainder: {tss_units} "
+           + "against {TICK_STEP_UNITS * 9}");
+    assert(LAUNCH_COUNTDOWN_SECONDS == 6.0,
+           "and it is `numbers.json` § core.launch_countdown_duration");
+}
+
+// ⚠⚠ **EXITING CANCELS, AND CANCELLING RESETS** — `DESIGN.md` § 4's own
+// word.  A player who steps out at five seconds and back in starts from
+// six again; there is no banked progress.
+fn test_stepping_out_cancels_and_resets() {
+    tso_sc = scramble_new();
+    scramble_step(tso_sc, true, TICK_STEP_UNITS);          // arm
+    for tso_i in 1..=8 { scramble_step(tso_sc, true, TICK_STEP_UNITS); }
+    assert(scramble_counting(tso_sc) && !scramble_gone(tso_sc),
+           "eight ticks in, one from firing: {scramble_left(tso_sc)} left");
+
+    // ⚠ One tick outside.
+    assert(!scramble_step(tso_sc, false, TICK_STEP_UNITS),
+           "stepping out does not fire");
+    assert(!scramble_counting(tso_sc), "and stops the countdown");
+    assert(!scramble_gone(tso_sc), "the player is still here");
+
+    // ⚠⚠ Back in, and it is the WHOLE six seconds again.
+    scramble_step(tso_sc, true, TICK_STEP_UNITS);
+    assert(scramble_left(tso_sc)
+           == clock_units_from_seconds(LAUNCH_COUNTDOWN_SECONDS),
+           "back to the full duration, not to where they left off: "
+           + "{scramble_left(tso_sc)}");
+    // ⚠ CONTROL — it really would have fired had they stayed, so the
+    // cancel above is the reason it did not.
+    tso_2 = scramble_new();
+    scramble_step(tso_2, true, TICK_STEP_UNITS);
+    for tso_j in 1..=9 { scramble_step(tso_2, true, TICK_STEP_UNITS); }
+    assert(scramble_gone(tso_2),
+           "CONTROL — nine uninterrupted ticks DO fire");
+}
+
+// ⚠ Once gone, gone: a second call answers false rather than firing
+// again, which is what makes the manifest a conservation (S3).
+fn test_it_fires_once() {
+    tfo_sc = scramble_new();
+    scramble_step(tfo_sc, true, TICK_STEP_UNITS);
+    tfo_n = 0;
+    for tfo_i in 1..=30 {
+        if scramble_step(tfo_sc, true, TICK_STEP_UNITS) { tfo_n += 1; }
+    }
+    assert(tfo_n == 1, "thirty ticks, one liftoff: {tfo_n}");
+}
+
+// ⚠ A player who never goes in never leaves — the whole of `@X293` in
+// one reading.
+fn test_a_player_who_stays_out_is_never_launched() {
+    tps_sc = scramble_new();
+    for tps_i in 1..=200 {
+        assert(!scramble_step(tps_sc, false, TICK_STEP_UNITS),
+               "tick {tps_i}: nothing fires");
+    }
+    assert(!scramble_gone(tps_sc),
+           "two hundred ticks beside the core and the base is still "
+           + "being played — nothing hurries the player");
+}
+
+// ─── Through the tick, which is the thing that matters ──────────
+
+// **The whole mechanism through `wave_tick`**, because the position is
+// read off the vehicle AFTER it has moved and a test that called
+// `scramble_step` by hand would measure the arithmetic and not the game.
+fn test_driving_in_and_staying_launches() {
+    tdi_pw = painted_empty();
+    tdi_mw = marker_empty();
+    tdi_s  = based(tdi_pw, tdi_mw);
+    tdi_pal = pal_at(PALETTE);
+    vehicle_place(tdi_s.player, 4, 0);
+    vehicle_drive(tdi_s.player, 0, 0);
+
+    tdi_at = 0;
+    for tdi_t in 1..=40 {
+        wave_tick(tdi_s, tdi_pal, tdi_pw, tdi_mw, core_at(0, 0));
+        if scramble_gone(tdi_s.scramble) && tdi_at == 0 { tdi_at = tdi_t; }
+    }
+    assert(tdi_at > 0, "the player drove in and left: tick {tdi_at}");
+    // ⚠ Four hexes at 3 hex/s is TWO ticks, and **arriving and arming
+    // are the same tick** — the launch is stepped after the movers, so
+    // the tick that lands the vehicle on the core is the tick that arms.
+    // Two to drive, nine to spend: eleven.
+    assert(tdi_at == 11,
+           "two ticks of driving (the second of which also arms) and "
+           + "nine spending ticks: {tdi_at}");
+}
+
+// ⚠⚠ **And a player who drives THROUGH does not launch**, which is what
+// says the position is a place you STAY rather than one you cross.  S0
+// measured that a marker is not terrain, so driving over the core is
+// exactly what a player does by accident.
+fn test_driving_through_does_not_launch() {
+    tdt_pw = painted_empty();
+    tdt_mw = marker_empty();
+    tdt_s  = based(tdt_pw, tdt_mw);
+    tdt_pal = pal_at(PALETTE);
+    vehicle_place(tdt_s.player, -4, 0);
+    vehicle_drive(tdt_s.player, 4, 0);
+
+    for tdt_t in 1..=40 {
+        wave_tick(tdt_s, tdt_pal, tdt_pw, tdt_mw, core_at(0, 0));
+    }
+    assert(tdt_s.player.q == 4, "it drove all the way across");
+    assert(!scramble_gone(tdt_s.scramble),
+           "and never launched — crossing the core is not leaving");
+    assert(!scramble_counting(tdt_s.scramble),
+           "with no countdown left running behind it");
+}

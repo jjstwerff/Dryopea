@@ -158,6 +158,18 @@ ground, the markers and nobody.  ⚠⚠ **A design conclusion resting on
 "the mechanism already exists" is a testable claim, and this one was
 false** — the settled half needed exactly what the open half did.
 
+⚠⚠ **AND HERE IS THE SAME CLASS WITH A GATE ON IT, WHICH IS WHAT ONE
+LOOKS LIKE WHEN IT WORKS** (`plans/28` S2).  `scenario_advances` lists
+the `.keys` verbs that tick the game, and its own comment says *"a new
+verb that ticks the game belongs here the day it lands, and
+`tests/a1_the_scenario` is what notices if it does not."*  ⚠ `launch`
+was written, gated, and **green in `scripts/validate.sh`** before that
+row existed — and the sweep caught it immediately: *`a-sortie-cut-short`
+advanced the simulation to t11*.  ⚠⚠ **Compare `@D007`**, where the
+identical class had NO gate and survived three plans: the difference is
+not care, it is that somebody wrote the sweep.  **When you find a pair,
+the fix is the row AND the sweep that would have found it.**
+
 ⚠⚠ **A WRITER AND ITS READER ARE A PAIR, AND A VALUE ADDED TO ONE IS
 INVISIBLE UNTIL SOMETHING PRODUCES IT** (`@D007`, and it is the THIRD
 instance).  `emit_cargo` wrote every non-`top` object as `"wreck"`, so a

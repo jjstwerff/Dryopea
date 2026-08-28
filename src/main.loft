@@ -454,12 +454,22 @@ fn main() {
                     + "enemies {alive_count(ps.wave)} "
                     + "wallet {wallet_left(ps.wave.wallet):8.1} "
                     + "crew ({ps.wave.player.q}, {ps.wave.player.r})");
-            // ⚠ `wallet_broke` is the ONLY end state (`wallet.loft`) —
-            // never `core.hp`, which is null by design.  The loop only
-            // says so; it does not stop, because what happens next is
-            // the scramble and plan 19 does not build it.
-            if wallet_broke(ps.wave.wallet) {
-                println("dryopea: the base has fallen at t{ps.ticks} — press P to stop the clock");
+            // ⚠⚠ **THE ENDING IS THE LAUNCH, and it is the only one**
+            // (`@X293`, `plans/28`): *the base never ends itself; it is
+            // always the player's decision to stop.*
+            if scramble_gone(ps.wave.scramble) {
+                println("dryopea: launched at t{ps.ticks} — carrying "
+                        + "{wallet_left(ps.wave.wallet):8.1} points");
+            }
+            // ⚠ The wallet running dry is POVERTY and is reported as
+            // one: there is nothing left to spend and nothing being
+            // earned, and the base plays on until somebody drives into
+            // the core.  ⚠⚠ It said *the base has fallen* until
+            // 2026-08-28 — the stepstone's framing asserted as fact,
+            // which `@X292` is about.
+            else if wallet_broke(ps.wave.wallet) {
+                println("dryopea: the wallet is empty at t{ps.ticks} — "
+                        + "nothing left to spend; drive into the core to leave");
             }
         }
 

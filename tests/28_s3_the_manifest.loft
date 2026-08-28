@@ -1,0 +1,159 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 28 phase S3 — the manifest, and what is left behind.
+//
+// `DESIGN.md` § 14: *at launch, the cargo manifest is **whatever made it
+// onboard*** — the wallet, tops deposited at the core, helpers who had
+// boarded, and loot helpers had delivered.  *Force-launch leaves
+// stragglers behind — by design.  The cost of haste.*
+//
+// ⚠⚠ **Two of the four have nothing to read yet and the file says so
+// rather than pretending**: there is no *deposit a top at the core*
+// anywhere in the tree, and delivered loot goes into the wallet the
+// moment it is cleared, so it is already in the points.  What is left is
+// the two the game can answer and the player feels.
+//
+// ⚠ **The gate is a CONSERVATION** (`plans/28` § Invariant gate): what
+// is aboard plus what is left behind is the living roster, and a
+// manifest taken twice must not double it.
+
+#cwd
+
+use dryopea;
+
+fn core_at(q: integer, r: integer) -> Hex { Hex { q: q, r: r } }
+
+// A roster with crew at the given hexes.
+fn crew_at(where_q: const vector<integer>, where_r: const vector<integer>)
+        -> vector<Helper> {
+    ca_out: vector<Helper> = [];
+    ca_i = 0;
+    for ca_q in where_q {
+        ca_out += [helper_new(ca_q, where_r[ca_i] ?? 0)];
+        ca_i += 1;
+    }
+    ca_out
+}
+
+// ─── ⚠⚠ Who is aboard ──────────────────────────────────────────
+
+// **The core's own 7-hex FOOTPRINT**, which is `numbers.json`
+// § core.footprint_layout — `hex_disc_radius_1` — rather than a number
+// this plan invented.
+//
+// ⚠⚠ It is deliberately WIDER than the player's rule: the player must be
+// on the CENTRE hex because they drive *into the interior*, while a crew
+// member merely has to have reached the rocket.
+fn test_aboard_is_the_cores_own_footprint() {
+    taf_core = core_at(0, 0);
+    assert(ABOARD_REACH_HEXES == 1,
+           "the footprint is a disc of one: {ABOARD_REACH_HEXES}");
+
+    assert(crew_aboard(helper_new(0, 0), taf_core), "on the centre: aboard");
+    for taf_d in 0..6 {
+        taf_nb = lat_neighbour(taf_core, taf_d);
+        assert(crew_aboard(helper_new(taf_nb.q, taf_nb.r), taf_core),
+               "and every hex of the footprint counts: "
+               + "({taf_nb.q}, {taf_nb.r})");
+    }
+    assert(!crew_aboard(helper_new(2, 0), taf_core),
+           "two hexes out is not on the rocket");
+
+    // ⚠ A WRECKED crew member is neither aboard nor left — they are out
+    // of the living roster, and `plans/14` H3 keeps their slot so
+    // retrieval stays the only way back.
+    taf_down = helper_new(0, 0);
+    taf_down.alive = false;
+    assert(!crew_aboard(taf_down, taf_core),
+           "and a wreck sitting on the core has not boarded anything");
+}
+
+// ⚠ The player's rule is TIGHTER, and the pair is what makes *beside the
+// core you trade, on the core you leave* true of the crew too.
+fn test_the_player_must_be_on_the_centre_and_the_crew_need_not() {
+    ttp_core = core_at(0, 0);
+    ttp_v = vehicle_empty();
+    vehicle_place(ttp_v, 1, 0);
+    assert(!vehicle_in_core(ttp_v, ttp_core),
+           "a player one hex out is NOT inside");
+    assert(crew_aboard(helper_new(1, 0), ttp_core),
+           "while a crew member on the same hex IS aboard");
+}
+
+// ─── ⚠⚠ The manifest, and the conservation ──────────────────────
+
+// @DRY-139 — **aboard plus left behind is the living roster**, which is
+// the invariant `plans/28` names.  ⚠ Both halves are carried rather than
+// one derived from the other, or the check could not fail.
+fn test_the_manifest_conserves_the_roster() {
+    tmc_core = core_at(0, 0);
+    // Two at the core, three scattered.
+    tmc_crew = crew_at([0, 1, 5, 6, 7], [0, 0, 0, 0, 0]);
+    tmc_w = wallet_new();
+    tmc_m = manifest_of(tmc_w, tmc_crew, tmc_core);
+
+    assert(tmc_m.crew == 2, "two made it aboard: {tmc_m.crew}");
+    assert(tmc_m.left == 3, "and three were left: {tmc_m.left}");
+    assert(tmc_m.crew + tmc_m.left == len(tmc_crew),
+           "aboard plus left behind is the roster: {tmc_m.crew} + "
+           + "{tmc_m.left} against {len(tmc_crew)}");
+
+    // ⚠ Asked twice, it answers the same — it reads a state rather than
+    // consuming one, so a second liftoff cannot double the manifest.
+    tmc_again = manifest_of(tmc_w, tmc_crew, tmc_core);
+    assert(tmc_again.crew == tmc_m.crew && tmc_again.left == tmc_m.left
+           && tmc_again.points == tmc_m.points,
+           "and the same again, so nothing is consumed by reading it");
+}
+
+// ⚠ A wreck is in neither column, so the conservation is over the LIVING
+// and says so.
+fn test_a_wreck_is_in_neither_column() {
+    twn_core = core_at(0, 0);
+    twn_crew = crew_at([0, 5], [0, 0]);
+    twn_crew[1].alive = false;
+    twn_m = manifest_of(wallet_new(), twn_crew, twn_core);
+    assert(twn_m.crew == 1 && twn_m.left == 0,
+           "one aboard, none left, and the wreck in neither: "
+           + "{twn_m.crew} + {twn_m.left} of {len(twn_crew)}");
+}
+
+// ⚠⚠ **The points are the wallet UNSPENT and there is no conversion** —
+// `numbers.json` § economy.carryover_points_ratio is 1.0, *"all unspent
+// points carry"*.  A ratio applied here and again at the next base is
+// the class of defect `plans/26` spent four plans on.
+fn test_the_points_are_the_wallet_untouched() {
+    tpw_core = core_at(0, 0);
+    tpw_w = wallet_new();
+    assert(manifest_of(tpw_w, [], tpw_core).points == WALLET_STARTING_POINTS,
+           "a run nobody spent carries its whole opening budget");
+
+    wallet_drain(tpw_w, 100.0);
+    assert(manifest_of(tpw_w, [], tpw_core).points == WALLET_STARTING_POINTS - 100.0,
+           "and one that bought a tower carries the rest: "
+           + "{manifest_of(tpw_w, [], tpw_core).points}");
+
+    wallet_earn(tpw_w, 50.0);
+    assert(manifest_of(tpw_w, [], tpw_core).points == WALLET_STARTING_POINTS - 50.0,
+           "salvage is already IN the wallet, so delivered loot needs no "
+           + "second column: {manifest_of(tpw_w, [], tpw_core).points}");
+}
+
+// ⚠⚠ **THE COST OF HASTE, which is what the manifest is FOR.**  The same
+// roster launched from the same base carries a different crew depending
+// only on where they had got to — which is `DESIGN.md`'s *force-launch
+// leaves stragglers behind, by design*, as a number.
+fn test_leaving_sooner_carries_fewer_people() {
+    tls_core = core_at(0, 0);
+    tls_early = crew_at([0, 6, 7], [0, 0, 0]);   // two still walking home
+    tls_late  = crew_at([0, 1, 6], [0, 0, 0]);   // one of them arrived
+
+    tls_a = manifest_of(wallet_new(), tls_early, tls_core);
+    tls_b = manifest_of(wallet_new(), tls_late, tls_core);
+    assert(tls_a.crew == 1 && tls_b.crew == 2,
+           "waiting for one more brings one more: {tls_a.crew} then "
+           + "{tls_b.crew}");
+    assert(tls_a.left > tls_b.left,
+           "and leaves fewer behind: {tls_a.left} then {tls_b.left}");
+}

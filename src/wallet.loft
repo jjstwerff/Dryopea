@@ -227,7 +227,20 @@ pub fn wallet_earn(w: Wallet, points: float) {
     w.spent = w.spent - max(points, 0.0);
 }
 
-// Is the run over?  The end state, and the only one dryopea has.
+// Has the wallet run out?
+//
+// ⚠⚠ **This is POVERTY, not an ending, and calling it one was a
+// STEPSTONE** (`@X292`, owner 2026-08-28).  `DESIGN.md` § 14 is
+// categorical — *dryopea does not have a fail screen; every base ends
+// with the player launching the rocket* — and § 4 makes the core
+// invulnerable precisely so **the player is never forced out**.  A
+// wallet at zero means there is nothing left to spend and nothing being
+// earned; the player leaves when they decide to (`plans/28`).
+//
+// ⚠ It stands as the run's terminator until the scramble lands, and
+// that is the whole of its authority: **the current implementation is a
+// stepstone and is not a rule.**  What it will keep being is a real,
+// measurable EVENT — the tick the player stopped earning.
 pub fn wallet_broke(w: const Wallet) -> boolean {
     w.spent >= WALLET_STARTING_POINTS
 }

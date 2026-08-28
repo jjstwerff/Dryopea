@@ -338,8 +338,15 @@ fn test_the_cut_removes_a_tick_from_the_scenarios_that_have_one() {
                    "{tcr_n}.keys was kept whole but contains a `tick` line");
         } else {
             tcr_cut += 1;
-            assert(tcr_src.find("tick ") != null || tcr_src.find("fall ") != null,
-                   "{tcr_n}.keys was cut but has neither a `tick` nor a `fall` in it");
+            // ⚠ `launch` joined the advancing set with `plans/28` S2 —
+            // it ticks until the player leaves — so a scenario may be
+            // cut at one of THREE verbs now.  ⚠⚠ The list here and
+            // `scenario_advances`' are a PAIR, and this assertion is
+            // what makes a missing row loud rather than silent.
+            assert(tcr_src.find("tick ") != null || tcr_src.find("fall ") != null
+                   || tcr_src.find("launch ") != null,
+                   "{tcr_n}.keys was cut but has no `tick`, `fall` or "
+                   + "`launch` in it");
             assert(tcr_pos.find("\ntick ") == null,
                    "{tcr_n}.keys kept a `tick` line in its position");
         }

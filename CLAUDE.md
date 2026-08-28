@@ -57,7 +57,7 @@ comes back.  ⚠ The HUD is one number and `docs/DESIGN.md` § HUD says it shoul
 be — no wave counter, no health bar, no minimap; everything else is diegetic.
 ⚠⚠ **`MAP=` and `SCRIPT=` are what give it a base to be.**  `make play
 MAP=starter_01` opens one of the three AUTHORED maps in `maps/` (BACKLOG A2,
-2026-08-27); `SCRIPT=<name>` opens any of the 48 `.keys` files in
+2026-08-27); `SCRIPT=<name>` opens any of the 50 `.keys` files in
 `tests/scripts/` + `tests/gl/` as a live starting position, cut at its first
 `tick` (`@X263`).  Bare `make play` opens the empty default slot.
 ⚠⚠ **THE PLAYER CAN BUILD** ([`plans/27`](plans/27-building/README.md),
@@ -74,8 +74,8 @@ critical path is **4, the SCRAMBLE**.
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1648 green**, ~320 s on a busy box, 125 files |
-| scenarios | `scripts/validate.sh` | **45 scripts, 852 measurements**, ~20 s |
+| tests | `scripts/test.sh` | **1667 green**, ~320 s on a busy box, 128 files |
+| scenarios | `scripts/validate.sh` | **47 scripts, 873 measurements**, ~20 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
 
 ⚠ `scripts/test.sh` is the canonical runner — **never `loft test` directly**
@@ -396,7 +396,7 @@ scripts/validate_gl.sh the-ground    # just one
 make play
 # One of the three AUTHORED maps in maps/ (BACKLOG A2) — repo content.
 make play MAP=starter_01
-# Open one of the 48 `.keys` scenarios as a live starting position
+# Open one of the 50 `.keys` scenarios as a live starting position
 # (BACKLOG A1).  ⚠ `script=`, never `--script` — loft strips a leading
 # `--` argument as its own and the entry would open a MAP of that name.
 make play SCRIPT=a-base-that-plays-its-list
@@ -522,7 +522,8 @@ source of truth and the listing is a navigational summary of it.
 | `height.loft` | the RUBBLE layer — metres piled at runtime, and what they are made of |
 | `damage.loft` | what a structure has TAKEN, bracing, and `break_structure` |
 | `tower.loft` | towers — range, the banked charge, the 30-shot magazine, LOS, repair, the detachable top |
-| `wallet.loft` | the run's budget and the ONLY end state (`wallet_broke`) |
+| `wallet.loft` | the run's budget, and `wallet_broke` — ⚠⚠ POVERTY, not an ending (`@X292`) |
+| `scramble.loft` | **THE RUN'S ENDING, and the only one there is** — ⚠⚠ *the base never ends itself* (`@X293`).  Drive onto the core's own hex and stay six seconds; exiting CANCELS and resets.  ⚠ Beside the core you TRADE, on the core you LEAVE (`@X294`) |
 | `vehicle.loft` | the PLAYER — drive, boost, salvage.  `salvage_at` is the shared chassis |
 | `helper.loft` | the NPC crew — banked movement, wrecking, and the 60 s recovery |
 | `carry.loft` | one record per carryable thing, with an `owner` — conservation is STRUCTURAL |
@@ -1067,7 +1068,8 @@ names; most of them exist because somebody did it without reading.
 | Add a one-shot DURATION, or ask why a timer needs no epsilon | `fixstep::Timer` — `timer_arm` then `timer_spend` |
 | Ask whether a mover survives a SHORTER tick, or change `TICK_SECONDS` | `tests/26_l0_the_timestep_sweep.loft` — ⚠⚠ **the instrument is a CROSS-PRODUCT** |
 | Ask whether a TIMER survives a shorter tick | `tests/26_l3_the_timers.loft` — ⚠ the GUARDED sites were the healthy ones |
-| Ask whether the run is over | `src/wallet.loft::wallet_broke` — ⚠ never `core.hp`, it is `null` by design |
+| Ask whether the run is over | ⚠⚠ **`DESIGN.md` § 14 — the player LAUNCHES; there is no fail screen** (`@X292`).  `wallet_broke` terminates a run today as a **STEPSTONE**, and `plans/28` replaces it |
+| End a run, or ask what a sortie was WORTH | `src/scramble.loft` + [`plans/28`](plans/28-the-scramble/README.md) — ⚠⚠ **the LAUNCH is the ending and the only one** (`@X293`).  Drive onto the core's own hex for six seconds; `launch <max>` / `launched <yes\|no>` are the verbs.  ⚠ 200.0 cut short against 225.3 played out (`@M068`) |
 
 ### Structures, towers, the crew and what they carry
 

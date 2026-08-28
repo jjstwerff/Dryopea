@@ -113,9 +113,15 @@ fn scenario_dirs() -> vector<text> {
 // ⚠ The complete set, and small on purpose — see the header.  A new
 // `.keys` verb that ticks the game belongs here the day it lands,
 // and `tests/a1_the_scenario` is what notices if it does not.
+//
+// ⚠⚠ **And it DID notice**: `launch` (`plans/28` S2) was written, gated
+// and green in `scripts/validate.sh` before this row existed, and the
+// sweep caught it at once — *`a-sortie-cut-short.keys` advanced the
+// simulation to t11*.  The comment above was written as an instruction
+// to a future reader and it worked as one.
 // Example: @DRY-080
 pub fn scenario_advances(cmd: text) -> boolean {
-    cmd == "tick" || cmd == "fall"
+    cmd == "tick" || cmd == "fall" || cmd == "launch"
 }
 
 // The command word of one script line — "" for a blank or a comment.

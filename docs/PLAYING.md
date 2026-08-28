@@ -23,7 +23,7 @@ twenty-five plans.
 ```bash
 make play MAP=starter_01          # an authored base — start here
 make play PLANET=kepler           # a place that REMEMBERS what you did to it
-make play SCRIPT=a-defended-base  # any of the 48 `.keys` scenarios
+make play SCRIPT=a-defended-base  # any of the 50 `.keys` scenarios
 make play                         # the default save slot, empty on a fresh checkout
 ```
 

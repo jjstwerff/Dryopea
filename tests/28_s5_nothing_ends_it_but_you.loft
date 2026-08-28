@@ -1,0 +1,150 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 28 phase S5 — **the base never ends itself.**
+//
+// > *"The player can have their own reason to wait out their time.  They
+// > might be a spectator to something else that is going on.  **It is
+// > always their decision to stop.**"* — owner, 2026-08-28 (`@X293`)
+//
+// ⚠⚠ It is the sharp edge of `DESIGN.md` § 14's *no fail screen*: not
+// merely *the player is not forced out by damage*, but **there is no
+// state at all in which the game takes the decision away.**  This file
+// refuses each candidate BY NAME, because a rule with no gate is a rule
+// somebody deletes.
+//
+// ⚠ It also forbids a class of feature nobody has proposed yet —
+// anything that hurries the player along: an auto-launch, a hard timer,
+// a *"nothing left to do"* prompt.  Each is the game deciding, however
+// gently.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+fn pal_at(path: text) -> vector<GroundType> { load_palette(path) }
+fn core_at(q: integer, r: integer) -> Hex { Hex { q: q, r: r } }
+
+fn based(pw: PaintedWorld, mw: MarkerWorld) -> WaveState {
+    for b_q in -8..=8 {
+        for b_r in -3..=3 { paint(pw, b_q, b_r, as_u8(GRASS)); }
+    }
+    place_marker(mw, 0, 0, MARKER_KIND_TARGET as u8, 0 as u8);
+    wave_state_empty()
+}
+
+// ─── ⚠⚠ Candidate 1 — the wallet at zero ───────────────────────
+
+// **POVERTY, not an ending.**  `wallet_broke` has been called *the run's
+// ONLY end state* since plan 12 B6, in the code's own header and in four
+// measurements' prose — and `@X292` rules that a current implementation
+// must never be written down as a rule.  There is nothing left to spend
+// and nothing being earned; the base plays on.
+fn test_an_empty_wallet_does_not_end_the_base() {
+    tew_pw = painted_empty();
+    tew_mw = marker_empty();
+    tew_s  = based(tew_pw, tew_mw);
+    tew_pal = pal_at(PALETTE);
+    vehicle_place(tew_s.player, 5, 0);
+    wallet_drain(tew_s.wallet, WALLET_STARTING_POINTS);
+
+    assert(wallet_broke(tew_s.wallet), "the wallet is empty");
+    for tew_t in 1..=120 {
+        wave_tick(tew_s, tew_pal, tew_pw, tew_mw, core_at(0, 0));
+    }
+    assert(!scramble_gone(tew_s.scramble),
+           "and a hundred and twenty ticks later the player is still "
+           + "here, because an empty wallet is poverty and not an exit");
+    assert(vehicle_present(tew_s.player),
+           "with their vehicle still in the world");
+}
+
+// ─── ⚠⚠ Candidate 2 — the wave list running out ────────────────
+
+// `DESIGN.md` § Wave 7 cleared calls what follows a **free scramble
+// PHASE** — a phase, not a finish.  A base with nothing left to fight is
+// a base the player may walk around in.
+fn test_running_out_of_waves_does_not_end_the_base() {
+    trw_pw = painted_empty();
+    trw_mw = marker_empty();
+    trw_s  = based(trw_pw, trw_mw);
+    trw_pal = pal_at(PALETTE);
+    vehicle_place(trw_s.player, 5, 0);
+
+    // No schedule at all is the emptiest possible wave list.
+    assert(alive_count(trw_s) == 0, "nothing is attacking");
+    for trw_t in 1..=120 {
+        wave_tick(trw_s, trw_pal, trw_pw, trw_mw, core_at(0, 0));
+    }
+    assert(!scramble_gone(trw_s.scramble),
+           "an empty sky does not launch the rocket");
+}
+
+// ─── ⚠⚠ Candidate 3 — the vehicle destroyed ────────────────────
+
+// **The one place the game comes closest to deciding, and it hands it
+// straight back.**  `DESIGN.md` § 4: a destroyed vehicle respawns inside
+// the core and *starts the launch countdown automatically — the player
+// must drive out to cancel*.  ⚠ So the countdown arms itself and the
+// player's next act settles it, which is the rule rather than an
+// exception to it.
+fn test_a_destroyed_vehicle_arms_the_countdown_and_leaving_cancels() {
+    tdv_sc = scramble_new();
+    tdv_v  = vehicle_empty();
+    // Respawn is what a wreck does, and it puts them ON the core.
+    vehicle_respawn(tdv_v, core_at(0, 0));
+    assert(vehicle_in_core(tdv_v, core_at(0, 0)),
+           "the respawn puts them inside — `DESIGN.md` § 4's free "
+           + "*ready to leave?* prompt, for no code at all");
+
+    scramble_step(tdv_sc, true, TICK_STEP_UNITS);
+    assert(scramble_counting(tdv_sc), "and the countdown is running");
+
+    // ⚠ Driving out settles it, which is the whole of `@X293`.
+    vehicle_place(tdv_v, 1, 0);
+    scramble_step(tdv_sc, vehicle_in_core(tdv_v, core_at(0, 0)), TICK_STEP_UNITS);
+    assert(!scramble_counting(tdv_sc) && !scramble_gone(tdv_sc),
+           "one step out and the run continues — the game offered, the "
+           + "player declined");
+}
+
+// ─── ⚠⚠ Candidate 4 — time ─────────────────────────────────────
+
+// Nothing accumulates toward an exit.  ⚠ The permit (BACKLOG D1) will
+// not change this: `EXPLORATION.md` § X2d already rules that an expired
+// permit **costs the CARGO and never the launch**.
+fn test_time_alone_never_ends_the_base() {
+    tta_sc = scramble_new();
+    for tta_t in 1..=1000 {
+        assert(!scramble_step(tta_sc, false, TICK_STEP_UNITS),
+               "tick {tta_t} of standing outside changes nothing");
+    }
+    assert(!scramble_counting(tta_sc) && !scramble_gone(tta_sc),
+           "a thousand ticks and the base is exactly as it was");
+}
+
+// ─── ⚠ And the CONTROL, or every reading above is vacuous ──────
+
+// **The base CAN end** — by the one route there is.  Without this, four
+// tests asserting *nothing happened* are satisfied by a scramble that
+// does not work at all.
+fn test_the_control_the_player_can_always_leave() {
+    ttc_pw = painted_empty();
+    ttc_mw = marker_empty();
+    ttc_s  = based(ttc_pw, ttc_mw);
+    ttc_pal = pal_at(PALETTE);
+    vehicle_place(ttc_s.player, 0, 0);
+
+    ttc_gone = 0;
+    for ttc_t in 1..=40 {
+        wave_tick(ttc_s, ttc_pal, ttc_pw, ttc_mw, core_at(0, 0));
+        if scramble_gone(ttc_s.scramble) && ttc_gone == 0 { ttc_gone = ttc_t; }
+    }
+    assert(ttc_gone == 10,
+           "CONTROL — parked on the core, they leave on the tenth tick: "
+           + "the arming tick plus nine, and nobody hurried them there");
+}

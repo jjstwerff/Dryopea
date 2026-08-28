@@ -1,0 +1,246 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE SCRAMBLE — the run's ending, and the only one there is.
+//
+// [`plans/28`](../plans/28-the-scramble/README.md) S1.  `docs/DESIGN.md`
+// § 2 names the game after this: *scramble-and-salvage*, where a base is
+// one round of a longer run and the player launches the central building
+// as a rocket carrying whatever they managed to grab.
+//
+// ── ⚠⚠ The rule this file exists to keep ────────────────────────
+//
+// > **The base never ends itself.  It is always the player's decision
+// > to stop** (`@X293`, owner 2026-08-28).
+//
+// ⚠ Not merely *the player is not forced out by damage* — **there is no
+// state at all in which the game takes the decision away.**  The wallet
+// at zero is poverty and the base plays on; the wave list running out is
+// `DESIGN.md`'s *free scramble PHASE* and not a finish; an expired
+// permit costs the CARGO and never the launch; and a destroyed vehicle
+// respawns at the core and arms this countdown — **which exiting
+// cancels**, which is the one place the game comes closest to deciding
+// and hands it straight back.
+//
+// ⚠⚠ **So nothing here may hurry the player**: no auto-launch, no hard
+// timer, no *"nothing left to do"* prompt.  A player who stays to watch
+// something is using the game as intended.
+//
+// ── ⚠⚠ WHERE "inside the core" IS, and what S0 measured ─────────
+//
+// `DESIGN.md` § 4 describes a 7-hex prism with six faces and an
+// *opening* the vehicle drives **through** into an interior.  ⚠ **None
+// of that exists**: `plans/28` § S0 measured that the core is ONE marker
+// on ONE hex of ordinary ground, and a drive straight across it does not
+// notice — **a marker is not terrain.**
+//
+// ⚠⚠ **So the position is the core's OWN HEX, and it earns its place by
+// being distinguishable from the one every other core interaction
+// uses.**  `beacon_buy` and `wave_drop` work *within `CARGO_REACH_HEXES`*
+// — beside the core.  The scramble is tighter because the fiction is
+// *drive in*:
+//
+// > **Beside the core you TRADE; on the core you LEAVE.**
+//
+// ⚠ And `vehicle.loft::vehicle_respawn` already puts the player exactly
+// there, so `DESIGN.md` § 4's *"vehicle death starts the launch
+// countdown automatically — a free 'ready to leave?' prompt"* falls out
+// with no code at all.  That is the strongest evidence the hex is right.
+
+use lattice;
+use vehicle;
+use helper;
+use wallet;
+use fixstep;
+
+// How long the player must stay inside before the rocket fires.
+//
+// `examples/numbers.json` § core.launch_countdown_duration — 6.0 s, with
+// the note *"bottom pulse beats faster as it elapses.  Exit cancels."*
+//
+// ⚠⚠ **In integer base units, and that is `plans/26`'s whole family**
+// (`@D004`): a duration spelled in seconds through an accumulator comes
+// back a tick short, so the constant is converted ONCE here and the
+// `Timer` counts units.  ⚠ 6.0 s is **exactly nine ticks** at
+// `TICK_STEP_UNITS` with no remainder, which is what makes the reading
+// the same at every tick length the sweep uses.
+pub const LAUNCH_COUNTDOWN_SECONDS: float = 6.0;
+
+// The launch, as a state.
+//
+// ⚠ A struct rather than two loose fields on `WaveState`, for the reason
+// `Jammer` is one: the polarity is a trap, so the rule lives in one
+// place with the doors that state it the right way round.
+//
+// ⚠⚠ **`gone` stores FALSE for a base still being played**, so
+// [loft#914]'s silent default on a partial `Scramble { }` literal is
+// today's game — the same discipline `jammer.off` and
+// `tower.top_removed` follow.
+pub struct Scramble {
+    count: Timer,
+    gone:  boolean,
+}
+
+// Factory: a base nobody has left yet.
+pub fn scramble_new() -> Scramble {
+    Scramble { count: timer_new(), gone: false }
+}
+
+// Has the player launched?  ⚠ **Every reader asks this and never the
+// field**, so the one place the polarity is written is here.
+pub fn scramble_gone(sc: const Scramble) -> boolean {
+    sc.gone
+}
+
+// Is the countdown running — the player is inside and has not left?
+pub fn scramble_counting(sc: const Scramble) -> boolean {
+    timer_running(sc.count)
+}
+
+// How much of the countdown is left, in base units.  `0` when it is not
+// running, which is meaningless rather than wrong — ask
+// `scramble_counting` first, exactly as with `flow_distance`.
+pub fn scramble_left(sc: const Scramble) -> integer {
+    timer_left(sc.count)
+}
+
+// Is the player standing ON the core — the position that launches?
+//
+// ⚠ **Parked, not merely at the coordinates.**  A vehicle that has never
+// been placed sits at (0, 0) and is absent (`vehicle.loft` § parked), so
+// a core at the origin would otherwise read as occupied by a player who
+// is not in the world.
+pub fn vehicle_in_core(v: const Vehicle, core: const Hex) -> boolean {
+    if !vehicle_present(v) { return false; }
+    v.q == core.q && v.r == core.r
+}
+
+// One tick of the launch.  Answers whether the rocket fired THIS tick.
+//
+// ⚠⚠ **Entering arms it, leaving CANCELS it, and cancelling resets** —
+// `DESIGN.md` § 4: *"Exiting the opening at any time before liftoff
+// cancels the sequence — pulse fades, countdown resets."*  So a player
+// who steps out at five seconds and back in starts from six again;
+// there is no banked progress, and that is the design's word rather than
+// a simplification.
+//
+// ⚠ **It does not pause the wave**, and must not: § 4 calls the
+// countdown *a hazard window* — enemies that reach the core keep
+// nibbling while the player sits inside.  Nothing here touches the
+// schedule, and `plans/28` S5 asserts it.
+//
+// ⚠ Once gone, it stays gone: a second call answers false rather than
+// firing again, which is what makes the manifest a conservation
+// (`plans/28` S3).
+// Example: @DRY-138
+pub fn scramble_step(sc: Scramble, inside: boolean, elapsed: integer) -> boolean {
+    if sc.gone { return false; }
+
+    if !inside {
+        // ⚠ Cancel unconditionally rather than only when running: a
+        // `timer_cancel` on a stopped timer is a no-op, and a guard here
+        // would be a second place the running-ness is decided.
+        timer_cancel(sc.count);
+        return false;
+    }
+
+    if !timer_running(sc.count) {
+        timer_arm(sc.count, clock_units_from_seconds(LAUNCH_COUNTDOWN_SECONDS));
+        // ⚠ Armed THIS tick and not yet spent — a countdown that fired
+        // on the tick it started would make the duration a lie at any
+        // tick length where one tick covers it.
+        return false;
+    }
+
+    if timer_spend(sc.count, elapsed) {
+        sc.gone = true;
+        return true;
+    }
+    false
+}
+
+// ─── ⚠⚠ The manifest — what left with them (S3) ─────────────────
+//
+// `DESIGN.md` § 14 § Scramble exit + cargo manifest: *at launch, the
+// cargo manifest is **whatever made it onboard*** — the wallet, the tops
+// deposited at the core, the helpers who had boarded, and the loot
+// helpers had delivered.  ⚠ *Force-launch leaves stragglers behind — by
+// design.  The cost of haste.*
+//
+// ⚠⚠ **Two of the four have nothing to read yet, and this file says so
+// rather than pretending**: there is no *deposit a top at the core*
+// anywhere in the tree (a top's destinations are a tower marker and a
+// carrier, `carry.loft` § A top has TWO destinations), and delivered
+// loot goes straight into the wallet the moment it is cleared
+// (`wave_tick`'s salvage), so it is already counted in the points.
+// **What is left is exactly the two the game can answer**, and they are
+// the two the player feels.
+
+// How far from the core's centre a crew member counts as ABOARD.
+//
+// ⚠ `examples/numbers.json` § core.footprint_layout is
+// `hex_disc_radius_1` — the core's own 7-hex footprint — so this is the
+// building's extent rather than a number this file invented.
+//
+// ⚠⚠ **It is deliberately WIDER than the player's own rule.**  The
+// player must be on the CENTRE hex, because `DESIGN.md` § 4 has them
+// drive *through the opening into the interior*; a crew member merely
+// has to have reached the rocket.  ⚠ The generosity is the honest proxy
+// for a thing that is not built: § 4 has helpers *board on their own
+// when their work list is empty*, and until they do, standing at the
+// core is what boarding looks like.
+pub const ABOARD_REACH_HEXES: integer = 1;
+
+// What left with the player.
+//
+// ⚠ **`left` is carried rather than derived at the call site**, because
+// the two halves are one claim: `plans/28` § Invariant gate makes the
+// manifest a CONSERVATION — aboard plus left behind is the roster — and
+// a caller that computed one from the other could not fail the check.
+pub struct Manifest {
+    points: float,
+    crew:   integer,
+    left:   integer,
+}
+
+// Is this crew member close enough to the core to have boarded?
+pub fn crew_aboard(h: const Helper, core: const Hex) -> boolean {
+    if !h.alive { return false; }
+    lat_distance(core, Hex { q: h.q, r: h.r }) <= ABOARD_REACH_HEXES
+}
+
+// The manifest, as the rocket leaves.
+//
+// ⚠ It reads a state rather than mutating one, so it answers the same
+// thing before and after the launch and a scenario may ask it twice.
+// ⚠⚠ **The points are the wallet UNSPENT** — `numbers.json`
+// § economy.carryover_points_ratio is 1.0, *"all unspent points carry"*
+// — so there is no conversion here and there must not be one: a ratio
+// applied twice is the class of defect `plans/26` spent four plans on.
+//
+// ⚠ A crew member who is WRECKED is neither aboard nor left behind:
+// they are already out of the roster's living count, and `plans/14` H3
+// keeps their slot so *retrieval is the only way back*.  The
+// conservation is therefore over the LIVING, and § S3's gate says so.
+// ⚠⚠ **It takes the PIECES and not the `WaveState`, and that is
+// structural rather than taste**: `spawn.loft` uses this file, so this
+// file cannot see `WaveState` — a `use` imports one way only.  The same
+// constraint shaped `moat.loft::moat_depth`, and the same benefit
+// follows: the manifest can be asked about a roster and a wallet that
+// are not in a run at all, which is what makes it testable.
+// Example: @DRY-139
+pub fn manifest_of(w: const Wallet, crew: const vector<Helper>,
+                   core: const Hex) -> Manifest {
+    mo_on  = 0;
+    mo_off = 0;
+    for mo_h in crew {
+        if mo_h.alive {
+            if crew_aboard(mo_h, core) { mo_on += 1; } else { mo_off += 1; }
+        }
+    }
+    Manifest {
+        points: wallet_left(w),
+        crew:   mo_on,
+        left:   mo_off,
+    }
+}

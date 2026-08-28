@@ -110,6 +110,17 @@
 //                              verb `drive` is for the player, named
 //                              apart because one takes an index
 //   helper <i> <q> <r>         EXACT hex of one helper
+//   launch <max>               tick until the player LAUNCHES — the
+//                              run's ENDING (`plans/28` S2).  ⚠⚠ `fall`'s
+//                              sibling with the opposite premise: that
+//                              one waits for something that HAPPENS to
+//                              the player, this waits for something they
+//                              DO.  The countdown runs only while the
+//                              vehicle is ON the core's own hex, so a
+//                              scenario has to drive it in first.
+//                              ⚠ Not launching within <max> is an ERROR
+//   launched <yes|no>          has the player left?  A STATE, not a
+//                              band — the run has one ending
 //   fall <max>                 tick until the base FALLS — the wallet
 //                              at zero — and stop (plan 12 B7).
 //                              ⚠ Still standing after <max> is an
@@ -748,6 +759,31 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         if sm_wlo == null || sm_whi == null { return "wallet: <lo> and <hi> must be numbers"; }
         return measure_float(run, "wallet", wallet_left(run.play.wave.wallet),
                              sm_wlo ?? 0.0, sm_whi ?? 0.0);
+    }
+
+    // Has the player LEFT?  `plans/28` S2.
+    //
+    // ⚠⚠ **`launched yes` / `launched no`, and it is a STATE rather
+    // than a band** — the run has one ending and a scenario either
+    // reached it or did not.  A count would invite *how many times*,
+    // which `scramble_step` refuses by construction.
+    //
+    // ⚠ It reads the same door every other caller does
+    // (`scramble_gone`), never the field: the polarity is written once,
+    // in `scramble.loft`.
+    if sm_cmd == "launched" {
+        if sm_argc != 1 { return "launched needs <yes|no>"; }
+        sm_lwant = sm_a1 == "yes";
+        if sm_a1 != "yes" && sm_a1 != "no" {
+            return "launched: say `yes` or `no`, not '{sm_a1}'";
+        }
+        sm_lis = scramble_gone(run.play.wave.scramble);
+        if sm_lis != sm_lwant {
+            return "launched: the player has {if sm_lis { \"gone\" } else { \"not gone\" }}, expected {sm_a1}";
+        }
+        run.checks += 1;
+        println("script: launched = {if sm_lis { \"yes\" } else { \"no\" }}");
+        return "";
     }
 
     // Where the player is.  Plan 13 V1.
@@ -2590,6 +2626,47 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         return "";
     }
 
+    // Play until the player LAUNCHES — the run's ending — and stop.
+    // `plans/28` S2, and it is `fall`'s sibling with the opposite
+    // premise.
+    //
+    // ⚠⚠ **`fall` waits for something that HAPPENS to the player; this
+    // waits for something they DO** (`@X293`: *the base never ends
+    // itself; it is always the player's decision to stop*).  So a
+    // scenario must have driven the vehicle onto the core before
+    // calling it, and not launching within `<max>` is an ERROR for the
+    // same reason `fall`'s is: a scenario that meant to measure a
+    // departure and ran out of ticks has measured nothing.
+    //
+    // ⚠ It ticks nothing if the player has ALREADY gone, so a second
+    // `launch` is a no-op rather than a `<max>`-tick wait.
+    if sc_cmd == "launch" {
+        if sc_argc != 1 { return "launch needs <max ticks>"; }
+        sc_lmax = sc_a1 as integer?;
+        if sc_lmax == null { return "launch: <max ticks> must be an integer"; }
+        sc_llim = sc_lmax ?? 0;
+        if sc_llim < 1 || sc_llim > SCRIPT_MAX_REPEAT {
+            return "launch: <max ticks> must be 1..{SCRIPT_MAX_REPEAT}";
+        }
+        sc_lcore = script_core(s.mw);
+        if sc_lcore.0 != 1 {
+            return "launch: needs exactly ONE target marker to leave from, found {sc_lcore.0}";
+        }
+        if !vehicle_present(run.play.wave.player) {
+            return "launch: no vehicle — `park <q> <r>` puts one in the world, and somebody has to drive it in";
+        }
+        sc_lspent = 0;
+        while sc_lspent < sc_llim && !scramble_gone(run.play.wave.scramble) {
+            play_ticks(run.play, s, 1);
+            sc_lspent += 1;
+        }
+        if !scramble_gone(run.play.wave.scramble) {
+            return "launch: nobody left after {sc_llim} ticks — the player is at ({run.play.wave.player.q}, {run.play.wave.player.r}) and the core is at ({sc_lcore.1}, {sc_lcore.2}); the countdown runs only while the vehicle is ON the core's own hex";
+        }
+        println("script: launched after {run.play.ticks} ticks ({(run.play.ticks as float) * TICK_SECONDS:8.6} s), carrying {wallet_left(run.play.wave.wallet):8.6} points, {alive_count(run.play.wave)} enemies alive");
+        return "";
+    }
+
     // The measurements ask the session questions rather than
     // changing it, so they live in their own dispatcher.
     if sc_cmd == "count" || sc_cmd == "kind" || sc_cmd == "marker"
@@ -2598,6 +2675,7 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
     || sc_cmd == "hp" || sc_cmd == "pile" || sc_cmd == "wallet"
     || sc_cmd == "ticks" || sc_cmd == "vehicle" || sc_cmd == "hull"
     || sc_cmd == "helper" || sc_cmd == "cargo" || sc_cmd == "roster"
+    || sc_cmd == "launched"
     || sc_cmd == "waves" || sc_cmd == "shots" || sc_cmd == "top"
     || sc_cmd == "armed" {
         return script_measure(s, run, tok);
