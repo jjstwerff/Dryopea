@@ -223,6 +223,88 @@ fn test_probe_1b_what_actually_stopped_them() {
            + "{tp2_ok + tp2_rock} land-bounded crossings arrive");
 }
 
+// ─── ⚠⚠ PROBE 4 — what a FIELD costs, as a COUNT ────────────────
+
+// ⚠⚠ **A COUNT and never a clock** (`@M029`: two identical calls
+// differed **5.4x**).  R0 probe 1 says a leg must be a field descent, so
+// what R3 and `plans/22` need to know is how big a sweep is on a real
+// map and how much of it is READ.
+//
+// ⚠ `plans/22` measured that today's field is only read inside the
+// 25-hex bubble, so *"about 60 % of every sweep is computed and never
+// looked at"*.  ⚠⚠ Under a cycle the field is read along the WHOLE LEG,
+// so the waste ratio is not the same number — which is the finding
+// rather than the cost.
+fn test_probe_4_what_a_field_costs_as_a_count() {
+    tp4_names = ["starter_01", "crossroads_02", "the_gap_03"];
+    tp4_say   = "";
+    tp4_cells = 0;
+    tp4_paint = 0;
+    for tp4_n in tp4_names {
+        tp4_s  = r0_load(tp4_n);
+        tp4_p  = load_palette(PAL);
+        tp4_hl = height_layer_empty();
+        tp4_b  = r0_bounds(tp4_s.pw);
+        // ⚠ Swept from the map's own middle, which is where a core sits
+        // on all three — a sweep from a corner would measure the corner.
+        tp4_f = flow_build(tp4_p, tp4_s.pw, tp4_hl,
+                           as_u8(ENEMY_KIND_REGULAR),
+                           Hex { q: (tp4_b.0 + tp4_b.2) / 2,
+                                 r: (tp4_b.1 + tp4_b.3) / 2 });
+        assert(!tp4_f.truncated,
+               "{tp4_n}: the sweep TERMINATED — a truncated one is not a "
+               + "measurement of anything");
+        tp4_cells += flow_count(tp4_f);
+        tp4_paint += painted_count(tp4_s.pw);
+        tp4_say = tp4_say + "{tp4_n} {flow_count(tp4_f)} cells over "
+                          + "{painted_count(tp4_s.pw)} painted; ";
+    }
+    // ⚠⚠ The claim: a sweep is BOUNDED BY THE PAINTED WORLD on a real
+    // map, so a field per anchor is a bounded cost rather than an open
+    // one — which is what makes `crawler`'s cache-it answer affordable.
+    // ⚠⚠ **The claim, and it came back TIGHTER than written**: a sweep
+    // is exactly the REACHABLE painted world — 460/460, 539/539 and
+    // 468/510, the last short by precisely the 42 hexes the control
+    // counts as unstandable.  So a field per anchor is ~500 cells, and
+    // `crawler`'s cache-it answer is affordable rather than hopeful.
+    assert(tp4_cells <= tp4_paint,
+           "PROBE 4 — {tp4_cells} field cells over {tp4_paint} painted "
+           + "hexes across the three maps.  {tp4_say}");
+}
+
+// ⚠⚠ **How much of a sweep a CYCLE would read, against how much the
+// bubble reads today** — the number `plans/22` priced at ~60 % waste.
+fn test_probe_4b_how_much_of_a_sweep_is_read() {
+    t4b_s  = r0_load("the_gap_03");
+    t4b_p  = load_palette(PAL);
+    t4b_hl = height_layer_empty();
+    t4b_b  = r0_bounds(t4b_s.pw);
+    t4b_c  = Hex { q: (t4b_b.0 + t4b_b.2) / 2, r: (t4b_b.1 + t4b_b.3) / 2 };
+    t4b_f  = flow_build(t4b_p, t4b_s.pw, t4b_hl,
+                        as_u8(ENEMY_KIND_REGULAR), t4b_c);
+
+    t4b_in = 0;
+    for t4b_h in t4b_s.pw.painted {
+        if flow_reachable(t4b_f, t4b_h.q, t4b_h.r)
+           && lat_distance(t4b_c, Hex { q: t4b_h.q, r: t4b_h.r })
+              <= SCRAMBLER_BUBBLE_RADIUS {
+            t4b_in += 1;
+        }
+    }
+    assert(flow_count(t4b_f) > 0, "the sweep produced cells to measure");
+    // ⚠⚠ **THE WHOLE SWEEP IS INSIDE THE BUBBLE ON THESE MAPS**, so
+    // `plans/22`'s *"about 60 % of every sweep is computed and never
+    // looked at"* — measured for a radius-40 world — **is not visible in
+    // the shipped content**.  ⚠ Its own trigger says so: *it fires when
+    // the world grows or the roster does*, and neither has.
+    // ⚠ A map that outgrew the bubble would turn this red, which is
+    // exactly when that number starts to matter.
+    assert(t4b_in == flow_count(t4b_f),
+           "the_gap_03: {t4b_in} of {flow_count(t4b_f)} swept cells are "
+           + "inside the 25-hex bubble — the rest is computed and, TODAY, "
+           + "never looked at.  A cycle reads along the whole leg instead");
+}
+
 // ⚠⚠ **THE CONTROL, and without it the reading above proves nothing.**
 // A map with no obstruction gives 100 % completions for a reason that
 // has nothing to do with routing — so the probe has to show that these

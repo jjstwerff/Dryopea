@@ -9,7 +9,17 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**Open.  R0 is startable and everything else waits on it.**
+**R0 COMPLETE 2026-08-28 — all four probes answered, and two of them
+moved the plan.**  R1 is startable.
+
+⚠⚠ **Probe 1 falsified greedy** (`@M071`): only **10 of 90** straight
+crossings of the three authored maps arrive, and **44 of the 80 failures
+are painted terrain** rather than the map's edge — so a leg is a PATH and
+R3 needs a field.  ⚠ **Probe 3 saved the bound** (`@X331`): distance to
+the destination never increases, so a deviating body stays inside
+`disc(anchor, leg length)` and R5 needs no cap.  ⚠ Probe 4 says a field
+is ~500 cells on a real map, and probe 2 says the crew's *selection* rule
+does not generalise while its `Job` record does.
 
 ⚠⚠ **This plan builds the ERRANDS half only.**
 [`docs/ERRANDS.md`](../../docs/ERRANDS.md) is the design; the world →
@@ -149,7 +159,7 @@ behaviour and clocks, gated by scenarios and counts.
 
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
-| **R0** — the four probes | XS | `tests/30_r0_probe.loft` (3) + readings below | ⚠ **1 and 3 ANSWERED**; 2 and 4 open |
+| **R0** — the four probes | XS | `tests/30_r0_probe.loft` (5) + readings below | ✅ **ALL FOUR ANSWERED 2026-08-28** |
 | **R1** — `Errand`: five anchors, and the BAG steers | S | `tests/30_r1_the_errand.loft` | Blocked on R0 |
 | **R2** — the cycle is CLOSED-FORM | S | ⚠ the equality gate above | Blocked on R1 |
 | **R3** — deviation, and `slip` | M | `tests/30_r3_the_deviation.loft` | Blocked on R2 — ⚠⚠ **and R0 probe 1 says it needs a FIELD** |
@@ -226,11 +236,25 @@ worth more than the phases it corrects.
    route would score — but **44 genuine terrain blockages across three
    maps falsifies *mostly straight corridors* for these maps**, which is
    all the probe had to do.
-2. ⚠ **Does `task.loft` generalise to an enemy?**  `jobs_in_scope` takes
-   the pieces and not a `WaveState` (`@X322`'s library seam, arrived at
-   for a different reason).  Read whether an `Errand` can reuse
-   `job_pick` outright, or whether the crew's *nearest wins* and a mob's
-   *follow your cycle* want two doors.
+2. ✅ **ANSWERED 2026-08-28 (`@X332`) — PARTLY, and `@X329`'s three-way test is
+   what separates the halves.**  Read off `task.loft`'s actual surface:
+
+   | piece | share it? | the nameable difference |
+   |---|---|---|
+   | `Job { found, kind, q, r }` | ⚠⚠ **YES** | none — a leg's destination is exactly a kind and a hex |
+   | `TASK_*` as an **arrival action** | ⚠ **YES** | none — *what you do when you get there* is the same four things |
+   | `jobs_in_scope` | ❌ **NO** | it takes a `Skills` and searches near a point; **a mob has no skills and does not search** |
+   | `job_pick` | ❌ **NO** | nearest-wins is a CHOICE; **a mob has none — it follows the cycle it was given** |
+
+   > ⚠⚠ **The crew CHOOSE what to do from where they stand; a mob is TOLD
+   > where to go and does what the place needs on arrival.**
+
+   ⚠ That difference is nameable, so by `@FR-F-Nameable-Difference` the
+   two selection rules **stay apart** — which is loft's *four of eight
+   families split rather than merged* landing on its first real
+   application here.  ⚠⚠ And a ROLE is not a job KIND: a role selects a
+   CYCLE and a kind is the ACTION on arrival, so **they compose rather
+   than merge**, which is why sharing the vocabulary costs nothing.
 3. ✅ **ANSWERED 2026-08-28 — YES, BOUNDED, and no cap is needed.**
    ⚠ The question was whether a deviating body can wander arbitrarily
    far, because `@X300`'s architecture needs a **static** region per POI
@@ -263,10 +287,39 @@ worth more than the phases it corrects.
    sidestep is equal-distance-only.  **An errand mover's sidestep must be
    written the same way** — one that could increase the distance to the
    destination breaks the bound and takes R5 and R6 with it.
-4. ⚠ **What does a tick cost per mob today?**  `cycle_at` will be called
-   per candidate per tick and `plans/22` warns the field family is
-   **~69 %** of the suite.  ⚠ Take the count, not the clock (`@M029`:
-   two identical calls differed **5.4×**).
+4. ✅ **ANSWERED 2026-08-28 (`@M072`) — a field is CHEAP on a real map, and a
+   number `plans/22` cites turns out not to apply here.**  ⚠ A COUNT and
+   never a clock (`@M029`: two identical calls differed **5.4×**).
+
+   ⚠⚠ **A sweep is exactly the REACHABLE painted world**, which came back
+   tighter than the claim it was written to test:
+
+   | map | field cells | painted hexes |
+   |---|---|---|
+   | `starter_01` | **460** | 460 |
+   | `crossroads_02` | **539** | 539 |
+   | `the_gap_03` | **468** | 510 |
+
+   ⚠ `the_gap_03` is short by **exactly the 42 hexes** the control counts
+   as unstandable.  ⚠⚠ So **a field per anchor is ~500 cells**, and with
+   three anchors per mob over 2-4 POIs that is a handful of cached
+   sweeps — `crawler`'s *cache it, keyed by (destination, movement
+   class)* is affordable rather than hopeful.
+
+   ⚠⚠ **AND THE SECOND READING CORRECTS A CITED NUMBER'S REACH.**
+   [`plans/22`](../22-the-field-cache/README.md) point 3 says the field
+   is only read inside the 25-hex bubble, so *"about 60 % of every sweep
+   is computed and never looked at"* — measured for a **radius-40**
+   world.  On `the_gap_03`: **468 of 468 swept cells are inside the
+   bubble.**
+
+   > ⚠⚠ **The whole sweep is read, because the authored maps are smaller
+   > than the bubble.**  `plans/22`'s waste is real and **not visible in
+   > the shipped content** — which its own trigger already says: *it
+   > fires when the world grows or the roster does*, and neither has.
+
+   ⚠ The probe asserts that equality, so **a map that outgrows the bubble
+   turns it red** — which is exactly when that 60 % starts to matter.
 
 ⚠ Write all four answers into this section before R1 starts.
 
