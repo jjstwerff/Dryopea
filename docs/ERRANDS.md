@@ -136,6 +136,14 @@ name.
                      clock could use, so a calendar-steered cycle
                      oscillates for ever and delivers nothing.
 
+  (E-Non-Increasing) a mob's distance to its current destination never
+                     INCREASES: an ordinary step strictly decreases it
+                     and a sidestep holds it equal.  It is what makes
+                     (E-Boundable) possible at all — a deviating body
+                     stays inside the disc it started the leg in — and a
+                     sidestep that could move a mob further away breaks
+                     the bound and every phase resting on it.
+
   (E-Boundable)      every mob's reach is a STATIC region known before it
                      takes a step, so *could this ever be in this window?*
                      is a query rather than a scan.  A role whose route
@@ -143,7 +151,10 @@ name.
 
   (E-Poi-Owns)       a mob belongs to a POI and its anchors derive from
                      one, so the POI is the bound and culling one skips
-                     its whole population.
+                     its whole population.  The bound itself is the union
+                     over legs of the disc centred on each anchor with
+                     the incoming leg's length as its radius — which
+                     (E-Non-Increasing) is what makes correct.
 
   (E-Poi-Persists)   a POI is never removed from a scenario.  A broken
                      one is a STATE, its workers still walk to it and

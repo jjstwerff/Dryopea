@@ -484,6 +484,13 @@ pub fn flow_steps(f: const FlowField, q: integer, r: integer) -> vector<Hex> {
 // Every neighbour of (q, r) at the SAME distance, in direction order —
 // where an enemy blocked by a companion goes instead of waiting.
 //
+// Enforces @FR-E-Non-Increasing, with `flow_steps` above: that one is
+// strictly CLOSER and this one exactly EQUAL, so between them a mover's
+// distance to its destination can never grow.  ⚠ That is not a detail
+// of the sidestep — it is what bounds a deviating body to the disc it
+// started its leg in, and a variant admitting a FURTHER neighbour would
+// take `@FR-E-Boundable` with it.
+//
 // Plan 11 phase F7b, and it is deliberately a SECOND function rather
 // than a second half of `flow_steps`.  That one's documented invariant is
 // *every entry is at `d - 1`*, `flow_step` returns its head and

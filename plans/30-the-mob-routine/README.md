@@ -137,7 +137,7 @@ measurements and say so.
 | phase | invariant | concrete expected result | negative control |
 |---|---|---|---|
 | **R2** | ⚠⚠ **the closed form EQUALS the stepped one** | `cycle_at(e, t)` for arbitrary `t` is the hex reached by stepping the mover `t` ticks from `t0` — for **every** `t` in a sweep, not a sample | ⚠ a cycle whose legs do not sum to its period must be **refused at construction**, not silently wrapped |
-| **R5** | ⚠⚠ **the bound contains the cycle DILATED BY THE DEVIATION** | every hex `cycle_at` can produce over a whole period, **plus every hex a deviating body can reach**, lies inside the POI's static bound | ⚠⚠ **a bound that contains everything is vacuous** — the gate must show a hex *outside* it too, or it proves nothing (`CLAUDE.md` § a gate that reads PERFECT is as suspect as one that reads wrong) |
+| **R5** | ⚠⚠ **the bound is the union over legs of `disc(anchor, leg length)`, and it CONTAINS a deviating body** | every hex `cycle_at` can produce over a whole period, **plus every hex a deviating body can reach**, lies inside it — and R0 probe 3 proves the second half from `@FR-E-Non-Increasing` | ⚠⚠ **a bound that contains everything is vacuous** — the gate must show a hex *outside* it too, or it proves nothing (`CLAUDE.md` § a gate that reads PERFECT is as suspect as one that reads wrong) |
 | **R6** | ⚠⚠ **materialising at `R` and at `2R` is identical WHERE NOTHING CAN DEVIATE A BODY** | in a world with one mob and clear ground, the two runs agree hex for hex | ⚠⚠ **and with a blocker in the band between `R` and `2R` they MUST DIFFER, by exactly `slip`** — a gate that could not see that is measuring an empty claim |
 
 ⚠ **R1, R3, R4, R7 and R8 have no exact-invariant surface** — they are
@@ -154,7 +154,7 @@ behaviour and clocks, gated by scenarios and counts.
 | **R2** — the cycle is CLOSED-FORM | S | ⚠ the equality gate above | Blocked on R1 |
 | **R3** — deviation, and `slip` | M | `tests/30_r3_the_deviation.loft` | Blocked on R0 + R2 |
 | **R4** — home is a PLACE | S | a scenario: a robot walks home and leaves the roster there | Blocked on R1 |
-| **R5** — the POI, its population, its BOUND | M | ⚠ the containment gate above | Blocked on R2 **and R0 probe 3** |
+| **R5** — the POI, its population, its BOUND | M | ⚠ the containment gate above | Blocked on R2 — ⚠ **R0 probe 3 is ANSWERED and the bound is named** |
 | **R6** — CULL / EVALUATE / MATERIALISE | M | ⚠ the `R` vs `2R` gate **and its differ-control** | Blocked on R5 |
 | **Rc** — the CONFORMANCE gate | S | ⚠⚠ every mob on a cycle is where its rule says, every tick, over the whole corpus | ⚠ lands **with R3**, and guards every phase after it |
 | **R7** — distraction: the hauler and your heap | M | a scenario pair + the *merely seen* negative control | Blocked on R5 |
@@ -191,16 +191,38 @@ worth more than the phases it corrects.
    for a different reason).  Read whether an `Errand` can reuse
    `job_pick` outright, or whether the crew's *nearest wins* and a mob's
    *follow your cycle* want two doors.
-3. ⚠⚠ **IS THE DEVIATION BOUNDED?**  `@X300`'s whole architecture needs
-   a **static** region per POI, and § Invariant gate now says the bound
-   must contain the cycle **dilated by the deviation** — which is only
-   possible if a deviating body cannot wander arbitrarily far.
-   ⚠ F7b's sidestep is one hex, but a **queue** of blocked mobs might
-   push one many hexes over many ticks, and nothing today bounds it.
-   ⚠⚠ **If the deviation is unbounded, the bound is not static and
-   `@X300` breaks** — so this probe gates R5 and R6, and its answer may
-   force a cap (*a body more than `d` hexes off its cycle re-converges or
-   becomes stateful*).
+3. ✅ **ANSWERED 2026-08-28 — YES, BOUNDED, and no cap is needed.**
+   ⚠ The question was whether a deviating body can wander arbitrarily
+   far, because `@X300`'s architecture needs a **static** region per POI
+   and § Invariant gate says the bound must contain the cycle **dilated
+   by the deviation**.  ⚠⚠ **The answer is already in the code, in the
+   difference between two functions:**
+
+   | | admits a neighbour when | effect on the distance |
+   |---|---|---|
+   | `flow_steps` (`flow.loft:476`) | `flow_distance(n) < d` — **strictly closer** | decreases it |
+   | `flow_sidesteps` (`flow.loft:514`) | `flow_distance(n) == d` — **exactly equal** | holds it |
+
+   ⚠⚠ **So a mob's distance to its destination NEVER INCREASES**, which
+   is now written down as `@FR-E-Non-Increasing` and cited at the
+   function that makes it true.  A leg starting at distance `L` therefore
+   keeps the body inside `disc(destination, L)` for the whole leg,
+   deviating or not, and:
+
+   > ⚠⚠ **The dilated bound is the union, over legs, of the disc centred
+   > on each anchor with the incoming leg's length as its radius.**
+   > Static, computable from the five anchors before the mob moves, and
+   > it provably CONTAINS a deviating body.
+
+   ⚠ **It is wider than the cycle's path and that is honest**: a queued
+   mob can circle an iso-distance ring, so the deviation is **bounded in
+   SPACE and not in TIME** — and the time is what `slip` absorbs, which
+   is what `@FR-E-Slip` is for.
+
+   ⚠⚠ **The caveat goes to R3**: this holds *because* the existing
+   sidestep is equal-distance-only.  **An errand mover's sidestep must be
+   written the same way** — one that could increase the distance to the
+   destination breaks the bound and takes R5 and R6 with it.
 4. ⚠ **What does a tick cost per mob today?**  `cycle_at` will be called
    per candidate per tick and `plans/22` warns the field family is
    **~69 %** of the suite.  ⚠ Take the count, not the clock (`@M029`:
@@ -261,6 +283,13 @@ mover**.
 
 ⚠ `slip` is one integer: `position(t) = cycle(t - slip)`, incremented
 when a step is refused.
+
+⚠⚠ **AND THE SIDESTEP MUST BE EQUAL-DISTANCE-ONLY** — `@FR-E-Non-Increasing`,
+which R0 probe 3 established is what bounds a deviating body at all.  ⚠ A
+sidestep that could take a mob FURTHER from its destination looks
+harmless here and **silently breaks R5's bound and R6's equality**, which
+is the kind of coupling `@X324` means when it says a piece dropped for
+convenience is a regression even when everything still works.
 
 **Gate** — `tests/30_r3_the_deviation.loft`:
 - a mob steps around a blocker **and still arrives** at the same hex;
@@ -429,9 +458,11 @@ adds ticks of work and moves no clock has answered the second.
    grounds — *a pool the player can deplete and SEE thin is
    believability; a counter they cannot observe is simulation.*  **R5
    decides it.**
-3. ⚠⚠ **Is the DEVIATION bounded?**  R0 probe 3.  ⚠ If it is not, `@X300`'s
-   static bound does not exist and R5/R6 need redesigning rather than
-   building — which is why it is a probe and not a phase.
+3. ✅ **ANSWERED — the deviation is bounded in SPACE** (R0 probe 3,
+   `@FR-E-Non-Increasing`).  ⚠ What remains open is whether it needs
+   bounding in TIME as well: a queued mob circles an iso-distance ring
+   for as long as the queue lasts, and `slip` grows without limit.  ⚠ No
+   gate needs it today; **R3 is where it would first be visible.**
 4. ⚠⚠ **Must the CYCLE be terrain-aware?**  R0 probe 1.  ⚠ If a rule
    walks through a cliff that a body walks around, R6's equality fails
    everywhere and the closed form gets expensive.
