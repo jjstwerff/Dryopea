@@ -59,7 +59,7 @@ runs and a game you can sit down with.**
 
 | # | What | The open question |
 |---|---|---|
-| **D1** | The **permit clock** | ⚠ `@X250` — with the wallet as the only number, do the **battleships overhead** become the clock? |
+| **D1** | The **permit clock** | ⚠⚠ **MEASURED 2026-08-28, and `@X250`'s proposal is FALSIFIED by 0.96 of a degree** (`@M064`, `@X287`).  *Do the battleships overhead become the clock?* — **they cannot, in the view the game ships**: the follow camera sits at 30.96° with a 60° fov, so the top of the frame is 0.96° BELOW the horizon and the default frame contains **no sky at all** — fourteen pixels on a 720-high frame.  ⚠ A player can orbit down to see it, and that is the refutation rather than the rescue: **a clock you must tilt the camera to consult is the HUD number `DESIGN.md` § HUD refused, with a tax on top**.  ⚠ Three answers survive and differ materially — tilt the camera (the horizon enters at exactly 30.0°, but the boom is plan 21 R2's), bring the signal DOWN as a passing SHADOW (in frame, no number, keeps *the clock and its enforcer are the same object*), or drop the overhead reading.  **Recommendation: the shadow.  The ruling is still the owner's.**  ⚠⚠ **And none of them should be BUILT yet**: an expired permit costs the CARGO (§ X2d), the cargo is the SCRAMBLE, and the scramble is critical-path item 4 and unbuilt — so a permit clock today is a number nothing reads, which is `@D002` on the day BACKLOG C7 closed it |
 | **D2** | The **landing loadout** | ⚠ `@X247` — is *"scrambler **or** two towers"* exclusive? |
 | **D3** | **Helper remit** | ⚠ `@X253` — can a specialised helper be **widened again**? |
 | **D4** | **Crew across servers** | ⚠ `@X164` open question — settled for rescue (`@X168`), open for trade |

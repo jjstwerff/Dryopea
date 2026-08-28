@@ -537,6 +537,40 @@ That is `CLAUDE.md`'s design test — *something in the player's hands at a mome
 when using it costs them something* — operating at the level of the whole
 session rather than a single mechanic.
 
+### ⚠⚠ How the player TRACKS it — measured, and the proposal is out by 0.96°
+
+`@X250` proposed that the cordon be its own clock: `SETTING.md` § The
+quarantine already puts two battleships in the sky *"slowly traversing
+the upper view"*, so **the thing that tells you when to be gone and the
+thing that enforces it would be the same object** — diegetic, no second
+number, existing atmosphere made load-bearing.
+
+⚠⚠ **The game's default frame contains no sky** (`@M064`).  The follow
+camera sits at `CAMERA_FOLLOW_ELEVATION` 30.96° with a 60° vertical fov,
+so the top edge of the frame is **0.96° below the horizon** — fourteen
+pixels on a 720-high frame.  The horizon enters at exactly 30.0°, and
+the overview preset at 89° is nowhere near.
+
+⚠ The player *can* orbit down to see sky, and that is the refutation
+rather than the rescue: **a clock you must tilt the camera to consult is
+the HUD number `DESIGN.md` § HUD refused, with a tax on top.**
+
+⚠ Three answers survive, they differ materially, and the ruling is the
+owner's (`@X287`):
+
+| | |
+|---|---|
+| **tilt the follow camera** | the horizon enters at 30.0°, so ~25° puts it a tenth of the frame down — ⚠ it changes every frame the game draws, and the elevation is `atan(3/5)` from a boom `plans/21` R2 tuned |
+| **bring the signal DOWN** | a battleship's SHADOW crossing the base is in the default view, adds no number, and keeps *the clock and its enforcer are the same object* — ⚠ **the recommendation** |
+| **drop the overhead reading** | the briefing's *when* stands alone, and the permit is tracked by the player rather than by the screen |
+
+⚠⚠ **And none of them is buildable yet.**  Expiry costs the CARGO
+(below), the cargo is the SCRAMBLE, and the scramble is
+[`../plans/ROADMAP.md`](../plans/ROADMAP.md) § The critical path item 4
+and unbuilt — so a permit clock shipped today would be a number that is
+moved, saved and displayed while nothing reads it, which is `@D002`
+exactly, on the day BACKLOG C7 closed it.
+
 ### ⚠ What expiry must NOT be, and the answer § 14 already gives
 
 `DESIGN.md` § 14 Run structure is categorical:

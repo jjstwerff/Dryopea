@@ -74,7 +74,7 @@ critical path is **4, the SCRAMBLE**.
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1626 green**, ~320 s on a busy box, 122 files |
+| tests | `scripts/test.sh` | **1628 green**, ~320 s on a busy box, 122 files |
 | scenarios | `scripts/validate.sh` | **44 scripts, 843 measurements**, ~20 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
 
@@ -896,6 +896,7 @@ names; most of them exist because somebody did it without reading.
 | Ask about a TUTORIAL, onboarding, tooltips or a hint system | [`docs/DESIGN.md`](docs/DESIGN.md) § There is NO TUTORIAL — ⚠⚠ **there is none, and that is the design** |
 | Add a KEY BINDING, or a mechanic that needs explaining | [`docs/DECISIONS.md`](docs/DECISIONS.md) (`@X139`) — ⚠⚠ **the key table is a BUDGET**; a new row needs an argument |
 | Add something to the HUD | [`docs/DESIGN.md`](docs/DESIGN.md) § HUD — ⚠⚠ **it almost certainly says NO**; one corner number, everything else diegetic |
+| Put a signal in the WORLD instead of on the HUD | ⚠⚠ **Measure whether it is in the DEFAULT frame first** (`@M064`) — the follow camera stops 0.96° below the horizon, so nothing overhead is ever seen, and a signal you must orbit to consult is a HUD element with a tax |
 | Design a base site that is not flat ground | [`docs/DESIGN.md`](docs/DESIGN.md) § Trees as terrain |
 | Find a mechanic that is designed but NOT built | [`docs/DESIGN.md`](docs/DESIGN.md) + [`plans/ROADMAP.md`](plans/ROADMAP.md) |
 | Cite a design decision, or find where one was made | [`docs/DECISIONS.md`](docs/DECISIONS.md) — ⚠ never cite a bare plan phase; write `22-S0` |
@@ -934,7 +935,7 @@ names; most of them exist because somebody did it without reading.
 |---|---|
 | Design EXPLORATION, or judge a scouting idea | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) — ⚠ not a new pillar; the first scenario is a `.keys` file |
 | Ask why a find has to be found EARLY | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X2c |
-| Ask what CLOCKS a run, or why the player must be efficient | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X2d — the permit |
+| Ask what CLOCKS a run, or why the player must be efficient | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X2d — the permit.  ⚠⚠ **How the player TRACKS it is measured and still the owner's to rule** (`@X287`): the battleships cannot be the clock, because the default frame has **no sky** (`@M064`) |
 | Ask how the player learns the PERMIT window, or what the military say | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X0b |
 | Ask what a new player's FIRST FIFTEEN MINUTES are | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X0b — ⚠ a TEST, not a work queue |
 | Ask what a wreck is MADE of, or add a material / weapon / machine | [`docs/MATERIALS.md`](docs/MATERIALS.md) — ⚠ read § The governing rule first |

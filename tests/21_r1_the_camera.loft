@@ -498,3 +498,80 @@ pub fn test_the_perspective_divide_is_not_optional() {
     assert(!camera_in_front(tv_vp, vec3(0.0, 0.0, 500.0)),
            "a point above the eye should be behind it");
 }
+
+// ─── ⚠⚠ The frame contains NO SKY, and it misses by 0.96° ───────
+//
+// BACKLOG D1, `@M064`.  `@X250` proposed making the cordon's two
+// battleships the permit's clock — `SETTING.md` § The quarantine has
+// them *"slowly traversing the upper view"*, so the thing that tells
+// you when to be gone and the thing that enforces it would be the same
+// object, diegetic and adding no number.
+//
+// ⚠⚠ **The game's default frame contains no sky**, and this is the
+// reading that says so.  It is pinned rather than written down because
+// the claim is about two tuned constants: change either and the answer
+// moves silently, which is `docs/PROFILING.md`'s *a measurement AGES
+// and the stale one gets quoted* one subject over.
+//
+// ⚠ A player CAN orbit down to see sky, and that is the refutation
+// rather than the rescue — a signal you must move the camera to consult
+// is a HUD element with a tax on top, which is worse than the number
+// `DESIGN.md` § HUD refused.
+
+// The HORIZON, in this camera's world: a point far along the view's
+// bearing at the EYE's own height.  ⚠ `+z` is UP and `+y` is NORTH
+// (`render_camera.loft::lat_to_world`), so a probe that walked `z`
+// would measure the ground, not the distance.
+fn horizon_ndc_y(elevation: float) -> float {
+    hn_cam = render_camera_default();
+    hn_cam.elevation = elevation;
+    hn_eye = camera_eye(hn_cam);
+    hn_vp  = camera_view_projection(hn_cam, 960.0 / 720.0);
+    camera_ndc(hn_vp, vec3(0.0, 5000.0, hn_eye.z)).1
+}
+
+pub fn test_the_default_frame_contains_no_sky() {
+    // ⚠ The top of the frame is ndc y = 1.0, so anything above that is
+    // not drawn.  The shipped preset reads 1.0392 — fourteen pixels of
+    // a 720-high frame ABOVE the top edge.
+    tds_y = horizon_ndc_y(CAMERA_FOLLOW_ELEVATION);
+    assert(tds_y > 1.0,
+           "the horizon is above the top of the frame: ndc y = {tds_y}");
+    assert((tds_y - 1.0) * 360.0 < 20.0,
+           "and it misses by FOURTEEN PIXELS rather than by a mile — "
+           + "{(tds_y - 1.0) * 360.0} px, which is why the proposal was "
+           + "worth measuring instead of dismissing");
+
+    // ⚠ The overview preset is not close, so neither view shows sky.
+    assert(horizon_ndc_y(CAMERA_OVERVIEW_ELEVATION) > 50.0,
+           "and the overview at 89 degrees is nowhere near: "
+           + "{horizon_ndc_y(CAMERA_OVERVIEW_ELEVATION)}");
+}
+
+// ⚠⚠ **Where the edge IS**, which is what a ruling that wants sky has
+// to buy: the horizon enters the frame at exactly half the vertical
+// fov, and the shipped elevation is 0.96° past it.
+pub fn test_the_horizon_enters_the_frame_at_half_the_fov() {
+    twe_half = render_camera_default().fov_y * 0.5;
+    assert(twe_half == 30.0, "half the vertical fov: {twe_half}");
+    // ⚠ The tolerance is float REPRESENTATION and nothing else: the
+    // identity is exact (a point at eye height, half a fov up, lands on
+    // the edge) and the arithmetic lands 2e-16 off it.  A wider epsilon
+    // here would hide a real tilt, so it is sized to the last bit.
+    assert(abs(horizon_ndc_y(twe_half) - 1.0) < 1.0e-12,
+           "the horizon sits exactly on the top edge there: "
+           + "{horizon_ndc_y(twe_half)}");
+    assert(CAMERA_FOLLOW_ELEVATION - twe_half < 1.0
+           && CAMERA_FOLLOW_ELEVATION - twe_half > 0.9,
+           "and the shipped preset is 0.96 degrees past it: "
+           + "{CAMERA_FOLLOW_ELEVATION - twe_half}");
+
+    // ⚠ The CONTROL that says this gate can read otherwise at all: tilt
+    // below the edge and the horizon comes into frame, a tenth of the
+    // way down at 25 degrees.
+    assert(horizon_ndc_y(25.0) < 1.0 && horizon_ndc_y(25.0) > 0.75,
+           "CONTROL — at 25 degrees the horizon is inside the frame: "
+           + "{horizon_ndc_y(25.0)}");
+    assert(horizon_ndc_y(0.0) == 0.0,
+           "and a level camera puts it dead centre: {horizon_ndc_y(0.0)}");
+}

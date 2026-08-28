@@ -200,6 +200,33 @@ reads healthy.  What dies is the **azimuth** — two opposite azimuths
 move the eye 2.79 m apart at 89° and **2.6e-13 m** at 90°, so the
 screen's roll stops being something the camera decides.
 
+### ⚠⚠ The frame contains NO SKY, and it misses by 0.96°  `@M064`
+
+Measured off the shipped camera rather than reasoned about (BACKLOG D1):
+the follow preset is `CAMERA_FOLLOW_ELEVATION` **30.96°** with a
+`fov_y` of **60°**, so a point on the HORIZON — far along the view's
+bearing at the eye's own height — projects to **ndc y = 1.0392** where
+the top of the frame is 1.0.  That is **14 px on a 720-high frame**.
+
+| elevation | horizon, ndc y |
+|---|---|
+| 0° | 0.000 |
+| 25° | 0.808 |
+| 29° | 0.960 |
+| **30°** | **1.0000 — exactly the top edge** |
+| 30.96° (shipped) | 1.039 |
+| 89° (the overview) | 99.2 |
+
+⚠ **So the sky begins one degree above where the game stops looking**,
+and anything the design wants to put overhead is out of frame by a hair
+rather than by a mile.  ⚠ That killed `@X250`'s proposal to make the
+cordon's battleships the permit clock — `docs/EXPLORATION.md` § X2d
+carries the ruling and the three answers that survive.
+
+⚠ The player can orbit down (`CAMERA_ELEVATION_MIN` is −89°), so sky is
+*reachable*; it is never *shown*.  Anything that must be seen without
+being sought belongs on the ground.
+
 **⚠ What R1 did NOT build.**  The `RenderCamera` field on `PlayState`
 (§ Open 4, `@X014`) — the decision stands, and it lands in R2 where the
 eased boom gives the session something to remember between frames.  R1

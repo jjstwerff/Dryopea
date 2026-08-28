@@ -144,6 +144,30 @@ mechanic needed a constant of its own.  ⚠ On land and on the `sea` the
 depth is 0.0, so it is the old `rise > 0` unchanged everywhere anybody
 has ever painted — 745 gate measurements did not move.
 
+⚠⚠ **A DIEGETIC SIGNAL IS ONLY DIEGETIC IF IT IS IN THE FRAME THE GAME
+SHIPS** (BACKLOG D1, `@M064`).  `@X250` proposed making the cordon's
+battleships the permit's clock — *the thing that tells you when to be
+gone and the thing that enforces it are the same object* — resting on
+`SETTING.md`'s *"the sky just HAS them, slowly traversing the upper
+view"*.  **The game's default frame contains no sky**: the follow
+camera's 30.96° elevation against a 60° fov puts the top edge 0.96°
+below the horizon, which is **fourteen pixels**.  ⚠ The player can orbit
+down to see it, and that is the refutation rather than the rescue — **a
+signal you must move the camera to consult is a HUD element with a tax
+on top**, which is worse than the number the HUD rule refused.  ⚠ Ask
+of any "put it in the world instead of on the HUD" proposal: *is it in
+the default view?* — and measure, because this one missed by a hair
+rather than by a mile.
+
+⚠⚠ **A CLOCK WHOSE CONSEQUENCE IS UNBUILT IS `@D002` BEING WRITTEN
+AGAIN.**  `cam.zoom` was moved by the wheel, saved and reported for
+twenty-plus plans while no renderer read it, and BACKLOG C7 closed it.
+An expired permit costs the CARGO, the cargo is the SCRAMBLE, and the
+scramble is unbuilt — so a permit clock shipped today would be exactly
+that defect, freshly closed, deliberately recreated.  ⚠ **Before
+building any number, name the thing that READS it and check that it
+exists.**
+
 ⚠⚠ **A SCALE IS ONLY CORRECT IF THE THING THAT INVERTS IT USES THE SAME
 NUMBER** (BACKLOG C7, `@D002`).  `cam.zoom` moved a number no renderer
 read for twenty-plus plans, and the fix plan in `PROBLEMS.md` said
