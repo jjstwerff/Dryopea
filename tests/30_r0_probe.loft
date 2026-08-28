@@ -1,0 +1,249 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 30 phase R0 — the probes, taken before a line of the mob routine
+// is written.
+//
+// ⚠⚠ **PROBE 1: is a route across a real map straight enough for greedy
+// plus the F7b sidestep?**  `../crawler` measured the failure directly —
+// *"it walked into the first concave obstacle and stopped there —
+// permanently … in 21 simulated days delivered nothing"* — and dryopea's
+// errand robots walk a HEADING with no field at all today, so the cheap
+// answer may already be the right one.
+//
+// ⚠⚠ **The stakes are larger than *R3 needs no field*.**  If a cycle is
+// computed over straight lines while a materialised body walks over
+// TERRAIN, a body deviates where a rule does not — and R6's equality
+// claim is false everywhere rather than only near blockers.  So this
+// probe decides whether the CYCLE must be terrain-aware.
+//
+// ⚠ It asks the ONE passability rule and never a second idea of what
+// stops a robot — `@FR-M-One-Rule`, and the whole reason a probe like
+// this belongs in `.loft` rather than in a script that re-derives it.
+
+#cwd
+
+use dryopea;
+
+const PAL:      text = "examples/palette.json";
+const R0_MAPS: text = "maps";
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+
+// A shipped map, loaded off disk exactly as `main.loft` loads it —
+// `tests/a2_the_maps.loft`'s loader, not a second one.
+fn r0_load(name: text) -> EditorState {
+    rl_pal    = load_palette(PAL);
+    rl_loaded = load_map_or_empty(map_slot_path(R0_MAPS, name), rl_pal);
+    editor_state_from(rl_loaded.0,
+                      load_markers_or_empty(map_marker_slot_path(R0_MAPS, name)),
+                      rl_loaded.1,
+                      picker_default(PAL))
+}
+
+// How far a walker of `kind` gets from (q, r) heading `dir`, in hexes,
+// before `can_step` refuses — capped at `cap`.
+//
+// ⚠ This is `spawn.loft::enemy_walk_heading`'s rule and nothing else:
+// one step along the heading, refused by `can_step`.  A probe that
+// re-implemented the refusal would be measuring its own copy.
+fn r0_run(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+          kind: u8, q: integer, r: integer, dir: integer, cap: integer) -> integer {
+    rr_at = Hex { q: q, r: r };
+    rr_n  = 0;
+    while rr_n < cap {
+        rr_to = lat_neighbour(rr_at, dir);
+        if !can_step(pal, pw, hl, kind, rr_at, rr_to) { return rr_n; }
+        rr_at = rr_to;
+        rr_n += 1;
+    }
+    rr_n
+}
+
+// The painted bounding box, as (min q, min r, max q, max r).
+fn r0_bounds(pw: const PaintedWorld) -> (integer, integer, integer, integer) {
+    rb_first = true;
+    rb_lq = 0; rb_lr = 0; rb_hq = 0; rb_hr = 0;
+    for rb_h in pw.painted {
+        if rb_first {
+            rb_lq = rb_h.q; rb_hq = rb_h.q; rb_lr = rb_h.r; rb_hr = rb_h.r;
+            rb_first = false;
+            continue;
+        }
+        if rb_h.q < rb_lq { rb_lq = rb_h.q; }
+        if rb_h.q > rb_hq { rb_hq = rb_h.q; }
+        if rb_h.r < rb_lr { rb_lr = rb_h.r; }
+        if rb_h.r > rb_hr { rb_hr = rb_h.r; }
+    }
+    (rb_lq, rb_lr, rb_hq, rb_hr)
+}
+
+// ⚠⚠ **WHY a walk stopped — and the distinction is the whole probe.**
+// A sparse sea-default world means the painted region is not a rectangle,
+// so a straight line from a bounding-box edge can simply run out of LAND
+// without meeting anything.  ⚠ *The map is small* and *the terrain is
+// obstructed* are different answers to R0, and a count that cannot tell
+// them apart answers neither.
+//
+// 0 = ran the whole way · 1 = stopped at UNPAINTED sea · 2 = stopped at
+// PAINTED terrain it could not enter.
+fn r0_why(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
+          kind: u8, q: integer, r: integer, dir: integer, cap: integer) -> integer {
+    rw_at = Hex { q: q, r: r };
+    rw_n  = 0;
+    while rw_n < cap {
+        rw_to = lat_neighbour(rw_at, dir);
+        if !can_step(pal, pw, hl, kind, rw_at, rw_to) {
+            // ⚠ A miss reads as `sea` (palette 0) and the sparse world
+            // stores nothing for it, so *is it painted* is *is the entry
+            // there* — `pw.painted[q, r] == null`.
+            if pw.painted[rw_to.q, rw_to.r] == null { return 1; }
+            return 2;
+        }
+        rw_at = rw_to;
+        rw_n += 1;
+    }
+    0
+}
+
+// ─── ⚠⚠ PROBE 1 — how many straight crossings complete ──────────
+
+// ⚠ Walk WEST-to-EAST (direction 0) from every hex of the map's western
+// column, and EAST-to-WEST (direction 3) from every hex of its eastern
+// one.  ⚠⚠ Both directions, because a one-way sweep cannot tell *the
+// terrain is open* from *the terrain is open in the direction I chose*.
+fn r0_crossings(name: text) -> (integer, integer, integer) {
+    rc_s  = r0_load(name);
+    rc_p  = load_palette(PAL);
+    rc_hl = height_layer_empty();
+    rc_b  = r0_bounds(rc_s.pw);
+    rc_w  = rc_b.2 - rc_b.0;
+
+    rc_tried = 0;
+    rc_done  = 0;
+    rc_stuck = 0;
+    for rc_r in rc_b.1..=rc_b.3 {
+        // ⚠ Only from a hex a robot could actually stand on — starting
+        // in the sea and reporting "blocked" would measure nothing.
+        if can_stand(rc_p, rc_s.pw, rc_hl, as_u8(ENEMY_KIND_REGULAR),
+                     rc_b.0, rc_r) {
+            rc_tried += 1;
+            if r0_run(rc_p, rc_s.pw, rc_hl, as_u8(ENEMY_KIND_REGULAR),
+                      rc_b.0, rc_r, 0, rc_w) >= rc_w { rc_done += 1; }
+            else { rc_stuck += 1; }
+        }
+        if can_stand(rc_p, rc_s.pw, rc_hl, as_u8(ENEMY_KIND_REGULAR),
+                     rc_b.2, rc_r) {
+            rc_tried += 1;
+            if r0_run(rc_p, rc_s.pw, rc_hl, as_u8(ENEMY_KIND_REGULAR),
+                      rc_b.2, rc_r, 3, rc_w) >= rc_w { rc_done += 1; }
+            else { rc_stuck += 1; }
+        }
+    }
+    (rc_tried, rc_done, rc_stuck)
+}
+
+// ⚠⚠ **THE READING R3 AND R6 REST ON.**
+//
+// ⚠ The assertion is deliberately loose — this is a PROBE and its job is
+// to produce a number, not to pin one.  What it must not do is pass
+// vacuously, so it asserts that every map offered crossings to try.
+fn test_probe_1_how_many_straight_crossings_complete() {
+    tp1_names = ["starter_01", "crossroads_02", "the_gap_03"];
+    tp1_total = 0;
+    tp1_done  = 0;
+    tp1_say   = "";
+    // ⚠⚠ ONE assertion carrying every reading, because loft abandons at
+    // the first failed one and three asserts would leave two of the
+    // three maps unmeasured — `CLAUDE.md` § SEVERAL COUNTS IN ONE TEST
+    // FUNCTION ARE RANKED, NOT INDEPENDENT.
+    for tp1_n in tp1_names {
+        tp1_c = r0_crossings(tp1_n);
+        tp1_total += tp1_c.0;
+        tp1_done  += tp1_c.1;
+        assert(tp1_c.0 > 0,
+               "{tp1_n}: no crossing could even be STARTED — the probe would "
+               + "be vacuous");
+        assert(tp1_c.0 == tp1_c.1 + tp1_c.2,
+               "{tp1_n}: {tp1_c.0} tried = {tp1_c.1} + {tp1_c.2}");
+        tp1_say = tp1_say + "{tp1_n} {tp1_c.1}/{tp1_c.0} complete ({tp1_c.2} blocked); ";
+    }
+    // ⚠⚠ **The CONCLUSION is asserted, never the counts.**  A map edit
+    // moves the numbers for a legitimate reason and `a2_the_maps.loft`
+    // already gates the maps themselves — pinning 10/90 here would be a
+    // second, brittle copy of that.  What must not change quietly is the
+    // FINDING: a straight line across a real map mostly does not arrive.
+    assert(tp1_done * 2 < tp1_total,
+           "PROBE 1 — {tp1_done} of {tp1_total} straight crossings complete "
+           + "across the three authored maps, so GREEDY IS NOT ENOUGH.  "
+           + "{tp1_say}");
+}
+
+// ⚠⚠ **WHY the blocked ones stopped**, which is what tells *the map is
+// small* from *the terrain is obstructed*.
+fn test_probe_1b_what_actually_stopped_them() {
+    tp2_names = ["starter_01", "crossroads_02", "the_gap_03"];
+    tp2_sea   = 0;
+    tp2_rock  = 0;
+    tp2_ok    = 0;
+    for tp2_n in tp2_names {
+        tp2_s  = r0_load(tp2_n);
+        tp2_p  = load_palette(PAL);
+        tp2_hl = height_layer_empty();
+        tp2_b  = r0_bounds(tp2_s.pw);
+        tp2_w  = tp2_b.2 - tp2_b.0;
+        for tp2_r in tp2_b.1..=tp2_b.3 {
+            if can_stand(tp2_p, tp2_s.pw, tp2_hl,
+                         as_u8(ENEMY_KIND_REGULAR), tp2_b.0, tp2_r) {
+                tp2_y = r0_why(tp2_p, tp2_s.pw, tp2_hl, as_u8(ENEMY_KIND_REGULAR),
+                               tp2_b.0, tp2_r, 0, tp2_w);
+                if tp2_y == 0 { tp2_ok += 1; }
+                if tp2_y == 1 { tp2_sea += 1; }
+                if tp2_y == 2 { tp2_rock += 1; }
+            }
+            if can_stand(tp2_p, tp2_s.pw, tp2_hl,
+                         as_u8(ENEMY_KIND_REGULAR), tp2_b.2, tp2_r) {
+                tp2_y2 = r0_why(tp2_p, tp2_s.pw, tp2_hl, as_u8(ENEMY_KIND_REGULAR),
+                                tp2_b.2, tp2_r, 3, tp2_w);
+                if tp2_y2 == 0 { tp2_ok += 1; }
+                if tp2_y2 == 1 { tp2_sea += 1; }
+                if tp2_y2 == 2 { tp2_rock += 1; }
+            }
+        }
+    }
+    // ⚠⚠ **The discriminator's own claim**: most blockages are real
+    // terrain rather than the edge of a small map, so PROBE 1's number
+    // is about the ground and not about the bounding box.
+    assert(tp2_rock > tp2_sea,
+           "PROBE 1b — {tp2_ok} completed, {tp2_sea} ran out of painted LAND, "
+           + "{tp2_rock} met PAINTED terrain they could not enter — so the "
+           + "blockage is the GROUND, not the map's edge");
+    assert(tp2_ok * 4 < tp2_ok + tp2_rock,
+           "and discounting the map's edge entirely, {tp2_ok} of "
+           + "{tp2_ok + tp2_rock} land-bounded crossings arrive");
+}
+
+// ⚠⚠ **THE CONTROL, and without it the reading above proves nothing.**
+// A map with no obstruction gives 100 % completions for a reason that
+// has nothing to do with routing — so the probe has to show that these
+// maps CAN stop a walker.
+fn test_the_maps_can_stop_a_walker_at_all() {
+    tms_p  = load_palette(PAL);
+    tms_hl = height_layer_empty();
+    tms_s  = r0_load("the_gap_03");
+    tms_b  = r0_bounds(tms_s.pw);
+
+    tms_block = 0;
+    for tms_r in tms_b.1..=tms_b.3 {
+        for tms_q in tms_b.0..=tms_b.2 {
+            if !can_stand(tms_p, tms_s.pw, tms_hl,
+                          as_u8(ENEMY_KIND_REGULAR), tms_q, tms_r) {
+                tms_block += 1;
+            }
+        }
+    }
+    assert(tms_block > 0,
+           "the_gap_03: {tms_block} hexes of its bounding box are not "
+           + "standable by a regular robot — without this the probe above "
+           + "could be reading an open plain");
+}

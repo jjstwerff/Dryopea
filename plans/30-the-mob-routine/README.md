@@ -149,10 +149,10 @@ behaviour and clocks, gated by scenarios and counts.
 
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
-| **R0** — the four probes | XS | readings written into this file | Open |
+| **R0** — the four probes | XS | `tests/30_r0_probe.loft` (3) + readings below | ⚠ **1 and 3 ANSWERED**; 2 and 4 open |
 | **R1** — `Errand`: five anchors, and the BAG steers | S | `tests/30_r1_the_errand.loft` | Blocked on R0 |
 | **R2** — the cycle is CLOSED-FORM | S | ⚠ the equality gate above | Blocked on R1 |
-| **R3** — deviation, and `slip` | M | `tests/30_r3_the_deviation.loft` | Blocked on R0 + R2 |
+| **R3** — deviation, and `slip` | M | `tests/30_r3_the_deviation.loft` | Blocked on R2 — ⚠⚠ **and R0 probe 1 says it needs a FIELD** |
 | **R4** — home is a PLACE | S | a scenario: a robot walks home and leaves the roster there | Blocked on R1 |
 | **R5** — the POI, its population, its BOUND | M | ⚠ the containment gate above | Blocked on R2 — ⚠ **R0 probe 3 is ANSWERED and the bound is named** |
 | **R6** — CULL / EVALUATE / MATERIALISE | M | ⚠ the `R` vs `2R` gate **and its differ-control** | Blocked on R5 |
@@ -172,20 +172,60 @@ plan **after it was first written**, and both found a claim in it that is
 **false as stated**.  That is the protocol working, and the finding is
 worth more than the phases it corrects.
 
-1. ⚠⚠ **Is a route across a real map straight enough for greedy plus the
-   F7b sidestep?**  Walk a straight line across `starter_01`,
-   `crossroads_02` and `the_gap_03` from every edge hex to its opposite,
-   and count how many get stuck against terrain.  ⚠ `crawler` measured
-   the failure — *"it walked into the first concave obstacle and stopped
-   there — permanently … in 21 simulated days delivered nothing"* — and
-   dryopea's errand robots walk a heading with **no field at all** today,
-   so the cheap answer may already be right.
-   ⚠⚠ **And the stakes are higher than *R3 needs no field*.**  If the
-   cycle is computed over **straight lines** while a materialised body
-   walks over **terrain**, then a body deviates where a rule does not —
-   and **R6's equality claim is false everywhere, not just near
-   blockers**.  So probe 1 decides whether ***the cycle must be
-   terrain-aware***, which is a much larger question than pathing cost.
+1. ❌ **ANSWERED 2026-08-28 — NO.  GREEDY IS NOT ENOUGH, and the cycle
+   must be TERRAIN-AWARE.**  `@M071`, `tests/30_r0_probe.loft`, walking
+   `enemy_walk_heading`'s own rule (one step, refused by `can_step`)
+   across the three authored maps from every standable bounding-box edge
+   hex, both directions:
+
+   | map | straight crossings that arrive |
+   |---|---|
+   | `starter_01` | **2 of 30** |
+   | `crossroads_02` | **2 of 26** |
+   | `the_gap_03` | **6 of 34** |
+   | **total** | ⚠⚠ **10 of 90 — 11 %** |
+
+   ⚠⚠ **And the discriminator was worth building.**  A sea-default world
+   is not a rectangle, so a straight line from a box edge can simply run
+   out of LAND — *the map is small* and *the terrain is obstructed* are
+   different answers and a count that cannot tell them apart answers
+   neither.  Of the 90:
+
+   > **10 arrived · 36 ran out of painted land · 44 met PAINTED terrain
+   > they could not enter.**
+
+   ⚠ So the blockage is **the ground**: discounting the map's edge
+   entirely, **10 of 54 land-bounded crossings arrive — 19 %**.
+   ⚠ Control: `the_gap_03` has **42** hexes in its bounding box a regular
+   robot cannot stand on, so the probe is not reading an open plain.
+
+   ⚠⚠ **What it costs, and it is the larger half**: a cycle computed over
+   straight lines while a materialised body walks over terrain means a
+   **body deviates where a rule does not**, and R6's equality claim is
+   false *everywhere* rather than only near blockers.  So a leg is a
+   PATH, not a line.
+
+   ⚠⚠ **And `@X331` survives it unchanged**, which is the good news: its
+   argument is about *distance to the destination never increasing*, and
+   a flow-field distance is a distance.  A leg becomes a **descent of the
+   field toward its anchor**, `cycle_at(t)` becomes *how far down the
+   field am I at `t`*, and the bound is still `disc(anchor, L)` — in
+   field distance rather than lattice distance.
+
+   ⚠ **The bill goes to [`plans/22`](../22-the-field-cache/README.md)**,
+   and `crawler` has already sized the answer: a cache keyed by
+   **(destination, movement class)** at `3 × len(mobs) + 16`, derived
+   from *an actor can ask for at most three destinations* — which is
+   exactly `Errand`'s three anchors.  ⚠⚠ Its cap trap transfers with it:
+   a flat cap crossed silently meant *"nine townsfolk walked home on a
+   straight line every night"*, so **a cap that is reached must go RED**.
+
+   ⚠ **Honest limit of this reading**: the probe holds the route fixed at
+   *box edge, due east or west*.  A real route crosses on an arbitrary
+   bearing between off-map anchors (`@X298`), so 11 % is not the number a
+   route would score — but **44 genuine terrain blockages across three
+   maps falsifies *mostly straight corridors* for these maps**, which is
+   all the probe had to do.
 2. ⚠ **Does `task.loft` generalise to an enemy?**  `jobs_in_scope` takes
    the pieces and not a `WaveState` (`@X322`'s library seam, arrived at
    for a different reason).  Read whether an `Errand` can reuse
@@ -301,7 +341,11 @@ convenience is a regression even when everything still works.
   *"one actor cannot have two contradictory occupancy rules across its
   two states.  A sleeping monster is not terrain."*
 
-⚠ R0's first probe decides whether this needs a field.
+⚠⚠ **R0 probe 1 has answered: it DOES need a field.**  Only **10 of 90**
+straight crossings of the authored maps arrive, and **44 of the 80
+failures are painted terrain** rather than the map's edge — so a leg is a
+descent of a field toward its anchor, not a line.  ⚠ `@X331`'s bound
+survives unchanged because a field distance is a distance.
 
 ## R4 — home is a PLACE
 
