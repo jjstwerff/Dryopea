@@ -1387,10 +1387,15 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         sa_ov = script_ints(tok, 2);
         if len(sa_ov) != 2 { return "object: <q> and <r> must be integers"; }
         sa_okw = tok[3] ?? "";
+        // ⚠ `beacon` is here because `emit.loft::emit_cargo` WRITES it
+        // (BACKLOG D2): a kind this reader cannot name makes a captured
+        // situation come back as something else, which is what the
+        // round-trip gate caught the first time a scenario dropped one.
         sa_ok = CARGO_WRECK;
         if sa_okw == "top" { sa_ok = CARGO_TOP; }
+        else if sa_okw == "beacon" { sa_ok = CARGO_BEACON as integer; }
         else if sa_okw != "wreck" {
-            return "object: unknown kind '{sa_okw}' — wreck, top";
+            return "object: unknown kind '{sa_okw}' — wreck, top, beacon";
         }
         sa_osj = (tok[4] ?? "") as integer?;
         if sa_osj == null { return "object: <subj> must be an integer"; }

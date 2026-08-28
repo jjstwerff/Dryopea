@@ -262,6 +262,35 @@ game**, because it puts an irreversible decision before the player has seen the
 ground, which is the one moment they know least and the recon window is what
 they spend to fix it.
 
+##### ⚠⚠ MEASURED 2026-08-28, and it is the SECOND reading  `@X288` `@M065`
+
+**There is no `or`, because the two halves share no scarce thing.**
+
+- **The scrambler costs nothing and is already on.**  `jammer_new()` returns
+  `off: false`, so **a base lands jamming and the player does not activate it**;
+  switching it costs no points in either direction.  Spend every point on towers
+  and the scrambler is still on — measured, in
+  [`../tests/d2_the_landing_choice.loft`](../tests/d2_the_landing_choice.loft).
+- **The towers are already exclusive, and the WALLET does it.**  200 points over
+  a 100-point beacon is exactly **two**, `beacon_buy` refuses the third, and
+  *"failed deposit does not refund"* makes the spend irreversible at the moment
+  it is made.
+
+⚠⚠ **So the design's test at minute one is already met — by arithmetic, between
+the things the wallet buys** — and the exclusion this section wanted did not have
+to be invented.  ⚠ The paragraph above is right that *the exclusive version is
+the better game*; what the measurement changes is **where the exclusivity lives**.
+
+⚠ **And the wallet is sized for a purchase that is not built**:
+`numbers.json` § helper.order_cost_points is 100 and **nothing reads it**, so the
+documented *1 tower + 1 helper* is *two towers* in the game that exists — as are
+`DESIGN.md` § 15's free starter tower and two helpers.
+
+⚠ **What a ruling would still be ABOUT** is the STATION's pre-mission manifest
+(`DESIGN.md` § 16 — *"the player picks from inventory which specialised tops to
+take down"*): that is a limited-weight loadout, it is where an exclusive pick
+belongs, and it is gated on carryover and on a station that does not exist.
+
 ### ⚠ And it resolves `@X140`'s sharpest hazard without a tutorial
 
 ⚠⚠ `@X140` names **Q** — the wall-paint toggle — as the worst discoverability

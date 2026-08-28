@@ -241,8 +241,18 @@ fn emit_cargo(state: const WaveState) -> text {
         else if ec_o.owner != BLOCKER_NONE {
             ec_who = "{blocker_crew_index(ec_o.owner)}";
         }
+        // ⚠⚠ **Every kind `carry.loft` can hold needs a NAME here**, and
+        // a BEACON did not have one until BACKLOG D2's scenario left one
+        // on the ground: it was written as `wreck` and read back as one,
+        // so a captured situation silently changed what was lying there.
+        // ⚠ Same defect class as `cargo` and `spoil` in the `raise` verb
+        // (BACKLOG C9) — writable and unnameable — and the same fix: the
+        // writer and `script.loft`'s `object` verb are a PAIR, and a kind
+        // added to one and not the other is invisible until a scenario
+        // drops one.
         ec_kind = "wreck";
-        if ec_o.kind == CARGO_TOP { ec_kind = "top"; }
+        if ec_o.kind == CARGO_TOP    { ec_kind = "top"; }
+        if ec_o.kind == CARGO_BEACON { ec_kind = "beacon"; }
         ec_out = ec_out + "object {ec_o.q} {ec_o.r} " + ec_kind
                         + " {ec_o.subj} " + ec_who + "\n";
     }

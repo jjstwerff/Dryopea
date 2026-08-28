@@ -49,6 +49,50 @@ Severity tiers:
 
 ## Fixed
 
+### @D007 — a dropped BEACON round-trips as a WRECK: `emit_cargo` writes a kind the `object` verb cannot name
+
+- **Status:** **FIXED** 2026-08-28, BACKLOG D2 — one line in
+  `emit.loft::emit_cargo` and one in `script.loft`'s `object` verb.
+- **Severity:** Med — it silently changed captured content.  `plans/18`
+  § S2's round trip is a GATE, and a scenario that dropped a beacon
+  replayed with a wreck in its place.
+- **Found while:** BACKLOG D2, writing
+  `tests/scripts/the-opening-two-hundred.keys` — **the first scenario in
+  the corpus to leave a beacon on the ground.**  The round-trip sweep
+  named it exactly: `cargo[0].kind: 2 vs 0`.
+- **Repro:** buy a tower beacon at the core, drop it, `emit_keys` the
+  situation, replay the emitted `.keys`.  The object comes back
+  `CARGO_WRECK`.
+- **Observed:** `emit_cargo` wrote `"wreck"` for anything that was not
+  `CARGO_TOP`, so `CARGO_BEACON` was written as a wreck; and the
+  `object` verb accepted only `wreck` and `top`, so even a correct
+  spelling had nowhere to land.
+- **⚠⚠ The class, and it is the third instance:** a value the WRITER can
+  produce and the READER cannot name.  `cargo` had been writable and
+  unreadable in the `raise` verb since plan 23 K0 and `spoil` arrived
+  with BACKLOG C9 — both fixed there, in the same shape.  ⚠ **The writer
+  and the reader are a PAIR**, and a kind added to one and not the other
+  is invisible until a scenario happens to produce it.
+- **⚠ Why it survived:** `CARGO_BEACON` shipped with plan 27 C4 and
+  **nothing in the corpus had ever dropped one** — every beacon in every
+  scenario was carried to a marker and planted.  The gate was correct
+  and had no input that could fail it, which is `CLAUDE.md`'s *a gate
+  whose reading is already saturated cannot see what you built* wearing
+  the other face: a gate with no case that exercises the branch.
+- **⚠⚠ AND THE GATE THAT SHOULD HAVE CAUGHT IT ASSERTED THE BUG.**
+  `tests/18_s1b_the_vocabulary_is_total.loft` — the file whose whole
+  claim is *the vocabulary is TOTAL* — contained
+  `test_a_cargo_kind_is_named_and_a_typo_is_refused`, which fed it
+  `object 7 0 beacon 0 ground` and required a REFUSAL, calling `beacon`
+  *an unbuilt kind*.  It was not unbuilt: `emit_cargo` could already
+  produce one.  ⚠ So the totality gate had encoded the single gap it
+  exists to prevent, and it is now split into *every kind the writer
+  emits is authorable* and *a typo is refused* — the claim its own file
+  name makes.
+- **Test:** `tests/18_s2_the_round_trip.loft` sweeps every scenario, and
+  `the-opening-two-hundred.keys` is now the case that reaches this
+  branch — so the guard is the corpus rather than a new assertion.
+
 ### @D006 — `walk_vehicle` is read by nothing, so the hovering movers cannot cross water
 
 - **Status:** **FIXED** 2026-08-28, BACKLOG C10 — `passable.loft` gained

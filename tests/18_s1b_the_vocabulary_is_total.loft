@@ -249,10 +249,37 @@ fn test_every_cargo_owner_is_authorable() {
     assert(cargo_slots(teo.play.wave.cargo) == 4, "and four slots");
 }
 
-fn test_a_cargo_kind_is_named_and_a_typo_is_refused() {
-    tck = played("object 7 0 beacon 0 ground\n");
-    assert(!tck.ok, "an unbuilt kind is refused: '{tck.message}'");
-    assert(tck.message.contains("unknown kind"), "and says so");
+// ⚠⚠ **THIS TEST USED TO ASSERT THE BUG** (`@D007`, BACKLOG D2).  It
+// read `object 7 0 beacon 0 ground` and required it to be REFUSED, on
+// the grounds that `beacon` was *an unbuilt kind* — while
+// `emit.loft::emit_cargo` could already produce a `CARGO_BEACON` and
+// wrote it as `"wreck"`.
+//
+// ⚠ So the file named *the vocabulary is TOTAL* encoded the one gap it
+// exists to prevent, and it did so because nothing in the corpus had
+// ever dropped a beacon: the gate was correct and had no input that
+// could fail it.
+//
+// ⚠⚠ **Totality is the claim, so it is asserted as one**: every kind
+// `emit_cargo` can WRITE, the `object` verb can READ — and a typo is
+// still refused, which is the half that keeps the acceptance honest.
+fn test_every_cargo_kind_the_writer_emits_is_authorable() {
+    for tck_k in ["wreck", "top", "beacon"] {
+        tck = played("object 7 0 " + tck_k + " 0 ground\n");
+        assert(tck.ok,
+               "`{tck_k}` is a kind `emit_cargo` writes, so `object` must "
+               + "read it: {script_describe(tck)}");
+    }
+}
+
+fn test_a_cargo_kind_typo_is_refused() {
+    tct = played("object 7 0 beecon 0 ground\n");
+    assert(!tct.ok, "a typo is refused: '{tct.message}'");
+    assert(tct.message.contains("unknown kind"), "and says so");
+    // ⚠ And the message NAMES the set, so a reader who mistyped learns
+    // what was available rather than only that they were wrong.
+    assert(tct.message.contains("beacon"),
+           "listing what it could have been: {tct.message}");
 }
 
 fn test_an_unknown_owner_is_refused() {

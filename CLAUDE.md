@@ -57,7 +57,7 @@ comes back.  ⚠ The HUD is one number and `docs/DESIGN.md` § HUD says it shoul
 be — no wave counter, no health bar, no minimap; everything else is diegetic.
 ⚠⚠ **`MAP=` and `SCRIPT=` are what give it a base to be.**  `make play
 MAP=starter_01` opens one of the three AUTHORED maps in `maps/` (BACKLOG A2,
-2026-08-27); `SCRIPT=<name>` opens any of the 47 `.keys` files in
+2026-08-27); `SCRIPT=<name>` opens any of the 48 `.keys` files in
 `tests/scripts/` + `tests/gl/` as a live starting position, cut at its first
 `tick` (`@X263`).  Bare `make play` opens the empty default slot.
 ⚠⚠ **THE PLAYER CAN BUILD** ([`plans/27`](plans/27-building/README.md),
@@ -74,8 +74,8 @@ critical path is **4, the SCRAMBLE**.
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1628 green**, ~320 s on a busy box, 122 files |
-| scenarios | `scripts/validate.sh` | **44 scripts, 843 measurements**, ~20 s |
+| tests | `scripts/test.sh` | **1645 green**, ~320 s on a busy box, 125 files |
+| scenarios | `scripts/validate.sh` | **45 scripts, 852 measurements**, ~20 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
 
 ⚠ `scripts/test.sh` is the canonical runner — **never `loft test` directly**
@@ -396,7 +396,7 @@ scripts/validate_gl.sh the-ground    # just one
 make play
 # One of the three AUTHORED maps in maps/ (BACKLOG A2) — repo content.
 make play MAP=starter_01
-# Open one of the 47 `.keys` scenarios as a live starting position
+# Open one of the 48 `.keys` scenarios as a live starting position
 # (BACKLOG A1).  ⚠ `script=`, never `--script` — loft strips a leading
 # `--` argument as its own and the entry would open a MAP of that name.
 make play SCRIPT=a-base-that-plays-its-list
@@ -760,7 +760,10 @@ docs/           ⚠ **listed once, in § Documentation index below** — a
 
 PROBLEMS.md             — dryopea-internal bugs (@D-prefixed; ⚠ NOTHING is open —
                           @D002 and @D006 were the last two and BACKLOG C7 and C10
-                          closed both on 2026-08-28.  ⚠⚠ @D006 is the one worth
+                          closed both on 2026-08-28, and @D007 was found and fixed
+                          the same day — a dropped BEACON round-tripped as a WRECK,
+                          because a writer and its reader are a PAIR and nothing in
+                          the corpus had ever produced the value.  ⚠⚠ @D006 is the one worth
                           reading: it called itself "not a patch" and predicted
                           `tests/11_f6` would go red, and NEITHER held — it moved
                           not one of 833 measurements, while the thing that DID
@@ -960,6 +963,7 @@ names; most of them exist because somebody did it without reading.
 | Ask whether MULTIPLAYER is next, or why § 20 is so long | [`docs/DESIGN.md`](docs/DESIGN.md) § 20 — ⚠⚠ **its length is not its priority**; BUILDING the base game is what serves it |
 | Ask when NETCODE gets built, or how multiplayer is ordered | [`docs/DESIGN.md`](docs/DESIGN.md) § 20 — ⚠ gated on demand, NOT on the critical path |
 | Design MULTIPLAYER, or ask what may pass between players | [`docs/PROGRESSION.md`](docs/PROGRESSION.md) § P2i — ⚠⚠ **knowledge is not tradeable** |
+| Ask whether CREW may be traded, or what identity a crew member has | `tests/d4_the_person.loft` (`@X290`, `@M067`) — ⚠⚠ **no trade**: a person cannot be COPIED, so `@X214`'s *you sold a copy* cannot apply.  ⚠ And a crew member has **no identity outside one run's roster**, so the RESCUE the design calls settled needs the same missing thing |
 | Design PvP, a raid, or co-op between players | [`docs/DESIGN.md`](docs/DESIGN.md) § 20 — ⚠⚠ **a base is impregnable to a PERSON** |
 | Ask whether a player may HACK another player's tower | [`docs/DESIGN.md`](docs/DESIGN.md) § 20 — ⚠ only in a team MATCH |
 | Design a TERRITORIAL or conquest mode, or ask how a leader is kept in check | [`docs/DESIGN.md`](docs/DESIGN.md) § 20 |
@@ -1073,6 +1077,7 @@ names; most of them exist because somebody did it without reading.
 | Ask how much a wall has left | `src/damage.loft::structure_hp` — ⚠ 0.0 answers both *broken* and *never a structure* |
 | Break a wall | `src/damage.loft::break_structure` — the one site, and it does both halves |
 | Judge whether a DEFENCE is worth building | [`plans/12`](plans/12-combat-resolution/README.md) § B7 — 69 / 112 / 128 ticks |
+| Ask what the opening 200 points buys, or judge a LANDING-LOADOUT idea | `tests/d2_the_landing_choice.loft` (`@X288`, `@M065`) — ⚠⚠ **200 over a 100-point beacon is exactly TWO and the third press is refused**, so the landing exclusion is the WALLET's and needed no rule.  ⚠ The scrambler is not the other half: it costs nothing and a base lands with it ON |
 | Ask what a wall is MADE of, or why the ground matters | `src/damage.loft` § Footing (`@X284`) — ⚠⚠ **the palette's `slope` read at last**; 153 / 174 / 220 on sand, grass and rock, and the STURDIEST hex in reach wins |
 | Ask whether a tower can HIT something | `src/tower.loft::tower_sees` — ⚠ never a "which kinds block" table |
 | Ask why a tower is not shooting | `src/tower.loft::tower_sight_fault`; `tower_black` is the other answer |
@@ -1088,6 +1093,7 @@ names; most of them exist because somebody did it without reading.
 | Ask why a crew member is slow, or add something that TIRES them | `src/endure.loft` — ⚠ tire by the RAW elapsed, and only when work LANDED |
 | Pick something up, carry it, put it down | `src/carry.loft` — ⚠ never a "carried" field on the carrier as well |
 | Add a new kind of carryable thing | a `CARGO_*` constant + a destination rule — ⚠ and NOTHING in the carrying path |
+| Add a value to a closed set a `.keys` file can carry | ⚠⚠ **the WRITER and the READER are a PAIR** (`@D007`) — `emit.loft` writes the name and `script.loft` reads it, and a kind added to one is invisible until a scenario produces it.  Three instances so far: `cargo`, `spoil`, `beacon` |
 | Clear rubble / collect after a tower | `src/vehicle.loft::salvage_at` — the shared chassis |
 | Place or restore a marker of any kind | `src/markers.loft::place_marker` — the ONE dispatch |
 | Add a marker kind | append a constant, bump `MARKER_KIND_COUNT`, add rows — ⚠⚠ **and the cycle grows in 47 places**: BACKLOG C4's fourth kind moved **33 `.keys` fixtures and 14 inline test scripts** by one `do cycle_kind` press.  ⚠ Each file's own `marker … spawn` assertion is what makes the omission loud |

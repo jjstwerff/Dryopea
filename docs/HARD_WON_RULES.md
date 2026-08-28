@@ -144,6 +144,64 @@ mechanic needed a constant of its own.  ⚠ On land and on the `sea` the
 depth is 0.0, so it is the old `rise > 0` unchanged everywhere anybody
 has ever painted — 745 gate measurements did not move.
 
+⚠⚠ **"IT NEEDS NO NEW MECHANIC" IS A CLAIM ABOUT THE CODE, SO CHECK THE
+CODE** (BACKLOG D4, `@M067`).  `@X168` settled cross-player rescue and
+closed with *"it needs no new mechanic — `plans/14`'s retrieval path is
+shipped, so a cross-player rescue is that path with a different name on
+the record."*  **There is no record**: a crew member has no identity
+outside one run's roster, and `skill.loft` says so in a phrase that
+quietly bounds itself — *"the roster slot is already this person's
+identity **for the whole run**"*.  ⚠ Swap two crew with different
+profiles and every reader follows the SLOT; two crew with the same
+profile are the same state to `state_diff`; a save round-trips the
+ground, the markers and nobody.  ⚠⚠ **A design conclusion resting on
+"the mechanism already exists" is a testable claim, and this one was
+false** — the settled half needed exactly what the open half did.
+
+⚠⚠ **A WRITER AND ITS READER ARE A PAIR, AND A VALUE ADDED TO ONE IS
+INVISIBLE UNTIL SOMETHING PRODUCES IT** (`@D007`, and it is the THIRD
+instance).  `emit_cargo` wrote every non-`top` object as `"wreck"`, so a
+dropped `CARGO_BEACON` was captured as a wreck and replayed as one — and
+the `object` verb could not have named a beacon even if it had been
+spelled right.  ⚠ `cargo` had been writable and unreadable in the
+`raise` verb since plan 23 K0, `spoil` arrived with BACKLOG C9, and this
+is the same shape a third time.  ⚠⚠ **It survived because nothing had
+ever produced the value**: every beacon in the corpus was carried to a
+marker and planted, so the round-trip gate was correct and had **no
+input that could fail it** — `CLAUDE.md`'s *a gate whose reading is
+already saturated* wearing the other face.  ⚠ When adding a kind to a
+closed set, grep for the READER, and ask what scenario would produce it.
+
+⚠⚠ **AND THE GATE THAT SHOULD HAVE CAUGHT IT ASSERTED THE BUG.**
+`tests/18_s1b_the_vocabulary_is_total.loft` — the file whose claim is
+literally *the vocabulary is TOTAL* — fed the `object` verb a `beacon`
+and required a REFUSAL, calling it *an unbuilt kind*, while
+`emit_cargo` could already produce one.  ⚠ **A gate can encode the very
+gap it exists to prevent**, and the tell is a NEGATIVE assertion about a
+value the tree can produce: *this is refused* is safe about a typo and
+dangerous about a name.
+
+⚠⚠ **AN "A OR B" IS ONLY A CHOICE IF A AND B SPEND THE SAME SCARCE
+THING** (BACKLOG D2, `@X288`).  `@X247` recorded the landing as
+*activate the scrambler **or** build two towers* and asked whether the
+`or` should be made exclusive.  **Neither half spends what the other
+does**: the scrambler is the core, a base lands with it ON, and
+switching it costs nothing in either direction — so every point can go
+on towers and the scrambler is still there.  ⚠ The exclusion the row
+wanted turned out to exist already, one subject over: **200 points over
+a 100-point beacon is exactly two, and the third press is refused.**
+⚠ Before ruling on whether to make a choice exclusive, **name the
+resource both sides spend** — if there isn't one, the question is about
+something else.
+
+⚠⚠ **AND CHECK THE DOCUMENTED SETUP IS BUILT BEFORE RULING ABOUT IT.**
+`DESIGN.md` § 15's landing gives a free starter tower and two helpers
+and `numbers.json` sizes the opening wallet for *1 tower + 1 helper* —
+**none of the three exists**, and `helper.order_cost_points` is another
+unread number in the `slope` / `walk_vehicle` family.  A ruling made
+against the documented landing would have been a ruling about a game
+nobody can play.
+
 ⚠⚠ **A DIEGETIC SIGNAL IS ONLY DIEGETIC IF IT IS IN THE FRAME THE GAME
 SHIPS** (BACKLOG D1, `@M064`).  `@X250` proposed making the cordon's
 battleships the permit's clock — *the thing that tells you when to be

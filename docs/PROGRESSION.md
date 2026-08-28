@@ -353,7 +353,18 @@ nothing declared-but-unused in either direction.
 #### ⚠⚠ The graph has DIAMETER 2 — there are no dead ends
 
 Measured: **every skill reaches every other skill in at most two hops**,
-and the eccentricity is 2 for all twelve.  ⚠ So a crew member put on one
+and the eccentricity is 2 for all twelve.
+
+> ⚠⚠ **GATED 2026-08-28** (BACKLOG D3, `@M066`) —
+> [`../tests/d3_the_lattice.loft`](../tests/d3_the_lattice.loft).  Every
+> number in this section was read out of the archive **by hand** and
+> **nothing checked it** until D3 leaned on it: `skill.loft` carries
+> three of the twelve skills and no lattice at all.  ⚠ The gate pins
+> `gameplay.data` by its own six sentences, declares the lattice once,
+> and COMPUTES the diameter, the eccentricities, the one-hop counts and
+> the twins rather than restating them — so an edit to the archive fails
+> there rather than quietly invalidating this table.  ⚠ Everything above
+> verifies exactly.  ⚠ So a crew member put on one
 job for a whole campaign never becomes *narrow* — anything they were
 never asked to do is still only one statistic away from something they
 were.
@@ -2211,6 +2222,20 @@ heading.  ⚠⚠ **The answer is yes — but never as GOODS.**
 players, people are not things.  ⚠⚠ **You cannot buy somebody's crew.
 You can only be the one who came for them.**
 
+> ⚠⚠ **RULED 2026-08-28 (BACKLOG D4, `@X290`) — and the sharpest reason
+> is one this section did not have.**  `@X214` later resolved the
+> knowledge tension by allowing player→NPC sale only: *you sold a COPY,
+> not the thing*, so you keep the fact.  **A person cannot be copied** —
+> selling a helper leaves you without them — so the one move that made
+> trading safe for the dominant axis cannot be applied to crew.
+>
+> ⚠ Two more, both internal: a crew market is **`@X125`'s reroll trap
+> with money instead of dice** (paying a resource for the game to hand
+> you an answer, which § P6a refuses), and it would **price the courtesy
+> `@X169` needs to be free** — if crew are sellable then bringing
+> somebody home has an opportunity cost and **abandonment becomes a way
+> to supply the market**, which inverts *the default must be RETURN*.
+
 #### ⚠ And it needs NO new mechanic — the retrieval path is shipped
 
 [`plans/14`](../plans/14-helpers/README.md) already built it: drive to
@@ -2218,7 +2243,27 @@ the wreck, press pickup, the downed helper becomes a carry object,
 deliver to the core, **60 s of recovery**, they rejoin the roster.
 
 ⚠⚠ **A cross-player rescue is that path with a different name on the
-record.**  The work is real — land near them, reach them, get them out —
+record.**
+
+> ⚠⚠ **MEASURED 2026-08-28 (BACKLOG D4, `@M067`) — THERE IS NO RECORD,
+> and this sentence is the one thing in the section that does not hold.**
+> A crew member has **no identity outside one run's roster**:
+> [`../src/skill.loft`](../src/skill.loft) says so in the comment that
+> put the skills on the `Helper` — *"the roster slot is already this
+> person's identity **for the whole run**"* — and
+> [`../tests/d4_the_person.loft`](../tests/d4_the_person.loft) reads it
+> three ways.  Give two crew different profiles and swap them, and every
+> reader follows the SLOT; two crew with the same profile are **the same
+> state** to `state_diff`; and a save round-trips the ground, the markers
+> and **nobody**, because `MapFile` is capped at six fields ([loft#876])
+> and none of the six is a person.
+>
+> ⚠ So the rescue needs **exactly the missing thing the trade did** — a
+> person who exists outside a roster.  ⚠ The contrast is the useful part:
+> `@X188` gave the WORLD a player key on its first day *"because a shared
+> world cannot be retrofitted into a path with no room for a name"*, and
+> the people have no key at all.  The same argument applies to them and
+> was never made.  The work is real — land near them, reach them, get them out —
 so the rescuer pays in the currency this game charges in, and nothing has
 to be invented for it.
 

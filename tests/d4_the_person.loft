@@ -1,0 +1,155 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// BACKLOG D4 — crew across servers, and whether they may be TRADED.
+//
+// ⚠⚠ **`@X164` left crew an *open maybe* — materials, salvage and
+// tower-tops may cross between players and knowledge may not — and
+// `@X168` settled the RESCUE half: *crew move between players, but never
+// as GOODS.  You cannot buy somebody's crew; you can only be the one who
+// came for them.*  What stayed open is TRADE.**
+//
+// ── ⚠⚠ THE SUBSTRATE FINDING, and it corrects `@X168` ────────────
+//
+// `@X168` closes with *"it needs **no new mechanic** — `plans/14`'s
+// retrieval path is shipped, so a cross-player rescue is that path with
+// a different name on the record."*
+//
+// ⚠⚠ **There is no record.**  A crew member has no identity at all
+// apart from their position in one run's roster, and `skill.loft` says
+// so in the comment that put the skills on the `Helper`: *"the roster
+// slot is already this person's identity **for the whole run**"* — a
+// phrase that quietly bounds it.  This file is that bound, asserted.
+//
+// ⚠ So BOTH halves of D4 need the same missing thing — **a person who
+// exists outside a roster** — and the rescue the design calls settled
+// needs it exactly as much as the trade it left open.
+//
+// ⚠ The contrast is worth keeping: `@X188` gave the WORLD a player key
+// on its first day (`dryopea_planets/<planet>/<player>/`) *"because a
+// shared world cannot be retrofitted into a path with no room for a
+// name"*, and `persist.loft` stores the ground and the markers — **a RUN
+// is not in it.**  The world has room for a name; the people do not.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+
+// Two crew members with DIFFERENT profiles, so that anything which
+// could tell them apart has something to tell apart.
+fn crewed(a_build: integer, b_build: integer) -> WaveState {
+    c_s = wave_state_empty();
+    c_s.crew += [helper_new(1, 0)];
+    c_s.crew += [helper_new(2, 0)];
+    ( c_s.crew[0] ?? Helper {} ).skills.build = a_build;
+    ( c_s.crew[1] ?? Helper {} ).skills.build = b_build;
+    c_s
+}
+
+// ─── ⚠⚠ A crew member IS their roster slot ─────────────────────
+
+// **The identity finding.**  Give two crew members different profiles,
+// swap the slots, and every reader follows the SLOT — so `helper 0` is
+// now the other person and nothing in the tree can say otherwise.
+//
+// ⚠ That is not a defect: `skill.loft` chose it deliberately, because
+// *"two containers keyed by the same index are two facts that can
+// disagree about who is who."*  ⚠⚠ What it means for D4 is that **a
+// person cannot be picked out of a roster**, so neither a rescue nor a
+// sale has anything to carry.
+fn test_a_crew_member_is_their_roster_slot() {
+    tac_s = crewed(5, 1);
+    assert(( tac_s.crew[0] ?? Helper {} ).skills.build == 5,
+           "slot 0 is the trained one");
+    assert(( tac_s.crew[1] ?? Helper {} ).skills.build == 1,
+           "slot 1 is the novice");
+
+    // Swap the two people over.  ⚠ Nothing else in the world changes.
+    ( tac_s.crew[0] ?? Helper {} ).skills.build = 1;
+    ( tac_s.crew[1] ?? Helper {} ).skills.build = 5;
+
+    assert(( tac_s.crew[0] ?? Helper {} ).skills.build == 1,
+           "and after the swap `helper 0` IS the novice — the reader "
+           + "follows the slot, because the slot is the identity");
+    assert(( tac_s.crew[1] ?? Helper {} ).skills.build == 5,
+           "and `helper 1` is the trained one");
+}
+
+// ⚠⚠ **Two crew members with the same profile are the SAME PERSON to
+// every reader**, which is the absence of identity stated positively.
+// `state_diff` is the sharpest witness: it is the repo's *are two runs
+// in the same state?* and it cannot see a difference that is only a
+// difference of WHO.
+fn test_two_identical_crew_are_indistinguishable() {
+    tti_a = crewed(3, 3);
+    tti_b = crewed(3, 3);
+    assert(state_diff(tti_a, tti_b) == "",
+           "two rosters with the same profiles are the same state: "
+           + "'{state_diff(tti_a, tti_b)}'");
+
+    // ⚠ The CONTROL that says `state_diff` can see a crew difference at
+    // all — otherwise the reading above is vacuous.
+    tti_c = crewed(3, 4);
+    assert(state_diff(tti_a, tti_c) != "",
+           "CONTROL — a different PROFILE is visible: "
+           + "'{state_diff(tti_a, tti_c)}'");
+}
+
+// ⚠⚠ **And what a run remembers of a person is NOTHING.**  A planet
+// (BACKLOG B3) holds the GROUND and the MARKERS — `persist.loft` says a
+// RUN is not in it — so a crew member does not survive the session they
+// were hired into, let alone a player boundary.
+//
+// ⚠ This is the reading that makes D4 a question about a substrate
+// rather than about a rule: there is no *person* for a rule to be about.
+fn test_a_save_remembers_the_ground_and_not_the_people() {
+    tas_pw = painted_empty();
+    paint(tas_pw, 0, 0, as_u8(5));
+    paint(tas_pw, 1, 0, as_u8(9));
+
+    // ⚠ The save record round-trips through `MapFile`, which is capped
+    // at SIX fields by the loft JSON-cast hang ([loft#876]) — the same
+    // cap `damage.loft` § What the hex becomes cites for why a broken
+    // wall cannot remember what was under it.  ⚠⚠ **None of the six is
+    // a person**, and there is no seventh to become one.
+    tas_pal = load_palette(PALETTE);
+    tas_mf  = paint_to_mapfile(tas_pw, camera_default(), tas_pal, "d4");
+    tas_back = mapfile_to_painted(tas_mf, tas_pal);
+
+    assert(lookup_painted(tas_back, 0, 0) == as_u8(5),
+           "the GROUND survives: {lookup_painted(tas_back, 0, 0)}");
+    assert(lookup_painted(tas_back, 1, 0) == as_u8(9),
+           "all of it: {lookup_painted(tas_back, 1, 0)}");
+    // ⚠⚠ And that is the whole of what is remembered.  A planet
+    // (BACKLOG B3) holds this pair and the MARKERS; `persist.loft` says
+    // a RUN is not in it, so a crew member does not survive the session
+    // they were hired into — let alone a player boundary.
+}
+
+// ─── ⚠ What the crew ARE made of, which is the other half ───────
+
+// ⚠⚠ **A crew member's value is what their employer MADE them**
+// (`@X124`'s practice loop, § P2b's *pick the profile you want, then
+// give them the work*), and `@X252` makes attention the scarce
+// resource.  So a market in trained crew is a market in **another
+// player's attention** — which is the category `@X164` forbids for
+// knowledge one axis over.
+//
+// ⚠ The built model already shows the shape: a level scales a rate, and
+// the level is what work put there.
+fn test_a_crew_members_value_is_what_work_put_there() {
+    tcv_novice  = skill_factor(0);
+    tcv_trained = skill_factor(5);
+    assert(tcv_trained > tcv_novice,
+           "practice is the whole difference between two people: "
+           + "{tcv_novice} against {tcv_trained}");
+    // ⚠ And it is the SAME axis a player spends on themselves — there is
+    // no separate currency that could price a person.
+    assert(skill_work_units(5, 100) > skill_work_units(0, 100),
+           "a trained crew member converts the same seconds into more "
+           + "work, which is what a buyer would be buying");
+}

@@ -1,0 +1,270 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// BACKLOG D3 — can a specialised helper be WIDENED again?
+//
+// ⚠⚠ **The question has two axes, and only one of them is a question.**
+//
+//   - **The SKILL axis** — `PROGRESSION.md` § P2a's lattice, where
+//     practising a skill lifts its two STATISTICS and each of those
+//     lifts four skills.  ⚠ **Widening here is not merely possible, it
+//     is unavoidable**, and this file is the gate that says so.
+//   - **The BEHAVIOUR axis** — `@X252`/`@X253`'s ratchet, where a
+//     helper you direct *"from then on behaves less general"*.  That is
+//     the row's actual question, it is UNBUILT (`plans/BACKLOG.md` B2
+//     parks *directed helpers*), and `@X288`-style arithmetic cannot
+//     reach it — the argument lives in `@X289`.
+//
+// ── ⚠⚠ WHY THIS FILE EXISTS: a load-bearing claim nobody checked ─
+//
+// `PROGRESSION.md` § P2a states the lattice's shape and then rests real
+// design weight on one measured property — *the graph has DIAMETER 2,
+// there are no dead ends*, so **a crew member put on one job for a whole
+// campaign never becomes narrow**, which is *"what makes the hard cap of
+// six helpers comfortable rather than tight"*.
+//
+// ⚠ It was read out of [`../archive/gameplay.data`](../archive/gameplay.data)
+// **by hand**, and until BACKLOG D3 **nothing in the tree checked it** —
+// `skill.loft` carries three of the twelve skills and no lattice at all.
+// A hand-read measurement in a load-bearing place is the shape
+// `docs/PROFILING.md` warns about: *it AGES, and the stale one gets
+// quoted.*
+//
+// ⚠ So the archive is pinned by its own text, the table below is
+// declared once, and the graph properties are COMPUTED from it rather
+// than restated.
+
+#cwd
+
+use dryopea;
+
+const ARCHIVE: text = "archive/gameplay.data";
+
+// The twelve skills, in the archive's own order.
+fn skill_names() -> vector<text> {
+    ["boost", "build", "combat", "drive", "hack", "mine",
+     "operate", "repair", "scout", "scrounge", "social", "stealth"]
+}
+
+// The six statistics and the four skills each one bonuses — the LATTICE,
+// declared once so every property below is computed rather than
+// restated.
+//
+// ⚠ Each row is pinned against the archive's own sentence in
+// § The archive says exactly this, so the table cannot drift from the
+// file it was read out of.
+fn stat_names() -> vector<text> {
+    ["agility", "charisma", "observe", "plan", "stamina", "tinker"]
+}
+
+fn stat_bonuses(stat: text) -> vector<text> {
+    if stat == "agility"  { return ["boost", "build", "drive", "stealth"]; }
+    if stat == "charisma" { return ["hack", "operate", "social", "stealth"]; }
+    if stat == "observe"  { return ["combat", "drive", "scout", "scrounge"]; }
+    if stat == "plan"     { return ["build", "operate", "mine", "repair"]; }
+    if stat == "stamina"  { return ["combat", "mine", "scout", "social"]; }
+    if stat == "tinker"   { return ["boost", "hack", "repair", "scrounge"]; }
+    []
+}
+
+// The two statistics behind one skill.
+fn stats_of(skill: text) -> vector<text> {
+    so_out: vector<text> = [];
+    for so_s in stat_names() {
+        for so_k in stat_bonuses(so_s) {
+            if so_k == skill { so_out += [so_s]; }
+        }
+    }
+    so_out
+}
+
+// Do two skills share a statistic?  That is one hop.
+fn shares_a_statistic(a: text, b: text) -> boolean {
+    for sas_x in stats_of(a) {
+        for sas_y in stats_of(b) {
+            if sas_x == sas_y { return true; }
+        }
+    }
+    false
+}
+
+// Every skill reachable from `skill` in ONE hop.
+fn one_hop(skill: text) -> vector<text> {
+    oh_out: vector<text> = [];
+    for oh_k in skill_names() {
+        if oh_k != skill && shares_a_statistic(skill, oh_k) { oh_out += [oh_k]; }
+    }
+    oh_out
+}
+
+fn holds(v: const vector<text>, want: text) -> boolean {
+    for h_x in v { if h_x == want { return true; } }
+    false
+}
+
+// How many hops from `skill` to `target` — 0 for itself, 1 or 2 where
+// the lattice reaches, and 99 where it does not.
+fn hops(skill: text, target: text) -> integer {
+    if skill == target { return 0; }
+    if shares_a_statistic(skill, target) { return 1; }
+    for hp_mid in one_hop(skill) {
+        if shares_a_statistic(hp_mid, target) { return 2; }
+    }
+    99
+}
+
+// ─── ⚠⚠ The archive says exactly this ───────────────────────────
+
+// **The table above, pinned against the file it was read out of.**  ⚠
+// Six substrings, one per statistic, in the archive's own words — so an
+// edit to `gameplay.data` fails HERE rather than quietly invalidating
+// `PROGRESSION.md` § P2a.
+fn test_the_archive_still_says_what_the_table_says() {
+    tas_src = file(ARCHIVE).content() ?? "";
+    assert(tas_src != "", "the archive is readable");
+    assert(tas_src.contains("Bonus to boost, build, drive and stealth"),
+           "agility");
+    assert(tas_src.contains("Bonus to hack, operate, social and stealth"),
+           "charisma");
+    assert(tas_src.contains("Bonus to combat, drive, scout and scrounge"),
+           "observe");
+    assert(tas_src.contains("Bonus to build, operate, mine and repair"),
+           "plan");
+    assert(tas_src.contains("Bonus to combat, mine, scout and social"),
+           "stamina");
+    assert(tas_src.contains("Bonus to boost, hack, repair and scrounge"),
+           "tinker");
+    // And the twelve skills are declared as skills, not as anything else.
+    // ⚠ The brace the archive's own syntax uses cannot go in a format
+    // string — `{` opens an interpolation hole — so the discriminating
+    // part is matched instead, and it is discriminating: `type:skill`
+    // is what separates the twelve from the statistics and the units.
+    for tas_k in skill_names() {
+        assert(tas_src.contains(tas_k + ", type:skill,"),
+               "`{tas_k}` is declared a skill in the archive");
+    }
+}
+
+// ⚠ **24 edges, no exceptions, nothing declared-but-unused in either
+// direction** — `PROGRESSION.md`'s own sentence, asserted.
+fn test_every_skill_has_two_statistics_and_every_statistic_four_skills() {
+    tes_edges = 0;
+    for tes_s in stat_names() {
+        assert(len(stat_bonuses(tes_s)) == 4,
+               "`{tes_s}` bonuses four skills: {len(stat_bonuses(tes_s))}");
+        tes_edges += len(stat_bonuses(tes_s));
+    }
+    for tes_k in skill_names() {
+        assert(len(stats_of(tes_k)) == 2,
+               "`{tes_k}` is bonused by exactly two: {len(stats_of(tes_k))}");
+    }
+    assert(len(skill_names()) == 12, "twelve skills: {len(skill_names())}");
+    assert(len(stat_names()) == 6, "six statistics: {len(stat_names())}");
+    assert(tes_edges == 24, "twenty-four edges: {tes_edges}");
+    // ⚠ Nothing declared-but-unused: every skill a statistic names is
+    // one of the twelve, which is the half a count cannot see.
+    for tes_s2 in stat_names() {
+        for tes_b in stat_bonuses(tes_s2) {
+            assert(holds(skill_names(), tes_b),
+                   "`{tes_s2}` bonuses `{tes_b}`, which is a declared skill");
+        }
+    }
+}
+
+// ─── ⚠⚠ THE PROPERTY D3 RESTS ON ───────────────────────────────
+
+// **THE GRAPH HAS DIAMETER 2 — THERE ARE NO DEAD ENDS.**
+//
+// ⚠⚠ This is what answers D3's skill half: **a specialist cannot become
+// narrow, because everything is at most two hops from everything.**  A
+// crew member put on one job for a whole campaign is still one statistic
+// away from anything they were never asked to do — so on this axis there
+// is no ratchet to reverse, and widening is not a decision but a
+// consequence.
+//
+// ⚠ It is asserted as an ECCENTRICITY per skill rather than as a single
+// diameter, because a diameter of 2 with one skill at 3 would still read
+// "2" from the wrong end.
+fn test_the_lattice_has_no_dead_ends() {
+    for tld_a in skill_names() {
+        tld_ecc = 0;
+        for tld_b in skill_names() {
+            tld_h = hops(tld_a, tld_b);
+            assert(tld_h <= 2,
+                   "`{tld_a}` reaches `{tld_b}` in {tld_h} hops — a dead end "
+                   + "would make a specialist narrow, which `PROGRESSION.md` "
+                   + "§ P2a says cannot happen");
+            if tld_h > tld_ecc { tld_ecc = tld_h; }
+        }
+        assert(tld_ecc == 2,
+               "`{tld_a}` has eccentricity {tld_ecc} — 2 for every skill, so "
+               + "the radius and the diameter agree and no skill is central");
+    }
+}
+
+// ⚠ **The one-hop counts are 6 for ten skills and 5 for two**, which is
+// the doc's table read back.  ⚠ A count alone cannot see WHICH two, so
+// the pair is named.
+fn test_ten_skills_permeate_to_six_and_two_to_five() {
+    ttp_five: vector<text> = [];
+    for ttp_k in skill_names() {
+        ttp_n = len(one_hop(ttp_k));
+        assert(ttp_n == 6 || ttp_n == 5,
+               "`{ttp_k}` permeates to {ttp_n}");
+        if ttp_n == 5 { ttp_five += [ttp_k]; }
+    }
+    assert(len(ttp_five) == 2, "exactly two reach five: {len(ttp_five)}");
+    assert(holds(ttp_five, "combat") && holds(ttp_five, "scout"),
+           "and they are `combat` and `scout`");
+}
+
+// ⚠⚠ **`combat` and `scout` are statistical TWINS, and they are the ONLY
+// pair** — both are observe + stamina, which is why both reach five
+// instead of six.  ⚠ `PROGRESSION.md` calls it a finding for dryopea:
+// practising one advances the other exactly as much as practising it.
+fn test_combat_and_scout_are_the_only_twins() {
+    ttw_pairs = 0;
+    for ttw_a in skill_names() {
+        for ttw_b in skill_names() {
+            if ttw_a < ttw_b {
+                ttw_same = true;
+                for ttw_s in stats_of(ttw_a) {
+                    if !holds(stats_of(ttw_b), ttw_s) { ttw_same = false; }
+                }
+                if ttw_same {
+                    ttw_pairs += 1;
+                    assert(ttw_a == "combat" && ttw_b == "scout",
+                           "`{ttw_a}` and `{ttw_b}` share both statistics — "
+                           + "the only twins are combat and scout");
+                }
+            }
+        }
+    }
+    assert(ttw_pairs == 1, "exactly one twin pair: {ttw_pairs}");
+    // ⚠ The CONTROL that says the test can find a NON-twin: two skills
+    // sharing one statistic are not twins.
+    assert(shares_a_statistic("boost", "build"),
+           "CONTROL — boost and build share agility");
+    assert(!holds(stats_of("build"), "tinker"),
+           "and do not share tinker, so they are one hop and not twins");
+}
+
+// ⚠ **The lattice is DATA and not code today**, which is the honest
+// limit of this file: `skill.loft` carries three of the twelve
+// (`build`, `repair`, `scout`) because BACKLOG C1 built only the three
+// a number existed for, and none of them knows about a statistic.  ⚠
+// This gate therefore protects the DESIGN's arithmetic, not a shipped
+// mechanism — and it is what a shipped one would have to satisfy.
+fn test_the_three_built_skills_are_in_the_lattice() {
+    for tbs_k in ["build", "repair", "scout"] {
+        assert(holds(skill_names(), tbs_k),
+               "`{tbs_k}` — built by BACKLOG C1 — is one of the twelve");
+    }
+    // ⚠ And the built model is a LEVEL scaling a rate, with no statistic
+    // and no neighbour — `skill_factor` is the whole of it.
+    assert(skill_factor(0) < skill_factor(5),
+           "a built skill is a level scaling a rate: {skill_factor(0)} to "
+           + "{skill_factor(5)}");
+    assert(len(skill_names()) - 3 == 9,
+           "and nine of the twelve have no number in the tree at all");
+}

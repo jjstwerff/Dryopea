@@ -1,0 +1,92 @@
+# the-opening-two-hundred — BACKLOG D2, and it answers the row's
+# question by ARITHMETIC rather than by a rule.
+#
+# D2 asks *is "scrambler **or** two towers" exclusive?* (`@X247`).
+# ⚠⚠ **The wallet already makes the towers exclusive, and nothing had
+# to be decided for it**: the opening budget is 200 points
+# (`WALLET_STARTING_POINTS`), a tower beacon costs 100
+# (`numbers.json` § tower.order_cost_points), and `beacon_buy` refuses
+# a purchase the wallet cannot cover.  So two is the ceiling and the
+# third press does nothing — measured below.
+#
+# ⚠ `numbers.json` says the same thing in its own doc string:
+# *"Lets them order 1 tower + 1 helper before earning loot"* — the
+# opening 200 is deliberately TWO of the 100-point things.
+#
+# ── ⚠⚠ And the OTHER half of the "or" is not a purchase at all ───
+#
+# The scrambler IS the core (`@X280`), and `jammer_new()` returns
+# `off: false` — **it is already on when the base lands, and switching
+# it costs no points.**  So it never competed with the towers for the
+# wallet, and there is nothing to make exclusive.
+#
+# ⚠ This file shows that the way the game shows it: with the wallet at
+# ZERO, having spent every point on towers, the waves still come.  The
+# scrambler was free the whole time.
+
+echo the opening two hundred: what it buys, and what it never had to
+
+do toggle_mode
+do cycle_kind
+click 0 0
+marker 0 0 target
+do cycle_kind
+do cycle_kind
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 12 0
+marker 12 0 spawn 3
+count markers 2 2
+do toggle_mode
+
+palette 5
+drag -3 -3 13 -3
+drag -3 -2 13 -2
+drag -3 -1 13 -1
+drag -3 0 13 0
+drag -3 1 13 1
+drag -3 2 13 2
+drag -3 3 13 3
+
+# ── The opening budget ──────────────────────────────────────────
+park 0 0
+wallet 200 200
+
+# ⚠ One press at the core, one beacon, one hundred points.  The debit
+# happens at the PICK-UP rather than at the planting — `numbers.json`
+# § tower.order_cost_points: *"Failed deposit does not refund"*, which
+# is what makes the spend irreversible at the moment it is made.
+take player
+wallet 100 100
+park 3 0
+drop player
+
+park 0 0
+take player
+wallet 0 0
+park 3 1
+drop player
+
+# ⚠⚠ **And the third press buys nothing**, which this file deliberately
+# does NOT try to show.  `beacon_buy` refuses a purchase the wallet
+# cannot cover, and the `take` VERB is defined to fail loudly on a
+# refusal — *a script asserts intent*, the same rule that makes `boost`
+# stricter than the key it stands for.  So the refusal is a VALUE in
+# `tests/d2_the_landing_choice.loft` and a FAULT here, and asserting it
+# in a scenario would be asserting that the script runner is broken.
+#
+# ⚠ What this file can say is the arithmetic that produces it: every
+# point is gone, and a beacon costs a hundred.
+wallet 0 0
+
+# ── ⚠⚠ The scrambler was never the other half of the choice ─────
+#
+# Every point is spent and the core is still jamming, because jamming
+# is what a core DOES (`jammer_new()` is `off: false`).  The waves come
+# on an empty wallet, which is the reading that says the scrambler
+# competed for nothing.
+wave 5
+count alive 5 5
+wallet 0 0

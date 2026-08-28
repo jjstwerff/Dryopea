@@ -1,0 +1,200 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// BACKLOG D2 — the landing loadout, and whether *"scrambler **or** two
+// towers"* is exclusive.
+//
+// ⚠⚠ **The question rests on a premise the built game does not carry,
+// and the arithmetic answers the half that survives.**
+//
+// `@X247` records the landing choice as *activate the scrambler (income
+// and pressure at once, since the scrambler IS the core) **or** build
+// two towers (defence with no income)*, and leaves **is `or`
+// exclusive?** open with a recommendation: *the exclusive version is
+// the better game, because it puts an irreversible decision at the
+// moment the player knows least.*
+//
+// ── ⚠⚠ Two measurements, and they point the same way ────────────
+//
+//   1. **The towers are already exclusive and no rule was needed.**
+//      The opening budget is 200, a beacon is 100, and `beacon_buy`
+//      refuses a purchase the wallet cannot cover — so the ceiling is
+//      TWO and the third press buys nothing.  `numbers.json` says the
+//      same in its own doc string: *"Lets them order 1 tower + 1 helper
+//      before earning loot."*
+//   2. ⚠⚠ **The scrambler was never the other half of the choice.**
+//      It IS the core (`@X280`), `jammer_new()` returns `off: false`,
+//      and switching it costs no points — so it never competed with the
+//      towers for anything.  There is no `or` to make exclusive.
+//
+// ⚠ So the exclusion `@X247` wanted exists, it is the WALLET's, and it
+// is between the things the wallet buys.  What the row asks to be made
+// exclusive is a pairing the economy does not contain.
+//
+// ⚠ **The refusal is a VALUE here and a FAULT in a scenario** — the
+// `take` verb is defined to fail loudly on one, the same rule that
+// makes `boost` stricter than the key it stands for — which is why
+// `tests/scripts/the-opening-two-hundred.keys` stops at the arithmetic
+// and this file carries the third press.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+fn pal_at(path: text) -> vector<GroundType> { load_palette(path) }
+
+// A base with the player parked on the core, and nothing else.
+fn landed(mw: MarkerWorld) -> WaveState {
+    l_s = wave_state_empty();
+    place_marker(mw, 0, 0, MARKER_KIND_TARGET as u8, 0 as u8);
+    vehicle_place(l_s.player, 0, 0);
+    l_s
+}
+
+// ─── ⚠⚠ 1. The towers are exclusive, and the WALLET says so ─────
+
+// **The opening 200 buys exactly two of the 100-point things.**  ⚠ It
+// is arithmetic rather than a rule, which is the answer D2 was looking
+// for: nothing had to be decided to make *two* the ceiling.
+fn test_the_opening_budget_is_exactly_two_towers() {
+    assert(TOWER_ORDER_COST_POINTS == 100.0,
+           "a beacon is a hundred: {TOWER_ORDER_COST_POINTS}");
+    assert(WALLET_STARTING_POINTS == 200.0,
+           "and the opening wallet is two hundred: {WALLET_STARTING_POINTS}");
+    assert(WALLET_STARTING_POINTS / TOWER_ORDER_COST_POINTS == 2.0,
+           "so the landing buys TWO and the `or` needs no rule: "
+           + "{WALLET_STARTING_POINTS / TOWER_ORDER_COST_POINTS}");
+}
+
+// ⚠⚠ **The third press buys nothing**, and `beacon_buy` is where the
+// refusal lives — a purchase the wallet cannot cover is `CARGO_NONE`
+// rather than an overdraft.
+//
+// ⚠ Each beacon is DROPPED between presses, because `wave_take` refuses
+// a carrier whose hands are full — so this measures the wallet and not
+// the hands.  ⚠⚠ **And it is dropped OUT OF REACH**, because *a loose
+// object on the ground wins over detaching a top*: a beacon spilled
+// beside the player is picked back up by the next press, which spends
+// nothing and would make this test read a purchase that never happened.
+//
+// ⚠ `wave_take` answers the object's INDEX, not its kind, so success is
+// `>= 0` and refusal is `CARGO_NONE` (−1).
+fn test_the_third_beacon_is_refused_for_want_of_points() {
+    ttb_mw = marker_empty();
+    ttb_s  = landed(ttb_mw);
+
+    assert(wave_take(ttb_s, BLOCKER_PLAYER, Hex { q: 0, r: 0 }, ttb_mw)
+           >= 0,
+           "the first press buys a beacon");
+    assert(wallet_left(ttb_s.wallet) == 100.0,
+           "and it cost a hundred: {wallet_left(ttb_s.wallet)}");
+    cargo_spill(ttb_s.cargo, BLOCKER_PLAYER, Hex { q: 6, r: 0 });
+
+    assert(wave_take(ttb_s, BLOCKER_PLAYER, Hex { q: 0, r: 0 }, ttb_mw)
+           >= 0,
+           "the second press buys the other one");
+    assert(wallet_left(ttb_s.wallet) == 0.0,
+           "and the wallet is empty: {wallet_left(ttb_s.wallet)}");
+    cargo_spill(ttb_s.cargo, BLOCKER_PLAYER, Hex { q: 7, r: 0 });
+
+    // ⚠⚠ THE READING: the ceiling is enforced, not written down.
+    assert(wave_take(ttb_s, BLOCKER_PLAYER, Hex { q: 0, r: 0 }, ttb_mw)
+           == CARGO_NONE as integer,
+           "and the third buys nothing at all");
+    assert(wallet_left(ttb_s.wallet) == 0.0,
+           "with no overdraft: {wallet_left(ttb_s.wallet)}");
+}
+
+// ⚠ And the refusal is about the POINTS rather than about the press —
+// the control that says the door works when it can be afforded.
+fn test_a_funded_wallet_buys_again() {
+    tfw_mw = marker_empty();
+    tfw_s  = landed(tfw_mw);
+    wallet_drain(tfw_s.wallet, WALLET_STARTING_POINTS);
+    assert(wave_take(tfw_s, BLOCKER_PLAYER, Hex { q: 0, r: 0 }, tfw_mw)
+           == CARGO_NONE as integer,
+           "broke: nothing bought");
+    wallet_earn(tfw_s.wallet, TOWER_ORDER_COST_POINTS);
+    assert(wave_take(tfw_s, BLOCKER_PLAYER, Hex { q: 0, r: 0 }, tfw_mw)
+           >= 0,
+           "CONTROL — one tower's worth of salvage and the same press buys");
+}
+
+// ─── ⚠⚠ 2. The scrambler was never the other half ───────────────
+
+// **It is the core, it is already on, and it costs nothing** — so it
+// never competed with the towers and there is no `or` to make
+// exclusive.
+//
+// ⚠ `jammer_new()` returning `off: false` is the whole of *the base
+// lands jamming*: the player does not activate the scrambler, they
+// inherit it.
+fn test_the_scrambler_is_on_at_landing_and_costs_nothing() {
+    tsc_mw = marker_empty();
+    tsc_s  = landed(tsc_mw);
+    assert(jammer_on(tsc_s.jammer),
+           "a landed base is already jamming — the player does not "
+           + "switch it on");
+    assert(wallet_left(tsc_s.wallet) == WALLET_STARTING_POINTS,
+           "and it cost nothing to have: {wallet_left(tsc_s.wallet)}");
+
+    // ⚠ Switching it is free in BOTH directions, which is what says it
+    // is not a purchase at all.
+    jammer_set(tsc_s.jammer, false);
+    assert(!jammer_on(tsc_s.jammer), "it can be switched off");
+    assert(wallet_left(tsc_s.wallet) == WALLET_STARTING_POINTS,
+           "for nothing: {wallet_left(tsc_s.wallet)}");
+    jammer_set(tsc_s.jammer, true);
+    assert(jammer_on(tsc_s.jammer) && wallet_left(tsc_s.wallet) == WALLET_STARTING_POINTS,
+           "and back again, still for nothing");
+}
+
+// ⚠⚠ **The two are INDEPENDENT, which is the falsification.**  Spend
+// every point on towers and the scrambler is still on; switch the
+// scrambler off and the wallet has not moved.  An `or` requires a
+// shared scarce thing, and these two share none.
+fn test_the_two_halves_share_no_scarce_thing() {
+    tth_mw = marker_empty();
+    tth_s  = landed(tth_mw);
+
+    wave_take(tth_s, BLOCKER_PLAYER, Hex { q: 0, r: 0 }, tth_mw);
+    cargo_spill(tth_s.cargo, BLOCKER_PLAYER, Hex { q: 6, r: 0 });
+    wave_take(tth_s, BLOCKER_PLAYER, Hex { q: 0, r: 0 }, tth_mw);
+
+    assert(wallet_left(tth_s.wallet) == 0.0,
+           "every point spent on towers: {wallet_left(tth_s.wallet)}");
+    assert(jammer_on(tth_s.jammer),
+           "and the scrambler is STILL on — buying towers did not cost "
+           + "it, which is what says the two never competed");
+}
+
+// ─── ⚠ What the landing does NOT give, and it matters to the row ─
+
+// ⚠⚠ **`DESIGN.md` § 15 Landing flow's free tower and two helpers are
+// NOT BUILT**, and neither is the helper order the wallet is sized for.
+// `numbers.json` § helper.order_cost_points is 100 and **nothing reads
+// it** — the same unread-column family as `slope` before C6 and
+// `walk_vehicle` before C10.
+//
+// ⚠ That is why the opening 200 buys *two towers* today where the
+// document says *1 tower + 1 helper*: the second thing cannot be
+// bought yet.  A ruling on D2 that assumed the documented landing would
+// be ruling about a game that does not exist.
+fn test_the_wallet_is_sized_for_a_purchase_that_is_not_built() {
+    twn_mw = marker_empty();
+    twn_s  = landed(twn_mw);
+    assert(len(twn_s.crew) == 0,
+           "a landed base has no crew — § 15's two helpers are unbuilt: "
+           + "{len(twn_s.crew)}");
+    assert(marker_count(twn_mw) == 1,
+           "and no starter tower — § 15 step 6 is unbuilt too: "
+           + "{marker_count(twn_mw)}");
+    // ⚠ The wallet is sized for two 100-point things and only one of
+    // them exists, so *two towers* is what 200 buys today.
+    assert(WALLET_STARTING_POINTS == TOWER_ORDER_COST_POINTS * 2.0,
+           "the budget is exactly two of the one thing that is buyable");
+}
