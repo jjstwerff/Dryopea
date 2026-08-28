@@ -14,6 +14,11 @@ into committed `.json` pairs, and there is no seed anywhere in `src/`.
 > data**."*  ⚠ Every ruling below is an answer to that, and § THE THESIS
 > reads them as one family — plus the refusal test it implies: **does
 > this add data in proportion to the detail it produces?**
+>
+> ⚠⚠ **AND IT IS AN OLD DESIGN, AIMED AT A GAP** (`@X324`) — *"I am
+> already designing this for a few years, because it hides a gap found in
+> all modern games I observe."*  ⚠ Which is why **a piece dropped for
+> convenience is a regression even when everything still works.**
 
 ⚠ This document is the **world → scenario** half.
 [`ERRANDS.md`](ERRANDS.md) is the **what a mob is doing** half and owns
@@ -69,6 +74,84 @@ talking.  ⚠⚠ **Take any one away and the compression stops being usable**
 — that is why `@X316`'s anchors, `@X320`'s edge ownership and `@X319`'s
 position hash keep turning out to be the same requirement wearing
 different hats.
+
+### ⚠⚠ WHY IT IS AN OLD DESIGN — it is aimed at a GAP  `@X324`
+
+Owner, 2026-08-28:
+
+> *"and that is why it is an old design — I am already designing this for
+> a few years, because it **hides a gap found in all modern games I
+> observe**."*
+
+⚠⚠ **This is the motivation, and recording it matters for a practical
+reason: it is what makes the pieces non-optional.**  A design assembled
+to solve today's problem can be simplified when today's problem changes;
+a design aimed at a gap **loses its point the moment a piece is dropped
+for convenience.**
+
+⚠ **The repo carries the evidence of the age.**
+[`DESIGN_HISTORY.md`](DESIGN_HISTORY.md) § 2 is the 2023 `todo` file, and
+`@X313`'s six-neighbour rule is already in it in its original form —
+*"sampling png onto hex grid: **specific point & 4 pixels around it**"* —
+beside *"general slopes"* and *"water flow, amount of water"*.  ⚠⚠ **So
+this is at minimum a three-year-old design, in writing, in this
+repository**, and the coherence noted throughout these two documents is
+because the parts were fitted rather than collected.
+
+#### ⚠ What the gap is, as the design itself states it
+
+⚠ The owner named the gap by its symptom rather than its cause, so what
+follows is **this document's reading** of it, assembled from rulings they
+did make:
+
+| the design says | `@code` |
+|---|---|
+| believable behaviour, **without simulating a world** | `@X303` |
+| detail, from **a very compact base set** | `@X323` |
+| ⚠ **patterns must not become visible** | `@X319` |
+| the same row must not read the same twice | `@X321` |
+| a world **the author does not know** | `@X308` |
+| ⚠⚠ *"I do not want to know what to find before I boot up the game"* | `@X224` |
+
+⚠⚠ **Read together they describe a gap between two ways a modern game
+can go wrong**, and the claim is that you need not choose:
+
+| | it buys | it costs |
+|---|---|---|
+| **authored** content | specific, believable, meant | ⚠ finite, and **known** — by the author first and the player soon after |
+| **generated** content | endless, cheap, surprising to the author | ⚠ shallow, **patterned**, and meaning nothing in particular |
+
+> ⚠⚠ **The gap is that nobody gets BELIEVABLE DETAIL AT SCALE** — and
+> this architecture is the claim that a compact base set plus local
+> decompression rules gets you a world that is neither known nor shallow.
+
+⚠ `@X224` is the sharpest existing statement of it, and it is the author
+complaining about their **own** game: *if the seed is a number the author
+chose then the author knows the world.*  ⚠⚠ **That is the gap seen from
+inside**, and `@X308`'s author-free heightmap is one answer to it.
+
+#### ⚠⚠ What it means for how this design is TREATED
+
+⚠ Three practical consequences, and they are the reason this section is
+here rather than in a preface:
+
+1. ⚠⚠ **A piece dropped for convenience is a regression even when
+   everything still works.**  `@X320`'s edge restriction buys nothing
+   visible on its own; drop it and `@X319`'s dither becomes impossible.
+   `@X321`'s residual looks like an implementation detail; drop it and
+   the variant budget goes from a handful to thousands.
+2. ⚠ **The design is not finished when it RUNS.**  `@X303` and `@X323`
+   are both tests, not features, and a version that passes neither while
+   producing terrain has produced the thing the gap is about.
+3. ⚠⚠ **And it is why `@X322`'s library split matters more than usual**:
+   a mechanism aimed at a gap is worth more than one game, and the
+   several years are what make it plausible that the seams are in the
+   right places.
+
+⚠ It also explains an observation this document keeps making — that
+`crawler`'s independently-built machinery keeps agreeing with rulings
+made here (`@X299`, `@X301`, `@X306`, `@X316`).  ⚠⚠ **`@X314` already
+gave the reason: it is the same design, in two places.**
 
 ### ⚠⚠ So it is also a REFUSAL TEST
 

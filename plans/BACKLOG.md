@@ -72,6 +72,12 @@ the scenario*, and *get realistic routes that make the mobs have a
 believable behaviour* — so **does this make behaviour more BELIEVABLE,
 or does it only simulate MORE?**  Every row below has to answer it.
 
+⚠⚠ **AND IT IS AN OLD DESIGN, AIMED AT A GAP** (`@X324`) — several years,
+with `DESIGN_HISTORY.md` § 2's 2023 notes carrying the six-neighbour rule
+already.  ⚠ **So a row dropped for convenience is a REGRESSION even when
+everything still works**: F8f's edge restriction buys nothing visible
+alone, and without it F8f's own dither is impossible.
+
 ⚠⚠ **THE THESIS ALL OF IT SERVES** (`@X323`, owner): *express detail from
 a very compact BASE SET of data.*  ⚠ So the test on every row below is
 **does this add data in proportion to the detail it produces?** — and

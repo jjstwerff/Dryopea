@@ -137,6 +137,18 @@ shortest path
     following water for boats (ocean, sea, river, lake)
 ```
 
+⚠⚠ **AND THIS SECTION IS THE EVIDENCE OF THE DESIGN'S AGE** (`@X324`,
+owner 2026-08-28: *"it is an old design — I am already designing this for
+a few years, because it hides a gap found in all modern games I
+observe"*).  ⚠ *"Sampling png onto hex grid: **specific point & 4 pixels
+around it**"* below is `@X313`'s six-neighbour rule in its original form,
+and it sits beside *"general slopes"* and *"water flow, amount of
+water"* — the other two of its three inputs.  ⚠⚠ **So the worldgen
+design is at minimum three years old, in writing, in this repository, and
+its parts were FITTED rather than collected** — which is why
+[`docs/WORLDGEN.md`](WORLDGEN.md) warns that a piece dropped for
+convenience is a regression even when everything still works.
+
 ⚠⚠ **THE RULE THESE NOTES DO NOT STATE, and it is the load-bearing one**
 (owner, 2026-08-28, `@X313`): ***the content of a hex depends on the six
 hexes around it — their terrain, their elevation, their water flow.***
