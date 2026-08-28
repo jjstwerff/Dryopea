@@ -23,6 +23,20 @@ This plan takes the other direction — the code dryopea wrote that is **not**
 game-specific becomes a published library, so the next project does not
 write it a third time.
 
+⚠⚠ **AND THE OWNER RESTATED IT AS A REQUIREMENT FOR NEW WORK, 2026-08-28**
+(`@X322`): *"most of the routines we write here should be generic enough to be
+implemented by multiple games, so I want libraries with their implementations
+and possible scripts for edge cases that can be provided by individual
+games."*  ⚠ [`docs/WORLDGEN.md`](../../docs/WORLDGEN.md) § THIS IS LIBRARY WORK
+and [`docs/ERRANDS.md`](../../docs/ERRANDS.md) § And this is LIBRARY work too
+carry the three-layer split it implies — **library / catalogue / script** —
+and almost everything in both documents falls on the library side.
+⚠⚠ **This plan's bar still governs them**: *extract what SURVIVES*, because
+**a library with one consumer is a refactor with a version number.**  ⚠ The
+difference is that for that new work the second consumer is already there —
+`crawler` has the ZAngband micro layer, the Ortler pipeline, the trimesh and
+the hydrology built.
+
 ## Goal
 
 Everything dryopea holds locally that another project would want is a

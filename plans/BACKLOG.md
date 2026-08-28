@@ -72,7 +72,15 @@ the scenario*, and *get realistic routes that make the mobs have a
 believable behaviour* — so **does this make behaviour more BELIEVABLE,
 or does it only simulate MORE?**  Every row below has to answer it.
 
-⚠ [`docs/ERRANDS.md`](../docs/ERRANDS.md) is the design; these are the
+⚠⚠ **AND ALMOST ALL OF IT IS LIBRARY WORK** (`@X322`): three layers —
+**LIBRARY** (the mechanism, no policy), **CATALOGUE** (the game's rows),
+**SCRIPT** (the game's edge cases).  ⚠ *The library never asks for a thing
+BY NAME; it asks the catalogue for one that FITS.*  ⚠⚠ **But extract on
+the SECOND consumer** ([`plans/10`](10-extract-local-libraries/README.md)'s
+bar) — a library with one consumer is a refactor with a version number.
+
+⚠ [`docs/ERRANDS.md`](../docs/ERRANDS.md) and
+[`docs/WORLDGEN.md`](../docs/WORLDGEN.md) are the design; these are the
 pieces, in the order they stop being guesses.  ⚠⚠ **F0 first, and it may
 kill F2** — `crawler` measured that *greedy is not pathing*.
 

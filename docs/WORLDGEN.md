@@ -1055,6 +1055,91 @@ and the step is small.
   everywhere and only the terrain tests differ.  Undocumented, and found
   by reading.
 
+## ⚠⚠ THIS IS LIBRARY WORK — three layers, and only the middle one is dryopea's  `@X322`
+
+Owner, 2026-08-28:
+
+> *"be aware that most of the routines we write here should be **generic
+> enough to be implemented by multiple games**, so I want **libraries
+> with their implementations** and **possible scripts for edge cases that
+> can be provided by individual games**."*
+
+⚠ It is the rule `CLAUDE.md` § Loft consumer relationship already keeps
+in one direction — *reuse is the rule; do not write a local version of
+what a library provides* — pointed the other way, which is what
+[`plans/10`](../plans/10-extract-local-libraries/README.md) exists for:
+*"the code dryopea wrote that is **not** game-specific becomes a
+published library, so the next project does not write it a third time."*
+
+### ⚠⚠ The split, and almost everything in this document is on the library side
+
+| layer | who owns it | what it is | from this document |
+|---|---|---|---|
+| **1. the LIBRARY** | ⚠⚠ nobody's game | the mechanism, with no policy in it | the six-neighbour derivation (`@X313`), the ownership law (`@X316`), residual composition (`@X321`), the bound/cull tiers (`@X300`), edge-matching (`@X318`), the closed form and `slip` (`@X302`) |
+| **2. the CATALOGUE** | ⚠ **the game**, declaratively | rows: conditions → contents | dryopea's palette, its block rows, its POI kinds, its errand roles |
+| **3. the SCRIPT** | ⚠ **the game**, imperatively | the edge cases a table cannot say | dryopea's `.keys`; `crawler`'s bundles |
+
+> ⚠⚠ **The library never asks for a thing BY NAME.  It asks the
+> catalogue for one that FITS.**
+
+⚠ That sentence is not new here — it is `crawler/src/monsters.loft:26`
+verbatim (*"the engine never asks for a monster BY KEY — it asks the
+merged catalog for one that FITS A PLACE"*), it is
+[`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) § The governing rule
+(*an installation costs one ROW*), and it is `@X318`'s *a block declares
+what it needs, never where it goes*.  ⚠⚠ **Three systems, one seam,
+arrived at independently — which is the evidence it is the right one.**
+
+### ⚠ Layer 3 exists already, in both repos, and it is what the owner means
+
+⚠ `crawler` runs the imperative layer as an **overlay the engine
+executes**: `RoomStencil` / `Placement` in `src/worldtypes.loft`, an
+authored instance in `bundles/desert_surprise/`, and the engine's own
+comment — *"The active overlay … **decides**; we **stamp**. …
+Deterministic, so re-entry regenerates identically."*  ⚠ dryopea's
+equivalent is `script.loft` and the 50 `.keys` files, which are
+simultaneously the gate and the worked example
+([`plans/08`](../plans/08-game-validation/README.md)).
+
+⚠⚠ **So the seam to design for is: the library reads a catalogue, and a
+script may OVERRIDE any of it in authority order.**  ⚠ Authority order is
+`@X316`'s word and it belongs to layer 1 — the library decides *how* an
+override composes, the game decides *what* overrides.
+
+### ⚠⚠ But extract on the SECOND consumer, not the first
+
+⚠ [`plans/10`](../plans/10-extract-local-libraries/README.md) already sets
+the bar and it is the right one — *"extract what SURVIVES"* — and this
+document must not be read as licence to publish a library shaped by one
+game.  ⚠⚠ **A library with one consumer is a refactor with a version
+number.**
+
+⚠ The good news is that the second consumer is **real and present**:
+`crawler` has the ZAngband micro layer, the Ortler pipeline, the trimesh
+and the hydrology **already built**, and `@X314` says parts of it are
+dryopea's design to begin with.  ⚠⚠ **So the honest sequence is: build
+the seams as library seams from day one, land the first implementation
+wherever it is cheapest to gate, and publish when the second consumer has
+read the API and disagreed with it.**
+
+### ⚠ Naming, which `plans/10` already settled
+
+⚠⚠ **Descriptive, never a brand** — *no `moros_*`, and equally no
+`dryopea_*`* — and the family is already established in the registry:
+`hex_grid`, `hex_field`, `hex_body`, `hex_world`, `hex_terrain`,
+`hex_way`, `hex_edge`, `hex_fit`.  ⚠ What this document describes reads
+naturally as more of the same shape, and `hex_terrain` and `hex_world`
+are the two an implementer should read **before** proposing a new one:
+the rule is `CLAUDE.md`'s — *do not write a local version of a routine a
+library already provides*, and **that applies to this design more than
+to anything else in the repo**, because none of it is written yet.
+
+⚠ **And one thing here is emphatically NOT library work**: `@X303`'s
+test, `@X305`'s two-to-four, `@X317`'s land-in-the-overlap and `@X312`'s
+earned view are **dryopea's design decisions**.  ⚠⚠ A library that
+enforced *two to four POIs* would be a game wearing a library's name —
+**the library supplies the bound and the cull; the number is the game's.**
+
 ## Open questions — the owner's
 
 1. ⚠⚠ **A or B?** — is dryopea's coarse map real data, or an authored

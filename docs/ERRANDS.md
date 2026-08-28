@@ -988,6 +988,28 @@ things follow that a deletion cannot give:
 ⚠ And the return trip is what makes a base near a maintenance point
 attritional in exactly the way § 5 describes — the same robots come back.
 
+## ⚠⚠ And this is LIBRARY work too  `@X322`
+
+⚠ [`WORLDGEN.md`](WORLDGEN.md) § THIS IS LIBRARY WORK owns the ruling;
+the same three layers apply here, and the split falls in the same place:
+
+| layer | from this document |
+|---|---|
+| **the LIBRARY** | the closed form and `slip` (`@X302`), the static bound and the CULL / EVALUATE / MATERIALISE tiers (`@X300`), the rule-not-state split (`@X299`), the POI-owns-its-mobs relation (`@X301`) |
+| **the CATALOGUE** — the game's, declaratively | ⚠ the ROLE rows: which anchor a role works from, whether a bag or a clock steers it, what draws it off-route |
+| **the SCRIPT** — the game's, imperatively | ⚠ `.keys`: `poi`, `route`, `remit`, and the edge cases a table cannot say |
+
+⚠⚠ **What is NOT library work is every number and every refusal**:
+`@X303`'s test, the four job kinds, *the bag steers not the calendar* as
+a POLICY rather than as a mechanism, and above all **a distraction must
+be caused by something the player BUILT**.  ⚠ A library hard-coding any
+of those would be dryopea wearing a library's name — **it supplies the
+shape; the game supplies the reasons.**
+
+⚠ And § Roles are a TABLE, from the first line was already saying this
+without knowing it: the reason `crawler`'s hard-coded `role ==` branches
+went stale is that **they were policy living in the mechanism's file.**
+
 ## What this design does NOT do
 
 ⚠ Named so a later reader does not think they were forgotten.
