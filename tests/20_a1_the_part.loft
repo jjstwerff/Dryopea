@@ -360,7 +360,7 @@ fn test_a_part_of_the_wrong_class_is_refused() {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// A part may not contain itself — `cycle_fault`
+// A part may not contain itself — `part_cycle_fault`
 // ─────────────────────────────────────────────────────────────────
 
 // @DRY-025 — a part that contains itself is refused, by the path
@@ -379,7 +379,7 @@ fn test_a_part_that_contains_itself_is_refused() {
     partset_add(ps, b);
     partset_add(ps, c);
 
-    why = cycle_fault(ps, "a");
+    why = part_cycle_fault(ps, "a");
     assert(why == "part 'a' contains itself: a → c → b → a",
            "the refusal is the WHOLE chain, so the author can see where "
            + "the loop was entered as well as where it closed: got '{why}'");
@@ -387,7 +387,7 @@ fn test_a_part_that_contains_itself_is_refused() {
 
 // @DRY-026 — a DIAMOND is not a cycle
 //
-// ⚠⚠ The control that keeps `cycle_fault` honest, and the reason it
+// ⚠⚠ The control that keeps `part_cycle_fault` honest, and the reason it
 // carries a path rather than a visited set (`hex_part::cycle.loft`): a
 // part that uses one part in two sockets visits it twice and is
 // perfectly legal.  A global *seen* set refuses this catalogue, and
@@ -400,8 +400,8 @@ fn test_a_diamond_is_not_a_cycle() {
     b = part_bind(b, "mid", "lamp");
     partset_add(ps, b);
 
-    assert(cycle_fault(ps, "boom") == "",
-           "one lamp in two sockets is not a recursion: '{cycle_fault(ps, \"boom\")}'");
+    assert(part_cycle_fault(ps, "boom") == "",
+           "one lamp in two sockets is not a recursion: '{part_cycle_fault(ps, \"boom\")}'");
     assert(part_fault(ps, "boom") == "",
            "and the whole doorstep agrees: '{part_fault(ps, \"boom\")}'");
 }

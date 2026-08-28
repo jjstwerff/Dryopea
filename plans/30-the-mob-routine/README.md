@@ -9,8 +9,27 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
+**R2 COMPLETE 2026-08-28 — the cycle is closed-form, and it is still
+INERT.**  R3, R4 and R5 are startable.  ⚠ Gates: **1714 green over 134
+files** (+8, all this phase's) and `validate.sh` **50 scripts / 920
+measurements, unchanged** — which is the inertness measured rather than
+asserted.
+
+⚠⚠ **`@M074` — 0 hexes and 0 legs of 8 920 swept moments disagree with a
+stepped body**, over four speeds × three step lengths, on a world whose
+leg BENDS (15 steps against a straight line of 12).  ⚠ And the reading
+that separates the two steerings: a guard's clock is exact at a step that
+divides its period and **8 of 60 adrift at one that does not**, while the
+bag holds at **0 of 60** over the very same step — `@FR-E-Bag-Steers`
+reached from the timestep instead of from the distance.  ⚠⚠ **Eleven
+mutations, eleven caught, and two of them moved the gate** — the leg
+INDEX was invisible in a position, and the plan's own named control was
+being refused by a different check.  ⚠ `@X335`: the period is a count of
+HEXES when the bag steers and a span of TIME when a clock does, and
+**the bank does not restart at a leg boundary**.
+
 **R1 COMPLETE 2026-08-28 — the record, the role table and the derived
-destination are in, and they are INERT.**  R2 and R4 are startable.
+destination are in, and they are INERT.**
 
 ⚠⚠ **`@M073` — the bag closes a round trip at 4, 40 and 400 hexes, and
 one table column away a clock gets 13 hexes out and delivers nothing for
@@ -136,8 +155,8 @@ the twelve sites forgetting turns it red.
 ## ⚠⚠ The safety rule this whole plan is built on
 
 > ⚠⚠ **EVERY PHASE LANDS INERT.**  A default value that means *the game
-> exactly as it is today*, so the 1692 tests and 920 measurements do not
-> move until a scenario asks for the new thing.
+> exactly as it is today*, so the tests and the **920 measurements** do
+> not move until a scenario asks for the new thing.
 
 ⚠ It is not caution for its own sake — it is what three shipped features
 already did and what [`plans/29`](../29-the-crews-own-work/README.md)
@@ -159,7 +178,7 @@ measurements and say so.
 
 | phase | invariant | concrete expected result | negative control |
 |---|---|---|---|
-| **R2** | ⚠⚠ **the closed form EQUALS the stepped one** | `cycle_at(e, t)` for arbitrary `t` is the hex reached by stepping the mover `t` ticks from `t0` — for **every** `t` in a sweep, not a sample | ⚠ a cycle whose legs do not sum to its period must be **refused at construction**, not silently wrapped |
+| **R2** ✅ | ⚠⚠ **the closed form EQUALS the stepped one** | `cycle_at(e, t)` for arbitrary `t` is the hex reached by stepping the mover `t` ticks from `t0` — for **every** `t` in a sweep, not a sample | ⚠ a cycle whose legs do not sum to its period must be **refused at construction**, not silently wrapped |
 | **R5** | ⚠⚠ **the bound is the union over legs of `disc(anchor, leg length)`, and it CONTAINS a deviating body** | every hex `cycle_at` can produce over a whole period, **plus every hex a deviating body can reach**, lies inside it — and R0 probe 3 proves the second half from `@FR-E-Non-Increasing` | ⚠⚠ **a bound that contains everything is vacuous** — the gate must show a hex *outside* it too, or it proves nothing (`CLAUDE.md` § a gate that reads PERFECT is as suspect as one that reads wrong) |
 | **R6** | ⚠⚠ **materialising at `R` and at `2R` is identical WHERE NOTHING CAN DEVIATE A BODY** | in a world with one mob and clear ground, the two runs agree hex for hex | ⚠⚠ **and with a blocker in the band between `R` and `2R` they MUST DIFFER, by exactly `slip`** — a gate that could not see that is measuring an empty claim |
 
@@ -174,10 +193,10 @@ behaviour and clocks, gated by scenarios and counts.
 |---|---|---|---|
 | **R0** — the four probes | XS | `tests/30_r0_probe.loft` (5) + readings below | ✅ **ALL FOUR ANSWERED 2026-08-28** |
 | **R1** — `Errand`: five anchors, and the BAG steers | S | `tests/30_r1_the_errand.loft` (9) | ✅ **COMPLETE 2026-08-28** — `@M073`, `@X333`, `@X334` |
-| **R2** — the cycle is CLOSED-FORM | S | ⚠ the equality gate above | **STARTABLE** |
-| **R3** — deviation, and `slip` | M | `tests/30_r3_the_deviation.loft` | Blocked on R2 — ⚠⚠ **and R0 probe 1 says it needs a FIELD** |
+| **R2** — the cycle is CLOSED-FORM | S | `tests/30_r2_the_cycle.loft` (8) — ⚠ the equality gate above | ✅ **COMPLETE 2026-08-28** — `@M074`, `@X335` |
+| **R3** — deviation, and `slip` | M | `tests/30_r3_the_deviation.loft` | **STARTABLE** — ⚠⚠ **R0 probe 1 says it needs a FIELD**, and `@X335` says it must not lose a hex at an anchor |
 | **R4** — home is a PLACE | S | a scenario: a robot walks home and leaves the roster there | **STARTABLE** |
-| **R5** — the POI, its population, its BOUND | M | ⚠ the containment gate above | Blocked on R2 — ⚠ **R0 probe 3 is ANSWERED and the bound is named** |
+| **R5** — the POI, its population, its BOUND | M | ⚠ the containment gate above | **STARTABLE** — ⚠ **R0 probe 3 is ANSWERED and the bound is named** |
 | **R6** — CULL / EVALUATE / MATERIALISE | M | ⚠ the `R` vs `2R` gate **and its differ-control** | Blocked on R5 |
 | **Rc** — the CONFORMANCE gate | S | ⚠⚠ every mob on a cycle is where its rule says, every tick, over the whole corpus | ⚠ lands **with R3**, and guards every phase after it |
 | **R7** — distraction: the hauler and your heap | M | a scenario pair + the *merely seen* negative control | Blocked on R5 |
@@ -424,8 +443,12 @@ and R2 is what makes the cycle evaluable at an arbitrary `t`.
 
 ## R2 — the cycle is CLOSED-FORM
 
-⚠ `cycle_at(e, t)` — one modulo for the phase, O(legs) to find the leg,
-one interpolation.  ⚠⚠ **The gate is EQUALITY** (§ Invariant gate), and
+✅ **COMPLETE 2026-08-28** — `src/errand.loft` § THE CYCLE,
+`src/flow.loft::flow_route`, `tests/30_r2_the_cycle.loft` (8 tests),
+`@X335`, `@M074`.
+
+⚠ `cycle_at(c, row, rate, t)` — one modulo for the phase, O(legs) to find
+the leg, one index.  ⚠⚠ **The gate is EQUALITY** (§ Invariant gate), and
 it is the strongest gate in the plan because it is what makes `@X299`
 not-LOD.
 
@@ -437,6 +460,75 @@ tick.
 
 ⚠ **Refuse at construction**, never wrap silently: a cycle whose legs do
 not sum to its period is an authoring error and must say so.
+
+### What was built, and the four things the phase decided
+
+⚠⚠ **THE CLOSED FORM SPLITS IN TWO AND ONLY THE SECOND HALF NEEDED A
+PROBE.**  **TIME → STEPS is exact arithmetic** — `fixstep`'s `Bank` keeps
+its remainder, so the hexes released by `t` are
+`floor(rate × t / BANK_WHOLE)` however `t` was spent, and `cycle_walked`
+is that expression.  **STEPS → HEX is a PATH**, which is `@M071` cashed
+in: `flow_route` walks a field down to its core and the round is stored
+as the hexes themselves, one per step offset, so `cycle_at` INDEXES it.
+
+⚠⚠ **`@X335` — THE BANK DOES NOT RESTART AT A LEG BOUNDARY.**  A mob that
+turns at an anchor carries its banked fraction across, so *how far into
+this leg am I* is `walked(t) − walked(t₀)` and **never**
+`walked(t − t₀)`.  ⚠ The two differ by a whole hex whenever the carry is
+non-zero and nothing about the wrong form looks wrong.  ⚠⚠ **It is
+equally an obligation on R3**: a mob that walks past an anchor spends its
+remaining hexes on the NEXT leg, and ***a DWELL at an anchor is a LEG of
+the cycle with a length, not a pause beside it*** — a pause is a second
+time source and a closed form has room for exactly one.
+
+⚠⚠ **`@M074` — 0 hexes and 0 legs of 8 920 swept moments disagree**, over
+four speeds × three step lengths, on a fixture whose leg BENDS: **15
+steps against a straight line of 12**, and a round of **30 against a
+there-and-back of 24**.  ⚠ A cycle over straight lines could not have
+been green, which is R0 probe 1 turned from a finding into a gate.
+
+⚠⚠ **AND THE READING THAT SEPARATES THE TWO STEERINGS.**  A guard's
+ten-second period is exact at a whole tick (0 of 120) and at half of one
+(0 of 240) and **8 of 60 adrift at a TWO-tick step** — fifteen ticks is
+7.5 of them, so the flip lands in the middle of one — while **the BAG
+over the very same step holds at 0 of 60**.  ⚠ Same world, same walker,
+one column apart: `@FR-E-Bag-Steers` reached from the TIMESTEP instead of
+from the distance, and it is why `cycle_fault` refuses a clock period
+that is not a whole number of ticks.
+
+⚠⚠ **ELEVEN MUTATIONS, ELEVEN CAUGHT — AND TWO OF THEM MOVED THE GATE**,
+which is `CLAUDE.md` § a gate that reads PERFECT is as suspect as one
+that reads wrong, run rather than quoted:
+
+- ⚠⚠ **The leg INDEX was invisible.**  Two legs of one round share every
+  hex at their join, so `<` → `<=` at the boundary put the body on
+  exactly the right hex and the sweep stayed green.  ⚠ It is caught only
+  once the rule's leg is cross-checked against `errand_leg` — R1's own
+  answer to *where am I going* — and then it is **314 legs of 8 920**.
+- ⚠⚠ **The plan's own named control was being refused by a different
+  check.**  `lengths [3, 3]` against `period: 9` fails the PATH-length
+  test first, so deleting the sum check left the suite green: isolating
+  *legs that do not sum to the period* needs a round whose path still
+  agrees.
+
+⚠⚠ **AND THE SHIPPED GUARD PERIOD CANNOT SEE ITS OWN ROUNDING** —
+`@M014`'s class, one system over.  Ten seconds at 1.0, 1.5 and 2.5 hex/s
+is 10, 15 and 25 WHOLE hexes, so the bank's carry is exactly zero at
+every flip and the two forms above agree **for any implementation**.
+⚠ The gate sweeps a **16-tick neighbour** (26.67 hexes at a scout's
+pace), which is `@M013`'s *sweep the NEIGHBOURS of the shipped value*
+and the only reason the branch is tested at all.
+
+⚠ **And it cost one RENAME, which the flat namespace found rather than a
+reviewer**: `part.loft::cycle_fault` — *does this part contain itself?* —
+is now `part_cycle_fault`, because a part that contains itself and a
+routine that comes back to where it started are both *a cycle* and only
+one of them can have the bare name.  ⚠ It took the file's own prefix,
+which is what the rest of `part.loft` already uses.
+
+⚠ **Still inert**: nothing in `wave_tick` calls any of it, and no
+scenario builds a cycle.  R3 is the mover, and § Rc is the conformance
+gate that lands with it.
 
 ## R3 — deviation, and `slip`
 
@@ -588,6 +680,14 @@ exercised.
 EXCLUDED and must fail the assertion if it is not — otherwise the gate
 would be green over a corpus in which nothing is on a cycle at all
 (`CLAUDE.md` § A gate whose reading is already saturated).
+
+⚠⚠ **AND R2 SHIPPED THE TRAP THAT MAKES THAT EASY TO GET WRONG.**
+`cycle_where` answers a robot's OWN hex when it has no cycle, so
+`cycle_where(e, c, now) == (e.q, e.r)` is **trivially true** for every
+cut-off robot and for every robot in every scenario today.  ⚠ So the gate
+must FILTER on `errand_role` and **count what it looked at** — the
+assertion carries the count or it is measuring nothing.  The obligation
+is written at the function as well.
 
 ## R8 — what a routine is WORTH
 

@@ -196,9 +196,24 @@ name.
 `src/errand.loft` § THE ROUTINE, which enforces **(E-Bag-Steers)** in
 `errand_leg`, **(E-Place-State)** in the `Errand` record's six fields,
 and **(E-Rule-Not-State)**'s *derived, never stored* half in
-`errand_destination`.  ⚠ The rest still await their phase: `slip` is
-declared and only the clock steering reads it (R3), and there is no
-`cycle_at` yet (R2).
+`errand_destination`; **R2 shipped § THE CYCLE**, which enforces
+**(E-Closed-Form)** in `cycle_phase` — one modulo, O(legs), and a round
+that is refused at construction rather than wrapped — and
+**(E-Rule-Not-State)**'s other half in `cycle_where`, where `slip` is
+subtracted and the position falls out of the anchors.
+
+⚠⚠ **AND (E-Bag-Steers) GAINED A SECOND, INDEPENDENT ARGUMENT** it did
+not have when it was written (`@M074`): **a leg boundary in TIME lands
+wherever the timestep puts it and one in DISTANCE cannot**.  Measured on
+one world with one walker, a clock-steered guard is **8 of 60 moments
+adrift** at a step its period does not divide while the bag holds at
+**0 of 60** over the same step — so the rule is not only about a route
+being longer than any period, it is about the boundary being a thing a
+timestep can land inside.
+
+⚠ **What still awaits its phase**: `slip` is honoured by both readers and
+nothing yet WRITES it (R3), no POI owns a population (R5), and nothing in
+the tick calls any of it.
 
 ## ⚠⚠ The model in ten lines
 

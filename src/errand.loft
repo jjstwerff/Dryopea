@@ -64,6 +64,7 @@ use spawn;
 use markers;
 use lattice;
 use passable;
+use flow;
 use painted;
 use palette;
 use height;
@@ -253,6 +254,20 @@ pub const ERRAND_BAG_LOAD:  u8 = 1;
 // ⚠ It is the only period in the file and it belongs to the one role
 // `docs/ERRANDS.md` lets a clock steer.  A number here for a role that
 // CARRIES would be the crawler defect with dryopea's name on it.
+//
+// ⚠⚠ **IT IS A WHOLE NUMBER OF TICKS AND THAT IS A CONSTRAINT, NOT A
+// COINCIDENCE** — `cycle_fault` refuses one that is not (`@M074`): a leg
+// boundary in TIME lands wherever the timestep puts it, so a period the
+// step does not divide leaves the body a hex ahead of its own rule for
+// as long as the leg lasts.
+//
+// ⚠⚠ **AND IT CANNOT SEE ITS OWN ROUNDING** (`@M014`'s class): ten
+// seconds at 1.0, 1.5 and 2.5 hex/s is 10, 15 and 25 WHOLE hexes, so the
+// bank's carry is exactly zero at every flip and `cycle_phase`'s
+// difference-of-two-walks agrees with the naive form **for any
+// implementation**.  ⚠ `tests/30_r2_the_cycle.loft` sweeps a 16-tick
+// NEIGHBOUR for that reason, and a change to this number must keep the
+// sweep — never rely on the shipped value to exercise the branch.
 pub const GUARD_LEG_UNITS: integer = 30000000;
 
 // One role, as a row: where it goes empty, where it goes loaded, and
@@ -471,6 +486,382 @@ pub fn errand_arrive(er: Errand, row: const Role, at: const Hex,
     if er.carry == ERRAND_BAG_EMPTY { er.carry = ERRAND_BAG_LOAD; }
     else                            { er.carry = ERRAND_BAG_EMPTY; }
     true
+}
+
+// ─── ⚠⚠ THE CYCLE — evaluable at any `t`, in O(legs) ────────────
+//
+// Plan 30 R2, and `@FR-E-Closed-Form` is the whole of it: *a cycle is
+// evaluable at an arbitrary `t` in O(legs) and never by stepping forward
+// from its start.*  ⚠ That is what makes `@X299`'s un-tracked mob
+// **computed** rather than approximated, which is why materialising one
+// later must not change where it is — and it is why `plans/22`'s LOD
+// refusal needs no exception here.
+//
+// ── ⚠ Two halves, and only the second needed a probe ────────────
+//
+// ⚠⚠ **TIME → STEPS is exact arithmetic.**  `fixstep`'s `Bank` keeps its
+// remainder, so however `t` was spent, the whole hexes a mover has
+// released by then are `floor(rate × t / BANK_WHOLE)` — nothing
+// accumulates and there is nothing to step through.  `cycle_walked` is
+// that expression and it is the closed form's entire time half.
+//
+// ⚠⚠ **STEPS → HEX is a PATH, and R0 probe 1 is why** (`@M071`): only
+// **10 of 90** straight crossings of the authored maps arrive and 44 of
+// the 80 failures are painted terrain, so a leg is a **descent of a flow
+// field toward its anchor**.  ⚠ The round is therefore stored as the
+// hexes themselves — one per step offset — and `cycle_at` INDEXES it.
+// ⚠ `@X331`'s bound survives that unchanged, because a field distance is
+// a distance.
+//
+// ── ⚠⚠ THE BANK DOES NOT RESTART AT A LEG BOUNDARY ─────────────
+//
+// ⚠⚠ **The one thing here a plausible implementation gets wrong, and the
+// sweep is what finds it.**  A mob that turns at an anchor carries its
+// banked fraction across, so *how far into this leg am I* is
+// `walked(t) − walked(t₀)` and **never** `walked(t − t₀)`.  The two
+// differ by a whole hex whenever the carry is non-zero — which is most
+// of the time — and nothing about the wrong form looks wrong.
+//
+// ⚠ **It is equally an obligation on R3's mover**, written here because
+// that is where it would be forgotten: **a mob that walks past an anchor
+// spends its remaining hexes on the NEXT leg** and never loses them at
+// the turn.  ⚠⚠ And a DWELL at an anchor is a **leg of the cycle with a
+// length**, not a pause beside it: a pause is a second time source, and
+// a closed form has room for exactly one.
+//
+// ── ⚠ The period is in STEPS, and the clock is a COLUMN ─────────
+//
+// A bag-steered cycle's phase advances only when the mob MOVES, so its
+// period is a count of hexes and the round closes itself at any distance
+// (`@FR-E-Bag-Steers`, `@M073`).  A clock-steered one advances whether
+// the mob moves or not, so `row.period` picks the leg and the walk only
+// says how far into it the mob got.
+//
+// ⚠⚠ **That is the same difference `errand_leg` reads, out of the same
+// COLUMN** — `@X329`'s *a healthy merge replaces a difference in CODE
+// with a difference in DATA* — which is why the two agree by
+// construction rather than by being kept in step.
+
+// A whole round, as the hexes it passes through.
+//
+// ⚠ `path` holds ONE hex per step offset and the round WRAPS: offset
+// `period` is `path[0]` again, so a leg's last hex is the next leg's
+// first and is stored once.  ⚠ `anchors` and `lengths` are per leg and
+// the same length as each other; `period` is the sum of `lengths`, and
+// `cycle_fault` is what holds it to that rather than letting it wrap
+// silently.
+//
+// ⚠⚠ **It is a vector of hexes and not a nested leg struct on purpose**
+// ([loft#974]): a record fetched through an accessor reads its vector
+// field as EMPTY once an unrelated struct has been allocated, and a
+// `vector<CycleLeg>` whose every element carries a `vector<Hex>` is that
+// shape exactly.  Flat, there is no accessor to read through.
+pub struct Cycle {
+    anchors: vector<integer>,   // the anchor each leg ENDS at
+    lengths: vector<integer>,   // steps in each leg
+    path:    vector<Hex>,       // `period` hexes, one per step offset
+    period:  integer,           // steps in a whole round
+}
+
+// A mob with no cycle at all — which is every robot in the game today.
+pub fn cycle_new() -> Cycle {
+    Cycle { anchors: [], lengths: [], path: [], period: 0 }
+}
+
+// Is there a round to be on?
+pub fn cycle_running(c: const Cycle) -> boolean {
+    c.period > 0
+}
+
+// The greatest common divisor — the only arithmetic helper in this file,
+// and it is here to keep `cycle_walked` EXACT rather than merely close.
+fn cycle_gcd(a: integer, b: integer) -> integer {
+    cg_x = a;
+    cg_y = b;
+    while cg_y != 0 {
+        cg_t = (cg_x % cg_y) ?? 0;
+        cg_x = cg_y;
+        cg_y = cg_t;
+    }
+    cg_x
+}
+
+// How many whole hexes a mover banking at `rate` has released by `t`.
+//
+// ⚠⚠ **`bank_gain`'s cumulative answer in CLOSED FORM, and it is exact**
+// — the bank keeps its remainder, so whatever chunks `t` was spent in
+// the total released is `floor(rate × t / BANK_WHOLE)`.  That exactness
+// is the whole of `@FR-E-Closed-Form`: there is nothing to step through
+// because there is nothing to accumulate.
+//
+// ⚠⚠ **The gcd is not tidiness.**  `rate × t` overflows an i64 a few
+// game-hours in at a scout's pace and **an overflow is silent**.
+// Reducing by the gcd first makes every shipped speed divide
+// `BANK_WHOLE` exactly — 1.0, 1.5 and 2.5 hex/s all reduce to `t / k` —
+// so the multiply that could overflow is never performed.
+//
+// Example: @DRY-158
+pub fn cycle_walked(rate: integer, t: integer) -> integer {
+    if rate <= 0 || t <= 0 { return 0; }
+    cw_g = cycle_gcd(rate, BANK_WHOLE);
+    cw_r = (rate / cw_g) ?? 1;
+    cw_w = (BANK_WHOLE / cw_g) ?? 1;
+    ((cw_r * t) / cw_w) ?? 0
+}
+
+// Where on its round this cycle is at `t` — the leg, and the offset into
+// the whole round.
+//
+// ⚠⚠ **One modulo, O(legs) to find the leg, one index — and never a step
+// forward from `t = 0`.**  That is `@FR-E-Closed-Form` in one function,
+// and *elaborate* therefore costs LEGS.
+//
+// ⚠ `t` is already `now − slip`; this function does not know about slip
+// and must not (`cycle_where` is the door that subtracts it, exactly as
+// `errand_leg` does).
+//
+// Example: @DRY-154, @DRY-155
+pub fn cycle_phase(c: const Cycle, row: const Role, rate: integer,
+                   t: integer) -> (integer, integer) {
+    if !cycle_running(c) { return (0, 0); }
+    cp_legs = len(c.lengths);
+    if cp_legs <= 0 { return (0, 0); }
+    cp_t = t;
+    if cp_t < 0 { cp_t = 0; }
+    if row.period > 0 {
+        // ⚠ THE CLOCK picks the leg — the one role `docs/ERRANDS.md`
+        // lets it steer, and only because it has no bag — while the walk
+        // says how far into that leg the mob got before it turned round.
+        cp_i  = (((cp_t / row.period) ?? 0) % cp_legs) ?? 0;
+        cp_t0 = ((cp_t / row.period) ?? 0) * row.period;
+        cp_at = 0;
+        cp_j  = 0;
+        for cp_n in c.lengths {
+            if cp_j >= cp_i { break; }
+            cp_at += cp_n;
+            cp_j  += 1;
+        }
+        cp_len = c.lengths[cp_i] ?? 0;
+        // ⚠⚠ The DIFFERENCE of two cumulative walks, never a walk over
+        // the difference — § THE BANK DOES NOT RESTART is the argument,
+        // and the two forms differ by a hex most of the time.
+        cp_into = cycle_walked(rate, cp_t) - cycle_walked(rate, cp_t0);
+        if cp_into > cp_len { cp_into = cp_len; }
+        if cp_into < 0      { cp_into = 0; }
+        return (cp_i, cp_at + cp_into);
+    }
+    // ⚠ THE BAG steers, so the phase is a count of HEXES and the round
+    // closes itself at 4 hexes and at 400 alike (`@M073`).
+    cp_off  = (cycle_walked(rate, cp_t) % c.period) ?? 0;
+    cp_seen = 0;
+    cp_k    = 0;
+    for cp_m in c.lengths {
+        if cp_off < cp_seen + cp_m { return (cp_k, cp_off); }
+        cp_seen += cp_m;
+        cp_k    += 1;
+    }
+    // ⚠ Unreachable while the legs sum to the period — which is exactly
+    // what `cycle_fault` refuses a cycle for not doing.  An offset with
+    // no leg to own it is the SILENT form of that authoring error, so it
+    // answers the round's start rather than guessing at one.
+    (0, cp_off)
+}
+
+// The hex this routine is standing on at `t`.
+//
+// Example: @DRY-154
+pub fn cycle_at(c: const Cycle, row: const Role, rate: integer,
+                t: integer) -> Hex {
+    if !cycle_running(c) { return Hex { q: 0, r: 0 }; }
+    ca_ph = cycle_phase(c, row, rate, t);
+    // ⚠ The round WRAPS: a clock-steered mob standing at the end of the
+    // last leg reads offset `period`, which is `path[0]` — the same hex,
+    // named from the other side.
+    ca_h = c.path[(ca_ph.1 % c.period) ?? 0];
+    if ca_h == null { return Hex { q: 0, r: 0 }; }
+    Hex { q: ca_h.q, r: ca_h.r }
+}
+
+// Where the rule says this robot is, now.
+//
+// ⚠⚠ **THE DOOR THE CONFORMANCE GATE ASKS** (`plans/30` § Rc): at the
+// end of every tick, every mob still on a cycle must be exactly here.
+//
+// ⚠ It reads the role through `errand_role`, so a robot the bubble has
+// taken answers its own hex and stops being on a cycle it has lost —
+// site 5 of § Count the RE-ASSERTION SITES needs no second write to
+// remember, for the same reason `errand_destination` does not.
+//
+// ⚠⚠ **`slip` is subtracted HERE and in `errand_leg`, and nowhere else**
+// (`@FR-E-Slip`): a mob held up is genuinely later, so its clock reads
+// earlier and its DESTINATION never changes.
+//
+// ⚠⚠ **AND THE FALLBACK IS A TRAP FOR § Rc, SO IT IS NAMED HERE.**  A
+// robot with no cycle answers its OWN hex, which makes
+// `cycle_where(e, c, now) == (e.q, e.r)` **trivially true** for it — so
+// the conformance gate must FILTER on `errand_role` and count what it
+// looked at, never lean on this answer.  ⚠ A corpus in which nothing is
+// on a cycle would otherwise read green
+// (`CLAUDE.md` § A gate whose reading is already saturated).
+//
+// Example: @DRY-156, @DRY-160
+pub fn cycle_where(e: const Enemy, c: const Cycle, now: integer) -> Hex {
+    cwh_row = errand_role_of(errand_role(e));
+    // ⚠ The ROW is asked and never the role id — the table is indexed
+    // and never compared (`@X333`), and *this role has no cycle* is
+    // exactly *its legs go nowhere*.
+    if cwh_row.empty == ANCHOR_NONE { return Hex { q: e.q, r: e.r }; }
+    if !cycle_running(c)            { return Hex { q: e.q, r: e.r }; }
+    cycle_at(c, cwh_row, bank_rate(enemy_speed(e.kind)),
+             now - e.route.slip)
+}
+
+// Build the round this routine walks: one leg per anchor, each a descent
+// of a flow field toward it.
+//
+// ⚠⚠ **The legs come from the ROW and not from a waypoint list** — a
+// round starts where the mob last dropped (`row.laden`), walks to
+// `row.empty`, and comes back.  That is `errand_leg`'s two answers made
+// into two legs, so the cycle and the steering cannot disagree about
+// which anchor is which.
+//
+// ⚠ **A leg that does not connect refuses the whole cycle**, answering
+// `cycle_new()` — a mob with no cycle, which is today's game — rather
+// than a short round that would put a body somewhere the rule never
+// said.  ⚠ `cycle_fault` is what NAMES the refusal.
+//
+// ⚠ Two sweeps, and `@M072` is what makes that affordable: a field over
+// an authored map is ~500 cells, and a mob asks for at most three
+// anchors.  It is built ONCE per routine and never in the tick.
+//
+// Example: @DRY-154, @DRY-157
+pub fn cycle_build(er: const Errand, row: const Role,
+                   pal: vector<GroundType>, pw: PaintedWorld,
+                   hl: const HeightLayer, kind: u8) -> Cycle {
+    if row.empty == ANCHOR_NONE || row.laden == ANCHOR_NONE {
+        return cycle_new();
+    }
+    cb_from = errand_anchor(er, row.laden);
+    cb_to   = errand_anchor(er, row.empty);
+    cb_out  = cycle_two_legs(pal, pw, hl, kind, cb_from, cb_to,
+                             row.empty, row.laden);
+    cb_out
+}
+
+// The two legs of a round, as one flat path.  ⚠ Split out so the struct
+// is built by a single literal at the end and nothing writes through a
+// returned copy ([loft#894]).
+fn cycle_two_legs(pal: vector<GroundType>, pw: PaintedWorld,
+                  hl: const HeightLayer, kind: u8,
+                  from: const Hex, to: const Hex,
+                  out_anchor: integer, back_anchor: integer) -> Cycle {
+    ctl_out    = flow_route(flow_build(pal, pw, hl, kind, to), from);
+    ctl_back   = flow_route(flow_build(pal, pw, hl, kind, from), to);
+    ctl_n_out  = len(ctl_out) - 1;
+    ctl_n_back = len(ctl_back) - 1;
+    // ⚠ A leg with no length is a round with no length, and a leg that
+    // never arrived is a leg that does not connect — both are the same
+    // refusal from the caller's side: no cycle at all.
+    if ctl_n_out <= 0 || ctl_n_back <= 0 { return cycle_new(); }
+    if !cycle_ends_at(ctl_out, to) || !cycle_ends_at(ctl_back, from) {
+        return cycle_new();
+    }
+    ctl_path: vector<Hex> = [];
+    ctl_i = 0;
+    for ctl_h in ctl_out {
+        // ⚠ The join is stored ONCE: this leg's last hex is the next
+        // leg's first, so the outward path contributes its first
+        // `n` entries and the return path its first `m`.
+        if ctl_i < ctl_n_out { ctl_path += [Hex { q: ctl_h.q, r: ctl_h.r }]; }
+        ctl_i += 1;
+    }
+    ctl_j = 0;
+    for ctl_b in ctl_back {
+        if ctl_j < ctl_n_back { ctl_path += [Hex { q: ctl_b.q, r: ctl_b.r }]; }
+        ctl_j += 1;
+    }
+    Cycle { anchors: [out_anchor, back_anchor],
+            lengths: [ctl_n_out, ctl_n_back],
+            path:    ctl_path,
+            period:  ctl_n_out + ctl_n_back }
+}
+
+// Does this route actually reach `at`?
+fn cycle_ends_at(path: vector<Hex>, at: const Hex) -> boolean {
+    cea_last = path[len(path) - 1];
+    if cea_last == null { return false; }
+    cea_last.q == at.q && cea_last.r == at.r
+}
+
+// Why this cycle is not a cycle, or "".
+//
+// ⚠⚠ **A cycle whose legs do not sum to its period is an authoring error
+// and is REFUSED here rather than wrapped silently** (`@FR-E-Closed-Form`).
+// A wrapped one is not a crash: it is a mob standing on the wrong hex for
+// ever, with every count in the suite green.
+//
+// ⚠⚠ **And the last check is `crawler`'s defect refused at
+// construction**: a clock-steered role whose period is too short to walk
+// its own leg *"oscillated between home and 13 hexes out, forever"*
+// (`@M073`).  Here the leg's length is known before the mob moves, so
+// the authoring error can be NAMED instead of measured.
+//
+// ⚠ `rate` is the mover's, because whether a clock is long enough to
+// walk a post depends on how fast the walker is — a fact about the
+// domain, not about the code.
+//
+// Example: @DRY-155, @DRY-157, @DRY-159
+pub fn cycle_fault(c: const Cycle, row: const Role, rate: integer) -> text {
+    if !cycle_running(c) {
+        return "this routine has no cycle: a leg is empty, or an anchor "
+               + "cannot be reached from the one before it";
+    }
+    if len(c.anchors) != len(c.lengths) {
+        return "the cycle has {len(c.anchors)} anchors and "
+               + "{len(c.lengths)} legs";
+    }
+    cf_sum = 0;
+    for cf_n in c.lengths {
+        if cf_n <= 0 { return "a leg of {cf_n} steps has no length"; }
+        cf_sum += cf_n;
+    }
+    if cf_sum != c.period {
+        return "the legs sum to {cf_sum} steps and the period says "
+               + "{c.period}";
+    }
+    if len(c.path) != c.period {
+        return "the round is {len(c.path)} hexes long and its period says "
+               + "{c.period}";
+    }
+    if row.period > 0 {
+        // ⚠⚠ **A CLOCK PERIOD MUST BE A WHOLE NUMBER OF TICKS**, and
+        // `@M074` is what it costs when it is not: a leg boundary in
+        // TIME lands wherever the timestep happens to put it, so a
+        // period the step does not divide leaves the body a hex ahead of
+        // its own rule for as long as the leg lasts.  ⚠ A boundary in
+        // DISTANCE cannot do that at any timestep, which is the second
+        // and INDEPENDENT reason for `@FR-E-Bag-Steers`.
+        //
+        // ⚠ Measured over the whole cross-product rather than at the
+        // shipped step alone (`CLAUDE.md` § THE INSTRUMENT IS A
+        // CROSS-PRODUCT), which is why the check is against the tick and
+        // not against a promise that nobody will change it.
+        if ((row.period % TICK_STEP_UNITS) ?? 1) != 0 {
+            return "role '{row.name}': a clock period of {row.period} "
+                   + "units is not a whole number of ticks";
+        }
+        // ⚠ The MINIMUM a period buys, because the bank's carry can only
+        // ever add one — a leg this walk cannot finish is one no carry
+        // will rescue.
+        cf_reach = cycle_walked(rate, row.period);
+        for cf_m in c.lengths {
+            if cf_m > cf_reach {
+                return "a clock-steered leg of {cf_m} steps cannot be "
+                       + "walked in a period worth {cf_reach}";
+            }
+        }
+    }
+    ""
 }
 
 // ─── What a row may not be ──────────────────────────────────────

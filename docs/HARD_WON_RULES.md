@@ -582,6 +582,32 @@ and still owes 6.  ⚠ **The control has to be the plausible WRONG
 version reproduced beside the shipped one**, not the null version — the
 null version is the one nobody would have written.
 
+⚠⚠ **A NEGATIVE CONTROL CAN BE GREEN BECAUSE A DIFFERENT CHECK REFUSED
+IT** (`plans/30` R2, `@M074`).  R2's plan named one control by hand —
+*a cycle whose legs do not sum to its period must be refused at
+construction* — and the fixture that spelled it, `lengths [3, 3]` against
+`period: 9`, was refused by the PATH-length check instead: **deleting the
+sum check left the whole suite green**.  ⚠ The case that isolates it is
+`lengths [2, 3]` with a path that still agrees, and nothing in the
+reading distinguishes the two — both go red, and only a mutation says
+which assertion did it.
+⚠ **So the test is which check FIRES, not whether the case is refused.**
+A refusal that names what is wrong (`crop_fault`, `map_fault`,
+`errand_row_fault`, `cycle_fault`) makes the difference readable; a
+boolean would have hidden it for ever.
+
+⚠⚠ **AN OUTPUT NOTHING READS IS UNTESTED INSIDE A GREEN SWEEP**
+(`plans/30` R2, `@M074`).  `cycle_phase` answers a leg AND an offset, and
+8 920 swept moments agreed on the hex — but **two legs of one round share
+every hex at their join**, so flipping `<` to `<=` at the boundary put
+the body on exactly the right hex and the sweep never moved.  ⚠ It is
+visible only once the leg is cross-checked against the OTHER function
+that answers the same question (`errand_leg`), and then it is **314 legs
+of 8 920**.
+⚠ **The generic form is `@X112` from the test's side**: a value the gate
+does not read is a value the gate does not have, however many moments it
+looked at.
+
 ⚠⚠ **SEVERAL COUNTS IN ONE TEST FUNCTION ARE RANKED, NOT INDEPENDENT**
 (plan 25 M1).  loft abandons a test function at its FIRST failed
 assertion, so a function asserting four counts can only ever report the
@@ -811,6 +837,20 @@ a tick late* rather than as rounding.  ⚠ That is also why `enemy_bank`
 takes its speed as an ARGUMENT where `helper_bank` reads a constant
 (`@X060`) — a bank that read the constant could only ever be tested at
 the value that hides its own guard.
+
+⚠⚠ **AND THE SAME TRAP CAUGHT A PERIOD, NOT A SPEED — three years of
+system away and identical in shape** (`plans/30` R2, `@M074`).  A
+clock-steered cycle asks *how far into this leg am I*, and the right
+answer is `walked(t) − walked(t₀)` where the wrong one is
+`walked(t − t₀)` — they differ by a whole hex whenever the mover's bank
+carries a fraction across the turn.  ⚠ `GUARD_LEG_UNITS` is **ten
+seconds**, and at 1.0, 1.5 and 2.5 hex/s that is 10, 15 and 25 **whole**
+hexes: the carry is exactly zero at every flip, so the two forms agree
+**for any implementation** and the mutation could not be caught.
+⚠ A **16-tick** neighbour buys 26.67 hexes at a scout's pace and catches
+it at once.  ⚠⚠ **So the sweep is over the CONSTANT as well as the
+speed** — the cross-product has grown a third axis, and a period is as
+capable of hiding a rounding rule as a speed is.
 
 ⚠⚠ **And then SHIP a value that can see it, if the design leaves you a
 choice** (plan 23 K2b, `@X063`).  The scout had to be *"quite a bit

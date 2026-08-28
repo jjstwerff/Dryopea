@@ -192,6 +192,22 @@ one-way door is enforced in the READER**: `errand_role` answers
 hauler cannot go on running a cycle it has lost and there is no second
 write to forget.
 
+⚠⚠ **AND THE CYCLE IS EVALUABLE AT ANY MOMENT WITHOUT STEPPING TO IT**
+([`plans/30`](../plans/30-the-mob-routine/README.md) R2, `@M074`,
+`@X335`).  `cycle_at` is one modulo, O(legs) to find the leg and one
+index — so an un-tracked mob is **computed** rather than approximated,
+and `plans/22`'s LOD refusal needs no exception.  ⚠ **0 hexes and 0 legs
+of 8 920 swept moments disagree with a stepped body**, over four speeds ×
+three step lengths, on a world whose leg bends: **15 steps against a
+straight line of 12**.
+
+⚠⚠ **A leg boundary in TIME lands inside a step and one in DISTANCE
+cannot** — a guard's clock reads **8 of 60 moments adrift** at a step its
+period does not divide while the bag holds at **0 of 60** over the same
+step, which is a second and independent reason for *the bag steers*, and
+why a clock period that is not a whole number of ticks is **refused at
+construction**.
+
 ⚠ **It is INERT and that is the phase**: nothing in the tick reads any of
 it, `ROLE_NONE` is 0, and every `Enemy { … }` literal in the suite goes
 on meaning a robot with no cycle at all.  The mover is R3.

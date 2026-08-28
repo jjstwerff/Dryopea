@@ -483,7 +483,7 @@ pub fn socket_fault(p: Part) -> text {
 //   - a part whose class is not the socket's.
 //
 // ⚠ *Not defined* is deliberately NOT spelled like a cycle
-// (`cycle_fault`): a mistyped name and a part that contains itself want
+// (`part_cycle_fault`): a mistyped name and a part that contains itself want
 // completely different fixes, and one wording for both makes a typo
 // read as a recursion the author cannot find.
 //
@@ -512,7 +512,7 @@ pub fn bind_fault(ps: PartSet, p: Part) -> text {
   ""
 }
 
-// The walk `cycle_fault` runs — the chain CURRENTLY being followed.
+// The walk `part_cycle_fault` runs — the chain CURRENTLY being followed.
 //
 // ⚠⚠ **A PATH, NOT A VISITED SET, and a diamond is what tells them
 // apart** (`hex_part::cycle.loft`, and its reason is kept whole): a
@@ -551,8 +551,15 @@ fn part_walk(ps: PartSet, name: text, path: vector<text>) -> text {
 
 // Does `name` contain itself, transitively?  The path it does it by, or `""`.
 //
+// ⚠ **It carries the file's prefix and did not always** — loft's
+// namespace is FLAT, and `plans/30` R2 gave `errand.loft` a whole
+// `cycle_*` family for a mob's ROUND, which is a different thing
+// entirely.  A part that contains itself and a routine that comes back
+// to where it started are both *a cycle*, and only one of them can have
+// the bare name.
+//
 // Example: @DRY-025, @DRY-026
-pub fn cycle_fault(ps: PartSet, name: text) -> text {
+pub fn part_cycle_fault(ps: PartSet, name: text) -> text {
   seed: vector<text> = [];
   part_walk(ps, name, seed)
 }
@@ -575,5 +582,5 @@ pub fn part_fault(ps: PartSet, name: text) -> text {
   if why != "" { return why; }
   why = bind_fault(ps, p);
   if why != "" { return why; }
-  cycle_fault(ps, name)
+  part_cycle_fault(ps, name)
 }

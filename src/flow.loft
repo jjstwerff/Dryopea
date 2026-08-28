@@ -434,6 +434,46 @@ pub fn flow_step(f: const FlowField, q: integer, r: integer) -> Hex {
     fs_all[0] ?? Hex { q: q, r: r }
 }
 
+// Every hex from `from` down to the core, in order — the whole route
+// `flow_step` answers one step of.
+//
+// ⚠⚠ **A LEG IS A PATH AND NEVER A LINE** (`plans/30` R0 probe 1,
+// `@M071`): only **10 of 90** straight crossings of the three authored
+// maps arrive, and **44 of the 80 failures are painted terrain** rather
+// than the map's edge.  A mob's cycle computed over straight lines while
+// its body walks over terrain would deviate where its own rule does not,
+// which is why `plans/30` R2 stores a leg as the hexes this function
+// answers.
+//
+// ⚠ `path[0]` is `from` and the last entry is the core, so the number of
+// STEPS is `len(path) - 1` and equals `flow_distance(from)`.  ⚠⚠ **A
+// route that ends anywhere else is a route that does not CONNECT**, and
+// the caller is left to see that rather than handed a short answer that
+// looks whole — the same reason `flow_step` answers the hex itself.
+//
+// ⚠ Empty when `from` has no route at all.  ⚠ The walk is bounded by the
+// distance rather than by *until we arrive*, because every entry
+// `flow_steps` offers is at `d - 1` — so `d` steps IS the route, and a
+// stall is a field disagreeing with itself rather than a long walk.
+//
+// Example: @DRY-153
+pub fn flow_route(f: const FlowField, from: const Hex) -> vector<Hex> {
+    fr_out: vector<Hex> = [];
+    fr_d = flow_distance(f, from.q, from.r);
+    if fr_d >= FLOW_UNREACHABLE { return fr_out; }
+    fr_at = Hex { q: from.q, r: from.r };
+    fr_out += [Hex { q: fr_at.q, r: fr_at.r }];
+    fr_n = 0;
+    while fr_n < fr_d {
+        fr_next = flow_step(f, fr_at.q, fr_at.r);
+        if fr_next.q == fr_at.q && fr_next.r == fr_at.r { return fr_out; }
+        fr_at = Hex { q: fr_next.q, r: fr_next.r };
+        fr_out += [Hex { q: fr_at.q, r: fr_at.r }];
+        fr_n += 1;
+    }
+    fr_out
+}
+
 // Every neighbour of (q, r) that is closer to the core, BEST FIRST —
 // the whole preference ordering `flow_step` returns the head of.
 //

@@ -1178,7 +1178,7 @@ src/
                    part_new / part_socket / part_bind / partset_new /
                    partset_add / partset_get / socket_index /
                    socket_world / socket_fault / bind_fault /
-                   cycle_fault / part_fault.
+                   part_cycle_fault / part_fault.
                    ⚠⚠ **It contains no rig, no joint, no limit, no pose
                    and no hitbox** — every one of those is `hex_body`,
                    published, and `PARTS.md` § D1 is the decision to
@@ -1378,6 +1378,16 @@ src/
                    ⚠ ROUTING passes `false` and is unchanged: a routing
                    field that crossed trenches would walk robots INTO
                    the water, because a metre is inside `climb_ok`
+                   ⚠⚠ `flow_route` (plans/30 R2) is the whole descent as
+                   a LIST — every hex from a start down to the core, in
+                   order — and it exists because A LEG IS A PATH AND
+                   NEVER A LINE (@M071): only 10 of 90 straight
+                   crossings of the authored maps arrive.  ⚠ path[0] is
+                   the start and the last entry is the core, so the
+                   STEPS are len − 1 and equal `flow_distance`; a route
+                   ending anywhere else is one that does not CONNECT,
+                   and the caller is left to see that rather than handed
+                   a short answer that looks whole
   height.loft      the RUBBLE layer — what runtime has piled on the map
                    (plan 11 F6, named by plan 12 B1).  HeightLayer +
                    height_raise (metres AND a source) / height_clear /
@@ -1639,8 +1649,42 @@ src/
                    ⚠ errand_destination answers a task.loft `Job`
                    (@X332) — the RECORD is shared, the SELECTION is not,
                    and `kind` stays TASK_ANY until R7 reads one.
+                   ⚠⚠ AND SINCE plans/30 R2 IT OWNS THE CYCLE —
+                   Cycle { anchors, lengths, path, period }, cycle_new /
+                   cycle_running / cycle_walked / cycle_phase /
+                   cycle_at / cycle_where / cycle_build / cycle_fault.
+                   ⚠⚠ THE CLOSED FORM SPLITS IN TWO (@FR-E-Closed-Form,
+                   @X335): TIME → STEPS is exact arithmetic, because a
+                   Bank keeps its remainder — the hexes released by t
+                   are floor(rate × t / BANK_WHOLE) however t was spent
+                   — while STEPS → HEX is a PATH (@M071), so the round
+                   is stored as the hexes themselves, one per step
+                   offset, and cycle_at INDEXES it.
+                   ⚠⚠ THE BANK DOES NOT RESTART AT A LEG BOUNDARY: how
+                   far into this leg am I is walked(t) − walked(t₀) and
+                   NEVER walked(t − t₀) — the two differ by a whole hex
+                   whenever the carry is non-zero.  ⚠ And it is an
+                   obligation on the MOVER too: a mob that walks past an
+                   anchor spends its remaining hexes on the next leg,
+                   and a DWELL is a LEG with a length, never a pause.
+                   ⚠ The period is a count of HEXES when the bag steers
+                   and a span of TIME when a clock does — one function
+                   reading the same column errand_leg reads (@X329).
+                   ⚠⚠ A CLOCK PERIOD MUST BE A WHOLE NUMBER OF TICKS and
+                   cycle_fault refuses one that is not (@M074): a leg
+                   boundary in TIME lands wherever the timestep puts it
+                   and one in DISTANCE cannot — a second, independent
+                   argument for @FR-E-Bag-Steers.
+                   ⚠ GUARD_LEG_UNITS CANNOT SEE ITS OWN ROUNDING at any
+                   shipped speed (10 s is 10, 15 and 25 whole hexes), so
+                   the gate sweeps a 16-tick NEIGHBOUR — @M013, and a
+                   change to that constant must keep the sweep.
+                   ⚠ The round is a FLAT vector of hexes rather than a
+                   vector<CycleLeg> holding a vector<Hex> each, because
+                   [loft#974] reads a record's vector field as EMPTY
+                   through an accessor.
                    ⚠ INERT: nothing in the tick calls any of it; R3 is
-                   the mover and R2 the closed form
+                   the mover and § Rc the conformance gate
   skill.loft       CREW SKILLS — build, repair, scout (BACKLOG C1) —
                    SKILL_EFFECT_SPAN / _HALF, Skills { build, repair,
                    scout } on Helper, skill_factor, skill_work_units,

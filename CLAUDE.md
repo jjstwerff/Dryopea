@@ -95,11 +95,11 @@ critical path is **4, the SCRAMBLE**.
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1706 green**, ~320 s on a busy box, 133 files |
+| tests | `scripts/test.sh` | **1714 green**, ~320 s on a busy box (518 s beside another suite), 134 files |
 | scenarios | `scripts/validate.sh` | **50 scripts, 920 measurements**, ~20 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
-| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **407 defined, 403 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
-| ⚠⚠ formal rules | `scripts/rules.sh` — inside `test.sh` | **44 defined, 12 ENFORCED in 16 code sites** (`@X327`).  ⚠ Resolution GATES; coverage only REPORTS.  ⚠⚠ A doc reference is **not** an enforcing site (`@X330`) |
+| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **409 defined, 405 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
+| ⚠⚠ formal rules | `scripts/rules.sh` — inside `test.sh` | **44 defined, 14 ENFORCED in 23 code sites** (`@X327`).  ⚠ Resolution GATES; coverage only REPORTS.  ⚠⚠ A doc reference is **not** an enforcing site (`@X330`) |
 
 ⚠ `scripts/test.sh` is the canonical runner — **never `loft test` directly**
 (§ Key commands says what it does that you would otherwise skip).
@@ -548,7 +548,7 @@ source of truth and the listing is a navigational summary of it.
 | `render.loft` | the software rasteriser over `graphics::Canvas` |
 | `build.loft` | **THE BUILD ORDER** — the only way a structure comes into existence during a run.  ⚠ Work is stored as SPENT, in INTEGER units |
 | `persist.loft` | **A PLANET — a place that REMEMBERS**.  `dryopea_planets/<planet>/<player>/world.json`; the GROUND and the MARKERS, not a run |
-| `errand.loft` | **A ROBOT GOING ABOUT ITS BUSINESS** — `Traffic`, `errand_done` / `errand_depart`, and since `plans/30` R1 **the ROUTINE**: `Errand`'s five anchors, the role TABLE, and `errand_destination`.  ⚠ The bubble takes the errand, ONE WAY.  ⚠⚠ **The BAG steers and never a clock**, and the table is INDEXED — never a `role ==` |
+| `errand.loft` | **A ROBOT GOING ABOUT ITS BUSINESS** — `Traffic`, `errand_done` / `errand_depart`, `plans/30` R1's **ROUTINE** (`Errand`'s five anchors, the role TABLE, `errand_destination`) and R2's **CYCLE** (`cycle_at` / `cycle_build` / `cycle_fault`).  ⚠ The bubble takes the errand, ONE WAY.  ⚠⚠ **The BAG steers and never a clock**, and the table is INDEXED — never a `role ==`.  ⚠⚠ **The bank does not RESTART at a leg boundary** (`@X335`) |
 | `skill.loft` | **CREW SKILLS — build, repair, scout**.  `Skills` on `Helper`, `skill_factor`, and the DETECTION rule |
 | `endure.loft` | **ENDURANCE — work spends it, rest restores it**.  ⚠ A tired person works LESS and never stops |
 | `jammer.loft` | **THE JAMMER SWITCH — turning your own core off**.  ⚠ It stops the SUPPLY and never the SIEGE |
@@ -559,7 +559,7 @@ source of truth and the listing is a navigational summary of it.
 | `picker.loft` / `hud.loft` / `editor_mode.loft` / `chunks.loft` / `history.loft` | palette UI, HUD (⚠ and **the ONE number the game shows** — the wallet), the mode flag, the dirty-chunk set, undo/redo |
 | `spawn.loft` | **the tick** — `WaveState`, `wave_tick`, enemy movement, targeting, deaths, the schedule, `TICK_SECONDS` |
 | `waves.loft` | the authored wave list, its lull, and what a wave is MADE OF.  ⚠ A wave's size is SUMMED from its parts |
-| `flow.loft` | the distance field — `flow_build` / `flow_step` / `flow_steps` / `flow_desire` |
+| `flow.loft` | the distance field — `flow_build` / `flow_step` / `flow_steps` / `flow_desire`, and `flow_route`: ⚠⚠ **a leg is a PATH and never a line** (`@M071`) |
 | `passable.loft` | may a class MOVE here? — `can_stand` / `can_step` / `can_occupy`, `hex_height`, and the SIGHT line |
 | `occupancy.loft` | who is standing where this tick — enemy counts, and the separate `BlockerMap` |
 | `height.loft` | the RUBBLE layer — metres piled at runtime, and what they are made of |
@@ -1115,6 +1115,7 @@ names; most of them exist because somebody did it without reading.
 | Judge what a wave's COMPOSITION is worth | [`plans/24`](plans/24-the-siege-front/README.md) § W2 — ⚠⚠ **the siege front is the wall's WIDTH** |
 | Add ambient life, or ask why a robot walks past instead of at you | `src/errand.loft` — ⚠⚠ **the bubble takes the errand, ONE WAY** |
 | Add a mob ROLE, or ask where a robot on a routine is going | `src/errand.loft` § THE ROUTINE + `@X333` — ⚠⚠ **a role is a ROW and the table is INDEXED, never a `role ==`**, and a test sweeps `src/` to say so.  ⚠ **The BAG steers and never a clock** (`@M073`): 4, 40 and 400 hexes all close; a period one column away gets 13 hexes out for ever |
+| Ask where a mob is at an arbitrary MOMENT, or add a leg to a cycle | `src/errand.loft` § THE CYCLE + `@X335` — ⚠⚠ **one modulo, O(legs), one index, and never a step forward** (`@FR-E-Closed-Form`), so an un-tracked mob is COMPUTED and `plans/22`'s LOD refusal needs no exception.  ⚠⚠ **The bank does NOT restart at a leg boundary**: `walked(t) − walked(t₀)`, never `walked(t − t₀)`, and a **DWELL is a LEG with a length, not a pause**.  ⚠ A clock period must be a whole number of ticks and is refused otherwise (`@M074`) |
 | Give a mob a JOB, a route, a home or a reason to leave one | [`docs/ERRANDS.md`](docs/ERRANDS.md) — ⚠⚠ **the bag steers, not the calendar**, and a distraction must be caused by something the player BUILT, never by being seen |
 | Simplify, drop or defer a piece of the worldgen / errand design | ⚠⚠ **READ `@X324` FIRST** ([`docs/WORLDGEN.md`](docs/WORLDGEN.md) § WHY IT IS AN OLD DESIGN) — it is aimed at a GAP, so **a piece dropped for convenience is a regression even when everything still works**: `@X320`'s edge restriction buys nothing visible alone and its absence makes the dither impossible; `@X321`'s residual looks like a detail and its absence takes the variant budget from a handful to thousands.  ⚠ **The design is not finished when it RUNS** — `@X303` and `@X323` are tests, not features |
 | Judge ANY worldgen or terrain-derivation idea | ⚠⚠ **THE TEST** ([`docs/WORLDGEN.md`](docs/WORLDGEN.md) § THE THESIS, `@X323`): *express detail from a very compact BASE SET* — so **does this add data in proportion to the detail it produces?**  If it does, it is the wrong mechanism.  ⚠ Every rule is a COMPRESSION plus a decompression that is **local, deterministic and commutative**; take one away and it stops being usable.  ⚠⚠ dryopea has done this since plan 01 — `painted.loft`'s sea-default absence, `height.loft`'s layer, `entity_view.loft`'s *nothing is STATE* |
