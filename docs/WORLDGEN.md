@@ -403,6 +403,107 @@ if fq >= 8 && fq < w - 8 && fr >= 7 && fr < h - 7 { …stamp… }
 a margin** — which is the bound, the cull and the materialisation in one
 line, and it is per-feature exactly as `@X301` makes it per-POI.
 
+## ⚠⚠ THE INHERITED SHAPE: THE BLOCK HOLDS THE DETAIL, THE BIG MAP SAYS WHETHER IT APPLIES  `@X316`
+
+Owner, 2026-08-28:
+
+> *"crawler inherits the biomes code from ZAngband, where **details are
+> stored inside smaller-scale blocks** where **the bigger map gives the
+> input if they apply locally**."*
+
+⚠⚠ **This corrects the direction the rest of this document was reading
+in.**  § The derivation is a sampler cascade describes `ov_sample`
+pushing coarse values DOWN through interpolation, noise and a branch
+cascade — and that is real, and `@X309` measured its ceiling: **62 %
+agreement, *"the ceiling for elevation-only at 1.5 km"***.  ⚠ The
+inherited model is the other half, and it is the half that does not
+degrade with the scale ratio.
+
+`crawler/OVERLAND.md:418` § The ZAngband graft, verbatim:
+
+> *"ZAngband's wilderness gen already has this shape: **per-block seeded
+> plasma fractal anchored at SHARED CORNER values** + **per-terrain
+> LOOKUP TABLES** (fractal band → grass/tree/bush/rock/water) +
+> **overlays**.  We adopt it as the micro layer, upgraded: **the anchors
+> sample OUR field stack (the rough structure is followed by
+> construction)**, the plasma residual is the per-type micro-roughness
+> number, the tables are the inclusion tables … and our features
+> rasterize over the result in **authority order**."*
+
+### ⚠⚠ Three layers, and each answers a different question
+
+| layer | question it answers | where it lives |
+|---|---|---|
+| **the coarse map** | ⚠⚠ **WHICH TABLE** — what kind of country is this? | 1.5 km cells |
+| **the block's own fractal** | ⚠⚠ **WHICH CELL** — where within this block does each thing land? | the block, at its own resolution |
+| **features / overlays** | ⚠ **WHAT OVERRIDES** — a river, a road, a site | world coordinates, in **authority order** |
+
+> ⚠⚠ **THE COARSE MAP CHOOSES THE TABLE.  THE BLOCK CHOOSES THE CELL.
+> FEATURES OVERWRITE, IN ORDER.**
+
+⚠ So a mountain is not interpolated into existence.  **The coarse map
+says *this is mountain country*, and the block then places
+mountain-country detail at its own scale** — which is why the model does
+not care that one cell is a million fine ones.  ⚠⚠ **The ratio never has
+to be crossed by interpolation at all.**
+
+### ⚠⚠ And the anchors are `@X313`, which is what makes it CORRECT
+
+*"per-block seeded plasma fractal **anchored at SHARED CORNER values**"*
+and *"**the rough structure is followed by construction**"* are the two
+halves of one property:
+
+- ⚠ a block's fractal is pinned at the values its neighbours also see, so
+  **adjacent blocks cannot disagree** — the commutativity of `@X313`
+  and `@X314`, one layer down;
+- ⚠⚠ and because the anchors come from the coarse field stack, **the
+  block physically cannot contradict the big map**.  Not *checked* —
+  **constructed**.
+
+⚠ That is the same reason `@X299`'s rule-not-state works for mobs and
+`@X311`'s talus is gated on conservation rather than accuracy: **the
+property is built in, so there is nothing to verify at runtime.**
+
+### ⚠⚠ THE LAW: a feature is owned by the lattice element all its observers share
+
+`crawler/OVERLAND.md:452` § THE OWNERSHIP CONTRACTS, and it is stated as
+a law rather than a technique:
+
+> *"**No feature ever sits ON exact lattice geometry, and every feature
+> is owned by the lattice element all its observers share** — maps
+> CONSUME contracts, never regenerate them."*
+
+⚠⚠ **This is the generalisation of `@X314`'s corner rule**, and it says
+why that rule takes the form it does: a corner is shared by three hexes,
+so *the corner* owns its height and all three consume it.  ⚠ An edge is
+shared by two, so the edge owns the river crossing.  A hex centre is
+shared by nobody, so it owns the valley floor.
+
+⚠ **And *maps CONSUME contracts, never regenerate them* is the operative
+half**: two observers must never each compute the same shared thing —
+one owner, everybody else reads.  ⚠⚠ dryopea has been bitten by exactly
+this class already: `@X285` made `VIEW_PPM` **private** because *a test
+cannot stop the next caller reaching for a base scale that looks like the
+answer*, and `compare.loft`'s hand-maintained field list is the same
+hazard unfixed.
+
+### ⚠ What it changes about § WHERE SCENARIO-SCALE DETAIL COMES FROM
+
+⚠ The three sources below stand, and this sharpens the first one:
+
+| | as written below | as `@X316` corrects it |
+|---|---|---|
+| **FIELDS** | *"continuous, sampled per fine hex from the coarse neighbourhood"* | ⚠⚠ **a PREDICATE that selects a table**, not a value drawn down to a hex |
+| **FEATURES** | world-coordinate records | unchanged — and *"rasterize in **authority order**"* is the missing detail |
+| **PROCESSES** | run at fine scale over the shape | unchanged, and `@X311` is one |
+
+⚠⚠ **And it adds a fourth thing this document did not have: the BLOCK
+itself** — a unit of authored-or-parametric content, at its own scale,
+that the coarse map merely *admits*.  ⚠ `crawler` sizes it at the dual
+lattice's triangle (three mutually adjacent hex centres, *"at 1.5 km /
+C=4 ≈ 27k walked cells ≈ two Angband levels"*), and dryopea's equivalent
+is the scenario itself.
+
 ## ⚠⚠ WHERE SCENARIO-SCALE DETAIL COMES FROM — trees, mines, roads, rivers, coast, cliffs  `@X315`
 
 Owner, 2026-08-28:
@@ -491,6 +592,91 @@ of the palette's kinds each hex is.
   already a runtime layer of metres over an authored ground, and
   `@X311`'s talus is that layer with an angle of repose and a
   conservation gate.
+
+## ⚠⚠ LAND IN THE OVERLAP — the placement rule, and it is where the choice comes from  `@X317`
+
+Owner, 2026-08-28:
+
+> *"so we can work with a limited set of interesting areas that get used
+> in the scenario, **preferably with putting the player in the overlap
+> region of several of them to give them a choice**."*
+
+⚠⚠ **This is the rule the whole design was missing, and it closes
+`@X305` from the other end.**  `@X305` says *two to four POIs, each one
+load-bearing, and the count should exceed what one sortie can act on*.
+This says **where the base goes relative to them**:
+
+> ⚠⚠ **A base lands where several areas' influence OVERLAPS — because
+> the overlap is what makes a choice exist.**
+
+⚠ One area in reach is not a decision, it is a task list.  Several in
+reach, with time for fewer than all of them, is `@X197`'s assignment
+pillar **at the sortie scale** — *always more tasks than there are
+helpers* read one level up.
+
+### ⚠ Each area has an INFLUENCE, and the influence is `@X300`'s bound
+
+⚠⚠ **No new geometry is needed**, which is the sign it is the right
+rule.  `@X300` already gives every POI a **static bound** — the region
+its cycles can reach — indexed once for the sortie.  ⚠ Landing in the
+overlap is exactly:
+
+> **the base's window intersects the bounds of several POIs at once.**
+
+⚠ So the same number that culls a population also decides whether a
+landing site is any good, and *"which edges the base happens to sit
+on"* (`ROBOT_ECONOMY.md` § The graph) becomes *how many bounds contain
+me*.
+
+⚠⚠ **And the unit of influence is a TRIP, not a radius.**  The scrambler
+bubble is 25 hexes — **32.5 m** — and a sortie drives much further than
+that, so *in play* means *the player can get there and back inside the
+sortie*, which is the same currency `@X305` prices a POI in and
+[`plans/17`](../plans/17-tower-hot-swap/README.md) § T3 measured the crew
+in.
+
+### ⚠⚠ It gives `DESIGN.md` § 15's landing pick a MEANING it does not have
+
+⚠ § 15 step 2 already lets the player *"click ANY hex on the selected
+map"*, and today that decides only what ground they get.  ⚠⚠ Under this
+rule **the pick is choosing which overlap to sit in** — and that is the
+sortie-scale version of `@X019`'s *the base layout is the exam*, one
+level up: **the layout exam starts before you land.**
+
+⚠ It also gives `@X312`'s earned view something to be FOR: a horizon
+from a height is how a player reads the overlap structure of a
+neighbourhood they have not landed in yet.  ⚠⚠ **Scouting, a view, and
+the landing pick are one loop**, and none of them needed inventing.
+
+### ⚠⚠ The anti-pattern is MEASURED, which is what makes this a rule
+
+⚠ A base that overlaps **nothing** is not merely quiet — dryopea has
+already measured what it is worth.  `@M058`: a trench that sealed a base
+so completely that it *"still stands at 378"* with **thirteen robots
+alive and zero targets**, on exactly the opening 200 points:
+
+> *"A wave that cannot reach you cannot die, and salvage is the only
+> income."*
+
+⚠⚠ **A landing site with no overlap is that outcome by geography instead
+of by masonry** — nothing arrives, nothing is worth doing, and the run
+is a stalemate the player cannot even lose.  ⚠ So the overlap
+requirement is not a nicety; **it is what stops a legal landing site
+from being an unplayable one.**
+
+### ⚠ The gate, in dryopea's own currency
+
+⚠⚠ `@X305` gates a POI by *removing it moves the clock*.  The placement
+version is a scenario pair one token apart, and the token is the landing
+hex:
+
+> ⚠⚠ **A landing site earns its place if MOVING THE BASE OUT OF THE
+> OVERLAP changes which POI the player deals with.**
+
+⚠ If the same thing happens wherever you land, the overlap was
+decoration.  ⚠ And the reading is the one this repo already knows how to
+take — `@M050`'s 130 / 174, `@M070`'s 140 / 174 — a pair of scenarios
+differing in one authored value.
 
 ## ⚠⚠ WHEN A CLASSIFIER CANNOT BE MADE ACCURATE, REPLACE IT WITH A PROCESS  `@X311`
 
@@ -624,6 +810,13 @@ and the step is small.
    one that needs no camera rule and is already what scouting is.*
 3. **How much of a cell does a sortie see?**  Follows from 2, and it is
    what `ERRANDS.md` § The two scales priced at ~1 %.
+5. ⚠⚠ **Is the landing pick the PLAYER's or the game's?** (`@X317`).
+   `DESIGN.md` § 15 has the player clicking any hex, and this rule gives
+   that click a meaning — but a player cannot see the overlap structure
+   before they land unless something shows it.  ⚠ *Recommendation: the
+   player picks, and `@X312`'s earned view plus `EXPLORATION.md`'s
+   scouting are how they learn what they are picking between* — which
+   makes the FIRST sortie into a neighbourhood a blind one, deliberately.
 
 ## See also
 
