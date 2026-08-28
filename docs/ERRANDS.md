@@ -97,6 +97,91 @@ runtime rule that varied with what the player can see is the thing
 >
 > — project owner, 2026-08-28
 
+## ⚠⚠ Formal rules  `@X327`
+
+⚠ The citable form of what this document argues.  ⚠⚠ **Spec-first, and
+that opens NO deviation** — there is no implementation yet, so there is
+nothing breaking a rule; the build obligation is
+[`plans/30`](../plans/30-the-mob-routine/README.md), which cites these by
+name.
+
+```
+  (E-Rule-Not-State)
+                     a mob's position is a FUNCTION, not a memory:
+                     `position(t) = cycle(poi.state, anchors, t − slip)`.
+                     An un-tracked mob is therefore COMPUTED and not
+                     simulated coarsely, which is why materialising it
+                     later must not change where it is.
+
+  (E-One-Door)       exactly one function moves a mob on a cycle, and it
+                     owns `slip`.  Twelve sites could otherwise write a
+                     position, every omission is silent, and a forgotten
+                     `slip` shows up only as a mob arriving early.
+
+  (E-Slip)           a deviation costs TIME and never DESTINATION.  A
+                     body pushed off its cycle re-converges on the same
+                     hex and the delay is in `slip` and nowhere else —
+                     which is what keeps (E-Rule-Not-State) true while a
+                     body steps aside.
+
+  (E-Closed-Form)    a cycle is evaluable at an arbitrary `t` in O(legs)
+                     and never by stepping forward from its start.  So
+                     *elaborate* costs LEGS, and a cycle whose legs do
+                     not sum to its period is refused at construction
+                     rather than wrapped silently.
+
+  (E-Bag-Steers)     what a carrier does next is decided by its BAG and
+                     never by a clock: `carry > 0 ? alt : work`.  A route
+                     crossing a 1.5 km cell is longer than any period a
+                     clock could use, so a calendar-steered cycle
+                     oscillates for ever and delivers nothing.
+
+  (E-Boundable)      every mob's reach is a STATIC region known before it
+                     takes a step, so *could this ever be in this window?*
+                     is a query rather than a scan.  A role whose route
+                     cannot be bounded cheaply has broken this rule.
+
+  (E-Poi-Owns)       a mob belongs to a POI and its anchors derive from
+                     one, so the POI is the bound and culling one skips
+                     its whole population.
+
+  (E-Poi-Persists)   a POI is never removed from a scenario.  A broken
+                     one is a STATE, its workers still walk to it and
+                     find out, and *not materialised* is a different word
+                     from *culled*.
+
+  (E-Place-State)    state belongs to the PLACE and not to the traveller.
+                     A POI may hold as much as it likes — there are few
+                     and they do not move — and a mob may hold none
+                     beyond `carry` and `slip`, because there are many
+                     and they are everywhere.
+
+  (E-Order-Wins)     an explicit destination is an ORDER and the
+                     automatic search never overrules one.  A verb that
+                     says GO HERE is honoured or the vocabulary that
+                     spells it is lying.
+
+  (E-Remit-Trades)   a remit narrows the KIND and widens the REACH, both
+                     halves.  Narrowing alone is a pure loss nobody would
+                     ever choose; widening alone is free, and a decision
+                     that costs nothing is not one.
+
+  (E-Built-Not-Seen) a mob leaves its route for something the player DID
+                     or BUILT, never for the player being SEEN.  A
+                     distraction on sight collapses the whole routine
+                     into *monsters walk at you*, which the game already
+                     has.
+
+  (E-Home-Is-A-Place)
+                     a mob that finishes its round leaves the roster at a
+                     PLACE — a maintenance point, a nest — and never by
+                     being deleted where it happened to stop.  The
+                     conservation is the same; what it gains is somewhere
+                     the player can watch.
+```
+
+⚠ **Deviations: none, and none possible yet** — nothing implements these.
+
 ## ⚠⚠ The model in ten lines
 
 Read these first; everything below is the argument for one of them, and

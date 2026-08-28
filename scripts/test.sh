@@ -70,4 +70,14 @@ if ! bash "$ROOT"/scripts/tags.sh; then
     exit 1
 fi
 
+# The FORMAL-RULE gate — every `@FR-<Name>` citation resolves to a rule
+# DEFINED in a fenced block, and no rule is defined twice.
+#
+# ⚠⚠ **Resolution gates; coverage is only reported** (`docs/FORMAL.md`).
+# A tree whose citation count rose while the duplication underneath
+# stayed would read as progress and be none.
+if ! bash "$ROOT"/scripts/rules.sh; then
+    exit 1
+fi
+
 exec "$LOFT" test "$@"

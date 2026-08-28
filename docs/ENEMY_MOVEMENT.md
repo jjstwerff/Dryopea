@@ -19,6 +19,101 @@ document is about getting there.
 [`NUMBERS.md`](NUMBERS.md); what they cost to build is
 [`plans/11-flow-field`](../plans/11-flow-field/README.md).
 
+## ⚠⚠ Formal rules  `@X327`
+
+⚠ **The RULES this document's prose argues for**, in the citable form
+[`FORMAL.md`](FORMAL.md) defines: a fenced block, one rule per line,
+cited from the code that enforces it as `// Enforces @FR-<Name>`.
+
+⚠⚠ **Only a fenced line DEFINES a rule.**  Everything below this block
+is the argument, the measurement and the history — a rule mentioned in
+prose is a citation, not a definition.
+
+```
+  (M-Two-Questions)  passability is TWO questions and they are asked of
+                     different things: the field filters NODES with
+                     `can_stand` and EDGES with `can_step`.  Filtering
+                     nodes by `can_occupy` compiles, reads well, deletes
+                     the height rule, and moves no test.
+
+  (M-One-Rule)       there is ONE passability rule and it takes a CLIMB,
+                     not a kind.  A second traversal is a second rule
+                     however it is spelled; a second DOOR onto the same
+                     rule is not — `can_hover` and `can_climb` are two
+                     doors, and `walk_ground` alone decides a cliff.
+
+  (M-Sweep-Inward)   a drop is free and a climb is not, so the sweep and
+                     the mover disagree about direction on purpose:
+                     `flow_build` asks `can_step(n, a)` because the sweep
+                     runs OUTWARD from the core and the enemy walks
+                     INWARD to it.
+
+  (M-Neighbour)      a hex coordinate is stepped by `lat_neighbour` and
+                     by nothing else.  Odd rows sit half a hex east, so a
+                     `+ 1` on a `q` is wrong on half the lattice — and
+                     there is deliberately no `(dq, dr)` table to reach
+                     for.
+
+  (M-Rubble-Layer)   what the runtime piles is a LAYER over the authored
+                     ground, never a repaint of it: `hex_height` is the
+                     painted height PLUS the rise.  Clearing therefore
+                     restores exactly what was authored, and a hex whose
+                     kind was erased would be more passable than the wall
+                     it replaced.
+
+  (M-Surface)        the SURFACE of a hex is not the kind painted on it.
+                     `painted_ground` answers the HEIGHT and `hex_ground`
+                     the SURFACE; swapping them makes piling debris onto
+                     a wall LOWER it.
+
+  (M-Waterline)      a pile is a surface only once it clears the water,
+                     so the threshold is the hex's own DEPTH and never
+                     zero.  On land and on the sea the depth is 0.0, so
+                     the rule is the old `rise > 0` everywhere anybody
+                     has painted.
+
+  (M-Besiege)        an enemy attacks what it could STAND on and cannot
+                     CLIMB.  So the water's edge is besieged by nobody,
+                     and a hex that fails `can_stand` is never a target
+                     however solid it looks.
+
+  (M-Sidestep)       blocked by a COMPANION an enemy steps BESIDE it;
+                     blocked by the GROUND it stands and attacks.  The
+                     condition is the whole rule — an unconditional
+                     sidestep is a jitter along a wall face, attacking a
+                     different hex every tick and finishing none.
+
+  (M-Arrive-Beats-Queue)
+                     arriving beats queueing: an enemy that has REACHED
+                     what it came to break attacks it, and is not walked
+                     sideways to join a queue.  Asked BEFORE the walk,
+                     never after — asked after, only the desire ring's
+                     minimum ever attacks and the front is three hexes
+                     wide for any wall length.
+
+  (M-Desire-Removable)
+                     an obstacle the wave can REMOVE is a node in the
+                     DESIRE field and never in the routing one.  That is
+                     what lets a besieger be given a target it cannot
+                     walk onto — a wall by lifting the climb, a trench by
+                     widening the node rule — and a routing field that
+                     admitted either would walk robots into it.
+
+  (M-One-AI)         one mover, per-class DATA.  A class differs by the
+                     numbers in its row — how fast, how hard it bites,
+                     how high it climbs — and a class that needs its own
+                     movement code has broken this rule rather than
+                     extended it.
+```
+
+⚠ **Deviations: none open.**  ⚠⚠ A zero here is a CLAIM and not a fact
+(`@X328`): it is only as strong as the corpus underneath, and this
+document's own § Two modes records three axes a corpus can hold fixed
+without noticing — a 1-hex corridor cannot tell a flow field from a fixed
+heading, a world at 0 m cannot tell a rise from a destination height, and
+`tests/11_f6` compares two WALKING kinds so its warning never pointed at
+the hazard it named.
+
 ## Contents
 
 - [Two modes, one passability rule](#two-modes-one-passability-rule)

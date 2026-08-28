@@ -978,6 +978,10 @@ fn enemy_step(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
 //     break.  It must stand still, because `enemy_target` names the
 //     hex in front of it and `wave_damage` spends its second there.
 //
+// Enforces @FR-M-Sidestep — the condition is the whole rule — and
+// @FR-M-Arrive-Beats-Queue, which is why the wall question is asked in
+// the pre-pass below rather than after the walk.
+//
 // ⚠ **Sidestepping a terrain block would be a jitter, not a spread.**
 // An unconditional sidestep would send a besieger shuffling along the
 // face for ever, attacking a different hex every tick and finishing

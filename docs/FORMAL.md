@@ -50,14 +50,23 @@ separate (`doc/claude/formal/README.md:20`):
 saying the same thing is the defect this whole document exists to
 remove.  Clear cases from the recent design work:
 
-| today | as a rule |
+⚠ **Done for the first six** — the rules exist and the decisions keep
+their history half:
+
+| today | promoted to |
 |---|---|
-| `@X296` an order is an order | `@FR-Order-Wins` — *the search never overrules an explicit destination* |
-| `@X313` a hex's content is a function of its six neighbours | `@FR-Neighbourhood` |
-| `@X316` the coarse map chooses the table, the block the cell | `@FR-Table-Cell` |
-| `@X320` a variant may differ only in its interior | `@FR-Edge-Owned` |
-| `@X321` a block contributes a residual, never an absolute | `@FR-Residual` |
-| `@X302` `position(t) = cycle(state, anchors, t − slip)` | `@FR-Closed-Form` |
+| `@X296` an order is an order | `@FR-E-Order-Wins` |
+| `@X313` a hex's content is a function of its six neighbours | `@FR-W-Neighbourhood` |
+| `@X316` the coarse map chooses the table, the block the cell | `@FR-W-Table-Cell` |
+| `@X320` a variant may differ only in its interior | `@FR-W-Edge-Owned` |
+| `@X321` a block contributes a residual, never an absolute | `@FR-W-Residual` |
+| `@X302` `position(t) = cycle(state, anchors, t − slip)` | `@FR-E-Rule-Not-State` + `@FR-E-Closed-Form` |
+
+⚠⚠ **The last row is the one worth noticing**: one decision became TWO
+rules, because *the position is a function* and *the function is
+evaluable in O(legs)* are separate claims that a site can obey
+separately.  ⚠ A decision may promote to several rules; a rule is never
+several decisions.
 
 ⚠ The `@X` row stays as the **decision record** — *who decided, when,
 and against what alternative* — and the `@FR-` rule carries the
@@ -119,9 +128,9 @@ thing to remember for no gain.
 ### ⚠⚠ BOUNDARY-EXACT, and loft learned this the expensive way
 
 ⚠ `doc/claude/formal/README.md:201`: **21 of loft's rules are a PREFIX of
-another** (`@FR-B-View` ⊂ `@FR-B-View-Base`).  ⚠⚠ **`\b` cannot help,
-because `-` is already a word boundary** — so a citation matches only
-when the next character cannot continue a tag:
+another** (`@FR-B-View` ⊂ `@FR-B-View-Base`). <!--norule--> ⚠⚠ **`\b`
+cannot help, because `-` is already a word boundary** — so a citation
+matches only when the next character cannot continue a tag:
 
 ```
 @FR-([A-Z][A-Za-z0-9-]{1,40})(?![-A-Za-z0-9])
@@ -190,6 +199,111 @@ single most important warning in loft's whole system
 > fix what the disagreement was already causing → then cite.  The
 > citation is the RECEIPT, not the task.**"*
 
+## ⚠⚠ Reading a citation COUNT — the rules the system applies to ITSELF  `@X329`
+
+Owner, 2026-08-28:
+
+> *"so if there are multiple implementations of the same rule they should
+> be **different in a way**; if they are **completely different** the
+> rule is probably **too broad**, but if they are **too similar** you
+> probably want a **single implementation** (possibly with a flag to
+> indicate differences)."*
+
+⚠⚠ **That is what `rules.sh sites @FR-X` returning N > 1 is FOR.**  The
+count alone says nothing; what it opens is a three-way reading, and the
+middle band is the healthy one:
+
+| the sites differ … | diagnosis | cure |
+|---|---|---|
+| ⚠ **completely** | **the RULE is too broad** — it is naming two rules that happen to share a sentence | **SPLIT the rule** |
+| ⚠⚠ **in a NAMEABLE way** | ✅ healthy — the difference is the domain speaking | keep both, and **write the difference down** |
+| ⚠ **not at all, or trivially** | one implementation, duplicated | **MERGE — with a FLAG if there is a real difference** |
+
+> ⚠⚠ **THE TEST IS WHETHER THE DIFFERENCE CAN BE NAMED, AND WHETHER THE
+> NAME IS A FACT ABOUT THE DOMAIN RATHER THAN ABOUT THE CODE.**  If it
+> cannot be named, one of the two cures applies; which one depends on
+> whether the sites are far apart or close together.
+
+⚠ It is the design protocol's two failure modes read off a number
+instead of off a feeling: *under-unify* is N mechanisms for one family,
+*over-unify* is one mechanism forced over N families, and this is the
+instrument that tells them apart.
+
+### ⚠⚠ *With a flag* is dryopea's own established pattern, five times over
+
+⚠ The merge is never *delete one and hope*.  It is **one implementation
+that takes the difference as data** — and this repo already does it
+everywhere, naming the flag each time:
+
+| one implementation | the flag that carries the difference |
+|---|---|
+| `can_climb` | ⚠ takes a **CLIMB**, not a kind (`@FR-M-One-Rule`) |
+| one mover for four robot roles | ⚠ the **class row** — speed, bite, climb (`@FR-M-One-AI`) |
+| `salvage_at` | the **owner** — *"the shared chassis"* for player and crew alike |
+| `crew_work_units` | the **level** — *"the ONE door for build and repair alike"* |
+| `place_marker` | the **kind** — *"the ONE dispatch"* |
+
+⚠⚠ **So a healthy merge REPLACES a difference in code with a difference
+in DATA**, and the flag is the name the middle band asked for.
+
+### ⚠ And the counter-force: similar CODE is not the same RULE
+
+⚠⚠ loft measured this and it is the reason *too similar → merge* needs a
+guard (`IMPLEMENTATIONS.md:20`):
+
+> *"**A shared list is not automatically one rule.**  Before merging, ask
+> what each site is asking.  Two sites that agree today because the
+> language is small will silently constrain each other later."*
+
+⚠ **Four of eight candidate families SPLIT rather than merged**, and
+*"each split is a merge that would have coupled two rules that must stay
+free to differ."*  ⚠⚠ Which is why the test above is about **naming the
+question**, not about comparing the text: two sites with byte-identical
+bodies asking different questions have a nameable difference — *the
+question* — and stay apart.
+
+> ⚠⚠ **Equality is EVIDENCE; sameness-of-rule is the CLAIM.**  Only the
+> second licenses a merge, and a `@FR-` citation is that claim written
+> down and reviewable.
+
+### The rules, formally
+
+```
+  (F-Rule-Not-History)
+                     a RULE claims something about every case including
+                     the ones nobody has run, and is timeless.  A
+                     decision, a measurement and a defect are all PAST
+                     and belong to their own families; a rule that
+                     records what happened is not a rule.
+
+  (F-Fenced-Defines) a rule is DEFINED only by a fenced line whose name
+                     sits at exactly two spaces of indent.  Naming one in
+                     prose is a CITATION — otherwise a document defines
+                     rules by discussing them.
+
+  (F-Resolution-Gates)
+                     every citation must RESOLVE and no rule may be
+                     defined twice; coverage is only reported.  A tree
+                     whose citation count rose while the duplication
+                     underneath stayed would read as progress and be
+                     none.
+
+  (F-Nameable-Difference)
+                     two sites may enforce one rule only if the
+                     difference between them can be NAMED, and the name
+                     must be a fact about the domain.  Un-nameable and
+                     far apart means the rule is too broad and splits;
+                     un-nameable and close together means one
+                     implementation, with a FLAG carrying the difference
+                     as data.
+
+  (F-Index-Generated)
+                     any rule-to-site index is DERIVED from the
+                     citations and never kept beside them, because a
+                     second copy of where the rules live is the defect
+                     the convention exists to remove.
+```
+
 ## Deviations — where the code does not obey
 
 ⚠ A rule is a target, so a doc may record where the code falls short.
@@ -206,9 +320,9 @@ loft's row shape (`README.md:241`), adopted:
 
 ⚠⚠ **Citing an OPEN deviation is ALLOWED and citing a CLOSED one is an
 ERROR** (`rule_tags.py:82`, `:191`) — an open deviation is a live fact,
-so *"the heap half is refused under `@FR-D-bind-11`"* is how you find
-every site that has to change when it closes; a closed one *"is history,
-not law.  Cite the rule it was measured against."*
+so *"the heap half is refused under `@FR-D-bind-11`"* <!--norule--> is
+how you find every site that has to change when it closes; a closed one
+*"is history, not law.  Cite the rule it was measured against."*
 
 ⚠ dryopea already has the closed half: [`PROBLEMS.md`](../PROBLEMS.md)
 `@D###`, and *nothing is open*.
@@ -305,14 +419,48 @@ this convention exists to remove."*
 | # | piece | tier | gate |
 |---|---|---|---|
 | **1** | ✅ **`scripts/tags.sh`** — `@X`/`@M` citations resolve | 2 | shipped, inside `test.sh` |
-| **2** | `@FR-` definitions: a fenced block per area doc, starting with the rules the recent design work already states | 1 | — |
-| **3** | `scripts/rules.sh` — every `@FR-` citation resolves; **no rule defined twice**; report coverage | 2 | ⚠ blocking on resolution, reporting on coverage |
+| **2** | ✅ **43 rules defined** — `ENEMY_MOVEMENT.md` 12, `ERRANDS.md` 13, `WORLDGEN.md` 13, this file 5 | 1 | `scripts/rules.sh` |
+| **3** | ✅ **`scripts/rules.sh`** — every `@FR-` citation resolves, no rule defined twice, coverage reported | 2 | shipped, inside `test.sh` |
 | **4** | ⚠⚠ **the RELATION form for `numbers.json`** — a citation that says *how* a constant derives from a catalogue value | 3 | a drift gate that can finally be written |
 | **5** | the catalogue as the generator's input — palette, blocks, roles | 3 | ⚠ [`plans/30`](../plans/30-the-mob-routine/README.md) and BACKLOG F |
 
 ⚠⚠ **Piece 4 is the one that turns the system from descriptive to
 generative**, and it is small: the four relation shapes measured above
 are `= value`, `= value × K`, `= value ÷ other`, and `family`.
+
+## ⚠⚠ What the first run of `rules.sh` found, in its own definition
+
+⚠ Two problems, both in the checker rather than the tree, and both worth
+keeping because they are `@X328`'s fourth lesson arriving on schedule.
+
+1. ⚠⚠ **A rule read as DEFINED TWICE, and the second was a CONTINUATION
+   LINE.**  `(W-Residual)`'s prose wrapped onto a line beginning
+   `(W-Edge-Owned) by arithmetic…`, and a `^\s*\(Name\)` matcher cannot
+   tell that from a definition.  ⚠ **loft's `DEF_INLINE` is exactly that
+   loose form**, so it carries the same hazard unfound — dryopea's
+   requires the name at **exactly two spaces** of indent, which makes the
+   distinction structural.
+2. ⚠ **A document that DESCRIBES the convention names tags it does not
+   cite** — this file quotes loft's own rules as examples. <!--norule:begin-->
+   `@FR-B-View` and `@FR-D-bind-11` are loft's, not dryopea's.
+   <!--norule:end-->
+   ⚠ A `<!--norule-->` on a line exempts that line, and a
+   `<!--norule:begin-->` / `<!--norule:end-->` pair a block; it is loft's
+   `<!--noindex-->` for the same reason.
+   ⚠⚠ **The marker has to be on the line the tag is on**, which this
+   section got wrong first: the block form exists because a prose
+   paragraph wraps and the tag and the marker land on different lines.
+
+⚠⚠ **Coverage today: 43 defined, 5 ENFORCED in 5 code sites** — and the
+first printing said *13 cited*, because it counted `DECISIONS.md` and
+`CLAUDE.md` cross-references as sites (`@X330`).  ⚠ The five
+were cited because **the code already stated the rule in its own words**
+— `passable.loft` had *"the field filters NODES by the surface and EDGES
+by the step"*, `lattice.loft` had *"nothing may step a coordinate except
+`lat_neighbour`"* — so the citation really is a receipt for an evaluation
+that already happened.  ⚠⚠ **The other 38 are the work, and adding a
+citation to each without reading its sites is exactly what `@X328`
+refuses.**
 
 ## Open questions
 

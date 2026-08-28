@@ -98,6 +98,8 @@ critical path is **4, the SCRAMBLE**.
 | tests | `scripts/test.sh` | **1692 green**, ~320 s on a busy box, 131 files |
 | scenarios | `scripts/validate.sh` | **50 scripts, 920 measurements**, ~20 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
+| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **398 defined, 394 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
+| ⚠⚠ formal rules | `scripts/rules.sh` — inside `test.sh` | **43 defined, 5 ENFORCED in 5 code sites** (`@X327`).  ⚠ Resolution GATES; coverage only REPORTS.  ⚠⚠ A doc reference is **not** an enforcing site (`@X330`) |
 
 ⚠ `scripts/test.sh` is the canonical runner — **never `loft test` directly**
 (§ Key commands says what it does that you would otherwise skip).
@@ -948,6 +950,8 @@ names; most of them exist because somebody did it without reading.
 | Design a base site that is not flat ground | [`docs/DESIGN.md`](docs/DESIGN.md) § Trees as terrain |
 | Find a mechanic that is designed but NOT built | [`docs/DESIGN.md`](docs/DESIGN.md) + [`plans/ROADMAP.md`](plans/ROADMAP.md) |
 | Cite a design decision, or find where one was made | [`docs/DECISIONS.md`](docs/DECISIONS.md) — ⚠ never cite a bare plan phase; write `22-S0`.  ⚠⚠ **A citation must RESOLVE** — `scripts/tags.sh` runs inside `test.sh` and fails on a dangling `@X` |
+| Find TWO implementations of one rule, or ask whether to merge them | ⚠⚠ `scripts/rules.sh --review` (`@X329`) — **two sites may enforce one rule only if the difference between them can be NAMED, and the name must be a fact about the DOMAIN.**  ⚠ Differ COMPLETELY → the rule is too broad, **split** it.  Differ NAMEABLY → healthy, write the difference down.  Barely differ → **one implementation with a FLAG** carrying the difference as data, which is `can_climb`'s CLIMB and the mover's class row.  ⚠ *Equality is evidence; sameness-of-rule is the claim* |
+| Find every site that enforces a RULE | `scripts/rules.sh sites @FR-M-Sidestep` — ⚠ the query [`docs/FORMAL.md`](docs/FORMAL.md) exists to make possible, and what turns *count the re-assertion sites* into a lookup |
 | Write down a RULE, or ask what one IS | [`docs/FORMAL.md`](docs/FORMAL.md) (`@X327`) — ⚠⚠ **a rule is not a decision and not a measurement**: `@X`/`@M`/`@D` are all past tense, and a rule claims something about **every case including the ones nobody has run**.  ⚠ *The rules do not change to match the code; the code changes to match the rules.*  ⚠ `@FR-<Name>`, defined in a FENCED block, cited as *"Enforces @FR-X"*, **boundary-exact** because sub-rule names are prefixes |
 | Adopt the rule system, or raise the citation COUNT | ⚠⚠ **DO NOT** ([`docs/FORMAL.md`](docs/FORMAL.md) § Resolution GATES, `@X328`) — *"a tree at 76 cited → 255 cited with the same duplication underneath would read as progress while nothing had changed."*  ⚠ **The order is: evaluate the sites → de-duplicate onto one home → fix what the disagreement was causing → THEN cite.  The citation is the RECEIPT, not the task** |
 | Trust a count from a new instrument | ⚠⚠ **Not until it has been wrong once** (`@X328`) — loft's rule count moved **five times** as *"the instrument learned what it was counting"*, and dryopea reproduced it **twice in one day**: `tags.sh` could not read a RANGE row, and the `numbers.json` probe mis-parsed four relations.  **Both instruments were wrong before the tree was** |

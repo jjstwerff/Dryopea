@@ -38,6 +38,89 @@ useful thing in it is which of those is which.
 > the citations below as *this idea, tried* rather than as *somebody
 > else's idea*.
 
+## ⚠⚠ Formal rules  `@X327`
+
+⚠ Spec-first — nothing implements these, so **no deviation is open**.
+
+```
+  (W-Compact-Base)   detail is EXPRESSED from a compact base set, so a
+                     mechanism that adds data in proportion to the detail
+                     it produces is the wrong mechanism.  Every rule
+                     below is a compression with a decompression that is
+                     LOCAL, DETERMINISTIC and COMMUTATIVE — take one of
+                     the three away and the compression stops being
+                     usable.
+
+  (W-Neighbourhood)  a hex's content is a function of the SIX hexes
+                     around it — their terrain, their elevation, their
+                     water flow.  A single cell has a value and NO
+                     gradient, and slope, aspect and drainage are what
+                     every terrain rule actually reads.
+
+  (W-Shared-Owns)    a feature is owned by the lattice element all its
+                     observers SHARE, and everyone else consumes it.  A
+                     corner belongs to the corner (three hexes read it),
+                     an edge to the edge (two do) — so two observers never
+                     each compute one shared thing, and agreement is
+                     commutative rather than checked.
+
+  (W-Table-Cell)     the coarse map chooses the TABLE and the block
+                     chooses the CELL.  A landform is never interpolated
+                     into existence, which is why a million-to-one scale
+                     ratio is never crossed by interpolation at all.
+
+  (W-Residual)       a block contributes a RESIDUAL over the coarse
+                     field, never an absolute height.  The same block on
+                     a different slope is therefore a different landform,
+                     and a residual tapering to zero at the edges meets
+                     the edge rule by arithmetic instead of by a rule.
+
+  (W-Declares-Needs) a block declares WHAT IT NEEDS and never where it
+                     goes; the coarse map supplies predicates that ADMIT
+                     it.  The conditions are not a filing system — they
+                     are the guarantee that a residual lands on ground it
+                     makes sense on.
+
+  (W-Edge-Owned)     a variant may differ only in its INTERIOR.  Its
+                     edges belong to the edge, so every member of an
+                     admissible set is interchangeable by construction —
+                     and an edge a block owned would move when the block
+                     was swapped and break its neighbour.
+
+  (W-Edges-Match)    a feature crossing a boundary ENTERS and LEAVES
+                     where its neighbours' do, and the field both
+                     neighbours read is what picks the pair.  So a
+                     catalogue is edge-matching, matched by a shared
+                     field rather than by a check afterwards.
+
+  (W-Position-Hash)  a choice among admissible variants is a hash of
+                     POSITION and never a draw from a stream.  A stream
+                     depends on how many draws came before it, and a
+                     world that cannot be reproduced cannot be gated.
+
+  (W-Process-Not-Classifier)
+                     where a classifier cannot be made accurate enough to
+                     gate, replace it with a PROCESS whose conservation
+                     can be.  The gate then reads *the quantity is
+                     conserved and the surface obeys its limit
+                     everywhere*, which is exact, in place of an accuracy
+                     that is not.
+
+  (W-Given-And-Accumulated)
+                     a planet has two layers and they are different
+                     kinds of thing: the GIVEN, derived once and the same
+                     for everybody, and the ACCUMULATED, written one
+                     finished sortie at a time.  The given layer must
+                     carry the whole game alone, because a planet nobody
+                     has played must already be worth landing on.
+
+  (W-Result-Is-Snapshot)
+                     what a finished scenario hands back is the SNAPSHOT,
+                     CHANGED — the same rows, mutated — and never a
+                     format of its own.  A second description of the
+                     world drifts from the first.
+```
+
 ## ⚠⚠ THE THESIS — express DETAIL from a very compact BASE SET  `@X323`
 
 Owner, 2026-08-28:
