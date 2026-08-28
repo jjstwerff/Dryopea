@@ -58,6 +58,41 @@ engine growing.
 flows along the edges; the flow is the traffic; the traffic is the
 waves.
 
+### ⚠⚠ The graph is INPUT-constrained, at exactly two nodes  `@X340`
+
+Owner, 2026-08-29: carbon gathering is, *"beside the gathering of raw
+metals, one of the biggest constraints on the robots of the planet."*
+
+⚠⚠ **So the whole machine economy is limited by its two RAW INPUTS —
+ore and carbon — and by nothing downstream.**  Demand is *"almost
+endless hunger"* (§ 6); the factories are not waiting for orders, they
+are waiting for material.
+
+**What that decides, and it decides more than it looks like:**
+
+- ⚠⚠ **Denying a bottleneck is worth more than denying a surplus**, which
+  is what makes `@X306`'s hand-back — *the rate the player DENIED* — a
+  number with teeth.  A base astride an ore or a carbon route is
+  subtracting from the thing the whole graph is short of; a base astride
+  a finished-goods route is subtracting from a queue.
+- ⚠⚠ **It is why there are so many small robots**: you throw bodies at a
+  bottleneck.  § 6's *thin, slow, low-value* is one harvester, and the
+  reason there are so many of them is that carbon is scarce, not
+  abundant.
+- ⚠ **It gives `@X317`'s landing rule its teeth.**  *Land in the overlap*
+  wants several areas' influence to reach one site so a CHOICE exists —
+  and the sharpest version of that choice is an ore route and a carbon
+  route in reach of one base, when you have time to sit on one.
+- ⚠ **And it satisfies § The spreadsheet test.**  Neither input is purely
+  good to interfere with: both are far, both are guarded by their own
+  neighbourhood hazard (a carbon plant brings insects the scrambler
+  cannot deafen, § 6), and a base can only be in one place.
+
+⚠ **What it does NOT license**: a visible stock number, a shortage
+event, or a supply meter.  The constraint shows up as **traffic** —
+`DESIGN.md` § HUD will not put a number on screen, and § What this
+design does NOT do already refuses a stock simulation during a sortie.
+
 ```
     carbon plant ──────┐
                        ├──▶ factory ──▶ (new robots, outbound everywhere)
@@ -423,6 +458,42 @@ and the counter-play costs a sortie.
 **Fiction.** The terraforming half of the colonisation programme —
 growth stands cultivated and harvested for carbon.  The huge trees
 `DESIGN.md` § Scouting already hangs sap on.
+
+⚠⚠ **AND THE PLANET HAS NO FOSSIL CARBON** ([`SETTING.md`](SETTING.md)
+§ There is no fossil carbon, owner 2026-08-29), which is what turns this
+node from a quiet quarter into the **base of the graph**: there is no
+gas, oil or coal to dig, so every gram of **fuel** and every gram of
+**plastics feedstock** the machine economy uses starts as harvested
+plant material dumped here.  ⚠ *Thin, slow, low-value* stays true **per
+robot** and stops being true of the node.
+
+⚠⚠ **A harvester therefore has THREE places, not two** — the picking
+ground, the **processing point it dumps at**, and the **repair point**,
+which is a different installation (§ 5).  ⚠ Conflating the dump with the
+repair spot is an easy mistake and `plans/30` R4 made it: a robot drops
+its load every round and gets serviced *once in a while*, so the two
+cannot be the same anchor.
+
+⚠⚠ **AND THE NODE IS A FIRST PASS, WITH A DISTRIBUTION NETWORK ON TOP OF
+IT** (owner, 2026-08-29).  Raw growth is bulky and local; what leaves
+here are **blocks**, dense enough to travel.  So the edge this node sits
+on is really two edges with different traffic on them:
+
+| tier | the round | traffic signature |
+|---|---|---|
+| **gathering** | picking ground → this plant | ⚠ MANY robots, SHORT rounds — *thin, slow, low-value* is the reading of ONE of them |
+| **distribution** | this plant → wherever the blocks are wanted | ⚠ FEW robots, LONG routes, crossing whole cells (§ The two scales) |
+
+⚠⚠ **Demand downstream is "almost endless hunger"**, so neither tier
+lulls.  That is what lets `traffic_rate` be a steady per-minute figure
+rather than a schedule — and it is the fiction agreeing with
+`DESIGN.md` § What kind of game this is, because a flow that went quiet
+on its own would be a lean-back mechanic.
+
+⚠ **Both tiers are the SAME errand shape** — out empty, back loaded to a
+drop-off — differing in the DISTANCE between anchors and what is in the
+bag.  That is § The governing rule holding: *an installation that needs
+its own movement code has broken it.*
 
 **Traffic signature.** Thin, slow, low-value: harvesters on long
 cycles.  As a *robot* neighbour, a carbon plant is the quiet quarter.

@@ -1620,7 +1620,8 @@ src/
                    measurements did not move.
                    ⚠⚠ AND SINCE plans/30 R1 IT ALSO OWNS THE ROUTINE —
                    ROLE_* / ANCHOR_* / ERRAND_BAG_*, GUARD_LEG_UNITS,
-                   Role { name, empty, laden, period }, errand_row /
+                   Role { name, empty, laden, period, shift },
+                   errand_row /
                    errand_roles / errand_role_of / errand_role_named,
                    Errand { role, home, work, alt, carry, slip } on
                    Enemy, errand_new / errand_at / errand_same,
@@ -1644,9 +1645,11 @@ src/
                    ROLE_ constant, with ROLE_KIND_COUNT the one
                    exemption.  crawler has `role == 7` in eight places
                    and no compiler can refuse one.
-                   ⚠ FOUR COLUMNS, because errand_leg reads four — what
-                   draws a role off its route is R7's and is deliberately
-                   not a column yet (@X112 from the other end).
+                   ⚠ EVERY COLUMN IS READ THE MOMENT IT EXISTS —
+                   errand_leg reads four and errand_done reads `shift`;
+                   what draws a role off its route is R7's and is
+                   deliberately not a column yet (@X112 from the other
+                   end).
                    ⚠⚠ READ THE ROLE THROUGH `errand_role`, NEVER THROUGH
                    `route.role` — it answers ROLE_NONE for any robot
                    whose link wave_cutoff has cut, so the bubble's
@@ -1730,6 +1733,44 @@ src/
                    ⚠ Steps come from flow_steps then flow_sidesteps and
                    from nothing else (@FR-E-Non-Increasing): a sidestep
                    admitting a FURTHER hex silently breaks R5's bound.
+                   ⚠⚠ errand_fields BUILDS ONE FIELD PER ANCHOR OF THE
+                   ROW, never per DESTINATION (@D008): a mob that
+                   reaches an anchor with hexes left turns and spends
+                   them on the NEXT leg, and a vector built from the
+                   tick's starting destinations has nothing for it to
+                   descend — the hexes then go to `slip` and EVERY
+                   equality agrees, because the rule reads now − slip
+                   and follows the body down.  ⚠ Invisible at the
+                   shipped robot's one-hex-a-tick; a SCOUT turns
+                   mid-tick and drifted twelve hexes in three minutes.
+                   ⚠⚠ AND SINCE plans/30 R4 A ROUND HAS AN ENDING —
+                   Role.shift, GATHER_SHIFT_UNITS, errand_home_done, and
+                   errand_depart at the TOP of wave_tick.
+                   ⚠⚠ HOME IS A LEG OF THE ROUND, NOT A PLACE A FINISHED
+                   MOB WALKS TO (@X338, @FR-E-Home-Is-A-Place): the
+                   plan's invariant is three states and ONE exit, so a
+                   mob breaking off its cycle would be a fourth state
+                   and a second exit.  A mob leaves the roster the tick
+                   its own cycle brings it home — the mover, the cycle
+                   and the conformance gate are untouched.
+                   ⚠ A SHIFT IS A SPAN, NOT A COUNT OF ROUNDS: a count
+                   needs the cycle, now − slip is already there, and a
+                   shift chooses no ANCHOR so it cannot reproduce @M073.
+                   ⚠⚠ A ROW WITH A SHIFT MUST HAVE HOME AS AN ANCHOR and
+                   errand_row_fault refuses one that has not — which is
+                   why `haul` and `guard` have no shift: their rounds
+                   run work ↔ alt and R5's POI is where one gains a home
+                   leg.
+                   ⚠⚠ THE DEPARTURE IS AT THE TOP OF THE TICK, and that
+                   is the claim rather than a tidy-up: at the consequence
+                   stage a robot arrives at its nest and is removed in
+                   the same tick, so the last frame holding it has it
+                   ONE HEX SHORT.  What the player cannot see the gate
+                   cannot see either.
+                   ⚠ AND THE MOVER STOPS A FINISHED MOB at home, because
+                   one releasing more than a hex a tick would step over
+                   its own ending; the remaining hexes are DROPPED and
+                   never slipped — it arrived, it was not held up.
                    ⚠ INERT: no scenario has a routine, so errand_fields
                    builds nothing and the fork in wave_tick is never
                    taken — 920 gate measurements unmoved

@@ -45,9 +45,51 @@ Severity tiers:
 ## Open
 
 ⚠ **Nothing is open today.**  `@D002` was closed by BACKLOG C7 and
-`@D006` by BACKLOG C10, both on 2026-08-28.
+`@D006` by BACKLOG C10, both on 2026-08-28; `@D007` and `@D008` were
+found and fixed the same day they were found.
 
 ## Fixed
+
+### @D008 — a mob that turns at an anchor MID-TICK has no field for the next leg, and `slip` swallows the hexes
+
+- **Status:** **FIXED** 2026-08-28, `plans/30` R4 — `errand_fields` builds
+  a field per **anchor of the ROW** instead of per **destination the mob
+  is making for now**.
+- **Severity:** Med — never shipped (no scenario has a routine), but it
+  made a mob's phase drift from its own rule without any gate saying so,
+  which is the class `plans/30` exists to make impossible.
+- **Found while:** `plans/30` R4, putting a SCOUT into the R4 gate so the
+  mover's finishing stop had something to be visible against.
+- **Repro:** a `ROLE_GATHER` mob of `ENEMY_KIND_SCOUT` over open ground,
+  driven through `wave_tick`.  It reads `slip = 1 200 000` (one hex) by
+  tick 15 and roughly one hex per two rounds thereafter; over three
+  minutes its phase is **twelve hexes** from where the rule puts it.
+- **Expected:** a mob that reaches an anchor with hexes left in its bank
+  turns and spends them on the next leg (`@X335`), losing nothing.
+- **Observed:** `errand_fields` read `errand_destination(e, state.now)`
+  once per mob at the top of the tick, so the vector held a field for
+  the leg the mob STARTED on.  After `errand_arrive` flipped the bag
+  mid-tick, `errand_hex` looked for a field toward the other anchor,
+  found none, could not place the step — and `errand_step` charged the
+  hex to `slip`.
+- **Why nothing caught it:** ⚠⚠ **twice silent.**  (1) The shipped robot
+  releases exactly one hex a tick, so it can never turn with hexes left
+  — `@M014`'s class, and every carrier in the R1-R3 corpus was one.
+  (2) ⚠⚠ **The conformance gate AGREES**: the rule is read at
+  `now − slip`, so charging the lost hex to `slip` moves the rule down
+  onto the body and `cycle_at(e, now) == (e.q, e.r)` stays exactly true.
+  ***`slip` is a currency that can pay for a defect***, which is
+  `@X337`'s *liveness is a second gate* arriving a second time.
+- **Fix:** `src/errand.loft::errand_fields` — one field per
+  `(anchor, climb)` over `row.empty` and `row.laden`, deduped.  ⚠ The
+  cost was already budgeted: `@M072`'s *a mob asks for at most three
+  anchors*.
+- **Test:** `tests/30_rc_the_conformance.loft` — the liveness gate
+  `test_nothing_blocked_it_so_nothing_slipped` gained a **scout**
+  carrier (slip must be 0), and
+  `test_a_roster_with_no_routine_is_the_game_it_always_was` pins the
+  field count at **2 per routine**.  `tests/30_r4_home.loft` catches it
+  from the other side: the scout's departure slides a whole round late.
 
 ### @D007 — a dropped BEACON round-trips as a WRECK: `emit_cargo` writes a kind the `object` verb cannot name
 

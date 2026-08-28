@@ -658,6 +658,25 @@ never ask — ***did it actually get anywhere?***  Two of that phase's six
 gates are liveness: *nothing blocked it, so nothing slipped* and *a mob
 that stood is exactly that late*.
 
+⚠⚠ **AND THE SLACK THE RULE ALLOWS IS A CURRENCY THAT CAN PAY FOR A
+DEFECT** (`plans/30` R4, `@D008`, `@M076`).  The same conformance gate
+went blind a second way, and this one is worse than a frozen pair:
+`errand_fields` built one flow field per DESTINATION where the mover
+needed one per ANCHOR, so a mob that reached an anchor with hexes left in
+its bank had **nothing to descend** and the mover charged those hexes to
+`slip`.  ⚠⚠ **The gate agreed** — the rule is evaluated at `now − slip`,
+so paying the lost hex moves the RULE down onto the body and the equality
+stays exactly true.  A scout drifted **twelve hexes** from its own rule
+over three minutes with every count green.
+⚠ It was invisible for a second reason too: the shipped robot releases
+exactly one hex a tick, so it can never turn mid-tick, and every carrier
+in the corpus was one (`@M014`'s class).
+⚠⚠ **The general rule: any quantity a conformance check SUBTRACTS is a
+place a defect can hide, and the gate that finds it is the liveness one
+asked of a member that can actually reach the branch** — here, a mob fast
+enough to turn inside a tick.  ⚠ *Ask what your equality is allowed to
+absorb.*
+
 ⚠⚠ **AND A GATE AIMED AT A NAMED HAZARD CAN STILL MISS IT, BECAUSE THE
 FIXTURE MAKES THE WRONG VERSION BEHAVE IDENTICALLY** (`plans/30` R3,
 `@M075`).  `@X331` names one change by hand — *a sidestep that admits a
@@ -665,6 +684,14 @@ FURTHER neighbour looks harmless and silently breaks R5's bound* — and
 making it moved **nothing** in a five-test file written around it: on the
 fixture's hex AXIS the first free neighbour in direction order happens to
 be an equal-distance one anyway, so both versions take the same hex.
+⚠ **R4 hit it twice more and fixed it by SWEEPING the fixture** (`@M076`):
+at a 13-hex leg the home gate was green with the mover's finishing stop
+deleted and green again with the mob's own clock replaced by the run's —
+because a fast mob that walks through its nest is invisible whenever it
+also lands on it exactly some later round, and *now* and *now − slip*
+pick the same round unless a held-up mob has an arrival between them.
+**Sweeping the one free number of the fixture found an 8 that cannot be
+green for either.**
 ⚠ Seeing it needs a mob whose EQUAL ring is FULL while the hexes BEHIND
 it are OPEN, so a step backwards is the only thing left to take.  ⚠⚠ And
 **the first version of that gate hemmed the further hexes in too**, which

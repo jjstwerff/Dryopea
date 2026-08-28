@@ -240,6 +240,23 @@ together, so liveness has to be asked separately*** — and two of the six
 gates now do.  ⚠ Still INERT: no scenario has a routine, so
 `errand_fields` builds nothing and the **920 measurements did not move**.
 
+⚠⚠ **AND A ROUND HAS AN ENDING** ([`plans/30`](../plans/30-the-mob-routine/README.md)
+R4, 2026-08-28) — a gatherer takes rounds for a 120 s **shift** and then
+**leaves the roster at its nest**, at 384 000 000 units against a
+360 000 000 shift, with the wallet unmoved and nothing dropped
+(`@M076`).  ⚠⚠ **Home is a LEG of the round and never a place a finished
+mob walks to** (`@X338`): the plan's invariant is *three states and ONE
+exit*, so a mob breaking off its cycle would be a fourth state and a
+second exit.  ⚠⚠ **And the departure moved to the TOP of the tick** —
+removed at the consequence stage a robot arrives at its nest and is gone
+inside one tick, so the last frame that holds it has it **one hex
+short**: *what the player cannot see the gate cannot see either*.
+⚠ `@D008` came out of the same fixture: `errand_fields` built one field
+per DESTINATION where it needed one per ANCHOR, and the lost hexes went
+to `slip` with **every conformance count green** — ***`slip` is a
+currency that can pay for a defect***.  ⚠ Still INERT: **920
+measurements unmoved**.
+
 ## Two rules the table above rests on
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number

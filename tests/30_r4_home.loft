@@ -1,0 +1,332 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 30 phase R4 — HOME IS A PLACE.
+//
+// ⚠⚠ **THE CLAIM: a robot that finishes its round leaves the roster at
+// a PLACE, not where it happened to stop** (`@FR-E-Home-Is-A-Place`).
+// Owner, 2026-08-28: *"instead of going to sleep the robots get back to
+// a known maintenance point once in a while, and insects to their
+// nest."*
+//
+// ⚠ The conservation was already right — `errand_depart` REMOVES rather
+// than killing, so a wallet is never paid for traffic the player did not
+// touch — and this phase adds the somewhere.  Both halves are gated
+// here, because the second is the one a refactor would drop.
+//
+// ── ⚠⚠ The four things this file has to be able to see ──────────
+//
+// 1. ⚠ **It really left at HOME**, which is a hex and not a moment: the
+//    reading is the hex the mob was standing on the tick before it went,
+//    against the hex it started from.
+// 2. ⚠⚠ **It did not leave EARLY and it did not leave LATE**, which is
+//    a TWO-SIDED bound: the moment it went is at or after the shift and
+//    less than one whole round after it.  A one-sided *≥ shift* is
+//    satisfied by a mob that leaves on the last tick of the run, and a
+//    plain *it departed* by one that never walked at all.
+// 3. ⚠⚠ **A mob that releases more than one hex a tick does not step
+//    OVER its own ending.**  `errand_depart` reads the position at the
+//    tick's consequence stage, so a scout walking through its nest and
+//    out the other side inside one tick would cycle for ever while the
+//    robot beside it left on time — `@M014`'s class, and the shipped
+//    speed a gate would naturally use is the one that cannot see it.
+// 4. ⚠ **The clock is the MOB's** — `now − slip`, not `now` — so a mob
+//    held in the pre-walk window leaves exactly that much later.
+//
+// ⚠ And the generic control (`CLAUDE.md` § a gate that reads PERFECT is
+// as suspect as one that reads wrong): every reading here is paired with
+// a run that must answer differently — a role ONE COLUMN away that never
+// ends, an ambient robot that still goes at the map's edge, and a core
+// near enough to take the errand and spend the wallet.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+
+// The leg, in hexes — 8 out and 8 back.  ⚠⚠ **The number is CHOSEN and
+// two mutations chose it.**  The shipped 120 s shift spans twelve of
+// these rounds, so the mob is traffic long before it is a departure —
+// but that is not why it is 8.  ⚠ At 13 the file was green with the
+// mover's stop DELETED and green again with the mob's own clock replaced
+// by the run's, because a fixture only sees those two if the mob's
+// arrivals fall in particular places relative to the shift:
+//
+//   * a scout that walks THROUGH its nest is invisible whenever it also
+//     happens to land on it exactly on some later round — at 8 hexes it
+//     does not, and the departure slides a whole round late;
+//   * *the run's clock* and *the mob's clock* pick the same round
+//     unless a held-up mob has an arrival inside the window between
+//     them — at 8 hexes it has one, and the two answers are 16 ticks
+//     apart.
+//
+// ⚠ `CLAUDE.md` § a gate aimed at a hazard somebody NAMED can still miss
+// it, because the fixture may make the wrong version behave identically
+// (`@M075`).  Sweeping the leg length is what found one that cannot.
+const R4_LEG: integer = 8;
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+
+// ─── The road, and a core far enough away to leave it alone ─────
+
+// ⚠⚠ **The core is 40 hexes off in the sea and that is load-bearing**:
+// the scrambler bubble is 25 hexes and `wave_cutoff` sweeps at the top
+// of every tick, so a core any nearer takes the mob's errand and this
+// file would be gating the bubble instead.  ⚠ The near-core run below
+// moves it in deliberately.
+fn r4_road(core: const Hex) -> EditorState {
+    s = editor_state_new(PALETTE);
+    for rr_q in 38..=56 {
+        for rr_r in 2..=6 { paint(s.pw, rr_q, rr_r, as_u8(GRASS)); }
+    }
+    place_marker(s.mw, core.q, core.r, MARKER_KIND_TARGET, as_u8(0));
+    s
+}
+
+fn r4_far_core()  -> Hex { Hex { q: 0,  r: 0 } }
+fn r4_near_core() -> Hex { Hex { q: 46, r: 4 } }
+
+fn r4_home() -> Hex { Hex { q: 40, r: 4 } }
+fn r4_work() -> Hex { Hex { q: 40 + R4_LEG, r: 4 } }
+
+// A gatherer: out to the face empty, home with the load — the one
+// shipped role whose round touches HOME, and therefore the one that can
+// end (`errand_row_fault` refuses a shift on a row whose round cannot).
+fn r4_gatherer() -> Errand {
+    errand_at(ROLE_GATHER, r4_home(), r4_work(), Hex { q: 0, r: 0 })
+}
+
+// ⚠⚠ **THE CONTROL, ONE COLUMN AWAY** — the same two hexes walked by a
+// role with no shift.  `haul` runs `work ↔ alt`, so putting `alt` on the
+// nest's hex gives it the identical round with the identical geometry
+// and the identical walker; the only difference in the table is
+// `shift`, which is 0.
+fn r4_hauler() -> Errand {
+    errand_at(ROLE_HAUL, r4_home(), r4_work(), r4_home())
+}
+
+// How long one whole round takes this class, in base units.  ⚠ Two legs
+// of `R4_LEG`, each hex worth `cycle_hex_units` — the same arithmetic
+// the mover pays a lost hex in, so the bound below is stated in the
+// cycle's own currency and not in ticks.
+fn r4_round_units(kind: u8) -> integer {
+    2 * R4_LEG * cycle_hex_units(bank_rate(enemy_speed(kind)))
+}
+
+// ─── ⚠ The harness — a real session, played ─────────────────────
+
+// Play one mob on one routine and answer:
+//   (the tick it left on, 0 if it never did; the hex it left FROM; the
+//    furthest it ever got from where it started; the points the wallet
+//    spent; the piles of rubble left behind).
+//
+// ⚠ **The hex it left FROM is observable only because the departure is
+// at the TOP of a tick** — the mob finished its round during the tick
+// before and is still standing there when this loop looks (`@X338`).
+//
+// ⚠ It runs through `play_ticks` rather than `wave_tick` because R4's
+// gate is a SCENARIO: the departure is a consequence of a played
+// session, and the wallet half of the claim is only visible where a
+// wallet is being played.
+fn r4_play(er: const Errand, kind: u8, stand: integer,
+           core: const Hex, from: const Hex,
+           ticks: integer) -> (integer, Hex, integer, float, integer) {
+    rp_s  = r4_road(core);
+    rp_ps = play_state_new();
+    play_set_mode(rp_ps, rp_s, true);
+    traffic_set(rp_ps.wave.traffic, 0.0);
+
+    rp_at = Hex { q: from.q, r: from.r };
+    rp_ps.wave.enemies += [Enemy { q: rp_at.q, r: rp_at.r, kind: kind,
+                                   alive: true, errand: true, route: er,
+                                   stand: timer_armed(stand) }];
+    rp_gone = 0;
+    rp_last = Hex { q: rp_at.q, r: rp_at.r };
+    rp_far  = 0;
+    rp_t    = 0;
+    while rp_t < ticks {
+        play_ticks(rp_ps, rp_s, 1);
+        rp_t += 1;
+        if len(rp_ps.wave.enemies) == 0 {
+            if rp_gone == 0 { rp_gone = rp_t; }
+            break;
+        }
+        for rp_e in rp_ps.wave.enemies {
+            rp_last = Hex { q: rp_e.q, r: rp_e.r };
+            rp_d = lat_distance(Hex { q: rp_e.q, r: rp_e.r }, rp_at);
+            if rp_d > rp_far { rp_far = rp_d; }
+        }
+    }
+    (rp_gone, rp_last, rp_far, wallet_spent(rp_ps.wave.wallet),
+     height_count(rp_ps.wave.heights))
+}
+
+// The moment the departure on tick `n` was DECIDED — the moment that
+// tick began, because `errand_depart` is the top of `wave_tick` and the
+// clock is its last line.  ⚠ It is the value `errand_home_done` compared
+// against the shift, so the bound below is stated in the same units the
+// rule reads rather than in ticks converted after the fact.
+fn r4_moment(tick: integer) -> integer { (tick - 1) * TICK_STEP_UNITS }
+
+fn r4_at(h: const Hex, want: const Hex) -> boolean {
+    h.q == want.q && h.r == want.r
+}
+
+// ─── ⚠⚠ THE GATE ───────────────────────────────────────────────
+
+// @DRY-172 — a robot that finishes its round is gone AT HOME
+fn test_a_finished_round_leaves_the_roster_at_home() {
+    // ⚠⚠ **TWO CLASSES, and the SCOUT is not decoration.**  A regular
+    // robot releases exactly one hex a tick, so it cannot help but be
+    // standing on its nest at the end of the tick it arrives; a scout
+    // releases 1, 2, 2 and walks straight through it, and only the
+    // mover's stop puts it down there.  ⚠ Without the stop it does not
+    // cycle for ever — it waits for a round whose last hex happens to
+    // land on a tick boundary — so the reading that catches it is the
+    // BOUND below and not *did it leave*: measured, a whole round late
+    // (`@M014`, `@M030`).
+    tfr_reg = r4_play(r4_gatherer(), as_u8(ENEMY_KIND_REGULAR),
+                      0, r4_far_core(), r4_home(), 260);
+    tfr_sct = r4_play(r4_gatherer(), as_u8(ENEMY_KIND_SCOUT),
+                      0, r4_far_core(), r4_home(), 260);
+
+    // ⚠⚠ **THE TWO-SIDED BOUND, and the upper half is the one that
+    // works.**  A mob leaves at the first arrival home at or after the
+    // shift, and home comes round once a round — so it is at most ONE
+    // WHOLE ROUND late, inclusive, and a mob that misses an arrival is
+    // two.  ⚠ A one-sided *at or after the shift* is satisfied by a mob
+    // that leaves on the run's very last tick, and a bare *it departed*
+    // by one that never walked at all.
+    tfr_rm = r4_moment(tfr_reg.0);
+    tfr_sm = r4_moment(tfr_sct.0);
+    tfr_ok = tfr_rm >= GATHER_SHIFT_UNITS
+             && tfr_rm <= GATHER_SHIFT_UNITS + r4_round_units(as_u8(ENEMY_KIND_REGULAR))
+             && tfr_sm >= GATHER_SHIFT_UNITS
+             && tfr_sm <= GATHER_SHIFT_UNITS + r4_round_units(as_u8(ENEMY_KIND_SCOUT));
+
+    assert(tfr_reg.0 > 0 && tfr_sct.0 > 0
+           && r4_at(tfr_reg.1, r4_home()) && r4_at(tfr_sct.1, r4_home())
+           && tfr_reg.2 == R4_LEG && tfr_sct.2 == R4_LEG && tfr_ok,
+           "a finished round ends at the nest: the robot went on tick "
+           + "{tfr_reg.0} from ({tfr_reg.1.q},{tfr_reg.1.r}) having "
+           + "reached {tfr_reg.2} hexes out, the scout on tick "
+           + "{tfr_sct.0} from ({tfr_sct.1.q},{tfr_sct.1.r}) at "
+           + "{tfr_sct.2} — the nest is ({r4_home().q},{r4_home().r}), "
+           + "the shift {GATHER_SHIFT_UNITS} and the moments {tfr_rm} "
+           + "and {tfr_sm}");
+}
+
+// @DRY-173 — a role ONE COLUMN away never ends, and it is the same walk
+fn test_a_role_with_no_shift_walks_on_for_ever() {
+    // ⚠⚠ **The control that makes the test above a reading rather than
+    // a description.**  Same two hexes, same class, same session length
+    // — and a table row whose `shift` is 0.  Without it *the mob left*
+    // is satisfied by anything that removes a robot, including the
+    // heading rule this phase is replacing.
+    tro_none = r4_play(r4_hauler(), as_u8(ENEMY_KIND_REGULAR),
+                       0, r4_far_core(), r4_home(), 260);
+    tro_ends = r4_play(r4_gatherer(), as_u8(ENEMY_KIND_REGULAR),
+                       0, r4_far_core(), r4_home(), 260);
+    assert(tro_none.0 == 0 && tro_none.2 == R4_LEG && tro_ends.0 > 0,
+           "one column apart: the shiftless role must still be walking "
+           + "after 260 ticks (gone on tick {tro_none.0}, {tro_none.2} "
+           + "hexes out) while the gatherer went on tick {tro_ends.0}");
+}
+
+// @DRY-174 — a PLACE, and not where it happened to stop
+fn test_an_ambient_robot_still_goes_at_the_edge() {
+    // ⚠⚠ **THE CONTRAST THE PHASE IS FOR.**  A robot on no routine is
+    // going the way its spawn marker pointed and is done when it can go
+    // no further that way — the deletion R4 does NOT remove, because it
+    // is the right ending for a robot that was only ever crossing.  ⚠ So
+    // the two endings must land on DIFFERENT hexes, or *home is a place*
+    // is a sentence about nothing.
+    tar_amb = r4_play(errand_new(), as_u8(ENEMY_KIND_REGULAR),
+                      0, r4_far_core(), r4_home(), 40);
+    tar_rtn = r4_play(r4_gatherer(), as_u8(ENEMY_KIND_REGULAR),
+                      0, r4_far_core(), r4_home(), 260);
+    // ⚠ An ambient robot placed at the nest's hex with heading 0 (east)
+    // walks the road until the paint runs out and goes at hex 56 — the
+    // edge of what it could walk, which is exactly *where it happened to
+    // stop*.
+    assert(tar_amb.0 > 0 && tar_amb.1.q == 56
+           && tar_rtn.0 > 0 && r4_at(tar_rtn.1, r4_home())
+           && !r4_at(tar_amb.1, r4_home()),
+           "two businesses, two endings: the ambient robot went on tick "
+           + "{tar_amb.0} from ({tar_amb.1.q},{tar_amb.1.r}) and the "
+           + "gatherer on tick {tar_rtn.0} from "
+           + "({tar_rtn.1.q},{tar_rtn.1.r})");
+}
+
+// @DRY-175 — departing is still not dying, and the reading can move
+fn test_leaving_at_home_pays_nothing() {
+    // ⚠ The half `errand_depart` already protected, re-asserted because
+    // R4 gave it a second way in: a robot that walked home was never the
+    // player's to kill, so no body, no salvage, no drain.
+    tlh_go = r4_play(r4_gatherer(), as_u8(ENEMY_KIND_REGULAR),
+                     0, r4_far_core(), r4_home(), 260);
+    // ⚠⚠ **The vacuity control, and it is the bubble.**  Move the core
+    // onto the road and `wave_cutoff` takes the errand on the first
+    // tick; the same robot then walks at the core and bleeds it.  Without
+    // this the wallet reading is *a number that was never going to move*.
+    tlh_cut = r4_play(r4_gatherer(), as_u8(ENEMY_KIND_REGULAR),
+                      0, r4_near_core(), r4_home(), 40);
+    assert(tlh_go.0 > 0 && tlh_go.3 == 0.0 && tlh_go.4 == 0
+           && tlh_cut.0 == 0 && tlh_cut.3 > 0.0,
+           "no body, no salvage, no payment: leaving home spent "
+           + "{tlh_go.3} and left {tlh_go.4} piles, while the same robot "
+           + "cut off by a near core spent {tlh_cut.3} and is still on "
+           + "the roster ({tlh_cut.0})");
+}
+
+// @DRY-176 — the clock is the MOB's, so a mob that stood leaves later
+fn test_a_mob_that_stood_leaves_exactly_that_much_later() {
+    // ⚠⚠ **`now − slip` and never `now`** (`@FR-E-Slip`).  The pre-walk
+    // window is time the mob did not spend walking, so every moment of
+    // its round moves back by it — including the last one, which makes
+    // the equality below exact: five ticks held is five ticks later,
+    // never four and never six.  ⚠ The plausible wrong version reads the
+    // RUN's clock, so a held-up mob ends its shift on somebody else's
+    // schedule and goes a whole round early — 16 ticks, at this leg.
+    tms_plain = r4_play(r4_gatherer(),
+                        as_u8(ENEMY_KIND_REGULAR), 0, r4_far_core(),
+                        r4_home(), 280);
+    tms_held  = r4_play(r4_gatherer(),
+                        as_u8(ENEMY_KIND_REGULAR), 5 * TICK_STEP_UNITS,
+                        r4_far_core(), r4_home(), 280);
+    assert(tms_plain.0 > 0 && tms_held.0 == tms_plain.0 + 5
+           && r4_at(tms_held.1, r4_home()),
+           "a mob that stood five ticks leaves five ticks later: plain "
+           + "{tms_plain.0}, held {tms_held.0} from "
+           + "({tms_held.1.q},{tms_held.1.r})");
+}
+
+// @DRY-177 — a shift is a promise the round has to be able to keep
+fn test_a_shift_a_round_cannot_reach_is_refused() {
+    // ⚠⚠ **The authoring error this column invites**, refused at
+    // construction rather than measured later as a mob that works for
+    // ever: a mob leaves at its HOME anchor and nowhere else, so a row
+    // naming a shift while its round runs `work ↔ alt` has named an
+    // ending its cycle can never reach.  ⚠ From outside, *never ends*
+    // and *cannot reach its ending* are the same picture.
+    tsr_far  = errand_row("far",  ANCHOR_WORK, ANCHOR_ALT, 0,
+                          GATHER_SHIFT_UNITS);
+    tsr_neg  = errand_row("neg",  ANCHOR_WORK, ANCHOR_HOME, 0, 0 - 1);
+    // ⚠ The control, and it is the generic one: a refusal that refuses
+    // everything is not a refusal.  Both of these are legal rows — one
+    // with a shift it can reach, one with none at all.
+    tsr_good = errand_row("good", ANCHOR_WORK, ANCHOR_HOME, 0,
+                          GATHER_SHIFT_UNITS);
+    tsr_bare = errand_row("bare", ANCHOR_WORK, ANCHOR_ALT, 0, 0);
+    assert(errand_row_fault(tsr_far) != "" && errand_row_fault(tsr_neg) != ""
+           && errand_row_fault(tsr_good) == ""
+           && errand_row_fault(tsr_bare) == ""
+           && errand_table_fault() == "",
+           "a shift must be reachable: far='{errand_row_fault(tsr_far)}' "
+           + "neg='{errand_row_fault(tsr_neg)}' "
+           + "good='{errand_row_fault(tsr_good)}' "
+           + "bare='{errand_row_fault(tsr_bare)}' "
+           + "table='{errand_table_fault()}'");
+}

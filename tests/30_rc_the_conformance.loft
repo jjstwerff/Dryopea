@@ -346,8 +346,15 @@ fn test_a_roster_with_no_routine_is_the_game_it_always_was() {
     for tar_e2 in tar_st.enemies {
         if errand_cycling(tar_e2, 0) { tar_m += 1; }
     }
+    // ⚠⚠ **TWO fields for one routine, and the number is the fix for
+    // `@D008`**: a mob that reaches an anchor with hexes left turns and
+    // spends them on the NEXT leg, so `errand_fields` builds a field for
+    // every anchor of the ROW and not for the one destination the mob
+    // happens to be making for at the tick's start.  ⚠ This read **1**
+    // until `plans/30` R4, and the missing one was charged to `slip`
+    // where every equality in this file agreed with it.
     assert(tar_n == 0 && len(tar_flds) == 0 && tar_m == 1
-           && len(tar_more) == 1,
+           && len(tar_more) == 2,
            "a roster with no routine costs the tick nothing: {tar_n} mobs "
            + "cycling and {len(tar_flds)} fields built, against {tar_m} and "
            + "{len(tar_more)} once one has a routine");
@@ -400,16 +407,32 @@ fn test_nothing_blocked_it_so_nothing_slipped() {
     // can stop together; **liveness has to be asked separately.**
     tnb_bag = rc_live(rc_world(true), rc_gatherer(), ROLE_GATHER,
                       as_u8(ENEMY_KIND_REGULAR), 0, 60);
+    // ⚠⚠ **THE SCOUT IS WHERE `@D008` LIVED, AND IT IS A CARRIER FOR A
+    // REASON.**  The robot beside it releases exactly one hex a tick, so
+    // it can never reach an anchor with hexes left in its bank and never
+    // asks for the next leg's field mid-tick — `@M014`'s class, and it
+    // is why *nothing slipped* read 0 for three phases over a mover that
+    // lost a hex at **every other turn**.  ⚠ A scout releases 1, 2, 2
+    // and turns inside a tick, and `errand_fields` building one field
+    // per DESTINATION rather than one per ANCHOR left it nothing to
+    // descend; the hexes went to `slip`, and every equality in this file
+    // agreed, because the rule reads `now − slip` and follows the body
+    // down.  ***A gate that cannot see a mob fall behind its own rule is
+    // the liveness half missing again*** (`@X337`).
+    tnb_sct = rc_live(rc_world(true), rc_gatherer(), ROLE_GATHER,
+                      as_u8(ENEMY_KIND_SCOUT), 0, 60);
     tnb_grd = rc_live(rc_world(false), rc_guard(), ROLE_GUARD,
                       as_u8(ENEMY_KIND_REGULAR), 0, 60);
     tnb_tgt = rc_live(rc_world(false), rc_tight_guard(), ROLE_GUARD,
                       as_u8(ENEMY_KIND_MINER), 0, 60);
     assert(tnb_bag.0 == 0 && tnb_bag.1 == 2 && tnb_bag.2 > 0
+           && tnb_sct.0 == 0 && tnb_sct.1 == 2 && tnb_sct.2 > 0
            && tnb_grd.0 == 0 && tnb_grd.1 == 2 && tnb_grd.2 == 4
            && tnb_tgt.0 == 0 && tnb_tgt.1 == 2 && tnb_tgt.2 == 10,
-           "nothing blocked them, so nothing slipped, and all three must "
+           "nothing blocked them, so nothing slipped, and all four must "
            + "reach BOTH anchors: carrier slip {tnb_bag.0} anchors "
-           + "{tnb_bag.1} reach {tnb_bag.2}; guard {tnb_grd.0} / "
+           + "{tnb_bag.1} reach {tnb_bag.2}; scout {tnb_sct.0} / "
+           + "{tnb_sct.1} / {tnb_sct.2}; guard {tnb_grd.0} / "
            + "{tnb_grd.1} / {tnb_grd.2}; tight guard {tnb_tgt.0} / "
            + "{tnb_tgt.1} / {tnb_tgt.2}");
 }

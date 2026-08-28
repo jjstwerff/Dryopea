@@ -319,7 +319,7 @@ fn test_a_clock_boundary_lands_inside_a_step_and_the_bag_never_does() {
     // implementation.  ⚠ **16 ticks** is one column away and buys
     // 26.67 hexes at a scout's pace, which is a carry that can disagree.
     tcb_shipped = errand_role_of(ROLE_GUARD);
-    tcb_wonky   = errand_row("guard16", ANCHOR_WORK, ANCHOR_ALT, 32000000);
+    tcb_wonky   = errand_row("guard16", ANCHOR_WORK, ANCHOR_ALT, 32000000, 0);
 
     tcb_bad  = 0;
     tcb_seen = 0;
@@ -381,7 +381,7 @@ fn test_a_clock_boundary_lands_inside_a_step_and_the_bag_never_does() {
     // ⚠ And `cycle_fault` is what turns that reading into a REFUSAL: a
     // clock period that is not a whole number of ticks is an authoring
     // error, named at construction rather than measured later.
-    tcb_odd_row = errand_row("odd", ANCHOR_WORK, ANCHOR_ALT, 30000001);
+    tcb_odd_row = errand_row("odd", ANCHOR_WORK, ANCHOR_ALT, 30000001, 0);
     tcb_c = cycle_build(tcb_er, tcb_shipped, load_palette(PALETTE),
                         r2_world(), height_layer_empty(),
                         as_u8(ENEMY_KIND_REGULAR));
@@ -458,7 +458,7 @@ fn test_a_round_that_does_not_close_is_refused() {
                         lengths: [30, 30], path: trc_slow, period: 60 };
     // ⚠ And a period that is not a whole number of ticks, which the test
     // above is what earns.
-    trc_odd_row = errand_row("odd", ANCHOR_WORK, ANCHOR_ALT, 30000001);
+    trc_odd_row = errand_row("odd", ANCHOR_WORK, ANCHOR_ALT, 30000001, 0);
 
     trc_bad = 0;
     for trc_c in [trc_sum, trc_path, trc_cnt, trc_zero] {

@@ -181,10 +181,10 @@ pub fn traffic_due(t: Traffic, elapsed: integer) -> integer {
 // ⚠ **And a row must not promise behaviour the engine does not have.**
 // Four of crawler's eleven monster flags are declared in its table and
 // read by no AI code at all — `@X112`'s *check the number exists first*
-// from the other end.  So there are exactly four columns here and
-// `errand_leg` reads all four; **what draws a role off its route is
-// deliberately NOT a column yet** — that is R7, and it gets one when
-// something reads it.
+// from the other end.  So every column here is read the moment it
+// exists: `errand_leg` reads four of them and R4's `shift` is read by
+// `errand_done`; **what draws a role off its route is deliberately NOT
+// a column yet** — that is R7, and it gets one when something reads it.
 //
 // ── ⚠ Why `carry` is not `carry.loft`'s  `@FR-F-Nameable-Difference` ─
 //
@@ -224,8 +224,28 @@ pub fn traffic_due(t: Traffic, elapsed: integer) -> integer {
 // today and neither has a routine.
 pub const ROLE_NONE:   integer = 0;
 pub const ROLE_HAUL:   integer = 1;   // load at the face, drop at the depot
-pub const ROLE_GATHER: integer = 2;   // cut at the face, carry it home
+pub const ROLE_GATHER: integer = 2;   // cut at the face, carry it to the nest
 pub const ROLE_GUARD:  integer = 3;   // the post and its second leg
+
+// ⚠⚠ **`haul` IS THE PLANT-MATERIAL GATHERER'S SHAPE, AND `gather` IS
+// THE NEST'S** — the distinction the world makes and the one this file
+// got wrong first (owner, 2026-08-29; `SETTING.md` § There is no fossil
+// carbon, `ROBOT_ECONOMY.md` § 6).
+//
+// ⚠ The planet has no gas, oil or coal, so every gram of fuel and of
+// plastics feedstock starts as harvested growth — which makes the
+// harvester the commonest machine in the world, and gives it **three
+// places, not two**: the picking ground it works, the **first-pass
+// processing point it dumps at**, and a **repair point**, which is a
+// different installation.  That is `work`, `alt` and `home`, and it is
+// exactly `haul`'s two columns with `home` off the round.
+//
+// ⚠ `gather` is the shape where the drop-off IS the home — a nest, or
+// any node that both receives the load and services the carrier.
+// ⚠⚠ **It is the only shipped shape whose round touches home, so it is
+// the only one that can END today** (§ HOME IS A PLACE).  A harvester's
+// ending is a trip to a place its round never visits, and that needs a
+// terminal leg the cycle has not got yet.
 
 // How many rows the table has.  ⚠ `errand_table_fault` holds the table
 // to it, which is the half crawler's *"stopped at 6 while 7-12 were in
@@ -270,21 +290,49 @@ pub const ERRAND_BAG_LOAD:  u8 = 1;
 // sweep — never rely on the shipped value to exercise the branch.
 pub const GUARD_LEG_UNITS: integer = 30000000;
 
-// One role, as a row: where it goes empty, where it goes loaded, and
-// whether a clock or the bag decides which.
+// How long a gatherer keeps taking rounds before it stays at the nest,
+// in `fixstep` base units — 120 s, which is 180 ticks at today's 2/3 s.
+//
+// ⚠⚠ **It is a MULTIPLE of the round and not a round**
+// (`@FR-E-Home-Is-A-Place`).  A gatherer's round over a scenario-sized
+// map is twenty to thirty seconds, so this is four to six of them —
+// which is the owner's *"once in a while"* rather than *every trip*.  A
+// shift of one round would make a carrier a one-shot delivery and the
+// traffic would stop being traffic.
+//
+// ⚠ **It does NOT have to be a whole number of ticks**, and the
+// difference from `GUARD_LEG_UNITS` is worth naming rather than
+// copying: a clock PERIOD picks a leg, so a boundary landing inside a
+// step leaves the body a hex ahead of its own rule (`@M074`).  A shift
+// picks nothing — it is read once a tick at the consequence stage and
+// only ever while the mob is standing on its home anchor, so a boundary
+// inside a step is a departure one tick later and nothing else.
+pub const GATHER_SHIFT_UNITS: integer = 360000000;
+
+// One role, as a row: where it goes empty, where it goes loaded,
+// whether a clock or the bag decides which, and how long it keeps
+// doing it.
 //
 // ⚠ `period` of 0 means **the bag steers** — it is not a missing number,
 // it is the answer, and `errand_leg` reads it as one.
+//
+// ⚠ `shift` of 0 means **this role never ends** — also an answer, and
+// `errand_done` reads it as one.  ⚠⚠ A row with a shift must have HOME
+// as one of its two anchors or the shift is a promise its round cannot
+// keep, and `errand_row_fault` refuses one that has not (§ Home is a
+// PLACE).
 pub struct Role {
     name:   text,
     empty:  integer,
     laden:  integer,
     period: integer,
+    shift:  integer,
 }
 
 pub fn errand_row(name: text, empty: integer, laden: integer,
-                  period: integer) -> Role {
-    Role { name: name, empty: empty, laden: laden, period: period }
+                  period: integer, shift: integer) -> Role {
+    Role { name: name, empty: empty, laden: laden, period: period,
+           shift: shift }
 }
 
 // ⚠⚠ **THE TABLE.**  Every role in the game is a row here and there is
@@ -295,10 +343,18 @@ pub fn errand_row(name: text, empty: integer, laden: integer,
 // Example: @DRY-144, @DRY-149, @DRY-152
 pub fn errand_roles() -> vector<Role> {
     ers: vector<Role> = [];
-    ers += [errand_row("none",   ANCHOR_NONE, ANCHOR_NONE, 0)];
-    ers += [errand_row("haul",   ANCHOR_WORK, ANCHOR_ALT,  0)];
-    ers += [errand_row("gather", ANCHOR_WORK, ANCHOR_HOME, 0)];
-    ers += [errand_row("guard",  ANCHOR_WORK, ANCHOR_ALT,  GUARD_LEG_UNITS)];
+    ers += [errand_row("none",   ANCHOR_NONE, ANCHOR_NONE, 0, 0)];
+    // ⚠ The harvester's row: out to the picking ground empty, back to
+    // the first-pass plant laden, `home` the repair point it does not
+    // visit on its round.  ⚠⚠ **A distribution robot is the SAME row** —
+    // out empty, back loaded — differing only in how far apart its
+    // anchors are and what is in the bag, which is `DESIGN.md` § 10's
+    // *one AI, per-class DATA* rather than a second row.
+    ers += [errand_row("haul",   ANCHOR_WORK, ANCHOR_ALT,  0, 0)];
+    ers += [errand_row("gather", ANCHOR_WORK, ANCHOR_HOME, 0,
+                       GATHER_SHIFT_UNITS)];
+    ers += [errand_row("guard",  ANCHOR_WORK, ANCHOR_ALT,  GUARD_LEG_UNITS,
+                       0)];
     ers
 }
 
@@ -310,7 +366,7 @@ pub fn errand_role_of(role: integer) -> Role {
     ero_all = errand_roles();
     ero_i   = role;
     if ero_i < 0 || ero_i >= len(ero_all) { ero_i = ROLE_NONE; }
-    ero_all[ero_i] ?? errand_row("none", ANCHOR_NONE, ANCHOR_NONE, 0)
+    ero_all[ero_i] ?? errand_row("none", ANCHOR_NONE, ANCHOR_NONE, 0, 0)
 }
 
 // The role a script or a measurement spells `name`, or `ROLE_NONE`.
@@ -903,6 +959,24 @@ pub fn errand_row_fault(row: const Role) -> text {
         return "role '{row.name}': both legs end at the same anchor, "
                + "so the round trip has no length";
     }
+    if row.shift < 0 {
+        return "role '{row.name}': a shift cannot be {row.shift} units long";
+    }
+    // ⚠⚠ **A SHIFT IS A PROMISE THE ROUND HAS TO BE ABLE TO KEEP**
+    // (`@FR-E-Home-Is-A-Place`, § Home is a PLACE).  A mob leaves the
+    // roster at its HOME anchor and nowhere else, so a row that names a
+    // shift while its round never touches home has named an ending its
+    // cycle can never reach — the mob would work for ever and the
+    // column would read as behaviour the engine has not got.
+    //
+    // ⚠ It is REFUSED here rather than measured later, exactly as
+    // `cycle_fault` refuses a period too short to walk its own leg: the
+    // failure is silent otherwise, because a role that never ends and a
+    // role that cannot reach its ending look identical from outside.
+    if row.shift > 0 && row.empty != ANCHOR_HOME && row.laden != ANCHOR_HOME {
+        return "role '{row.name}': a shift of {row.shift} units ends at a "
+               + "home its round never reaches";
+    }
     // ⚠⚠ **A clock may steer a role only if it has no bag**
     // (`docs/ERRANDS.md` § THE BAG STEERS), and there is no check for it
     // here because there is nothing to check: `errand_arrive` refuses a
@@ -918,7 +992,7 @@ pub fn errand_row_fault(row: const Role) -> text {
 // ⚠ It asks three things a compiler cannot: every row is legal, no two
 // rows share a name, and `ROLE_KIND_COUNT` still counts them.
 //
-// Example: @DRY-144, @DRY-148
+// Example: @DRY-144, @DRY-148, @DRY-177
 pub fn errand_table_fault() -> text {
     etf_all = errand_roles();
     if len(etf_all) != ROLE_KIND_COUNT {
@@ -1031,36 +1105,57 @@ pub struct ErrandField {
     field: FlowField,
 }
 
-// A field for every distinct (destination, climb limit) among the mobs
-// running a routine — each built once.
+// A field for every (anchor, climb limit) a mob on a routine could be
+// making for THIS TICK — each built once.
 //
-// ⚠⚠ **EMPTY when nothing is on a routine, which is every scenario in
-// the tree today** — so the tick pays nothing for this and the 920 gate
-// measurements cannot move.  That is the phase's inertness, constructed
-// rather than promised.
+// ⚠⚠ **EVERY ANCHOR OF THE ROW, NOT THE ONE THE MOB IS MAKING FOR
+// NOW** — and the difference is a defect, not a margin (`@D008`).  A mob
+// that reaches an anchor with hexes left in its bank turns and spends
+// them on the NEXT leg (`@X335`), so it asks for a field this function
+// had no reason to build if it only read the mob's destination at the
+// tick's start.  ⚠ There is then no field to descend, the mover cannot
+// place the step, and **the remaining hexes are charged to `slip`** —
+// which is silent twice over: nothing throws, and the conformance gate
+// agrees because the rule reads `now − slip` and follows the body down.
 //
-// ⚠ `@M072` is what makes it affordable when it is not empty: a sweep
-// over an authored map is **~500 cells** and a mob asks for at most
-// three anchors, so a handful of POIs is a handful of sweeps.  ⚠⚠ It is
+// ⚠⚠ **It is invisible at the shipped robot's speed**, which releases
+// exactly one hex a tick and therefore never turns with hexes left
+// (`@M014`'s class).  A SCOUT releases 1, 2, 2 and turns mid-tick every
+// other round, and R4's gate is where it finally showed — as a mob whose
+// phase had drifted twelve hexes from its own rule over three minutes.
+//
+// ⚠ `@M072` is what makes it affordable: a sweep over an authored map is
+// **~500 cells** and a mob asks for at most three anchors — the budget
+// this reads two of, which is what that number was for.  ⚠⚠ It is
 // rebuilt every tick and that is a stepstone: `plans/22`'s cache, keyed
 // by exactly this pair, is where it stops being one, and `@X299`'s POI
 // is where the cycle stops being rebuilt with it.
 //
-// Example: @DRY-169
+// Example: @DRY-169, @DRY-172
 pub fn errand_fields(state: const WaveState, pal: vector<GroundType>,
                      pw: PaintedWorld) -> vector<ErrandField> {
     ef2_out: vector<ErrandField> = [];
     for ef2_e in state.enemies {
         if !ef2_e.alive { continue; }
-        ef2_job = errand_destination(ef2_e, state.now);
-        if !ef2_job.found { continue; }
-        ef2_c = climb_limit(ef2_e.kind);
-        if errand_fields_have(ef2_out, ef2_job.q, ef2_job.r, ef2_c) { continue; }
-        ef2_out += [ErrandField {
-            q: ef2_job.q, r: ef2_job.r, climb: ef2_c,
-            field: flow_build(pal, pw, state.heights, ef2_e.kind,
-                              Hex { q: ef2_job.q, r: ef2_job.r }),
-        }];
+        // ⚠ Through `errand_cycling`, so a robot the bubble took asks
+        // for nothing — the same one door the mover reads its role
+        // through, and site 5 of `plans/30` § Count the RE-ASSERTION
+        // SITES still has no second write to forget.
+        if !errand_cycling(ef2_e, state.now) { continue; }
+        ef2_row = errand_role_of(errand_role(ef2_e));
+        ef2_c   = climb_limit(ef2_e.kind);
+        for ef2_a in [ef2_row.empty, ef2_row.laden] {
+            if ef2_a == ANCHOR_NONE { continue; }
+            ef2_h = errand_anchor(ef2_e.route, ef2_a);
+            if errand_fields_have(ef2_out, ef2_h.q, ef2_h.r, ef2_c) {
+                continue;
+            }
+            ef2_out += [ErrandField {
+                q: ef2_h.q, r: ef2_h.r, climb: ef2_c,
+                field: flow_build(pal, pw, state.heights, ef2_e.kind,
+                                  Hex { q: ef2_h.q, r: ef2_h.r }),
+            }];
+        }
     }
     ef2_out
 }
@@ -1137,6 +1232,28 @@ pub fn errand_step(e: Enemy, fields: const vector<ErrandField>,
             e.route.slip += es2_cost;
         }
         es2_left -= 1;
+        // ⚠⚠ **A ROUND THAT HAS ENDED STOPS HERE, AND A MOVER THAT
+        // RELEASES MORE THAN ONE HEX A TICK IS WHY** (R4,
+        // `@FR-E-Home-Is-A-Place`).  `errand_depart` reads the position
+        // at the tick's CONSEQUENCE stage, so a mob that walked THROUGH
+        // its home anchor and out the other side inside one tick is
+        // never seen standing on it — a scout releases 1, 2, 2 hexes a
+        // tick and would cycle for ever, while the robot beside it left
+        // on time.  ⚠ It is `@M014`'s class again: the shipped speed a
+        // gate is most likely to use is the one that cannot see this.
+        //
+        // ⚠ **The remaining hexes are DROPPED and not slipped**: the mob
+        // is not held up, it has arrived, and `slip` is for lateness
+        // (`@FR-E-Slip`).  ⚠⚠ It is also the ONE tick a finishing mob
+        // may not be on its rule's hex — the rule keeps walking and the
+        // body has stopped — and it is off the roster before the
+        // consequence stage ends, so nothing can ask.  A harness that
+        // drives this function without `errand_depart` beside it will
+        // see a mob standing at its nest for ever, which is exactly what
+        // a mob whose scenario forgot to take it away should look like.
+        if errand_home_done(es2_row, e.route, Hex { q: e.q, r: e.r }, now) {
+            return;
+        }
     }
 }
 
@@ -1240,14 +1357,109 @@ fn errand_descend(e: Enemy, f: const FlowField, occ: Occupancy,
     false
 }
 
+// ─── ⚠⚠ HOME IS A PLACE — where a ROUTINE ends ─────────────────
+//
+// Plan 30 R4, and `@FR-E-Home-Is-A-Place` is the whole of it: *a mob
+// that finishes its round leaves the roster at a PLACE — a maintenance
+// point, a nest — and never by being deleted where it happened to
+// stop.*  ⚠ Owner, 2026-08-28: *"instead of going to sleep the robots
+// get back to a known maintenance point once in a while, and insects to
+// their nest."*
+//
+// ⚠⚠ **THE CONSERVATION WAS ALREADY RIGHT AND THE PLACE WAS MISSING.**
+// `errand_depart` REMOVES rather than killing, so the wallet is never
+// paid for traffic the player did not touch, and that half is untouched
+// here.  What it gains is somewhere the player can watch them go.
+//
+// ── ⚠⚠ THE ENDING IS A LEG OF THE ROUND, NOT A FOURTH STATE ─────
+//
+// ⚠⚠ **This is the constraint that decided the design, and it comes
+// from the plan's one-sentence invariant**: a mob is on its cycle, or
+// its lateness is in `slip`, or it has left through the bubble — three
+// states and ONE exit.  ⚠ A mob that broke off its round to walk home
+// would be a FOURTH state and a SECOND exit: the rule would keep going
+// round while the body headed somewhere the round never goes, and
+// `cycle_at` could not answer for it at all.
+//
+// ⚠ So home is not somewhere a finished mob GOES — **it is a hex the
+// round already passes through, and the mob leaves the roster the tick
+// its own cycle brings it there**.  Nothing about the mover, the cycle
+// or the conformance gate changes: the mob is exactly where its rule
+// says right up to the tick it is gone.
+//
+// ⚠⚠ **The bill is that two of the three shipped roles cannot END yet,
+// and that is honest rather than a gap left open**: `haul` runs
+// `work ↔ alt` and `guard` runs its post, so neither round touches
+// home, and `errand_row_fault` refuses a shift on a row like that
+// rather than letting the column lie.
+//
+// ⚠⚠ **AND THE ONE THAT CANNOT IS THE COMMONEST ROBOT IN THE WORLD**,
+// which is worth stating plainly rather than leaving as a limitation to
+// discover: `SETTING.md` § There is no fossil carbon makes the
+// plant-material harvester the base of the whole machine economy, and
+// its dump and its repair point are **different places** — so its round
+// never touches home and this mechanism does not reach it.  ⚠ What it
+// needs is a **terminal leg**: two working legs that repeat until the
+// shift, then one walk to `home` and off the roster.  That is a change
+// to the CLOSED FORM (`cycle_build`, `cycle_phase`) rather than to this
+// section, which is why it is its own phase.
+//
+// ── ⚠ WHAT ENDS A ROUND is a SPAN, not a count of rounds ────────
+//
+// ⚠ A count of rounds is not available without asking the CYCLE how
+// long a round is, and `errand_done` has no cycle — building one would
+// be two flow sweeps per mob per tick.  ⚠⚠ A span of time needs
+// neither: `now − slip` is the mob's own clock, already the only
+// argument `cycle_where` and `errand_leg` read, so *has this one worked
+// long enough* is one subtraction.
+//
+// ⚠⚠ **And it cannot oscillate, which is what `@FR-E-Bag-Steers`
+// forbids a clock for.**  `@M073`'s defect is a clock deciding WHICH
+// ANCHOR — a period shorter than the trip turns the mob round before it
+// arrives, for ever.  A shift decides nothing about direction: the mob
+// keeps taking whole rounds until one of them happens to end at home
+// after the span has run out.  ⚠ So a shift SHORTER than a round is not
+// a bug, it is *one round*, and a shift of 0 is *never*.
+
+// Has this routine's round come to its end, here and now?
+//
+// ⚠ Three questions and all three are needed: the row has an ending at
+// all, the mob is standing on the home anchor, and its own clock has
+// run past the shift.
+//
+// ⚠⚠ **The middle one is what keeps a fresh mob from departing where it
+// started.**  A gatherer is authored AT its nest with an empty bag, and
+// the discriminator is the third question rather than the bag: at the
+// run's first moment `now − slip` is 0 and no positive shift has
+// expired, and a mob held in the pre-walk window keeps it at 0 because
+// `errand_step` charges the whole window to `slip`.
+//
+// Example: @DRY-172, @DRY-173, @DRY-176
+pub fn errand_home_done(row: const Role, er: const Errand, at: const Hex,
+                        now: integer) -> boolean {
+    if row.shift <= 0 { return false; }
+    ehd_home = errand_anchor(er, ANCHOR_HOME);
+    if ehd_home.q != at.q || ehd_home.r != at.r { return false; }
+    now - er.slip >= row.shift
+}
+
 // ─── Where a robot's business ENDS ──────────────────────────────
 
 // Has this robot finished its business here?
 //
-// ⚠⚠ **Its business is its HEADING** — `SETTING.md` says a spawn
-// marker's direction is *what they were going before* — so a robot is
-// done when it can go no further that way: the map's edge, a cliff,
-// deep water.  It has crossed, and it goes on its way.
+// ⚠⚠ **THE ONE QUESTION, and its answer depends on what the robot's
+// business IS.**  A robot on no routine is going the way its spawn
+// marker pointed, so it is done when it can go no further that way; a
+// robot on a routine is going round a CYCLE, so it is done when the
+// round brings it home after its shift.  ⚠ Two businesses, two endings,
+// one door out — `errand_depart` asks nothing else, so there is no
+// second removal path that could disagree.
+//
+// ⚠⚠ **Its business is its HEADING** when it has no routine —
+// `SETTING.md` says a spawn marker's direction is *what they were going
+// before* — so a robot is done when it can go no further that way: the
+// map's edge, a cliff, deep water.  It has crossed, and it goes on its
+// way.
 //
 // ⚠ **Only a robot on an ERRAND is ever done.**  A cut-off robot that
 // walks into a wall is besieging it, which is the whole of
@@ -1257,9 +1469,9 @@ fn errand_descend(e: Enemy, f: const FlowField, occ: Occupancy,
 // idea of what stops a robot — the same reason `enemy_walk_heading`
 // asks it.
 //
-// Example: @DRY-111
+// Example: @DRY-111, @DRY-172, @DRY-174
 pub fn errand_done(e: const Enemy, pal: vector<GroundType>, pw: PaintedWorld,
-                   hl: const HeightLayer) -> boolean {
+                   hl: const HeightLayer, now: integer) -> boolean {
     if !e.errand { return false; }
     if !e.alive  { return false; }
     // ⚠⚠ **A ROBOT ON A ROUTINE IS NEVER DONE BY BUMPING INTO
@@ -1272,11 +1484,13 @@ pub fn errand_done(e: const Enemy, pal: vector<GroundType>, pw: PaintedWorld,
     // roster on its first tick, mid-round, with nothing to see.
     // ⚠ **The ROW is asked and never the role id** (`@X333`) — *this
     // role has no cycle* is exactly *its legs go nowhere*.
-    // ⚠ R4 is where a routine gains its own ending: a mob that finishes
-    // its round leaves the roster at HOME (`@FR-E-Home-Is-A-Place`), and
-    // this guard is what stops the heading answering first.
+    // ⚠⚠ **A routine has its OWN ending and it is HOME** (R4,
+    // `@FR-E-Home-Is-A-Place`, § HOME IS A PLACE above), so this guard
+    // is what stops the heading answering first for a mob that has one.
     ed_row = errand_role_of(errand_role(e));
-    if ed_row.empty != ANCHOR_NONE { return false; }
+    if ed_row.empty != ANCHOR_NONE {
+        return errand_home_done(ed_row, e.route, Hex { q: e.q, r: e.r }, now);
+    }
     ed_from = Hex { q: e.q, r: e.r };
     ed_to   = lat_neighbour(ed_from, e.heading as integer);
     !can_step(pal, pw, hl, e.kind, ed_from, ed_to)
@@ -1296,13 +1510,23 @@ pub fn errand_done(e: const Enemy, pal: vector<GroundType>, pw: PaintedWorld,
 // robot that finished this tick is gone for tick N+1 and every
 // measurement inside this tick saw it.
 //
-// Example: @DRY-111
+// ⚠⚠ **Two robots leave through here and they leave from different
+// places** (R4): one on no routine has crossed the map and goes at the
+// edge of what it could walk, one on a routine goes at its HOME anchor
+// — and `errand_done` is the ONE question, so there is no second
+// removal path to keep in step (`@FR-E-Home-Is-A-Place`).
+//
+// Example: @DRY-111, @DRY-175
 pub fn errand_depart(state: WaveState, pal: vector<GroundType>,
                      pw: PaintedWorld, hl: const HeightLayer) -> integer {
     ed_keep: vector<Enemy> = [];
     ed_gone = 0;
     for ed_e in state.enemies {
-        if errand_done(ed_e, pal, pw, hl) {
+        // ⚠ `state.now` is the moment the TICK began — the clock is the
+        // last line of `wave_tick` — which is the same moment
+        // `errand_step` resolved this mob's destination at, so the
+        // round that ends here is the one the mover just walked.
+        if errand_done(ed_e, pal, pw, hl, state.now) {
             ed_gone += 1;
             continue;
         }

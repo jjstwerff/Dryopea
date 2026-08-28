@@ -498,6 +498,94 @@ storm the player waits out, it is a lean-back mechanic, which
 `DESIGN.md` § What kind of game this is refuses.  **It explains decay;
 it is not itself a hazard the player fights.**
 
+## ⚠⚠ There is no fossil carbon — the planet never laid any down
+
+Project owner, 2026-08-29:
+
+> *"This world lacks the gas/oil/coal layers of our world."*
+
+⚠⚠ **So every carbon the machine economy burns or moulds comes from
+LIVING GROWTH, and it has to be harvested.**  There is nothing to drill
+for and nothing to dig up.  A plant-material gatherer's load is dumped
+at a processing point and comes out as **fuel** at one end and
+**plastics feedstock** at the other — one input, both products, because
+there is no second source for either.
+
+⚠ **It is the reason the colonisation programme has a terraforming
+half.**  [`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) § 6 already calls a
+carbon plant *"growth stands cultivated and harvested for carbon"* —
+this says why they were **cultivated** rather than surveyed.  A colony
+that could have mined its carbon would never have planted any.
+
+### ⚠⚠ And it is a TWO-TIER flow, which is why the gatherer is common
+
+Owner, 2026-08-29 — the gatherer is
+
+> *"tied to the spots around the world that process this in the first
+> pass and a distribution network that gets the first processed blocks
+> to the places that need them in almost endless hunger."*
+
+⚠⚠ **So the carbon chain has two kinds of traffic on it, and they look
+completely different from a base.**
+
+| tier | the round | what a base beside it sees |
+|---|---|---|
+| **gathering** | picking ground → the local **first-pass** plant | ⚠ MANY small robots on SHORT rounds — the commonest machine in the world |
+| **distribution** | a first-pass plant → wherever the **blocks** are wanted | ⚠ FEW robots on LONG routes, and they cross whole cells (`ROBOT_ECONOMY.md` § The two scales) |
+
+⚠ **The first pass is what makes the second one possible**: raw growth
+is bulky and local, blocks are dense and travel.  Nothing hauls loose
+plant matter across a continent.
+
+⚠⚠ **"Almost endless hunger" is the load-bearing half.**  Demand
+downstream is effectively unbounded, so this flow **never lulls** — it is
+not seasonal, it is not bursty, and there is no quiet season a player
+could wait out.  ⚠ That is what makes `ROBOT_ECONOMY.md`'s
+`traffic_rate` a steady figure rather than a schedule, and it is
+`DESIGN.md` § What kind of game this is agreeing from the fiction's side:
+a world that went quiet on its own would be a lean-back mechanic.
+
+⚠ **And it is the same errand SHAPE twice**, which is
+[`DESIGN.md`](DESIGN.md) § 10's *one AI, per-class DATA* holding: both
+tiers go out empty and come back loaded to a drop-off, and what differs
+is the DISTANCE between the anchors and what is in the bag — data, not a
+second behaviour.
+
+**Three things follow, and none of them is flavour:**
+
+- ⚠⚠ **Carbon plants are the BASE of the robot economy rather than a
+  quiet quarter of it.**  § 6 reads their traffic as *thin, slow,
+  low-value*, and that stays true **per robot** — but every factory
+  downstream runs on what they send, so **the harvester round is the
+  most common errand in the world** — many gathering points feed each
+  first-pass plant, which is the arithmetic behind *common*.  The
+  quarter is quiet because the robots are small and unhurried, not
+  because the place is marginal.
+- ⚠ **[`MATERIALS.md`](MATERIALS.md)'s chemistry is a CONSEQUENCE, not a
+  choice.**  *"Chemicals — distilled from sap; less efficiently from
+  wood"* is the only chemistry a planet with no petroleum has, which is
+  why the inefficient route is still worth an installation.
+- ⚠⚠ **And it prices sap properly.**  § The other enemy calls sap *"a
+  potent energy source — high-density fuel"*: where the alternative is
+  bulk biomass, a fluid that burns hot is not a luxury, it is **the best
+  fuel on the planet** — which is why what guards it is the hazard it
+  is.
+
+⚠⚠ **AND IT IS ONE OF THE TWO THINGS THE PLANET'S ROBOTS ARE SHORT OF**
+(owner, 2026-08-29): *"beside the gathering of raw metals this is one of
+the biggest constraints on the robots of the planet."*  ⚠ Ore and carbon
+are the bottlenecks; everything downstream of them is waiting.  That is
+why the swarm throws so many small machines at both, and it is what
+makes interfering with either worth something —
+[`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) § The graph is INPUT-constrained
+carries the consequences.
+
+⚠ **What it does NOT license**: an oil well, a refinery, a drilling
+mechanic, or a *found a fossil seam* discovery.  There are none to find,
+and a seam added later would delete the reason the trees matter.  ⚠ Nor
+a shortage EVENT — a constraint that is permanent is not news, and
+`DESIGN.md` § HUD will not put a stock number on screen.
+
 ## The other enemy — insects + sap
 
 The robots are tier 1.  **Tier 2 are insects** — biological,

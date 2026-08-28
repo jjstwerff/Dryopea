@@ -236,11 +236,39 @@ happens**, because a frozen rule agrees with a frozen body:
 ***conformance is an equality between two things that can stop together,
 so liveness has to be asked separately.***
 
-⚠ **What still awaits its phase**: no POI owns a population (R5), a mob
-that finishes its round is still removed where it stopped rather than at
-a PLACE (R4, **(E-Home-Is-A-Place)**), and no `.keys` scenario authors a
-routine — so every rule above is enforced and none of it runs in the
-shipped content.
+⚠⚠ **AND R4 SHIPPED (E-Home-Is-A-Place), WHICH TURNED OUT TO BE A
+CONSTRAINT ON THE CYCLE RATHER THAN A NEW BEHAVIOUR** (`@X338`).  The
+obvious reading — *when its round is over it walks home* — is refused by
+[`plans/30`](../plans/30-the-mob-routine/README.md) § THE INVARIANT: a
+mob is on its cycle, its lateness is in `slip`, or it left through the
+bubble, **three states and ONE exit**, and a mob breaking off to walk
+somewhere the round never goes is a fourth state and a second exit.
+⚠⚠ **So home is not somewhere a finished mob GOES — it is a hex the
+round already passes through, and the mob leaves the roster the tick its
+own cycle brings it there.**  ⚠ A `shift` column says how long a role
+keeps taking rounds, `errand_home_done` is the one question, and a row
+naming a shift its round cannot reach is REFUSED at construction — which
+is why `haul` and `guard` have none: their rounds run `work ↔ alt`, and
+§ Points of interest is where a hauler's round gains a home leg.
+⚠⚠ **And the departure had to move to the TOP of the tick**: removed at
+the consequence stage, a robot arrives at its nest and is gone inside one
+tick, so the last frame that ever holds it has it **one hex short** —
+*deleted where it happened to stop* in the new rule's clothes.  ***What
+the player cannot see the gate cannot see either.***
+
+⚠⚠ **AND `slip` TURNED OUT TO BE A CURRENCY THAT CAN PAY FOR A DEFECT**
+(`@D008`).  `errand_fields` built one field per DESTINATION where it
+needed one per ANCHOR, so a mob that turned mid-tick had nothing to
+descend and its unspent hexes were charged to `slip` — and **every
+conformance count stayed green**, because the rule is read at
+`now − slip` and follows the body down.  ⚠ The reading is a scout twelve
+hexes adrift from its own rule after three minutes; it is (E-Slip)
+abused rather than broken, and only a liveness member that can actually
+turn mid-tick could see it.
+
+⚠ **What still awaits its phase**: no POI owns a population (R5), and no
+`.keys` scenario authors a routine — so every rule above is enforced and
+none of it runs in the shipped content.
 
 ## ⚠⚠ The model in ten lines
 
@@ -1132,6 +1160,44 @@ things follow that a deletion cannot give:
 
 ⚠ And the return trip is what makes a base near a maintenance point
 attritional in exactly the way § 5 describes — the same robots come back.
+
+### ⚠⚠ The DUMP and the REPAIR SPOT are different places  `@X339`
+
+Owner, 2026-08-29: a plant-material gatherer
+
+> *"has both a repair spot and a spot to dump the plants for processing
+> as both fuel and plastics chemical extraction.  This world lacks the
+> gas/oil/coal layers of our world."*
+
+⚠⚠ **So a harvester has THREE places and the record already had room for
+them**: `work` is the picking ground, `alt` is the **first-pass
+processing point** it dumps at every round, and `home` is the **repair
+point** it visits *once in a while*.  ⚠ [`SETTING.md`](SETTING.md)
+§ There is no fossil carbon is why it matters — with no gas, oil or coal
+to dig, every gram of fuel and of plastics feedstock starts as harvested
+growth, so **this is the commonest errand in the world**.
+
+⚠⚠ **AND `plans/30` R4 GOT IT WRONG FIRST, WHICH IS WHY IT IS WRITTEN
+DOWN HERE.**  R4 read the shipped `gather` row — *out empty, back laden
+to HOME* — as the plant-material robot, and it is not: it is the shape
+where **the drop-off IS the home**, which is a nest, or any node that
+both takes the load and services the carrier.  ⚠ The harvester is
+`haul`'s shape — `work → alt`, `home` off the round — and a
+**distribution** robot carrying first-processed blocks to where they are
+wanted is the SAME shape again, differing only in how far apart its
+anchors sit.  *One AI, per-class DATA* survives the whole chain.
+
+⚠⚠ **The consequence for the ending is exact and it is a gap**: R4's
+mechanism ends a round at `home`, and `home` has to be **on the round**
+for the closed form to describe the mob right up to the tick it leaves
+(§ Home is a PLACE above, `@X338`).  A nest round touches home; a
+harvester round does not.  ⚠ So *the ending does not reach the commonest
+robot in the world yet*, and what it needs is a **terminal leg** — two
+working legs repeating until the shift, then one walk to `home` and off
+the roster — which is a change to `cycle_build` / `cycle_phase` rather
+than to the departure.  `errand_row_fault` refuses a shift on a round
+that cannot reach home, so the gap is NAMED at construction rather than
+discovered as a robot that works for ever.
 
 ## ⚠⚠ And this is LIBRARY work too  `@X322`
 

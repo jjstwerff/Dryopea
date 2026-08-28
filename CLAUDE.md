@@ -78,8 +78,12 @@ that answers *where is it at time `t`* in one modulo, and a MOVER that
 descends a field toward the anchor its BAG names.  ⚠⚠ **It is INERT and
 that is deliberate**: no scenario has a routine, so `ROLE_NONE` is what
 every `Enemy { … }` literal already means and the **920 gate measurements
-did not move**.  ⚠ R4 (home is a PLACE), R5 (the POI and its bound) and
-R7 (distraction) are what is left.
+did not move**.  ⚠⚠ **AND A ROUND HAS AN ENDING** (R4, `@X338`,
+`@M076`): a gatherer takes rounds for a 120 s **shift** and then leaves
+the roster **at its nest** — home is a LEG of the round, never a place a
+finished mob walks to, and the departure sits at the **TOP** of the tick
+because *what the player cannot see the gate cannot see either*.  ⚠ R5
+(the POI and its bound) and R7 (distraction) are what is left.
 
 ⚠⚠ **AND THE CREW WORK ON THEIR OWN** ([`plans/29`](plans/29-the-crews-own-work/README.md),
 complete 2026-08-28) — a crew member nobody has told anything takes the
@@ -105,11 +109,11 @@ critical path is **4, the SCRAMBLE**.
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1725 green**, ~320 s on a busy box (562 s beside another suite), 136 files |
+| tests | `scripts/test.sh` | **1731 green**, ~320 s on a busy box (592 s beside another suite), 137 files |
 | scenarios | `scripts/validate.sh` | **50 scripts, 920 measurements**, ~20 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
-| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **412 defined, 408 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
-| ⚠⚠ formal rules | `scripts/rules.sh` — inside `test.sh` | **44 defined, 16 ENFORCED in 34 code sites** (`@X327`).  ⚠ Resolution GATES; coverage only REPORTS.  ⚠⚠ A doc reference is **not** an enforcing site (`@X330`) |
+| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **414 defined, 410 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
+| ⚠⚠ formal rules | `scripts/rules.sh` — inside `test.sh` | **44 defined, 16 ENFORCED in 46 code sites** (`@X327`).  ⚠ Resolution GATES; coverage only REPORTS.  ⚠⚠ A doc reference is **not** an enforcing site (`@X330`) |
 
 ⚠ `scripts/test.sh` is the canonical runner — **never `loft test` directly**
 (§ Key commands says what it does that you would otherwise skip).
@@ -279,7 +283,14 @@ thing it names.
   gate**, and the question it asks is the one an equality never can: *did it
   actually get anywhere?*  ⚠ And **a gate aimed at a hazard somebody NAMED can
   still miss it**, because the fixture may make the wrong version behave
-  identically (`@M075`).
+  identically (`@M075`) — R4 hit that twice more and **swept the
+  fixture's one free number** to find one that cannot be (`@M076`).
+- ⚠⚠ **ANY QUANTITY A CONFORMANCE CHECK SUBTRACTS IS A PLACE A DEFECT CAN
+  HIDE** (`@D008`) — a mover that lost hexes charged them to `slip`, the
+  rule is read at `now − slip`, and **the equality followed the body
+  down**: twelve hexes of drift with every count green.  *Ask what your
+  equality is allowed to absorb*, and ask liveness of a member that can
+  actually reach the branch.
 - ⚠⚠ **A GATE AIMED AT THE MECHANISM YOU EXPECT TO BE THE HAZARD IS NOT ONE
   AIMED AT THE HAZARD** (`@M025`) — and its own control is what said so.
   *The right code with the wrong justification* is what to look for when a
@@ -565,7 +576,7 @@ source of truth and the listing is a navigational summary of it.
 | `render.loft` | the software rasteriser over `graphics::Canvas` |
 | `build.loft` | **THE BUILD ORDER** — the only way a structure comes into existence during a run.  ⚠ Work is stored as SPENT, in INTEGER units |
 | `persist.loft` | **A PLANET — a place that REMEMBERS**.  `dryopea_planets/<planet>/<player>/world.json`; the GROUND and the MARKERS, not a run |
-| `errand.loft` | **A ROBOT GOING ABOUT ITS BUSINESS** — `Traffic`, `errand_done` / `errand_depart`, `plans/30` R1's **ROUTINE** (`Errand`'s five anchors, the role TABLE, `errand_destination`), R2's **CYCLE** (`cycle_at` / `cycle_build` / `cycle_fault`) and R3's **MOVER** (`errand_step`, `errand_fields`, `errand_cycling`).  ⚠ The bubble takes the errand, ONE WAY.  ⚠⚠ **The BAG steers and never a clock**, and the table is INDEXED — never a `role ==`.  ⚠⚠ **The bank does not RESTART at a leg boundary** (`@X335`).  ⚠⚠ **`errand_step` is the ONE DOOR that moves a mob on a cycle and it owns `slip`** (`@FR-E-One-Door`); the position is exact in its PHASE and only conditionally in its HEX (`@X336`), and **a DWELL is not a BLOCK** (`@X337`) |
+| `errand.loft` | **A ROBOT GOING ABOUT ITS BUSINESS** — `Traffic`, `errand_done` / `errand_depart`, `plans/30` R1's **ROUTINE** (`Errand`'s five anchors, the role TABLE, `errand_destination`), R2's **CYCLE** (`cycle_at` / `cycle_build` / `cycle_fault`) R3's **MOVER** (`errand_step`, `errand_fields`, `errand_cycling`) and R4's **ENDING** (`Role.shift`, `errand_home_done`).  ⚠ The bubble takes the errand, ONE WAY.  ⚠⚠ **The BAG steers and never a clock**, and the table is INDEXED — never a `role ==`.  ⚠⚠ **The bank does not RESTART at a leg boundary** (`@X335`).  ⚠⚠ **`errand_step` is the ONE DOOR that moves a mob on a cycle and it owns `slip`** (`@FR-E-One-Door`); the position is exact in its PHASE and only conditionally in its HEX (`@X336`), and **a DWELL is not a BLOCK** (`@X337`).  ⚠⚠ **HOME is a LEG of the round** and a mob leaves the roster the tick its cycle brings it there (`@X338`); ⚠ `errand_fields` builds one field per ANCHOR and never per DESTINATION (`@D008`) |
 | `skill.loft` | **CREW SKILLS — build, repair, scout**.  `Skills` on `Helper`, `skill_factor`, and the DETECTION rule |
 | `endure.loft` | **ENDURANCE — work spends it, rest restores it**.  ⚠ A tired person works LESS and never stops |
 | `jammer.loft` | **THE JAMMER SWITCH — turning your own core off**.  ⚠ It stops the SUPPLY and never the SIEGE |
@@ -824,7 +835,11 @@ PROBLEMS.md             — dryopea-internal bugs (@D-prefixed; ⚠ NOTHING is o
                           closed both on 2026-08-28, and @D007 was found and fixed
                           the same day — a dropped BEACON round-tripped as a WRECK,
                           because a writer and its reader are a PAIR and nothing in
-                          the corpus had ever produced the value.  ⚠⚠ @D006 is the one worth
+                          the corpus had ever produced the value.  @D008 likewise, on
+                          2026-08-28 — a mob that turned at an anchor MID-TICK had no
+                          field for the next leg and its hexes went to `slip`, which
+                          the conformance gate ABSORBED because the rule is read at
+                          `now - slip`.  ⚠⚠ @D006 is the one worth
                           reading: it called itself "not a patch" and predicted
                           `tests/11_f6` would go red, and NEITHER held — it moved
                           not one of 833 measurements, while the thing that DID
@@ -1134,6 +1149,7 @@ names; most of them exist because somebody did it without reading.
 | Add a mob ROLE, or ask where a robot on a routine is going | `src/errand.loft` § THE ROUTINE + `@X333` — ⚠⚠ **a role is a ROW and the table is INDEXED, never a `role ==`**, and a test sweeps `src/` to say so.  ⚠ **The BAG steers and never a clock** (`@M073`): 4, 40 and 400 hexes all close; a period one column away gets 13 hexes out for ever |
 | Ask where a mob is at an arbitrary MOMENT, or add a leg to a cycle | `src/errand.loft` § THE CYCLE + `@X335` — ⚠⚠ **one modulo, O(legs), one index, and never a step forward** (`@FR-E-Closed-Form`), so an un-tracked mob is COMPUTED and `plans/22`'s LOD refusal needs no exception.  ⚠⚠ **The bank does NOT restart at a leg boundary**: `walked(t) − walked(t₀)`, never `walked(t − t₀)`, and a **DWELL is a LEG with a length, not a pause**.  ⚠ A clock period must be a whole number of ticks and is refused otherwise (`@M074`) |
 | Move a mob on a routine, or ask what `slip` pays for | `src/errand.loft` § THE MOVER + `@X336`, `@X337` — ⚠⚠ **`errand_step` is the ONE DOOR and nothing else may write a cycling mob's position** (`@FR-E-One-Door`).  ⚠⚠ **The position is exact in its PHASE and only conditionally in its HEX**: a mob whose first choice is taken walks another route of the same length and loses no time, so hex equality holds only where nothing can push a body while the DISTANCE holds everywhere.  ⚠⚠ **A DWELL is not a BLOCK** — charging `slip` while a guard waits out its clock freezes it **with every conformance count green**, so *liveness is a second gate*.  ⚠ A lost hex costs `BANK_WHOLE / rate` and a rate without a whole one is REFUSED |
+| End a mob's round, or ask where a robot goes when it is finished | `src/errand.loft` § HOME IS A PLACE + `@X338`, `@M076` — ⚠⚠ **HOME IS A LEG OF THE ROUND, never a place a finished mob walks to**: the plan's invariant is *three states and ONE exit*, so a mob breaking off its cycle would be a fourth state and a second exit.  A mob leaves the roster the tick its own cycle brings it home, and the mover, the cycle and the conformance gate are untouched.  ⚠ **A `shift` is a SPAN and not a count of rounds** — a count needs the cycle, `now − slip` is already there, and a shift chooses no ANCHOR so it cannot reproduce `@M073`.  ⚠⚠ **A row with a shift must have HOME as an anchor and `errand_row_fault` refuses one that has not**, which is why `haul` and `guard` have none: their rounds run `work ↔ alt`, and R5's POI is where one gains a home leg.  ⚠⚠ **The departure is at the TOP of the tick and that is the claim**: at the consequence stage a robot arrives at its nest and is removed in the same tick, so the last frame holding it has it ONE HEX SHORT — ***what the player cannot see the gate cannot see either*** |
 | Give a mob a JOB, a route, a home or a reason to leave one | [`docs/ERRANDS.md`](docs/ERRANDS.md) — ⚠⚠ **the bag steers, not the calendar**, and a distraction must be caused by something the player BUILT, never by being seen |
 | Simplify, drop or defer a piece of the worldgen / errand design | ⚠⚠ **READ `@X324` FIRST** ([`docs/WORLDGEN.md`](docs/WORLDGEN.md) § WHY IT IS AN OLD DESIGN) — it is aimed at a GAP, so **a piece dropped for convenience is a regression even when everything still works**: `@X320`'s edge restriction buys nothing visible alone and its absence makes the dither impossible; `@X321`'s residual looks like a detail and its absence takes the variant budget from a handful to thousands.  ⚠ **The design is not finished when it RUNS** — `@X303` and `@X323` are tests, not features |
 | Judge ANY worldgen or terrain-derivation idea | ⚠⚠ **THE TEST** ([`docs/WORLDGEN.md`](docs/WORLDGEN.md) § THE THESIS, `@X323`): *express detail from a very compact BASE SET* — so **does this add data in proportion to the detail it produces?**  If it does, it is the wrong mechanism.  ⚠ Every rule is a COMPRESSION plus a decompression that is **local, deterministic and commutative**; take one away and it stops being usable.  ⚠⚠ dryopea has done this since plan 01 — `painted.loft`'s sea-default absence, `height.loft`'s layer, `entity_view.loft`'s *nothing is STATE* |

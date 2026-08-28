@@ -2130,6 +2130,29 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     // wave from its first tick rather than from its second.
     wave_cutoff(state, core);
 
+    // ⚠ **A robot that finished its business goes on its way**
+    // (BACKLOG B4), and it goes at the TOP of the tick AFTER the one it
+    // finished in — so the tick it finished in ends with it standing on
+    // the hex it finished at, and a frame is drawn there.
+    //
+    // ⚠⚠ **THE PLACEMENT IS R4'S CLAIM, NOT A TIDY-UP** (plan 30 R4,
+    // `@FR-E-Home-Is-A-Place`).  Taken at the CONSEQUENCE stage instead,
+    // a robot walking to its nest arrives and is removed inside one
+    // tick, so the last frame that ever holds it has it **one hex
+    // short** — which is *deleted where it happened to stop* wearing the
+    // new rule's clothes.  ⚠ And what the player cannot see the gate
+    // cannot see either: the departure hex is unobservable from outside
+    // a tick that both moves and removes.
+    //
+    // ⚠ **After `wave_cutoff`, and that order is the precedence it
+    // always had**: a robot the bubble took this tick has no errand, so
+    // it is not asked.  ⚠ A breach that opened at the end of the
+    // previous tick is resolved by now, so a robot the wall was holding
+    // finds the way open and walks on rather than calling its errand
+    // finished — the world it is asked about is the one it is about to
+    // walk into.
+    errand_depart(state, pal, pw, state.heights);
+
     // Everything the tick reads is fixed before anybody moves: the
     // fields, where everyone stands, and the order they act in.
     wt_fields = wave_fields(state, pal, pw, core);
@@ -2381,17 +2404,6 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     }
 
     wave_deaths(state);
-
-    // ⚠ **A robot that finished its business goes on its way**
-    // (BACKLOG B4), here with the deaths because it is the same kind of
-    // consequence: it happens at the END of a tick, so everything that
-    // ran this tick saw it, and tick N+1 does not.
-    //
-    // ⚠⚠ **Before `damage_resolve`, and the order matters**: a breach
-    // resolved first would open the way a robot was about to call the
-    // end of its errand, so it would leave through a hole that did not
-    // exist while it was walking.
-    errand_depart(state, pal, pw, state.heights);
 
     damage_resolve(pal, pw, state.damage, state.heights);
 

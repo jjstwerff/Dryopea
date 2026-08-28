@@ -9,6 +9,44 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
+**R4 COMPLETE 2026-08-28 — a round has an ENDING, and it is a PLACE.**
+⚠⚠ **AND ITS REACH WAS CORRECTED THE NEXT DAY** (`@X339`): a
+plant-material harvester's **dump** and its **repair point** are
+different places, so `haul` is that robot's shape and `gather` is the
+NEST's — and R4's ending, which needs `home` ON the round, reaches the
+nest and not the harvester.  ⚠ **R4b** is the terminal leg that closes
+it, and it matters because carbon is one of the planet's two bottlenecks
+(`@X340`), which makes the harvester the commonest errand in the world.
+R4b and R5 are startable.  ⚠ Gates: **1731 green over 137 files** (+6, all this
+phase's), `validate.sh` **50 scripts / 920 measurements** and
+`validate_gl.sh` **3 fixtures / 55 measurements**, both **UNCHANGED**.
+
+⚠⚠ **`@X338` — home is a LEG OF THE ROUND, not a place a finished mob
+walks to**, and the plan's own one-sentence invariant is what decided
+it: *three states and ONE exit* leaves no room for a mob that breaks off
+its cycle to walk somewhere the round never goes.  ⚠ So the mob is
+exactly where its rule says right up to the tick it is gone, the mover
+and the cycle are untouched — and the bill is that **two of the three
+shipped roles cannot END yet**, which `errand_row_fault` NAMES rather
+than leaving open.  ⚠⚠ **And the departure moved from the consequence
+stage to the TOP of the next tick**: taken where it was, a robot arrives
+at its nest and is removed inside one tick, so the last frame that ever
+holds it has it **one hex short** — *deleted where it happened to stop*
+in the new rule's clothes.  ***What the player cannot see the gate
+cannot see either.***
+
+⚠⚠ **`@M076` — eight mutations, eight caught, and TWO of them chose the
+fixture.**  At a 13-hex leg the file was green with the mover's
+finishing stop deleted and green again with the mob's own clock replaced
+by the run's; sweeping the leg length is what found an 8 that cannot be.
+⚠⚠ **And the scout found `@D008` on the way in** — `errand_fields` built
+one field per DESTINATION rather than one per ANCHOR, so a mob that
+turned mid-tick had nothing to descend and **its hexes went to `slip`**:
+twelve hexes of drift over three minutes, with every equality in § Rc
+green, because the rule reads `now − slip` and follows the body down.
+***`slip` is a currency that can pay for a defect***, and only a
+LIVENESS gate with a scout in it could say so — `@X337` a second time.
+
 **R3 + Rc COMPLETE 2026-08-28 — the mob MOVES, and it is still INERT.**
 R4 and R5 are startable.  ⚠ Gates: **1725 green over 136 files** (+11,
 all this phase's), `validate.sh` **50 scripts / 920 measurements** and
@@ -220,7 +258,8 @@ behaviour and clocks, gated by scenarios and counts.
 | **R1** — `Errand`: five anchors, and the BAG steers | S | `tests/30_r1_the_errand.loft` (9) | ✅ **COMPLETE 2026-08-28** — `@M073`, `@X333`, `@X334` |
 | **R2** — the cycle is CLOSED-FORM | S | `tests/30_r2_the_cycle.loft` (8) — ⚠ the equality gate above | ✅ **COMPLETE 2026-08-28** — `@M074`, `@X335` |
 | **R3** — deviation, and `slip` | M | `tests/30_r3_the_deviation.loft` (5) | ✅ **COMPLETE 2026-08-28** — `@M075`, `@X336`, `@X337` |
-| **R4** — home is a PLACE | S | a scenario: a robot walks home and leaves the roster there | **STARTABLE** |
+| **R4** — home is a PLACE | S | `tests/30_r4_home.loft` (6) — a played session | ✅ **COMPLETE 2026-08-28** — `@X338`, `@M076`, `@D008` |
+| **R4b** — the TERMINAL leg: a round that ends somewhere it does not pass | M | a scenario: a HARVESTER ends at its repair point — ⚠ plus R2's sweep extended to a cycle with a terminal leg | **STARTABLE** — ⚠⚠ **and it is the phase that makes R4 reach the commonest robot in the world** (`@X339`) |
 | **R5** — the POI, its population, its BOUND | M | ⚠ the containment gate above | **STARTABLE** — ⚠ **R0 probe 3 is ANSWERED and the bound is named** |
 | **R6** — CULL / EVALUATE / MATERIALISE | M | ⚠ the `R` vs `2R` gate **and its differ-control** | Blocked on R5 |
 | **Rc** — the CONFORMANCE gate | S | `tests/30_rc_the_conformance.loft` (6) | ✅ **COMPLETE 2026-08-28** — ⚠ and it needed a LIVENESS gate beside it (`@X337`) |
@@ -728,6 +767,211 @@ protects.
 ⚠ It is what makes `ROBOT_ECONOMY.md` § 5's `damage_persistence`
 buildable later — *"a wounded robot walks home, is fixed, and returns
 whole"* — but this phase does **not** build the return.
+
+### What was built, and the four things the phase decided
+
+✅ **COMPLETE 2026-08-28** — `src/errand.loft` (`Role.shift`,
+`GATHER_SHIFT_UNITS`, `errand_home_done`, the mover's finishing stop,
+the row refusal, and `errand_fields` rebuilt), `src/spawn.loft`
+(`errand_depart` moved to the top of the tick),
+`tests/30_r4_home.loft` (6), `tests/30_rc_the_conformance.loft`
+(strengthened), `@X338`, `@M076`, `@D008`.
+
+⚠⚠ **1. HOME IS A LEG OF THE ROUND, AND THE INVARIANT IS WHAT SAID SO.**
+The obvious reading of `@FR-E-Home-Is-A-Place` — *when its round is over
+it walks home* — is refused by § THE INVARIANT: a mob is on its cycle,
+its lateness is in `slip`, or it left through the bubble.  **Three
+states, ONE exit.**  A mob breaking off to walk somewhere the round
+never goes is a fourth state and a second exit, and `cycle_at` could not
+answer for it at all.
+
+> ⚠⚠ **So home is not somewhere a finished mob GOES — it is a hex the
+> round already passes through, and the mob leaves the roster the tick
+> its own cycle brings it there.**
+
+⚠ The mover, the cycle and § Rc are untouched by that, which is the
+whole benefit.  ⚠⚠ **The bill is real and it is NAMED**: `haul` runs
+`work ↔ alt` and `guard` runs its post, so **neither round touches home
+and neither can end yet** — and `errand_row_fault` refuses a shift on a
+row like that, so the column cannot promise behaviour the cycle has not
+got (`@X112` from the other end).  ⚠ **R5 inherits it**: a hauler's
+round gains a home leg where a mob's anchors stop being authored one at
+a time.
+
+⚠⚠ **2. WHAT ENDS A ROUND IS A SPAN, NOT A COUNT OF ROUNDS.**  A count
+needs to ask the CYCLE how long a round is — two flow sweeps per mob per
+tick — while `now − slip` is already the only argument the rest of the
+file reads.  ⚠ And it cannot reproduce `@M073`: `@FR-E-Bag-Steers`
+forbids a clock from choosing an ANCHOR, and a shift chooses nothing
+about direction, so a shift shorter than a round is simply *one round*
+rather than an oscillation.
+
+⚠⚠ **3. THE DEPARTURE MOVED TO THE TOP OF THE NEXT TICK, AND THAT IS
+THE PHASE'S CLAIM RATHER THAN A TIDY-UP.**  Taken at the consequence
+stage, a robot walking to its nest **arrives and is removed inside one
+tick**, so the last frame that ever holds it has it one hex short — and
+a scout two.  That is *deleted where it happened to stop* wearing the
+new rule's clothes.
+
+> ⚠⚠ **What the player cannot see the GATE cannot see either** — the
+> departure hex is unobservable from outside a tick that both moves and
+> removes, and the first version of `tests/30_r4_home.loft` read
+> `(41,4)` for a nest at `(40,4)` and could not say why.
+
+⚠ Measured inert: `validate.sh` **50 scripts / 920 measurements**,
+unchanged, so the one-tick-later ending for an AMBIENT robot moved
+nothing in the corpus.
+
+⚠⚠ **4. A MOVER THAT RELEASES MORE THAN ONE HEX A TICK STEPS OVER ITS
+OWN ENDING**, so the stop belongs to `errand_step` — the ONE DOOR — and
+the remaining hexes are DROPPED rather than slipped, because the mob has
+arrived rather than been held up.  ⚠ It is `@M014`'s class: the shipped
+robot releases exactly one hex a tick and cannot see it.
+
+### ⚠⚠ And the SCOUT found `@D008` on the way in
+
+⚠⚠ **`errand_fields` built one field per DESTINATION where it needed one
+per ANCHOR.**  A mob that reaches an anchor with hexes left in its bank
+turns and spends them on the next leg (`@X335`) — and the vector held no
+field for that leg, so the mover could not place the step and
+`errand_step` **charged the hexes to `slip`**.
+
+⚠ It is silent **twice**:
+
+- the shipped robot releases exactly one hex a tick, so it never turns
+  with hexes left, and every carrier in the R1-R3 corpus was one;
+- ⚠⚠ **§ Rc AGREES WITH IT.**  The rule is read at `now − slip`, so
+  charging the lost hex moves the rule down onto the body and
+  `cycle_at(e, now) == (e.q, e.r)` stays exactly true.
+
+> ⚠⚠ ***`slip` is a currency that can pay for a defect.***  The reading
+> is a scout whose phase had drifted **twelve hexes** from its own rule
+> over three minutes with every conformance count green — `@X337`'s
+> *conformance is an equality between two things that can stop together*
+> reached from a second direction, and the fix to the gate is the same
+> one: **a LIVENESS member that can actually turn mid-tick.**
+
+⚠ `tests/30_rc_the_conformance.loft` gained a **scout carrier** in
+*nothing blocked it so nothing slipped*, and pins the field count at
+**2 per routine**.
+
+### ⚠⚠ Eight mutations, and TWO of them chose the fixture
+
+⚠ Both files were green on their first run, which `CLAUDE.md` says to
+distrust.
+
+| mutation | caught by the first version? |
+|---|---|
+| `errand_home_done` always false | ✅ 5 of 6 |
+| the departure back at the consequence stage | ✅ 3 of 6 — it reads the hex `(41,4)` |
+| it leaves wherever it happens to be | ✅ 3 of 6 |
+| a shift of 0 reads as *no shift* rather than *never* | ✅ the one-column control |
+| a shift the round cannot reach is accepted | ✅ |
+| **the mover walks through its own ending** | ❌ **no** — at a 13-hex leg |
+| **the run's clock instead of the mob's** | ❌ **no** — at a 13-hex leg |
+| `@D008` restored (one field per destination) | ✅ once the leg was 8 |
+
+⚠⚠ **The two that survived were both fixture accidents, and sweeping the
+LEG LENGTH is what fixed them.**  A scout that walks through its nest is
+invisible whenever it also happens to land on it exactly on some later
+round; *now* and *now − slip* pick the same round unless a held-up mob
+has an arrival in the window between them.  ⚠ At 8 hexes neither is
+true, and the two answers are a whole round and 16 ticks apart.  ⚠ That
+is `@M075`'s own finding repeated: **a gate aimed at a hazard somebody
+NAMED can still miss it, because the fixture may make the wrong version
+behave identically.**
+
+## R4b — the TERMINAL leg: a round that ends somewhere it does not pass
+
+⚠⚠ **R4 shipped an ending that only a NEST-shaped round can use, and the
+world's commonest robot is not nest-shaped** (`@X339`, owner
+2026-08-29).  A plant-material harvester has **three** places — the
+picking ground, the **first-pass processing point** it dumps at every
+round, and a **repair point** it visits once in a while — so `home` is
+off its round, and `@X338`'s *home is a leg of the round* does not reach
+it.
+
+⚠ And it is not a corner case: [`docs/SETTING.md`](../../docs/SETTING.md)
+§ There is no fossil carbon makes carbon one of the planet's **two
+bottlenecks** (`@X340`), so the harvester round is the most common
+errand there is.
+
+**What it builds** — a round that repeats and then ENDS:
+
+```
+  alt → work → alt → work → … → alt → home        (and off the roster)
+  └──────── the period ────────┘   └ the terminal leg ┘
+```
+
+⚠⚠ **It stays CLOSED-FORM, which is the whole constraint** — the turn
+point is arithmetic, not a search: with `S = cycle_walked(rate, shift)`
+the mob turns for home at `T = ceil(S / period) × period`, so
+`cycle_phase` is *one modulo below `T`, one subtraction above it*, and
+`@FR-E-Closed-Form` is untouched.  ⚠ The body agrees by construction:
+`errand_arrive` empties the bag at `alt`, so *the first empty leg after
+the shift* is exactly the same moment.
+
+### ⚠⚠ PROBE — the turn point must be compared in HEXES, not in TIME  `@M077`
+
+⚠ Answered before a line of loft, because it decides the shape rather
+than the code.  **R4 shipped `errand_home_done` comparing
+`now − slip >= row.shift` — a boundary in TIME — and the closed form
+cannot use one.**
+
+⚠⚠ Swept over **192 cases** (3 rates × 4 periods × 4 shifts × 4 step
+lengths, one of them 137 113 units, which divides neither the tick nor a
+hex): the stepped body turning on the TIME comparison disagrees with
+`ceil(S / period) × period` in **12**; turning on the HEX comparison
+`walked(now − slip) >= walked(shift)` disagrees in **0**.
+
+⚠ **And the failure is a WHOLE ROUND, not a rounding error.**  At a
+shift of 361 111 111 units the arrival at hex 180 happens a hair BEFORE
+the shift, so the time test says *not yet* and the mob walks another
+**30 hexes** — body 210 against a rule of 180.  A closed form that said
+180 while the body walked to 210 is `@X335`'s leg boundary again with a
+new subject.
+
+⚠⚠ **It is `@FR-E-Bag-Steers` a THIRD time, and from a third direction**:
+*a boundary in DISTANCE is exact at any timestep and one in TIME lands
+wherever the arrival happens to fall.*  `@M073` reached it from the
+route's length and `@M074` from the timestep; this reaches it from the
+ENDING.
+
+⚠⚠ **AND THE SHIPPED SHIFT CANNOT SEE IT** (`@M014`'s class, a fourth
+instance): 120 s at 1.5, 2.5 and 0.5 hex/s is **180, 300 and 60 WHOLE
+hexes**, so the boundary lands exactly on an arrival at every shipped
+speed and both forms agree for any implementation.  ⚠ The sweep's
+361 111 111 is the neighbour that can see it, and R4b's gate must keep
+one — never rely on the shipped value.
+
+**So R4b owes three things this probe has already decided:**
+
+1. the turn point is compared in **hexes**, converted once with
+   `cycle_walked(rate, shift)`;
+2. `cycle_fault` **refuses a shift that is not a whole number of hexes**
+   at the mover's rate — the same refusal, in the same function, as the
+   clock period that is not a whole number of ticks (`@M074`);
+3. ⚠ `errand_home_done`'s comparison moves to hexes with it, so the body
+   and the rule read **one** currency — which is what makes them agree
+   by construction rather than by being kept in step.
+
+**Gate** — a played scenario in which a harvester ends at its repair
+point, plus:
+- ⚠⚠ **R2's sweep extended to a cycle with a terminal leg** — the
+  stepped body against the closed form over the cross-product, because
+  the turn point is new arithmetic and `@M074` is what a leg boundary
+  costs when it is not exact;
+- ⚠ the two-sided bound of `@M076`, restated for the terminal leg: the
+  mob leaves at most one whole round plus one terminal leg after the
+  shift;
+- ⚠⚠ **and the control that separates it from R4**: the same anchors
+  with `alt` ON the home hex is a nest round, which must end the way R4
+  already ends it — one fixture, two shapes, one column apart.
+
+⚠ **`errand_row_fault` is what holds the gap shut in the meantime**: a
+shift on a round that cannot reach home is refused at construction, so
+the missing ending is NAMED rather than discovered as a robot that works
+for ever.
 
 ## R5 — the POI, its population, its BOUND
 
