@@ -505,6 +505,108 @@ about a *player-dug trench*; the same numbers make an authored waterfall
 a hazard the player cannot undo, which is the strongest thing in the
 palette and is currently unused.
 
+#### ⚠⚠ EVERY COMMON CASE NEEDS SEVERAL BLOCKS — the budget goes to the BORING one  `@X319`
+
+Owner, 2026-08-28:
+
+> *"I want to have a choice of multiple blocks for **all common cases**
+> so we can **dither** the terrain with that even when the world-map is
+> not very interesting, so we prevent the common problem where
+> **patterns get visible**."*
+
+⚠⚠ **This inverts the instinct, and that is why it needs writing down.**
+The tempting way to spend an authoring budget is on the dramatic cases —
+the waterfall, the cliff band, the gorge.  ⚠ But those appear **rarely**,
+and **repetition is only visible in what appears OFTEN**:
+
+> ⚠⚠ **The block budget belongs to the DULL cases.  A gorge seen once is
+> a gorge; a grass shelf seen forty times is a pattern.**
+
+##### ⚠ How many — the honest arithmetic, and then why it is not that bad
+
+⚠ Treat a block as a **stamp** and it is a birthday problem: with `k`
+blocks co-visible, an exact repeat becomes likely at
+`n ≈ k(k−1) / 2 ln 2` variants.  At dryopea's haze radius of 40 hexes
+(**104 m** across the visible disc):
+
+| block | across | co-visible | variants for a coin-flip chance of no repeat | ⚠ ÷12 orientations |
+|---|---|---|---|---|
+| 10 hexes | 13.0 m | ~64 | **2 908** | 242 |
+| 20 hexes | 26.0 m | ~16 | **173** | 14 |
+| 41 hexes | 53.3 m | ~4 | **9** | ⚠ **1** |
+
+⚠⚠ **So block SIZE is the lever and it trades quadratically** — halving
+the block quadruples the co-visible count and multiplies the variants
+needed by about sixteen.  ⚠ A hex lattice gives 6 rotations × 2
+reflections **free**, which is the ÷12 column.
+
+##### ⚠⚠ But a block is NOT a stamp, and that is the whole reason this works
+
+⚠ The table above is the pessimistic reading, and `@X316` already
+refuses it: *"per-block seeded plasma fractal **anchored at shared corner
+values**"* means **a block is a RULE APPLIED TO ANCHORS, not a picture
+laid down.**
+
+> ⚠⚠ **Two instances of the same block on different corner heights are
+> already different ground.**  What can repeat is the *arrangement*, not
+> the geometry — so a handful of variants per common case, times twelve
+> orientations, over continuously varying anchors, is the real budget.
+
+⚠ It is the same property `@X299` relies on for mobs: **the thing is
+generated from its context, so context does the varying for free.**
+
+##### ⚠ And the dither must be a POSITION HASH, never a stream
+
+⚠⚠ dryopea gates drawn output — 16 goldens, `mesh_crc`, and 920 scenario
+measurements — so **terrain has to be reproducible or the gates die**.
+⚠ A variant chosen from an RNG *stream* depends on how many draws came
+before it; one chosen by hashing the block's coordinate does not.
+⚠⚠ **crawler has the bug this prevents, and it is undocumented there**:
+its `gseed` passes literal `1, 1` where the window coordinates belong,
+so **every window draws the identical number sequence** and only the
+terrain tests differ.
+
+#### ⚠⚠ AND THE EDGES ARE NOT THE BLOCK'S TO VARY — which is what makes variants substitutable  `@X320`
+
+Owner, 2026-08-28:
+
+> *"and the side of blocks get features from multiple blocks to prevent
+> visible seams."*
+
+⚠⚠ **This is `@X316`'s ownership law extended from HEIGHTS to
+FEATURES**, and it is the property that makes § EVERY COMMON CASE
+possible at all:
+
+> *"every feature is owned by the lattice element **all its observers
+> share** — maps CONSUME contracts, never regenerate them."*
+
+| zone | owned by | who contributes |
+|---|---|---|
+| a block's **interior** | ⚠ the block | itself alone — **and this is the only part a variant may vary** |
+| a block's **edge band** | ⚠⚠ **the EDGE**, shared by two blocks | ⚠ **both**, and both read the same answer |
+| a **corner** | the corner, shared by three | all three |
+
+⚠⚠ **Read it as the reason rather than the technique.**  If an edge band
+belonged to one block, swapping that block for a variant would move the
+seam and **break its neighbour** — so variants could not be substituted
+at all, and the dither above would be impossible.  ⚠ Because the edge
+owns its own band, **every member of an admissible set is interchangeable
+by construction.**
+
+> ⚠⚠ **A VARIANT MAY DIFFER ONLY IN ITS INTERIOR.  ITS EDGES ARE NOT ITS
+> TO VARY** — and that single restriction buys both the seamlessness and
+> the substitutability.
+
+⚠ It is not *blend the two afterwards*, which would be a second
+computation of a shared thing and is exactly what the law forbids — and
+what `@X285` made `VIEW_PPM` private to prevent one system over.  ⚠⚠ It
+is **one owner, both neighbours reading**, which is why it is
+commutative for free and needs no check.
+
+⚠ And it compounds with the dither: a seam that carries features from
+both sides is a seam that does not announce where one block ended, so
+**the arrangement blurs as well as the geometry.**
+
 #### ⚠⚠ THE STITCHING RULE: a block declares its EDGES, and flow picks them
 
 ⚠ A river-bearing block has one more obligation, and it is `@X316`'s
