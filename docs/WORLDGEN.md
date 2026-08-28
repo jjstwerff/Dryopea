@@ -403,6 +403,95 @@ if fq >= 8 && fq < w - 8 && fr >= 7 && fr < h - 7 { …stamp… }
 a margin** — which is the bound, the cull and the materialisation in one
 line, and it is per-feature exactly as `@X301` makes it per-POI.
 
+## ⚠⚠ WHERE SCENARIO-SCALE DETAIL COMES FROM — trees, mines, roads, rivers, coast, cliffs  `@X315`
+
+Owner, 2026-08-28:
+
+> *"but the ortler map is in a big scale, we want to use that on a
+> smaller scenario scale too — are there trees, mines, roads, rivers,
+> coast, cliffs etc?"*
+
+### ⚠ First, what the Ortler data actually CONTAINS
+
+⚠ Read off the fetcher's own Overpass query
+(`plans/1-ortler-worldgen-fixture/ortler_import.py:294-298`) and the
+stored legend (`src/realworld/region.loft:25-38`):
+
+| | in the data? | how |
+|---|---|---|
+| **trees** | ✅ | `natural=wood`, `landuse=forest` → `OSM_WOOD` |
+| **rivers** | ✅ | `waterway=river\|stream` → a per-hex hit mask, with the DIRECTION taken from steepest descent on the pit-filled DEM rather than from the OSM geometry |
+| **cliffs** | ⚠ **fetched and then LOST** | `natural=cliff\|bare_rock` are queried, but the legend folds them into `OSM_ROCK` — and *"cliffs are **not resolvable at 1.5 km**"* is the fixture's own verdict |
+| **coast** | ❌ | the Ortler is **inland** — 568 to 3835 m, no sea in the bbox.  `OSM_WATER` is lakes and reservoirs |
+| **mines** | ❌ | not queried at all |
+| **roads** | ❌ | ⚠ `highway` is **absent from the query** |
+
+> ⚠⚠ **So the fixture answers TERRAIN questions and cannot answer
+> INFRASTRUCTURE ones** — which is not an oversight, it is the
+> FIELDS/FEATURES split showing through: landcover is a field, and roads
+> and mines are features that `crawler` **places** rather than imports.
+
+### ⚠⚠ And the general answer: THREE sources, and the size decides which
+
+⚠ Everything the owner listed comes from one of three places, and
+knowing which is the whole of this section:
+
+| source | what it is | what it gives | scale it works at |
+|---|---|---|---|
+| **1. FIELDS** | continuous, sampled per fine hex from the coarse neighbourhood (`@X313`) | elevation, slope, wetness, a ground KIND | ⚠ **coarse only** |
+| **2. FEATURES** | discrete **world-coordinate records** on the coarse map, stamped into whichever window holds them | rivers, roads, and dryopea's **POIs** (`@X301`) | ⚠ exact, at any scale |
+| **3. PROCESSES** | run at FINE scale over the shape the fields gave | ⚠⚠ what neither of the others can — **cliffs and scree** (`@X311`) | ⚠ fine only |
+
+⚠⚠ **THE TEST, and it is a measured one: anything smaller than ~350 m
+cannot be read off the coarse data.**  That is the Ortler mesh's own
+sub-hex spacing (`@X314`), and below it the fixture found no signal.  So:
+
+| | its size | its source |
+|---|---|---|
+| **coast** | a shoreline, kilometres long | ⚠ **1** — a threshold on height, plus a beach band on `(height, wetness, slope)` |
+| **rivers** | metres wide, kilometres long | ⚠ **2** — a curved course with a **width from flow ACCUMULATION**, not a painted line |
+| **roads** | metres wide, kilometres long | ⚠ **2** — routed over the coarse cells, then *"within 9 m of the polyline"* at fine scale |
+| **trees** | ⚠⚠ **a dryopea stem is TEN HEXES — 13 m** | ⚠ **2**, and the field only says HOW MANY |
+| **mines** | one hex, at a rock face | ⚠ **2** — a POI, sited at scenario scale by a scan (`@X301`) |
+| **cliffs** | 15 m | ⚠⚠ **3** — the fixture proved 1 cannot, and `@X311` is what replaced it |
+
+> ⚠⚠ **THE COARSE MAP DECIDES *WHERE*.  IT NEVER DECIDES *WHAT* AT THE
+> SCALE YOU PLAY AT.**
+
+### ⚠ FIELD → DENSITY, FEATURE → INSTANCE
+
+⚠⚠ **The relationship between the two channels, and it resolves the tree
+question exactly.**  `DESIGN.md` § Trees as terrain makes a dryopea tree
+a **piece of terrain ten hexes wide**, with a position and a spread —
+so a tree is unambiguously a **feature**, an instance with coordinates.
+
+⚠ What the coarse map contributes is not the tree.  `OSM_WOOD` on a
+1.5 km cell says **there are trees here, this many** — a *density* — and
+the placer turns a density into instances at scenario scale, sited by the
+same rules `@X301` needs for a POI (§ Siting).
+
+⚠ Same shape everywhere: `OSM_SCREE` is *how much loose rock*, and
+`@X311`'s talus decides where each patch of it lands; the coarse
+`material` is *what kind of country*, and the fine cascade decides which
+of the palette's kinds each hex is.
+
+### ⚠ What this means for dryopea, concretely
+
+- ⚠ **Nothing in the palette needs to change.**  The eleven painted kinds
+  plus `rubble` are the FIELD's vocabulary, and `GROUND_TYPES.md` already
+  has `slope` and `drop` columns that `@X284` and `@X282` read.
+- ⚠⚠ **The FEATURES channel does not exist at all**, and it is the same
+  gap `@X301` names from the other end: dryopea has MARKERS (four kinds,
+  authored) and no world-coordinate feature list.  ⚠ A POI is that list.
+- ⚠⚠ **And FLOW is still the missing field** (`@X313`).  Rivers get their
+  width from accumulation and roads ford where accumulation is low, so
+  **two of the six things the owner listed are downstream of the one
+  number dryopea has never computed.**
+- ⚠ **Cliffs are a process, and dryopea half-has it**: `height.loft` is
+  already a runtime layer of metres over an authored ground, and
+  `@X311`'s talus is that layer with an angle of repose and a
+  conservation gate.
+
 ## ⚠⚠ WHEN A CLASSIFIER CANNOT BE MADE ACCURATE, REPLACE IT WITH A PROCESS  `@X311`
 
 **The best thing in crawler's plan set, and it is a falsification.**
