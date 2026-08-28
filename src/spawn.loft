@@ -484,6 +484,27 @@ pub struct Enemy {
     // whole mechanic).  ⚠ And only while the core is JAMMING (BACKLOG
     // C3) — a dark core cuts nobody off.
     errand:  boolean,
+
+    // The ROUTINE this robot is running — five anchors and a bag
+    // (`plans/30` R1, `errand.loft` § THE ROUTINE).
+    //
+    // ⚠⚠ **`errand_new()`'s `ROLE_NONE` is the zero-value rule a FIFTH
+    // time**, and the widest application of it: every `Enemy { … }`
+    // literal in the suite omits this field, so its default has to mean
+    // *no cycle at all* — which is a cut-off robot walking to the core
+    // and an ambient one walking the bearing its marker gave it.  Both
+    // are the whole roster today and neither has a routine.
+    //
+    // ⚠ **Nothing in the tick reads it yet**, and that is R1's shape:
+    // the record, the role table and the derived destination land
+    // first, and R3 is the mover that descends a field toward
+    // `errand_leg`'s anchor.
+    //
+    // ⚠⚠ **Read the role through `errand_role`, never through
+    // `route.role`** — `wave_cutoff` clears `errand` and nothing else,
+    // and that function is what makes the bubble's one-way door
+    // impossible to forget rather than merely documented.
+    route:   Errand,
 }
 
 // What this enemy has left, in HP — 0.0 once it has absorbed its whole

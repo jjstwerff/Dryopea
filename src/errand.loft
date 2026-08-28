@@ -69,6 +69,7 @@ use palette;
 use height;
 use occupancy;
 use fixstep;
+use task;
 
 // Robots per second one source puts on the road, when a map says
 // nothing — `traffic <rate>` is how a scenario says otherwise.
@@ -119,6 +120,423 @@ pub fn traffic_running(t: const Traffic) -> boolean {
 pub fn traffic_due(t: Traffic, elapsed: integer) -> integer {
     if !traffic_running(t) { return 0; }
     bank_gain(t.bank, bank_rate(t.rate), elapsed, BANK_WHOLE)
+}
+
+// ─── ⚠⚠ THE ROUTINE — five anchors, and the BAG steers ──────────
+//
+// Plan 30 R1.  `docs/ERRANDS.md` § What a mob carries is the design and
+// `@FR-E-Rule-Not-State` is the rule: **a mob's position is a FUNCTION,
+// not a memory**, so what a robot holds is a handful of fixed anchors
+// and the route is DERIVED from them every time it is asked.
+//
+// ⚠⚠ **There is no waypoint list here and there must never be one.**  A
+// stored path has to be maintained — invalidated when the world changes,
+// resumed after a deviation, saved and reloaded — and a destination
+// computed from five fields needs none of that: **deviation is free
+// precisely because there is nothing to resume.**  It is
+// `pose.loft`'s *read the sim, never a second flag* one system over.
+//
+// ── ⚠⚠ THE BAG STEERS, NOT THE CALENDAR  `@FR-E-Bag-Steers` ─────
+//
+// The one rule in this section that was MEASURED rather than reasoned,
+// and it was measured in `../crawler` (`src/sim.loft:2513`):
+//
+// > *"This used to alternate by day parity … the picking ground is 50
+// > hexes out, a day carries it 13, and the leg flipped every day — so
+// > it oscillated between home and 13 hexes out, forever.  In 21 days
+// > it gathered nothing … Keyed on the bag the trip is self-correcting
+// > at any distance."*
+//
+// ⚠⚠ **dryopea has that hazard and worse**, because `@X298` makes a
+// route cross a 1.5 km cell: **any period you could pick is shorter
+// than the trip.**  So `errand_leg` asks the BAG, and the loop closes
+// itself at 4 hexes and at 400 with no clock in it at all.
+//
+// ⚠ **GUARD is the one role a clock may steer**, and only because it
+// has no bag and its two legs are equidistant by construction.  That is
+// a fact about the ROLE, so it is a COLUMN (`period`) and not a branch.
+//
+// ⚠⚠ **The rule has TWO sites and they are two HALVES, not two
+// implementations** (`@X329` asks for the difference to be named):
+// `errand_leg` READS the bag to choose a leg, `errand_arrive` FILLS and
+// EMPTIES it on arrival.  Neither is the rule on its own — a bag nothing
+// fills makes the leg constant for ever, which is a mob that arrives and
+// stands there, the same failure reached from the other side.  ⚠ This
+// section is the ARGUMENT; those two functions are the enforcement.
+//
+// ── ⚠⚠ A ROLE IS A ROW, FROM THE FIRST LINE  `@X322` ────────────
+//
+// `../crawler` split here and its own comments say the split hurt:
+// hostiles are pure data over one code path, while civilians are
+// hard-coded `role == 7` integer comparisons in **eight** places, and
+// `src/sim.loft:145` records that the role list *"stopped at 6 while
+// 7-12 were in use, which costs a reader real time."*
+//
+// ⚠⚠ **So the table is INDEXED and never compared**, and
+// `tests/30_r1_the_errand.loft` reads every `src/*.loft` back to prove
+// it: a comparison against a `ROLE_` constant anywhere in `src/` is the
+// defect, and it is the only form crawler's could have taken.
+//
+// ⚠ **And a row must not promise behaviour the engine does not have.**
+// Four of crawler's eleven monster flags are declared in its table and
+// read by no AI code at all — `@X112`'s *check the number exists first*
+// from the other end.  So there are exactly four columns here and
+// `errand_leg` reads all four; **what draws a role off its route is
+// deliberately NOT a column yet** — that is R7, and it gets one when
+// something reads it.
+//
+// ── ⚠ Why `carry` is not `carry.loft`'s  `@FR-F-Nameable-Difference` ─
+//
+// CLAUDE.md says *never a "carried" field on the carrier as well*, and
+// this is a field on the carrier — so the difference has to be NAMEABLE
+// and it has to be a fact about the domain (`@X329`).  It is:
+//
+// > **`carry.loft` conserves an object that is ON THE MAP and that the
+// > player could pick up instead; a mob's bag holds material that was
+// > never on the map and never will be.**
+//
+// A `CarryObject` has an `owner` and conservation is structural because
+// a tower top exists whether or not anybody is holding it.  A hauler's
+// load comes from off-map and leaves with the hauler, so there is no
+// object to conserve and no second copy to disagree with.
+//
+// ⚠⚠ **R7 is where that stops being true and the obligation is here so
+// it is not discovered there**: the moment a mob picks up *the player's
+// salvage heap* it is holding a thing the player could have had, and
+// that load must be a `carry.loft` object with the bag as the routine's
+// READING of it — never a second ledger.
+
+// ⚠⚠ **NOTHING IN THE TICK CALLS ANY OF THIS YET, AND THAT IS THE
+// PHASE.**  R1 lands the record, the table and the derived destination;
+// `errand_leg` is what R3's mover will descend a field toward, and R2 is
+// what makes `cycle_at` evaluable at an arbitrary `t`.  Until then every
+// robot in every scenario reads `ROLE_NONE`, which is today's game.
+
+// ─── The roles ──────────────────────────────────────────────────
+
+// ⚠⚠ **`ROLE_NONE` is 0 and that is load-bearing** ([loft#914]): a
+// struct literal that omits a field takes its default silently, so the
+// neutral value has to be the one every `Enemy { … }` literal written
+// before this phase already means — **no cycle at all**, which is a
+// cut-off robot walking to the core and an ambient one walking the
+// bearing its spawn marker gave it.  Both of those are the whole roster
+// today and neither has a routine.
+pub const ROLE_NONE:   integer = 0;
+pub const ROLE_HAUL:   integer = 1;   // load at the face, drop at the depot
+pub const ROLE_GATHER: integer = 2;   // cut at the face, carry it home
+pub const ROLE_GUARD:  integer = 3;   // the post and its second leg
+
+// How many rows the table has.  ⚠ `errand_table_fault` holds the table
+// to it, which is the half crawler's *"stopped at 6 while 7-12 were in
+// use"* was missing.
+pub const ROLE_KIND_COUNT: integer = 4;
+
+// Which of a routine's three anchor hexes a leg ends at.
+//
+// ⚠ `ANCHOR_NONE` is 0 for the same [loft#914] reason, and it means
+// *this role has no destination of its own* — `errand_destination` then
+// answers `job_none()` and the enemy mover keeps the field it always
+// had.
+pub const ANCHOR_NONE: integer = 0;
+pub const ANCHOR_HOME: integer = 1;
+pub const ANCHOR_WORK: integer = 2;
+pub const ANCHOR_ALT:  integer = 3;
+
+// An empty bag, and a full one.  ⚠ Zero is empty, so a partial literal
+// is a robot carrying nothing.
+pub const ERRAND_BAG_EMPTY: u8 = 0;
+pub const ERRAND_BAG_LOAD:  u8 = 1;
+
+// How long a guard stands one leg of its post, in `fixstep` base units
+// — 10 s, which is 15 ticks at today's 2/3 s.
+//
+// ⚠ It is the only period in the file and it belongs to the one role
+// `docs/ERRANDS.md` lets a clock steer.  A number here for a role that
+// CARRIES would be the crawler defect with dryopea's name on it.
+pub const GUARD_LEG_UNITS: integer = 30000000;
+
+// One role, as a row: where it goes empty, where it goes loaded, and
+// whether a clock or the bag decides which.
+//
+// ⚠ `period` of 0 means **the bag steers** — it is not a missing number,
+// it is the answer, and `errand_leg` reads it as one.
+pub struct Role {
+    name:   text,
+    empty:  integer,
+    laden:  integer,
+    period: integer,
+}
+
+pub fn errand_row(name: text, empty: integer, laden: integer,
+                  period: integer) -> Role {
+    Role { name: name, empty: empty, laden: laden, period: period }
+}
+
+// ⚠⚠ **THE TABLE.**  Every role in the game is a row here and there is
+// no `role ==` anywhere — `errand_role_of` indexes it, and a role the
+// engine does not know reads as `ROLE_NONE` rather than as a branch
+// nobody took.
+//
+// Example: @DRY-144, @DRY-149, @DRY-152
+pub fn errand_roles() -> vector<Role> {
+    ers: vector<Role> = [];
+    ers += [errand_row("none",   ANCHOR_NONE, ANCHOR_NONE, 0)];
+    ers += [errand_row("haul",   ANCHOR_WORK, ANCHOR_ALT,  0)];
+    ers += [errand_row("gather", ANCHOR_WORK, ANCHOR_HOME, 0)];
+    ers += [errand_row("guard",  ANCHOR_WORK, ANCHOR_ALT,  GUARD_LEG_UNITS)];
+    ers
+}
+
+// The row for a role — `ROLE_NONE`'s for anything the table does not
+// have.  ⚠ It is the ONE lookup; nothing else may index the table.
+//
+// Example: @DRY-144
+pub fn errand_role_of(role: integer) -> Role {
+    ero_all = errand_roles();
+    ero_i   = role;
+    if ero_i < 0 || ero_i >= len(ero_all) { ero_i = ROLE_NONE; }
+    ero_all[ero_i] ?? errand_row("none", ANCHOR_NONE, ANCHOR_NONE, 0)
+}
+
+// The role a script or a measurement spells `name`, or `ROLE_NONE`.
+//
+// ⚠ **The writer and the reader are ONE here** (`@D007` is what happens
+// when they are two): a name comes out of the row it names, so a role
+// added to the table is spellable the moment it exists.
+pub fn errand_role_named(name: text) -> integer {
+    ern_i = 0;
+    for ern_row in errand_roles() {
+        if ern_row.name == name { return ern_i; }
+        ern_i += 1;
+    }
+    ROLE_NONE
+}
+
+// ─── What a mob carries ─────────────────────────────────────────
+
+// Five anchors and a bag — everything a robot needs to know where it is
+// going, and nothing else.
+//
+// ⚠⚠ **`@FR-E-Place-State`**: a mob may hold nothing beyond `carry` and
+// `slip`, because there are many of them and they are everywhere.  State
+// belongs to the PLACE — R5's POI — which is few and does not move.
+//
+// ⚠ `role` is an `integer` rather than `u8` where `docs/ERRANDS.md`
+// wrote one: it indexes a table and is compared to nothing, and a `u8`
+// would buy a byte at the price of a cast at every index.
+pub struct Errand {
+    role:  integer,
+    home:  Hex,        // the maintenance point, or the nest
+    work:  Hex,        // the face, the picking ground, the post
+    alt:   Hex,        // the drop-off, or the second patrol leg
+    carry: u8,         // what is in the bag — empty is 0
+    slip:  integer,    // base units this mob has fallen behind (`@X302`)
+}
+
+// Factory: no routine at all, which is every robot in the game today.
+pub fn errand_new() -> Errand {
+    Errand { role: ROLE_NONE, home: Hex { q: 0, r: 0 },
+             work: Hex { q: 0, r: 0 }, alt: Hex { q: 0, r: 0 },
+             carry: ERRAND_BAG_EMPTY, slip: 0 }
+}
+
+// A routine, spelled out.  ⚠ Build from here or from `errand_new` and
+// never from a partial literal — [loft#914] would take an anchor's
+// default silently and put the drop-off on the core.
+pub fn errand_at(role: integer, home: const Hex, work: const Hex,
+                 alt: const Hex) -> Errand {
+    Errand { role: role, home: home, work: work, alt: alt,
+             carry: ERRAND_BAG_EMPTY, slip: 0 }
+}
+
+// Are two routines the same routine?
+//
+// ⚠ Field by field and exactly — `slip` is an integer since the record
+// was written, so there is no epsilon to argue about here the way
+// `compare.loft` once had to for a banked carry.
+pub fn errand_same(a: const Errand, b: const Errand) -> boolean {
+    a.role == b.role && a.carry == b.carry && a.slip == b.slip
+        && a.home.q == b.home.q && a.home.r == b.home.r
+        && a.work.q == b.work.q && a.work.r == b.work.r
+        && a.alt.q  == b.alt.q  && a.alt.r  == b.alt.r
+}
+
+// ─── Where it is going ──────────────────────────────────────────
+
+// Which routine this robot is running.
+//
+// ⚠⚠ **THE ONE DOOR FOR READING A ROLE, and it is what makes the
+// bubble's one-way door impossible to forget.**  `wave_cutoff` clears
+// `errand` and nothing else; a hauler that has lost its link reads
+// `ROLE_NONE` HERE, so site 5 of `plans/30` § Count the RE-ASSERTION
+// SITES cannot omit a second write because there is no second write to
+// omit.  A reader that reached for `e.route.role` instead would see a
+// robot still running a cycle it has been cut off from.
+//
+// Example: @DRY-151
+pub fn errand_role(e: const Enemy) -> integer {
+    if !e.errand { return ROLE_NONE; }
+    e.route.role
+}
+
+// Where an anchor is.  ⚠ `ANCHOR_NONE` answers the origin, which no
+// caller may use — `errand_destination_of` refuses that leg before it
+// asks.
+pub fn errand_anchor(er: const Errand, anchor: integer) -> Hex {
+    if anchor == ANCHOR_HOME { return er.home; }
+    if anchor == ANCHOR_WORK { return er.work; }
+    if anchor == ANCHOR_ALT  { return er.alt; }
+    Hex { q: 0, r: 0 }
+}
+
+// Which anchor this mob is making for — the whole of `@FR-E-Bag-Steers`
+// in one expression.
+//
+// ⚠⚠ **The BAG is asked unless the row names a period**, and a row that
+// names one is a role with no bag.  So the two steerings are one
+// function reading one column, which is `@X329`'s *a healthy merge
+// replaces a difference in CODE with a difference in DATA*.
+//
+// ⚠ `slip` is subtracted here and nowhere else: a mob that has been
+// held up is genuinely later, so its clock reads earlier.
+//
+// Example: @DRY-145, @DRY-146, @DRY-150
+pub fn errand_leg(row: const Role, er: const Errand, now: integer) -> integer {
+    if row.period > 0 {
+        el_t = now - er.slip;
+        if el_t < 0 { el_t = 0; }
+        if (el_t / row.period) % 2 == 0 { return row.empty; }
+        return row.laden;
+    }
+    if er.carry != ERRAND_BAG_EMPTY { return row.laden; }
+    row.empty
+}
+
+// The hex this routine is making for, as a `Job`.
+//
+// ⚠⚠ **`Job` is `task.loft`'s and that is `@X332` cashed in**: a leg's
+// destination is exactly a kind and a hex, and there is no nameable
+// difference between the crew's record of one and a mob's.  What does
+// NOT come across is the SELECTION — `jobs_in_scope` takes a `Skills`
+// and `job_pick` chooses the nearest, and *a mob is TOLD where to go*.
+//
+// ⚠ `kind` is `TASK_ANY` for every role today, and the column is empty
+// rather than guessed: **not one of the four kinds is what a hauler does
+// at its face** — picking a load up is not clearing rubble — so the
+// arrival ACTION waits for R7 to read one.  That is `@X112` from the
+// other end, and a row promising behaviour the engine has not got is
+// exactly what this file refuses to be.
+//
+// Example: @DRY-145
+pub fn errand_destination_of(row: const Role, er: const Errand,
+                             now: integer) -> Job {
+    edo_a = errand_leg(row, er, now);
+    if edo_a == ANCHOR_NONE { return job_none(); }
+    edo_h = errand_anchor(er, edo_a);
+    Job { found: true, kind: TASK_ANY, q: edo_h.q, r: edo_h.r }
+}
+
+// The same, for a robot on the roster.
+//
+// ⚠ It goes through `errand_role`, so a cut-off hauler answers
+// `job_none()` and the mover it has always had takes it from there.
+//
+// Example: @DRY-147, @DRY-151
+pub fn errand_destination(e: const Enemy, now: integer) -> Job {
+    ed2_row = errand_role_of(errand_role(e));
+    errand_destination_of(ed2_row, e.route, now)
+}
+
+// The mob is standing on its destination: turn the bag over.  Answers
+// whether it did.
+//
+// ⚠⚠ **This is the other half of `@FR-E-Bag-Steers` and the cycle does
+// not close without it.**  A bag that nothing fills makes `errand_leg`
+// answer the same anchor for ever, which is a mob that arrives and
+// stands there — the failure the bag was chosen to avoid, reached from
+// the other side.
+//
+// ⚠ A clock-steered role has no bag, so it turns nothing over: `period`
+// is the one column asked, in this function and in `errand_leg`, and the
+// two agree because they read it rather than each deciding.
+//
+// Example: @DRY-145
+pub fn errand_arrive(er: Errand, row: const Role, at: const Hex,
+                     now: integer) -> boolean {
+    if row.period > 0 { return false; }
+    ea_a = errand_leg(row, er, now);
+    if ea_a == ANCHOR_NONE { return false; }
+    ea_h = errand_anchor(er, ea_a);
+    if ea_h.q != at.q || ea_h.r != at.r { return false; }
+    if er.carry == ERRAND_BAG_EMPTY { er.carry = ERRAND_BAG_LOAD; }
+    else                            { er.carry = ERRAND_BAG_EMPTY; }
+    true
+}
+
+// ─── What a row may not be ──────────────────────────────────────
+
+// Why this row is not a role, or "".
+//
+// ⚠ The same shape as `crop_fault` and `map_fault`: a refusal that NAMES
+// what is wrong, because a table is authored and an authoring error that
+// wraps silently is R2's *a cycle whose legs do not sum to its period*
+// arriving one phase early.
+pub fn errand_row_fault(row: const Role) -> text {
+    if row.name == "" { return "a role row with no name"; }
+    if row.period < 0 {
+        return "role '{row.name}': a leg cannot be {row.period} units long";
+    }
+    if row.empty < ANCHOR_NONE || row.empty > ANCHOR_ALT {
+        return "role '{row.name}': {row.empty} is not an anchor";
+    }
+    if row.laden < ANCHOR_NONE || row.laden > ANCHOR_ALT {
+        return "role '{row.name}': {row.laden} is not an anchor";
+    }
+    // ⚠ Half a cycle is an authoring error rather than a special case: a
+    // role that has one anchor has a destination it can never leave.
+    if (row.empty == ANCHOR_NONE) != (row.laden == ANCHOR_NONE) {
+        return "role '{row.name}': one leg goes nowhere and the other does not";
+    }
+    if row.empty == row.laden && row.empty != ANCHOR_NONE {
+        return "role '{row.name}': both legs end at the same anchor, "
+               + "so the round trip has no length";
+    }
+    // ⚠⚠ **A clock may steer a role only if it has no bag**
+    // (`docs/ERRANDS.md` § THE BAG STEERS), and there is no check for it
+    // here because there is nothing to check: `errand_arrive` refuses a
+    // row with a period, so a clock-steered role's bag is empty for the
+    // life of the run and `errand_leg` never reaches the branch that
+    // would ask it.  ⚠ The constraint is CONSTRUCTED rather than
+    // asserted, which is the stronger of the two.
+    ""
+}
+
+// Why the shipped table is not a table, or "".
+//
+// ⚠ It asks three things a compiler cannot: every row is legal, no two
+// rows share a name, and `ROLE_KIND_COUNT` still counts them.
+//
+// Example: @DRY-144, @DRY-148
+pub fn errand_table_fault() -> text {
+    etf_all = errand_roles();
+    if len(etf_all) != ROLE_KIND_COUNT {
+        return "the table has {len(etf_all)} rows and ROLE_KIND_COUNT says "
+               + "{ROLE_KIND_COUNT}";
+    }
+    etf_i = 0;
+    for etf_row in etf_all {
+        etf_f = errand_row_fault(etf_row);
+        if etf_f != "" { return etf_f; }
+        etf_j = 0;
+        for etf_other in etf_all {
+            if etf_j > etf_i && etf_other.name == etf_row.name {
+                return "two roles are both called '{etf_row.name}'";
+            }
+            etf_j += 1;
+        }
+        etf_i += 1;
+    }
+    ""
 }
 
 // ─── Where a robot's business ENDS ──────────────────────────────

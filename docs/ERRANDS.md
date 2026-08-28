@@ -191,7 +191,14 @@ name.
                      the player can watch.
 ```
 
-⚠ **Deviations: none, and none possible yet** — nothing implements these.
+⚠ **Deviations: none.**  ⚠⚠ **And they are no longer un-implementable**
+— [`plans/30`](../plans/30-the-mob-routine/README.md) R1 shipped
+`src/errand.loft` § THE ROUTINE, which enforces **(E-Bag-Steers)** in
+`errand_leg`, **(E-Place-State)** in the `Errand` record's six fields,
+and **(E-Rule-Not-State)**'s *derived, never stored* half in
+`errand_destination`.  ⚠ The rest still await their phase: `slip` is
+declared and only the clock steering reads it (R3), and there is no
+`cycle_at` yet (R2).
 
 ## ⚠⚠ The model in ten lines
 

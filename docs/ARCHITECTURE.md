@@ -1598,7 +1598,49 @@ src/
                    ⚠⚠ `Enemy.errand` and the rate both default to OFF,
                    so [loft#914]'s silent default lands on the way the
                    game already worked — which is why 679 gate
-                   measurements did not move
+                   measurements did not move.
+                   ⚠⚠ AND SINCE plans/30 R1 IT ALSO OWNS THE ROUTINE —
+                   ROLE_* / ANCHOR_* / ERRAND_BAG_*, GUARD_LEG_UNITS,
+                   Role { name, empty, laden, period }, errand_row /
+                   errand_roles / errand_role_of / errand_role_named,
+                   Errand { role, home, work, alt, carry, slip } on
+                   Enemy, errand_new / errand_at / errand_same,
+                   errand_role / errand_anchor / errand_leg /
+                   errand_destination_of / errand_destination /
+                   errand_arrive, errand_row_fault /
+                   errand_table_fault.
+                   ⚠⚠ THE BAG STEERS AND NEVER A CLOCK (@FR-E-Bag-Steers,
+                   @M073): `carry > 0 ? laden : empty`, so a round trip
+                   closes at 4, 40 and 400 hexes, where a row one column
+                   away with a period gets 13 hexes out and delivers
+                   nothing for ever — ../crawler's measured defect,
+                   reproduced rather than imagined.  GUARD is the one
+                   role a clock may steer and it has no bag.
+                   ⚠ THE RULE HAS TWO HALVES, NOT TWO IMPLEMENTATIONS:
+                   errand_leg reads the bag, errand_arrive fills and
+                   empties it, and neither is the rule alone.
+                   ⚠⚠ A ROLE IS A ROW AND THE TABLE IS INDEXED, NEVER
+                   COMPARED (@X333) — tests/30_r1_the_errand.loft sweeps
+                   every src/*.loft and fails on a code line comparing a
+                   ROLE_ constant, with ROLE_KIND_COUNT the one
+                   exemption.  crawler has `role == 7` in eight places
+                   and no compiler can refuse one.
+                   ⚠ FOUR COLUMNS, because errand_leg reads four — what
+                   draws a role off its route is R7's and is deliberately
+                   not a column yet (@X112 from the other end).
+                   ⚠⚠ READ THE ROLE THROUGH `errand_role`, NEVER THROUGH
+                   `route.role` — it answers ROLE_NONE for any robot
+                   whose link wave_cutoff has cut, so the bubble's
+                   one-way door has no second write to forget.
+                   ⚠ THE BAG IS NOT carry.loft's LEDGER (@X334): that
+                   file conserves an object ON THE MAP the player could
+                   pick up instead; a bag holds material that was never
+                   on the map.  R7 is where that stops being true.
+                   ⚠ errand_destination answers a task.loft `Job`
+                   (@X332) — the RECORD is shared, the SELECTION is not,
+                   and `kind` stays TASK_ANY until R7 reads one.
+                   ⚠ INERT: nothing in the tick calls any of it; R3 is
+                   the mover and R2 the closed form
   skill.loft       CREW SKILLS — build, repair, scout (BACKLOG C1) —
                    SKILL_EFFECT_SPAN / _HALF, Skills { build, repair,
                    scout } on Helper, skill_factor, skill_work_units,

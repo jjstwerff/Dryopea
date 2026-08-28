@@ -63,6 +63,7 @@ use spawn;
 use fixstep;
 use painted;
 use markers;
+use errand;
 
 // ─── The roster ─────────────────────────────────────────────────
 //
@@ -112,6 +113,24 @@ fn enemies_diff(a: const WaveState, b: const WaveState) -> text {
         // arithmetic makes for itself once there are no ulps.
         if bank_progress(ed_x.bank) != bank_progress(ed_y.bank) {
             return "enemies[{ed_i}].bank: {bank_progress(ed_x.bank)} vs {bank_progress(ed_y.bank)}";
+        }
+        // ⚠⚠ **A TRIPWIRE, here before it can differ** — the same move
+        // the banked carry above records, and for the reason `plans/30`
+        // § Count the RE-ASSERTION SITES gives: this file is site 9 of
+        // twelve that could drop a mob's routine, and **every one of the
+        // twelve fails silently**.  Nothing writes a non-default routine
+        // today, so the line is free and cannot fire.
+        //
+        // ⚠ **When it DOES fire, the answer is a `.keys` verb and never
+        // a looser comparison here.**  `emit_keys` has to write a
+        // routine down and `script.loft` has to read it back — the
+        // writer and the reader are a PAIR (`@D007`) — and a captured
+        // scenario losing a hauler's anchors on the round trip is
+        // exactly what this line exists to say out loud.
+        if !errand_same(ed_x.route, ed_y.route) {
+            return "enemies[{ed_i}].route: role {ed_x.route.role} carry "
+                   + "{ed_x.route.carry} vs role {ed_y.route.role} carry "
+                   + "{ed_y.route.carry}";
         }
         ed_i += 1;
     }

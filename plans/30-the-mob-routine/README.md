@@ -9,8 +9,21 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**R0 COMPLETE 2026-08-28 — all four probes answered, and two of them
-moved the plan.**  R1 is startable.
+**R1 COMPLETE 2026-08-28 — the record, the role table and the derived
+destination are in, and they are INERT.**  R2 and R4 are startable.
+
+⚠⚠ **`@M073` — the bag closes a round trip at 4, 40 and 400 hexes, and
+one table column away a clock gets 13 hexes out and delivers nothing for
+ever.**  That is `crawler`'s measured defect reproduced in dryopea's own
+code rather than imagined, and the pair shares its harness, its anchors
+and its walker.  ⚠ `@X333`: the role table is INDEXED and never
+compared, and `tests/30_r1_the_errand.loft` sweeps `src/` to say so —
+crawler has `role == 7` in eight places and no compiler can refuse one.
+⚠ `@X334`: a mob's bag is not `carry.loft`'s ledger, and R7 is where
+that stops being true.
+
+⚠ **R0 COMPLETE 2026-08-28 — all four probes answered, and two of them
+moved the plan.**
 
 ⚠⚠ **Probe 1 falsified greedy** (`@M071`): only **10 of 90** straight
 crossings of the three authored maps arrive, and **44 of the 80 failures
@@ -160,10 +173,10 @@ behaviour and clocks, gated by scenarios and counts.
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
 | **R0** — the four probes | XS | `tests/30_r0_probe.loft` (5) + readings below | ✅ **ALL FOUR ANSWERED 2026-08-28** |
-| **R1** — `Errand`: five anchors, and the BAG steers | S | `tests/30_r1_the_errand.loft` | Blocked on R0 |
-| **R2** — the cycle is CLOSED-FORM | S | ⚠ the equality gate above | Blocked on R1 |
+| **R1** — `Errand`: five anchors, and the BAG steers | S | `tests/30_r1_the_errand.loft` (9) | ✅ **COMPLETE 2026-08-28** — `@M073`, `@X333`, `@X334` |
+| **R2** — the cycle is CLOSED-FORM | S | ⚠ the equality gate above | **STARTABLE** |
 | **R3** — deviation, and `slip` | M | `tests/30_r3_the_deviation.loft` | Blocked on R2 — ⚠⚠ **and R0 probe 1 says it needs a FIELD** |
-| **R4** — home is a PLACE | S | a scenario: a robot walks home and leaves the roster there | Blocked on R1 |
+| **R4** — home is a PLACE | S | a scenario: a robot walks home and leaves the roster there | **STARTABLE** |
 | **R5** — the POI, its population, its BOUND | M | ⚠ the containment gate above | Blocked on R2 — ⚠ **R0 probe 3 is ANSWERED and the bound is named** |
 | **R6** — CULL / EVALUATE / MATERIALISE | M | ⚠ the `R` vs `2R` gate **and its differ-control** | Blocked on R5 |
 | **Rc** — the CONFORMANCE gate | S | ⚠⚠ every mob on a cycle is where its rule says, every tick, over the whole corpus | ⚠ lands **with R3**, and guards every phase after it |
@@ -325,6 +338,9 @@ worth more than the phases it corrects.
 
 ## R1 — `Errand`: five anchors, and the BAG steers
 
+✅ **COMPLETE 2026-08-28** — `src/errand.loft` § THE ROUTINE,
+`tests/30_r1_the_errand.loft` (9 tests), `@X333`, `@X334`, `@M073`.
+
 ⚠ `Errand { role, home, work, alt, carry, slip }` on `Enemy`, and
 `errand_destination` **derived** from it — never a stored waypoint list.
 
@@ -349,6 +365,62 @@ destination = carry > 0 ? alt : work        # the bag, never a clock
 
 ⚠ **Lands inert**: `role` defaults to the value meaning *a cut-off robot
 walking to the core*, which is every enemy in every scenario today.
+
+### What was built, and the three things the phase decided
+
+⚠⚠ **`@M073` — the bag closes the loop at 4, 40 and 400 hexes (three
+bags each), and one column away a clock gets 13 hexes out and delivers
+nothing, for ever.**  Same harness, same anchors, same walker; the pair
+differs in `haul`'s `period` alone.  ⚠ **The reading is HOW FAR IT EVER
+GOT, not the deliveries** — a clock-steered role has no bag either, so
+deliveries has two causes and a control that cannot separate them is not
+one.
+
+⚠ **Four mutations, each firing the right assertion** — the gate was
+green on its first run and `CLAUDE.md` § a gate that reads PERFECT says
+what to do about that: the bag stops steering (10 / 100 / 1000 phantom
+bags, standing on the face and flipping), the clock steers everything
+(0 hexes out), a planted `role ==` in `src/`, and the realistic
+authoring error — a **carrier** given a clock — which fired three gates
+at once.
+
+⚠⚠ **`@X333` — the table is INDEXED and never compared, and a test
+sweeps `src/` to say so.**  A comparison is not a thing a compiler can
+refuse, and `crawler` has `role == 7` in eight places with its own file
+recording the bill.  ⚠ The gate carries its own control: it must catch a
+planted comparison and must **not** call `ROLE_KIND_COUNT` one.  ⚠ Four
+columns, because `errand_leg` reads four — *what draws a role off its
+route* is R7's and is deliberately not a column yet.
+
+⚠⚠ **`@X334` — a mob's bag is not `carry.loft`'s ledger**, and the
+difference is nameable: *that file conserves an object that is on the
+map and the player could pick up instead; a bag holds material that was
+never on the map.*  ⚠ **R7 is where that stops being true**, and the
+obligation is written at the field rather than left to be discovered.
+
+⚠⚠ **`@X332` cashed in**: `errand_destination` answers a `task.loft`
+`Job`, so Open question 1 is closed — the RECORD is shared and the
+SELECTION is not.  ⚠ `Job.kind` is `TASK_ANY` for every role today and
+the column is left empty rather than guessed: **not one of the four
+kinds is what a hauler does at its face.**
+
+⚠⚠ **And the bubble's one-way door is enforced in the READER.**
+`errand_role` answers `ROLE_NONE` for any robot whose `errand` flag is
+clear, so **site 5 of § Count the RE-ASSERTION SITES has no second write
+to forget** — `wave_cutoff` is unchanged and a cut-off hauler cannot go
+on running a cycle it has lost.  ⚠ That is cure 1 (*collapse N toward
+1*) applied to the read side, which costs one function.
+
+⚠ **Sites 7, 8 and 9 of the twelve**: `emit.loft`'s crop copies `route`
+whole, and `compare.loft` compares it as a **tripwire, here before it
+can differ** — the same move the banked carry records one file over.
+⚠⚠ **When it fires, the answer is a `.keys` verb and never a looser
+comparison**: `emit_keys` must write a routine down and `script.loft`
+must read it back, and the writer and the reader are a PAIR (`@D007`).
+
+⚠ **Still inert, and deliberately**: nothing in `wave_tick` calls any of
+it.  R3 is the mover that descends a field toward `errand_leg`'s anchor,
+and R2 is what makes the cycle evaluable at an arbitrary `t`.
 
 ## R2 — the cycle is CLOSED-FORM
 
@@ -548,8 +620,11 @@ adds ticks of work and moves no clock has answered the second.
 
 ## Open questions
 
-1. ⚠ **Does R1 reuse `job_pick` or grow a second door?**  R0's second
-   probe decides it.
+1. ✅ **ANSWERED — it reuses the RECORD and grows no second door**
+   (R0 probe 2 / `@X332`, cashed in by R1).  `errand_destination`
+   answers a `task.loft` `Job`; `job_pick` is not called and must not be
+   — *the crew CHOOSE what to do from where they stand; a mob is TOLD
+   where to go.*  ⚠ `Job.kind` stays `TASK_ANY` until R7 reads one.
 2. ⚠⚠ **Is a POI's population a POOL or a TAP?**  `ERRANDS.md` § Open
    questions 1 recommends a pool small enough to notice, on `@X303`'s
    grounds — *a pool the player can deplete and SEE thin is

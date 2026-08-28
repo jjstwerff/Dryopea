@@ -168,6 +168,34 @@ order buys **+34** in the right and nothing in the left.  ⚠ **Neither
 dominates**, which is `DESIGN.md` § 9's *does this make ONE axis
 dominate?* answered with numbers instead of an argument.
 
+⚠⚠ **AND A ROBOT CAN HAVE A ROUTINE — five anchors, and the BAG steers**
+([`plans/30`](../plans/30-the-mob-routine/README.md) R1, `@M073`,
+`@X333`, `@X334`).  `Errand { role, home, work, alt, carry, slip }` sits
+on every `Enemy`, and where it is going is **DERIVED** from those anchors
+every time it is asked — there is no waypoint list, so a deviation costs
+nothing to resume.
+
+⚠⚠ **The bag steers and never a clock**, and that is one measurement
+rather than a preference: the shipped `haul` row closes its round trip at
+**4, 40 and 400 hexes — three bags each**, while a row one column away
+with a period gets **13 hexes out and delivers nothing, for ever**.  That
+is `../crawler`'s own measured defect reproduced in dryopea's code, and
+`@X298` makes dryopea's version worse — a route crosses a 1.5 km cell, so
+any period you could pick is shorter than the trip.
+
+⚠ **A role is a ROW and the table is INDEXED, never compared** (`@X333`)
+— `tests/30_r1_the_errand.loft` sweeps every `src/*.loft` and fails on a
+code line comparing a `ROLE_` constant, because crawler has `role == 7`
+in eight places and no compiler can refuse one.  ⚠⚠ **And the bubble's
+one-way door is enforced in the READER**: `errand_role` answers
+`ROLE_NONE` for any robot whose link `wave_cutoff` has cut, so a cut-off
+hauler cannot go on running a cycle it has lost and there is no second
+write to forget.
+
+⚠ **It is INERT and that is the phase**: nothing in the tick reads any of
+it, `ROLE_NONE` is 0, and every `Enemy { … }` literal in the suite goes
+on meaning a robot with no cycle at all.  The mover is R3.
+
 ## Two rules the table above rests on
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number

@@ -1,0 +1,362 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 30 phase R1 — `Errand`: five anchors, and the BAG steers.
+//
+// ⚠⚠ **THE PHASE'S WHOLE RISK IS ONE MEASURED FAILURE AND IT IS NOT
+// DRYOPEA'S.**  `../crawler`'s calendar-steered gatherer *"oscillated
+// between home and 13 hexes out, forever.  In 21 days it gathered
+// nothing"* (`src/sim.loft:2513`), and `@X298` makes dryopea's version
+// worse: a route crosses a 1.5 km cell, so **any period you could pick
+// is shorter than the trip.**
+//
+// ⚠ So the gate is the SHAPE rather than the arrival, and it is built
+// as a PAIR that differs in exactly one table column:
+//
+//   * the shipped `haul` row, whose `period` is 0 — **the bag steers** —
+//     closes its round trip at 4, 40 and 400 hexes;
+//   * ⚠⚠ **the same anchors under a row with a period reproduce
+//     crawler's defect** — 13 hexes out, for ever, nothing delivered.
+//
+// ⚠ **Without that second half the first proves nothing**, because a
+// harness that walks toward whatever it is told is green for any
+// steering rule that ever names the far anchor.  `CLAUDE.md` § a
+// negative control the plausible WRONG version also satisfies is not
+// one — here the wrong version is REPRODUCED rather than imagined.
+//
+// ── ⚠ What is the harness and what is under test ────────────────
+//
+// The walker below is the HARNESS: one hex a tick, straight at the
+// destination, over ground with nothing on it.  R3 is the mover and it
+// will descend a field instead (R0 probe 1: only 10 of 90 straight
+// crossings of the authored maps arrive).  What is under test here is
+// the STEERING — `errand_leg`, `errand_destination_of`, `errand_arrive`
+// — and the harness is shared bit for bit between the gate and its
+// control so the only difference between them is the column.
+
+#cwd
+
+use dryopea;
+
+const R1_SRC: text = "src";
+
+// ─── The harness ────────────────────────────────────────────────
+
+// One hex toward `to`, or stay put if nothing gets closer.
+//
+// ⚠ Every step goes through `lat_neighbour` — a `+ 1` on a `q` anywhere
+// else is the bug that sheared every reach computation in moros#10.
+fn r1_step(at: const Hex, to: const Hex) -> Hex {
+    rs_best = Hex { q: at.q, r: at.r };
+    rs_d    = lat_distance(at, to);
+    for rs_dir in 0..6 {
+        rs_n = lat_neighbour(at, rs_dir);
+        if lat_distance(rs_n, to) < rs_d {
+            rs_best = rs_n;
+            rs_d    = lat_distance(rs_n, to);
+        }
+    }
+    rs_best
+}
+
+// Walk one routine for `ticks` steps.  Answers (bags delivered, the
+// furthest it ever got from home).
+//
+// ⚠⚠ **The second number is what the control is read off.**  A count of
+// deliveries alone cannot tell *the clock steered it into a loop* from
+// *a clock-steered role has no bag to deliver* — two causes, one
+// reading, and a control that cannot separate them is not one.  How far
+// it ever got is caused by the STEERING and by nothing else.
+fn r1_run(row: const Role, er: Errand, start: const Hex,
+          ticks: integer) -> (integer, integer) {
+    rr_at   = Hex { q: start.q, r: start.r };
+    rr_done = 0;
+    rr_far  = 0;
+    rr_t    = 0;
+    while rr_t < ticks {
+        rr_now = rr_t * TICK_STEP_UNITS;
+        rr_job = errand_destination_of(row, er, rr_now);
+        if rr_job.found {
+            rr_at = r1_step(rr_at, Hex { q: rr_job.q, r: rr_job.r });
+        }
+        rr_d = lat_distance(rr_at, er.home);
+        if rr_d > rr_far { rr_far = rr_d; }
+        // ⚠ Arrival is asked AFTER the step, so a mob that reaches its
+        // destination this tick turns the bag over in the same tick —
+        // which is what makes a round trip exactly twice the leg.
+        if errand_arrive(er, row, rr_at, rr_now) {
+            if er.carry == ERRAND_BAG_EMPTY { rr_done += 1; }
+        }
+        rr_t += 1;
+    }
+    (rr_done, rr_far)
+}
+
+// A hauler working a face `d` hexes east, with its depot at home.
+fn r1_hauler(d: integer) -> Errand {
+    errand_at(ROLE_HAUL, Hex { q: 0, r: 0 }, Hex { q: d, r: 0 },
+              Hex { q: 0, r: 0 })
+}
+
+// ─── ⚠⚠ THE BAG STEERS — the round trip closes at any distance ──
+
+// @DRY-145 — a round trip longer than any period a clock could use
+fn test_the_round_trip_closes_at_four_forty_and_four_hundred_hexes() {
+    ttr_row = errand_role_of(ROLE_HAUL);
+    ttr_say = "";
+    ttr_bad = 0;
+    for ttr_d in [4, 40, 400] {
+        ttr_er  = r1_hauler(ttr_d);
+        ttr_got = r1_run(ttr_row, ttr_er, Hex { q: 0, r: 0 }, 6 * ttr_d);
+        ttr_say = ttr_say + " d={ttr_d}: {ttr_got.0} bags, out {ttr_got.1};";
+        // ⚠ Six legs is three round trips exactly, and it reached the
+        // face: both halves, because a mob that delivered three times
+        // without ever leaving home would satisfy the first alone.
+        if ttr_got.0 != 3 || ttr_got.1 != ttr_d { ttr_bad += 1; }
+    }
+    assert(ttr_bad == 0,
+           "the bag steers, so the loop closes at every distance — "
+           + "expected 3 bags and the face reached at each of 4, 40, 400,"
+           + " got:{ttr_say}");
+}
+
+// @DRY-146 — ⚠⚠ the CONTROL: a clock steers the same cycle into
+// crawler's oscillation
+fn test_a_clock_steered_round_trip_never_reaches_the_face() {
+    // ⚠ crawler's own numbers: the face is far out, and one leg of the
+    // clock carries thirteen hexes.  The row differs from the shipped
+    // `haul` row in ONE column.
+    tac_leg  = 13;
+    tac_row  = errand_row("clock-haul", ANCHOR_WORK, ANCHOR_ALT,
+                          tac_leg * TICK_STEP_UNITS);
+    tac_bag  = errand_role_of(ROLE_HAUL);
+    tac_d    = 40;
+    tac_er   = r1_hauler(tac_d);
+    tac_ctl  = r1_hauler(tac_d);
+    tac_clk  = r1_run(tac_row, tac_er, Hex { q: 0, r: 0 }, 6 * tac_d);
+    tac_ok   = r1_run(tac_bag, tac_ctl, Hex { q: 0, r: 0 }, 6 * tac_d);
+    assert(tac_clk.0 == 0 && tac_clk.1 == tac_leg
+           && tac_ok.0 == 3 && tac_ok.1 == tac_d,
+           "one column apart: the clock row must oscillate at {tac_leg} "
+           + "hexes and deliver nothing while the bag row reaches "
+           + "{tac_d} and delivers 3 — clock={tac_clk.0} bags out "
+           + "{tac_clk.1}, bag={tac_ok.0} bags out {tac_ok.1}");
+}
+
+// @DRY-150 — the bag, and only the bag, decides where a carrier goes
+fn test_a_bag_steered_destination_ignores_the_clock() {
+    // ⚠⚠ **The sweep is what makes this more than a restatement**, and
+    // its own control is the second half: a reading that could not move
+    // for ANY implementation proves nothing (`@M034`).
+    tab_bag  = errand_role_of(ROLE_HAUL);
+    tab_clk  = errand_row("clock-haul", ANCHOR_WORK, ANCHOR_ALT,
+                          13 * TICK_STEP_UNITS);
+    tab_er   = r1_hauler(40);
+    tab_frst = errand_destination_of(tab_bag, tab_er, 0);
+    tab_moved  = 0;
+    tab_cmoved = 0;
+    for tab_t in 0..200 {
+        tab_now = tab_t * TICK_STEP_UNITS;
+        tab_j   = errand_destination_of(tab_bag, tab_er, tab_now);
+        if tab_j.q != tab_frst.q || tab_j.r != tab_frst.r { tab_moved += 1; }
+        tab_c = errand_destination_of(tab_clk, tab_er, tab_now);
+        if tab_c.q != tab_frst.q || tab_c.r != tab_frst.r { tab_cmoved += 1; }
+    }
+    assert(tab_moved == 0 && tab_cmoved > 0,
+           "over 200 ticks with an unchanged bag the destination must not "
+           + "move ({tab_moved} moves), and the same sweep must be able to "
+           + "see one at all — the clock row moved {tab_cmoved} times");
+}
+
+// ─── ⚠⚠ A ROLE IS A ROW — and no branch outside it ──────────────
+
+// @DRY-144 — the shipped table is a table
+fn test_the_role_table_is_a_table() {
+    ttt_rows = errand_roles();
+    ttt_bad  = "";
+    ttt_i    = 0;
+    for ttt_row in ttt_rows {
+        // ⚠ Every row's name must find its own index back — the writer
+        // and the reader are ONE here, which is `@D007` prevented rather
+        // than repeated.
+        if errand_role_named(ttt_row.name) != ttt_i {
+            ttt_bad = ttt_bad + " '{ttt_row.name}' at {ttt_i} names "
+                      + "{errand_role_named(ttt_row.name)};";
+        }
+        ttt_i += 1;
+    }
+    assert(errand_table_fault() == "" && len(ttt_rows) == ROLE_KIND_COUNT
+           && ttt_bad == "",
+           "the table must be legal ({errand_table_fault()}), {ROLE_KIND_COUNT} "
+           + "rows long (it is {len(ttt_rows)}) and name every row"
+           + " back:{ttt_bad}");
+    // ⚠ A role the table does not have reads as the neutral row, which
+    // is what keeps `errand_role_of` total without a branch.
+    assert(errand_role_of(ROLE_KIND_COUNT + 7).name == "none"
+           && errand_role_of(0 - 3).name == "none",
+           "a role off the end of the table is the neutral row, not a fault");
+}
+
+// @DRY-148 — every way a row can fail to be a role
+fn test_a_bad_row_is_refused_and_a_good_one_is_not() {
+    tab2_bad: vector<Role> = [];
+    tab2_bad += [errand_row("",       ANCHOR_WORK, ANCHOR_ALT,  0)];
+    tab2_bad += [errand_row("neg",    ANCHOR_WORK, ANCHOR_ALT,  0 - 1)];
+    tab2_bad += [errand_row("wild",   9,           ANCHOR_ALT,  0)];
+    tab2_bad += [errand_row("wild2",  ANCHOR_WORK, 9,           0)];
+    tab2_bad += [errand_row("half",   ANCHOR_NONE, ANCHOR_ALT,  0)];
+    tab2_bad += [errand_row("half2",  ANCHOR_WORK, ANCHOR_NONE, 0)];
+    tab2_bad += [errand_row("nowhere", ANCHOR_WORK, ANCHOR_WORK, 0)];
+    tab2_miss = 0;
+    for tab2_r in tab2_bad {
+        if errand_row_fault(tab2_r) == "" { tab2_miss += 1; }
+    }
+    // ⚠⚠ **The control is the last two lines**, and it is the generic
+    // one `CLAUDE.md` asks for: a refusal that refuses everything is not
+    // a refusal.
+    assert(tab2_miss == 0
+           && errand_row_fault(errand_row("haul", ANCHOR_WORK, ANCHOR_ALT, 0)) == ""
+           && errand_row_fault(errand_row("none", ANCHOR_NONE, ANCHOR_NONE, 0)) == "",
+           "{tab2_miss} of {len(tab2_bad)} illegal rows were accepted, and a "
+           + "legal one must not be");
+}
+
+// @DRY-152 — each shipped row goes where its name says
+fn test_each_row_goes_where_its_name_says() {
+    // ⚠⚠ **The table being WELL-FORMED is not the table being RIGHT**,
+    // and `errand_table_fault` can only see the first.  What separates
+    // `haul` from `gather` is one column — the laden anchor — and
+    // nothing above would notice if the two rows were swapped.
+    ter_home = Hex { q: 1, r: 0 };
+    ter_work = Hex { q: 9, r: 0 };
+    ter_alt  = Hex { q: 5, r: 0 };
+    ter_full = errand_at(ROLE_HAUL, ter_home, ter_work, ter_alt);
+    ter_full.carry = ERRAND_BAG_LOAD;
+    ter_gat  = errand_at(ROLE_GATHER, ter_home, ter_work, ter_alt);
+    ter_gat.carry = ERRAND_BAG_LOAD;
+    ter_grd  = errand_at(ROLE_GUARD, ter_home, ter_work, ter_alt);
+    ter_none = errand_new();
+
+    ter_h = errand_destination_of(errand_role_of(ROLE_HAUL),   ter_full, 0);
+    ter_g = errand_destination_of(errand_role_of(ROLE_GATHER), ter_gat,  0);
+    ter_p = errand_destination_of(errand_role_of(ROLE_GUARD),  ter_grd,  0);
+    ter_q = errand_destination_of(errand_role_of(ROLE_GUARD),  ter_grd,
+                                  GUARD_LEG_UNITS);
+    ter_n = errand_destination_of(errand_role_of(ROLE_NONE),   ter_none, 0);
+
+    // ⚠ One assertion carrying every reading, because loft abandons at
+    // the first failed one and four of five would otherwise be
+    // unmaintained decoration.
+    assert(ter_h.q == ter_alt.q && ter_g.q == ter_home.q
+           && ter_p.q == ter_work.q && ter_q.q == ter_alt.q
+           && !ter_n.found,
+           "a loaded hauler goes to the depot ({ter_h.q}, want {ter_alt.q}), "
+           + "a loaded gatherer goes home ({ter_g.q}, want {ter_home.q}), "
+           + "a guard walks its post and back ({ter_p.q} then {ter_q.q}, want "
+           + "{ter_work.q} then {ter_alt.q}), and no role goes nowhere "
+           + "(found={ter_n.found})");
+}
+
+// Does this line of loft COMPARE a role row?
+//
+// ⚠ `ROLE_KIND_COUNT` is exempt and is the only exemption: it is the
+// table's SIZE, not a role, and `errand_table_fault` has to be able to
+// check it.
+fn r1_compares_a_role(line: text) -> boolean {
+    if line.find("ROLE_") == null { return false; }
+    if line.find("==") == null && line.find("!=") == null { return false; }
+    rcr_i = 0;
+    while rcr_i < line.size() {
+        if line.starts_with_at(rcr_i, "ROLE_")
+           && !line.starts_with_at(rcr_i, "ROLE_KIND_COUNT") { return true; }
+        rcr_i += 1;
+    }
+    false
+}
+
+// @DRY-149 — ⚠⚠ crawler's actual defect, made impossible to reproduce
+fn test_no_role_is_ever_compared_anywhere_in_src() {
+    // ⚠⚠ **This is the one gate in the phase aimed at a defect somebody
+    // has already had.**  `../crawler` compares `role == 7` in EIGHT
+    // places and `src/sim.loft:145` records the cost: the role list
+    // *"stopped at 6 while 7-12 were in use"*.  dryopea's table is
+    // INDEXED, so the only shape that failure could take here is a
+    // comparison — and there is no such thing as a comparison a compiler
+    // would refuse, which is why it takes a test.
+    tnr_bad   = "";
+    tnr_seen  = 0;
+    tnr_files = 0;
+    for tnr_f in list_dir(R1_SRC) ?? [] {
+        if !tnr_f.starts_with_at(tnr_f.size() - 5, ".loft") { continue; }
+        tnr_path = R1_SRC + "/" + tnr_f;
+        tnr_text = file(tnr_path).content() ?? "";
+        tnr_files += 1;
+        // ⚠ The cheap filter first: only two files in the tree mention a
+        // role at all, so the line scan below runs over those and the
+        // sweep costs nothing.
+        if tnr_text.find("ROLE_") == null { continue; }
+        tnr_n = 0;
+        for tnr_line in tnr_text.split('\n') {
+            tnr_n += 1;
+            // ⚠ A comment may say `role ==` — this file's own subject is
+            // that it must not be CODE.
+            if tnr_line.trim().starts_with_at(0, "//") { continue; }
+            if tnr_line.find("ROLE_") != null { tnr_seen += 1; }
+            if r1_compares_a_role(tnr_line) {
+                tnr_bad = tnr_bad + " {tnr_f}:{tnr_n};";
+            }
+        }
+    }
+    assert(tnr_bad == "" && tnr_files > 20 && tnr_seen > 0,
+           "a role must never be compared — the table is indexed."
+           + "  Swept {tnr_files} files and {tnr_seen} lines naming a role;"
+           + " offenders:{tnr_bad}");
+    // ⚠⚠ **The gate's own control**, and it is two-sided: the sweep
+    // above is green over a tree that has no comparison in it, which is
+    // indistinguishable from a checker that cannot see one.
+    assert(r1_compares_a_role("    if e.route.role == ROLE_HAUL")
+           && r1_compares_a_role("    if r != ROLE_GUARD")
+           && !r1_compares_a_role("    if len(all) != ROLE_KIND_COUNT")
+           && !r1_compares_a_role("    ero_i = ROLE_NONE;"),
+           "the checker must catch a comparison, and must not call the "
+           + "table's own SIZE check one");
+}
+
+// ─── ⚠⚠ It lands INERT, and the bubble is the one door ──────────
+
+// @DRY-147 — every robot in every scenario today reads as no routine
+fn test_an_enemy_written_before_this_phase_has_no_routine() {
+    // ⚠⚠ **[loft#914] used deliberately**: this literal omits `route`,
+    // which is every `Enemy { … }` in the suite, and the zero it takes
+    // has to BE `errand_new()` or 1692 tests are measuring a different
+    // game.
+    tae_old = Enemy { q: 3, r: 4, kind: ENEMY_KIND_REGULAR as u8? ?? 0,
+                      alive: true };
+    tae_job = errand_destination(tae_old, 0);
+    assert(errand_same(tae_old.route, errand_new())
+           && errand_role(tae_old) == ROLE_NONE && !tae_job.found,
+           "an Enemy literal that omits `route` must mean no cycle at all "
+           + "— role={errand_role(tae_old)} found={tae_job.found}");
+}
+
+// @DRY-151 — ⚠⚠ the bubble is the ONE exit, enforced in the READER
+fn test_a_cut_off_hauler_reads_as_no_routine() {
+    // ⚠⚠ **`wave_cutoff` clears `errand` and nothing else** — site 5 of
+    // `plans/30` § Count the RE-ASSERTION SITES — and this is why it
+    // does not have to remember a second write: the role is read through
+    // `errand_role`, so the door cannot be left ajar by an omission.
+    tch_on  = Enemy { q: 0, r: 0, kind: ENEMY_KIND_REGULAR as u8? ?? 0,
+                      alive: true, errand: true, route: r1_hauler(12) };
+    tch_off = Enemy { q: 0, r: 0, kind: ENEMY_KIND_REGULAR as u8? ?? 0,
+                      alive: true, errand: false, route: r1_hauler(12) };
+    tch_a = errand_destination(tch_on,  0);
+    tch_b = errand_destination(tch_off, 0);
+    // ⚠ The anchors are IDENTICAL and untouched in both, which is the
+    // control: what changed is the link, not the routine.
+    assert(errand_role(tch_on) == ROLE_HAUL && tch_a.found && tch_a.q == 12
+           && errand_role(tch_off) == ROLE_NONE && !tch_b.found
+           && errand_same(tch_on.route, tch_off.route),
+           "the same routine, one with its link and one without: "
+           + "on={errand_role(tch_on)} to ({tch_a.q},{tch_a.r}) found "
+           + "{tch_a.found}, off={errand_role(tch_off)} found {tch_b.found}");
+}
