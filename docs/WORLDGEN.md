@@ -447,6 +447,88 @@ mountain-country detail at its own scale** — which is why the model does
 not care that one cell is a million fine ones.  ⚠⚠ **The ratio never has
 to be crossed by interpolation at all.**
 
+### ⚠⚠ THE WORKED EXAMPLE: a steep mountain side  `@X318`
+
+Owner, 2026-08-28:
+
+> *"for example on a steep mountain side we have a **limited set of
+> blocks that are possible** — with rock faces on them and with steep
+> terrain — **some of these blocks hold a river or a waterfall**."*
+
+⚠⚠ **This is *the bigger map gives the input if they apply locally* made
+operational**, and it is the shape to build against.  The coarse cell
+does not describe the ground; **it supplies predicates that ADMIT
+blocks**:
+
+| coarse input | where it comes from | what it admits |
+|---|---|---|
+| elevation band | the cell, and `@X309`'s four tuned numbers | the alpine / rock set |
+| **slope** | ⚠ **the six neighbours** (`@X313`) — a cell alone has none | blocks carrying **rock faces** |
+| **flow present?** | ⚠ `@X313`'s third field, still missing in dryopea | the subset that **holds a river** |
+| **flow + a big drop along it** | flow, plus the elevation difference to the downstream neighbour | ⚠⚠ the subset that holds a **WATERFALL** |
+
+⚠ So *steep mountain side* is not one answer.  It is **a small
+admissible set**, and which member lands here is decided by the block's
+own seed — `@X316`'s *the coarse map chooses the table, the block chooses
+the cell*.
+
+#### ⚠⚠ A BLOCK DECLARES WHAT IT NEEDS, NEVER WHERE IT GOES
+
+⚠ That is the trait-seam pattern this ecosystem already uses twice.
+`crawler/src/monsters.loft:26-32`:
+
+> *"**The engine never asks for a monster BY KEY — it asks the merged
+> catalog for one that FITS A PLACE.**"*
+
+⚠ And [`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) § The governing rule says
+the same of installations: *an installation costs one ROW*.  ⚠⚠ **A
+block is a row too**: conditions on one side, contents on the other, and
+**no placement code anywhere**.
+
+#### ⚠⚠ And dryopea's PALETTE IS ALREADY THE OUTPUT VOCABULARY
+
+⚠ The example needs four kinds and **the palette has had all four since
+plan 01**, with the numbers already priced:
+
+| kind | `slope` | `drop` | what it does today |
+|---|---|---|---|
+| `rock` | **20** | — | walkable, and `@X284`'s sturdiest footing |
+| `steep_rock` | **40** | — | ⚠⚠ `walk_ground: false` — **the cliff**, and `@X286` corrected it to refuse vehicles too |
+| `rapids` | — | **3** | a trench a 3.0 m boost can just leave |
+| `waterfall` | — | **8** | ⚠⚠ *"a hole nothing gets out of"* (`@X286`) |
+
+⚠⚠ **So a waterfall block is terrain with real teeth and nothing has
+ever placed one.**  `@X286` priced the palette's 0-1-3-8 **against the
+boost** — 3.0 m clears `rapids` and never clears a `waterfall` — and
+`@X282` gave the drop its job at the waterline.  ⚠ Both were reasoning
+about a *player-dug trench*; the same numbers make an authored waterfall
+a hazard the player cannot undo, which is the strongest thing in the
+palette and is currently unused.
+
+#### ⚠⚠ THE STITCHING RULE: a block declares its EDGES, and flow picks them
+
+⚠ A river-bearing block has one more obligation, and it is `@X316`'s
+anchors applied to features rather than to heights:
+
+> ⚠⚠ **A river must ENTER and LEAVE where its neighbours' rivers do.**
+
+⚠ So a block that holds a river is indexed not only by its conditions but
+by **which edge the water comes in and which it goes out** — and the
+coarse **flow direction is exactly what picks that pair**.  ⚠⚠ Which
+makes the catalogue an **edge-matching set**: elaborate content that
+still stitches, because the matching is done by a field both neighbours
+read rather than by a check after the fact.
+
+⚠ And a waterfall is then the special case the flow already describes —
+**the block where the outgoing edge drops further than a block can
+absorb**, so the catalogue needs one row rather than a rule.
+
+⚠⚠ **This is also where `@X313`'s measured trap bites hardest and is
+answered**: a neighbourhood rule *over-produces lakes 12×* because a
+1.5 km basin is not a lake.  ⚠ A block catalogue does not have that
+failure mode — **it never invents standing water; it only places the
+member whose edges the flow selected.**
+
 ### ⚠⚠ And the anchors are `@X313`, which is what makes it CORRECT
 
 *"per-block seeded plasma fractal **anchored at SHARED CORNER values**"*
