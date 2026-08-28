@@ -137,6 +137,16 @@ shortest path
     following water for boats (ocean, sea, river, lake)
 ```
 
+⚠⚠ **THE RULE THESE NOTES DO NOT STATE, and it is the load-bearing one**
+(owner, 2026-08-28, `@X313`): ***the content of a hex depends on the six
+hexes around it — their terrain, their elevation, their water flow.***
+⚠ *"General slopes"* and *"water flow, amount of water"* above are its
+ingredients; the relation between them was never written down.  ⚠ It is
+what makes a coarse map able to produce a fine one at all — a single cell
+has no gradient — and parts of it landed in `../crawler`, including the
+way the Ortler map is formed (`@X314`).
+[`docs/WORLDGEN.md`](WORLDGEN.md) owns it.
+
 **What survived into @PLAN46 / lib-plan 19+20:**
 - "General slopes (flats, gradual, hills, mountain)" → lib-plan
   20's `md_slope` (per-material slope value); same idea, formalised
@@ -153,10 +163,15 @@ shortest path
   (DESIGN.md system #3, system #4).
 
 **What did NOT survive (yet):**
-- "Sampling png onto hex grid" — image-as-input terrain importer.
-  Lib-plan 20 uses *painted* ground types (palette + drainage
-  seed), not a sampled image. The PNG sampler may return as a
-  back-door bulk-import tool but is not core.
+- ⚠⚠ **"Sampling png onto hex grid" — REVIVED 2026-08-28, and it is
+  core after all** (`@X312`, `@X313`, [`docs/WORLDGEN.md`](WORLDGEN.md)).
+  This row called it *"a back-door bulk-import tool but not core"*; the
+  owner's **backdrop of real geography** needs a skyline, and a skyline
+  has to be imported from somewhere.  ⚠ Its own note — *"specific point
+  & 4 pixels around it"* — is `@X313`'s six-neighbour rule in its
+  original form.  ⚠ Original text, kept: image-as-input terrain
+  importer; lib-plan 20 uses *painted* ground types (palette + drainage
+  seed), not a sampled image.
 - "Coast lines with walls at 15-degree increments" — the
   curved-coast aesthetic. Current lib-plan 19 (T4) uses
   axis-aligned slope faces; sub-hex curvature is deferred.

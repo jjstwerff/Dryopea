@@ -18,6 +18,15 @@ owns the graph that hangs on the coarse map.
 once as the game's world and once as a real-data reference — and the most
 useful thing in it is which of those is which.
 
+> ⚠⚠ **AND `../crawler` IS NOT A FOREIGN SOURCE** (owner, 2026-08-28):
+> *"parts of it landed in crawler, and the way the ortler map is
+> formed."*  These are **dryopea's own 2023 designs, developed further
+> in a sibling repo and coming home with an implementation and
+> measurements attached** — which is why several of them converge with
+> rulings made here independently (`@X299`, `@X301`, `@X306`).  ⚠ Read
+> the citations below as *this idea, tried* rather than as *somebody
+> else's idea*.
+
 ## ⚠⚠ THE CORRECTION: the Ortler map is a CALIBRATION FIXTURE, not a world  `@X309`
 
 ⚠ `@X307` recorded the owner's *"a world map in 1.5 km eventually like
@@ -232,6 +241,133 @@ at independently for TERRAIN** — and `@X306`'s *the result is the
 snapshot changed* is *only player deltas persist* said the other way
 round.  **Two systems, one shape, and neither was derived from the
 other.**
+
+### ⚠⚠ A HEX'S CONTENT IS A FUNCTION OF ITS SIX NEIGHBOURS  `@X313`
+
+Owner, 2026-08-28, recalling the original design:
+
+> *"in my initial designs for this game the content of a hex is
+> dependent on the 6 hexes around it — their terrain, their elevation,
+> their water flow."*
+
+⚠ **It is not written down anywhere.**  The 2023 notes in
+[`DESIGN_HISTORY.md`](DESIGN_HISTORY.md) § 2 carry the ingredients —
+*"general slopes (flats, gradual, hills, mountain)"* and *"water flow,
+amount of water"* — but not the rule that ties them together, and it is
+the rule that decides the whole shape of a derivation.
+
+⚠⚠ **Three things follow from it, and each is load-bearing:**
+
+1. ⚠⚠ **IT IS WHAT MAKES A 1000× INTERPOLATION POSSIBLE AT ALL.**  A
+   single cell has a value and **no gradient** — nothing in it says which
+   way is downhill.  Six neighbours give **slope, aspect and drainage**
+   for free, and those three are what every terrain classifier actually
+   reads.  ⚠ `crawler`'s `ov_blend` (`src/overland.loft:997`) is exactly
+   this: a smooth kernel blend of the surrounding cells producing
+   `(height, watery, lakew, dominant material)`, and `OVERLAND.md:92`
+   states the rule — *"the dominant tile sets the table; **in blend bands
+   the tables interpolate**."*
+2. ⚠⚠ **THE COARSE MAP STORES FAR LESS THAN IT PRODUCES**, which is what
+   makes it small enough to BE a server state (`@X306`: *compact is the
+   requirement, not an optimisation*).  Six neighbours × three fields is
+   **eighteen numbers**, and a whole cell's terrain comes out of them.
+3. ⚠⚠ **IT MAKES THE DERIVATION WATERTIGHT BY CONSTRUCTION — if the
+   shared thing is computed the same way from both sides.**  This is the
+   one place a neighbour rule can silently go wrong, and `crawler` states
+   the fix as a commutativity requirement
+   (`src/realworld/trimesh.loft:17-24`):
+
+   > *"Corner shared by 3 hexes: height = **mean of the 3 hex centres**.
+   > Edge-third shared by 2 hexes: height = **⅔·home + ⅓·neighbour** for
+   > the ⅓ slot, swapped for the ⅔ slot"* — **commutative, so both
+   > owners compute the identical number.**
+
+   ⚠ Same rule in its river code: `edge_cross` hashes the **sorted**
+   pair so both hexes agree (`src/realworld/rivers.loft:13`).  ⚠⚠ And
+   *watertight across seams* is one of `@X311`'s four talus invariants —
+   so in that repo it is a GATE, not a hope.
+
+#### ⚠⚠ AND THE ORTLER MAP IS THIS RULE, MADE CONCRETE AND THEN TESTED  `@X314`
+
+Owner, 2026-08-28: *"parts of it landed in crawler, and **the way the
+ortler map is formed**."*
+
+⚠⚠ **The 18-triangle sub-hex mesh IS the six-neighbour rule.**  Every
+hex is split into 18 triangles over **19 points** — the centre, its 6
+corners and the 12 edge-thirds — and **every one of those points except
+the centre belongs to more than one hex**:
+
+| point | shared by | its value |
+|---|---|---|
+| centre | 1 hex | the cell's own sample |
+| corner | **3 hexes** | ⚠ the **mean of the three centres** |
+| edge-third | **2 hexes** | ⚠ **⅔·home + ⅓·neighbour**, swapped for the other slot |
+
+⚠ So a hex's drawn surface is *literally* a function of itself and its
+six neighbours, and the commutativity above is what makes the two owners
+of a shared point compute the identical number.  ⚠⚠ **The rule and its
+watertightness are the same property**, which is why it can be gated.
+
+⚠⚠ **And then the fixture TESTED it, which is the part worth having.**
+The Ortler `.bin` stores **real EU-DEM heights at those 19 points** for
+the 40×40 subset (14 878 vertices) — so at 40×40 the rule's answer is
+*measured* and at 80×80 it is *derived*, and the two can be compared.
+`plans/2-chunked-lod-world/s6-subhex-finding.md` reports what the
+comparison found:
+
+> *"The triangle vertices are **real EU-DEM samples** at the 19 sub-hex
+> points (hex centre + 6 corners + 12 edge-thirds, ~250–750 m spacing) —
+> **not interpolation**.  So this is the finest *real* signal the plan #1
+> fixture holds."*
+
+⚠⚠ **The verdict: the six-neighbour rule gives you geometry and does NOT
+give you land cover.**  At ~350 m spacing *"no simple geometric sub-hex
+signal (slope, relief) separates cliffs from forest"* (`@X311`), and
+`@X313`'s spurious lakes are the same limit on the water side.  ⚠ So the
+rule is right and **its output is a shape, not a classification** — which
+is exactly why `@X311`'s answer was to run a physical process over the
+shape rather than to classify it harder.
+
+#### ⚠ Water flow is a first-class input, and it is derived not stored
+
+⚠ The owner's third field is the interesting one: **flow is not a
+property of a cell, it is a relation between cells.**  `crawler` computes
+it rather than authoring it — `hydro_compute` (`src/realworld/hydro.loft`)
+is a **priority-flood pit-fill**, then **steepest descent** giving a
+direction 0..5, then **accumulation** = how many cells drain through.
+Width follows from accumulation: `35.0 + 18.0·√acc`.
+
+⚠ dryopea has the two static halves of this already and reads them:
+the palette's **`slope`** (read at last by `damage.loft` § Footing,
+`@X284`) and its **`drop`** (read at last by `moat.loft`, `@X282`).
+**What it has never had is the third — flow.**
+
+#### ⚠⚠ THE MEASURED TRAP: a neighbour rule OVER-PRODUCES LAKES
+
+⚠ `crawler`'s gap analysis found it and quantified it
+(`plans/1-ortler-worldgen-fixture/gap-analysis.md`, F2):
+
+> *"**Spurious lakes — quantified: model 72 lakes vs OSM 6 water cells
+> (~12×).**  Pit-fill floods local 1.5 km basins."* — marked VERIFIED,
+> and **still open**.
+
+⚠⚠ **So the honest statement is that a neighbourhood rule at 1.5 km
+gives you slope and drainage cheaply and gives you STANDING WATER
+wrongly**, because a basin one cell across is 1.5 km wide and a real lake
+is not.  ⚠ It is the same shape as its other refusal — *cliffs are not
+resolvable at 1.5 km* (`@X309`) — and it wants the same answer: either a
+finer signal, or `@X311`'s move of replacing the classifier with a
+process.
+
+#### ⚠ And it revives something `DESIGN_HISTORY.md` recorded as dead
+
+⚠⚠ § 2's *"What did NOT survive (yet)"* lists **"sampling png onto hex
+grid"** — the image-as-input terrain importer — as *"a back-door bulk
+import tool but not core"*.  ⚠ `@X312`'s backdrop **needs exactly that**,
+because a skyline has to come from somewhere.  So a 2023 idea written off
+as a convenience comes back as the thing a required feature rests on, and
+its own note — *"specific point & 4 pixels around it"* — is this section's
+rule in its original form.
 
 ### The one entry point
 
