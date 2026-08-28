@@ -505,6 +505,91 @@ about a *player-dug trench*; the same numbers make an authored waterfall
 a hazard the player cannot undo, which is the strongest thing in the
 palette and is currently unused.
 
+#### ⚠⚠ A BLOCK CONTRIBUTES A RESIDUAL, NEVER AN ABSOLUTE  `@X321`
+
+Owner, 2026-08-28:
+
+> *"combine the inner block details like rock-faces with the heights
+> provided by the 1.5 km map and we get **more interesting and realistic
+> shapes**."*
+
+⚠⚠ **This is the composition rule, and it is what makes the whole
+catalogue work rather than look pasted on.**  A block's detail is not
+laid down flat — it is **added to the coarse field**:
+
+```
+height(fine hex) = coarse_field(from the six neighbours)   # the large form
+                 + block_residual(this block, its seed)     # the local structure
+```
+
+⚠ `@X316` already states half of it — *"the anchors sample OUR field
+stack, **the rough structure is followed by construction**"* — and
+`crawler` names the other half in one word: *"**the plasma residual** is
+the per-type micro-roughness number."*  ⚠⚠ **Residual.  Not height.**
+
+##### ⚠⚠ It is why the shapes read as real
+
+⚠ Real ground **is** a large form with local structure on it: a massif
+leans one way over kilometres, and within that lean there are faces,
+ledges and gullies.  ⚠⚠ Neither layer alone produces that —
+
+| | alone | composed |
+|---|---|---|
+| the coarse field | a smooth ramp; `@X309` measured the ceiling at **62 %** | ⚠⚠ the ramp **with structure on it** |
+| the block detail | a face floating on nothing, identical everywhere | a face **lying along the slope it belongs to** |
+
+##### ⚠⚠ AND IT IS THE BEST ANSWER TO `@X319`'s PATTERN PROBLEM
+
+> ⚠⚠ **The same block on a different slope is a different landform.**  A
+> rock-face block on a gentle grade is a **low outcrop**; the identical
+> row on a 40° flank is a **cliff band**.
+
+⚠ So **one row has many appearances, for free**, and the variant budget
+§ EVERY COMMON CASE computes is multiplied by however much the coarse
+field varies underneath — which is continuous.  ⚠⚠ **That, not the
+variant count, is what actually defeats visible tiling**, and it is why
+`@X319`'s birthday arithmetic is the pessimistic bound rather than the
+requirement.
+
+##### ⚠ And it satisfies `@X320`'s edge contract by CONSTRUCTION
+
+⚠⚠ **A residual that tapers to zero at the block's edges leaves the
+coarse field untouched there** — so two neighbouring blocks agree at
+their shared band without either knowing about the other, and § AND THE
+EDGES ARE NOT THE BLOCK'S TO VARY is met by arithmetic instead of by a
+rule.  ⚠ Same trick as `@X316`'s anchors, one layer down: **the property
+is built in, so there is nothing to check.**
+
+##### ⚠ The honest limit: a residual may not FIGHT the field
+
+⚠ A block that adds thirty metres of face onto ground the coarse map
+calls valley floor produces a mountain in a meadow.  ⚠⚠ **So the
+admission predicate and the residual must agree** — which is exactly why
+`@X318` has a block **declare what it needs**: the conditions are not a
+filing system, they are **the guarantee that the residual lands on ground
+it makes sense on.**
+
+⚠ `crawler`'s frozen intent doc states the failure to avoid, and it is
+the same one: *"rivers run the low ground … **no water on
+ridgelines**"* (`plans/1-ortler-worldgen-fixture/intent.md`, P4).
+
+##### ⚠⚠ dryopea already composes exactly this way, one scale down
+
+⚠ `height.loft` is a **runtime layer of metres over an authored ground**,
+and `hex_height` is the sum — which is the same equation:
+
+| | base | residual | who reads the sum |
+|---|---|---|---|
+| **today**, at 1.5 m | the painted kind's height | the rubble layer's metres | `@X284`'s footing, `@X282`'s waterline, every passability check |
+| **this**, at 1.5 km | the coarse field | the block's detail | the same functions, unchanged |
+
+⚠⚠ **So the composition is not a new concept for dryopea — it is the
+rubble layer's rule at a different scale**, and `CLAUDE.md`'s *rubble is
+a LAYER, never a repaint* is the same sentence.  ⚠ It also means
+`@X311`'s talus is the **process form** of this rule: bedrock plus
+rubble, relaxed until the rubble holds — *coarse field plus residual*,
+gated on the residual being conserved.
+
 #### ⚠⚠ EVERY COMMON CASE NEEDS SEVERAL BLOCKS — the budget goes to the BORING one  `@X319`
 
 Owner, 2026-08-28:
