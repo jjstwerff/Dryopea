@@ -23,7 +23,7 @@ twenty-five plans.
 ```bash
 make play MAP=starter_01          # an authored base — start here
 make play PLANET=kepler           # a place that REMEMBERS what you did to it
-make play SCRIPT=a-defended-base  # any of the 45 `.keys` scenarios
+make play SCRIPT=a-defended-base  # any of the 46 `.keys` scenarios
 make play                         # the default save slot, empty on a fresh checkout
 ```
 
@@ -84,7 +84,7 @@ large map.  The console says so.
 | `Ctrl`+`R` | `reload` | re-read both layers from disk.  `Ctrl`+`Z` undoes it |
 | `Ctrl`+`N` | `clear` | empty both layers and reset the camera, as one undoable action |
 | mouse left | — | paint the hovered hex, or place / remove a marker.  Drag paints a line |
-| mouse wheel | — | ⚠⚠ **nothing.**  It moves a number no renderer reads — `PROBLEMS.md` `@D002`, open |
+| mouse wheel | — | **zoom out and back in** — one step per notch, `ZOOM_MIN` 1 (closest) to `ZOOM_MAX` 10.  ⚠ It is a SCALE, not a crop: twice the zoom is half the pixels per metre, so a patch covers a quarter of the frame each doubling.  ⚠⚠ It moved a number **no renderer read** until 2026-08-28 (`@D002`, BACKLOG C7) — the picture was identical at z1 and z6 |
 
 ### In the game
 
@@ -229,7 +229,7 @@ is about.
 | ⚠⚠ **TEXT** | Nothing can draw a letter (`@X097`), so the wallet is seven-segment rectangles and there is no dialogue, no debrief, no crew chatter — BACKLOG B1 |
 | **the landing flow** | P puts you at the core.  Choosing where to land is plan 05 |
 | **a crew you can direct** | Helpers exist in the simulation, and a `.keys` scenario can place them — `make play SCRIPT=a-base-that-plays-its-list` gives you one.  ⚠ A **map** cannot carry crew, so every shipped map is played solo |
-| **zoom** | The wheel changes a number no renderer reads — `@D002` |
+| **zoom** | ✅ **works since 2026-08-28** (`@D002` closed by BACKLOG C7) — the wheel changes how much world the frame shows |
 | **sound** | None at all |
 | **the scramble** | The evacuation the whole design is named after is not built |
 

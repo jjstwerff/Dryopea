@@ -37,11 +37,11 @@ const BADGE_CY: integer = VIEW_HUD_MARGIN + MODE_BADGE_PX / 2;
 
 fn test_the_frame_carries_the_world() {
     ttf_s = editor_state_new(PALETTE);
-    ttf_empty = render_editor_frame(ttf_s, VIEW_W, VIEW_H, VIEW_PPM);
+    ttf_empty = render_editor_frame(ttf_s, VIEW_W, VIEW_H, view_ppm(ttf_s.cam));
     ttf_sea = ttf_empty.get_pixel(VIEW_W / 2, VIEW_H / 2 + 40);
 
     script_run(ttf_s, "palette 5\ndrag -3 0 3 0", SHOTS);
-    ttf_painted = render_editor_frame(ttf_s, VIEW_W, VIEW_H, VIEW_PPM);
+    ttf_painted = render_editor_frame(ttf_s, VIEW_W, VIEW_H, view_ppm(ttf_s.cam));
 
     assert(ttf_painted.get_pixel(VIEW_W / 2, VIEW_H / 2) != ttf_sea,
            "the hexes the script painted are in the picture");
@@ -52,13 +52,13 @@ fn test_the_frame_carries_the_world() {
 // from the one the player looks at.
 fn test_the_frame_carries_the_hud() {
     tfh_ground = editor_state_new(PALETTE);
-    tfh_cv_g = render_editor_frame(tfh_ground, VIEW_W, VIEW_H, VIEW_PPM);
+    tfh_cv_g = render_editor_frame(tfh_ground, VIEW_W, VIEW_H, view_ppm(tfh_ground.cam));
     assert(tfh_cv_g.get_pixel(BADGE_CX, BADGE_CY) == MODE_BADGE_GROUND_BG,
            "the ground-mode badge is drawn");
 
     tfh_marker = editor_state_new(PALETTE);
     script_run(tfh_marker, "do toggle_mode", SHOTS);
-    tfh_cv_m = render_editor_frame(tfh_marker, VIEW_W, VIEW_H, VIEW_PPM);
+    tfh_cv_m = render_editor_frame(tfh_marker, VIEW_W, VIEW_H, view_ppm(tfh_marker.cam));
     assert(tfh_cv_m.get_pixel(BADGE_CX, BADGE_CY) == MODE_BADGE_MARKER_BG,
            "and it follows the mode the script put the editor in");
 }
@@ -68,11 +68,11 @@ fn test_the_frame_carries_the_hud() {
 // still show none of the spawns a scenario is about.
 fn test_the_frame_carries_the_markers() {
     tfm_s = editor_state_new(PALETTE);
-    tfm_before = render_editor_frame(tfm_s, VIEW_W, VIEW_H, VIEW_PPM);
+    tfm_before = render_editor_frame(tfm_s, VIEW_W, VIEW_H, view_ppm(tfm_s.cam));
     tfm_centre = tfm_before.get_pixel(VIEW_W / 2, VIEW_H / 2);
 
     script_run(tfm_s, "do toggle_mode\nclick 0 0\nhover 8 8", SHOTS);
-    tfm_after = render_editor_frame(tfm_s, VIEW_W, VIEW_H, VIEW_PPM);
+    tfm_after = render_editor_frame(tfm_s, VIEW_W, VIEW_H, view_ppm(tfm_s.cam));
 
     assert(marker_count(tfm_s.mw) == 1, "the script placed a spawn");
     assert(tfm_after.get_pixel(VIEW_W / 2, VIEW_H / 2) != tfm_centre,
@@ -84,7 +84,7 @@ fn test_the_frame_carries_the_markers() {
 fn test_the_frame_previews_under_the_pointer() {
     tfp_s = editor_state_new(PALETTE);
     script_run(tfp_s, "palette 9\nhover 0 0", SHOTS);
-    tfp_cv = render_editor_frame(tfp_s, VIEW_W, VIEW_H, VIEW_PPM);
+    tfp_cv = render_editor_frame(tfp_s, VIEW_W, VIEW_H, view_ppm(tfp_s.cam));
 
     assert(tfp_cv.get_pixel(VIEW_W / 2, VIEW_H / 2) == palette_color(9 as u8),
            "the hovered hex previews the tool that is selected");

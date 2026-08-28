@@ -44,40 +44,108 @@ Severity tiers:
 
 ## Open
 
+⚠ One row.  `@D002` was the other and BACKLOG C7 closed it on
+2026-08-28.
+
+### @D006 — `walk_vehicle` is read by nothing, so the hovering movers cannot cross water
+
+- **Status:** OPEN.  Found and PINNED 2026-08-27 (BACKLOG C5), not fixed —
+  the fix is a change to the ONE passability rule and to what every
+  existing map means, which is not a line in a moat file.
+- **Severity:** Medium, and it went up the day the player could BUILD
+  water.  A trench the player closes is closed to them for the run, and
+  boost cannot answer it.
+- **Found while:** BACKLOG C5, probing the claim the moat feature was
+  designed around — *the depth is what stops the moat being free,
+  because the crew HOVER and fall in*.  The probe falsified it, which is
+  the whole reason it was written before the feature.
+- **Repro:** drive east along a painted grass strip whose middle hex is
+  `sea` (height **0.0**), with `CLIMB_VEHICLE` and six hexes of
+  allowance.  The mover stops **one hex short of it**.  Raise the climb
+  to `VEHICLE_BOOST_CLIMB_METRES` (3.0) and it stops in the same place.
+- **Expected:** [`docs/GROUND_TYPES.md`](docs/GROUND_TYPES.md) § The
+  master palette says *"Walkable (vehicle) is true even for `steep_rock`
+  and `waterfall` because the floating vehicle hovers above terrain;
+  per-agent-type traversal is the design"*, and every water and cliff
+  kind carries `walk_vehicle: true` in
+  [`examples/palette.json`](examples/palette.json).
+- **Observed:** `passable.loft::can_climb` refuses a step whose *either*
+  end fails `hex_walkable`, and `hex_walkable` answers `walk_ground` for
+  every caller.  `vehicle.loft::drive_along` — the shared chassis the
+  player and every helper use — asks `can_climb`, so **`walk_vehicle` is
+  read by no code in the tree**.  The vehicle is stopped by flat sea and
+  by `steep_rock` exactly as a robot is.
+- **⚠ Why it is not simply a bug to fix here:** `passable.loft`
+  § Where the climb limits come from already predicts it —
+  *"The day a class reads `walk_vehicle` instead, this gains a kind and
+  both of those go red"* — and `tests/11_f6_height_step.loft` pins
+  **one climb ⇒ one distance field** on the strength of a class's whole
+  contribution being its climb.  Giving the vehicle a second movement
+  axis changes what every authored map means (an island base becomes
+  drivable) and is a decision about the SIMULATION, not a patch.
+- **⚠ What it costs today:** the vehicle cannot cross a one-hex ditch or
+  reach an island, and BACKLOG C5's trench is the first thing the player
+  can build that they cannot get back over.
+  [`docs/PLAYING.md`](docs/PLAYING.md) says so in the row that offers it,
+  and [`src/moat.loft`](src/moat.loft) § And the hazard the same probe
+  exposed carries the argument for recording it rather than guarding it.
+- **Test:** [`tests/c5_the_moat.loft`](tests/c5_the_moat.loft)
+  `test_water_stops_the_player_and_the_crew_at_any_depth` — the reading,
+  with the control that says the drive itself works (the same drive over
+  grass crosses).  ⚠ It pins the CURRENT behaviour, so it is the test
+  that must be rewritten when this is fixed rather than the one that
+  proves the fix.
+
+## Fixed
+
 ### @D002 — `cam.zoom` changes no pixel: the wheel moves a number no renderer reads
 
-- **Status:** Open
-- **Severity:** Med — the editor has a control that appears to work and
-  does nothing; and it removes a lever [`docs/PARTS.md`](docs/PARTS.md)
+- **Status:** **FIXED** 2026-08-28, BACKLOG C7 — `editor_view.loft`
+  gained `view_ppm(cam)` (`VIEW_PPM / zoom`), and **`VIEW_PPM` itself is
+  now PRIVATE**, which is the half that keeps it fixed: a test cannot
+  stop the next caller reaching for a base scale that looks like the
+  answer, and a constant it cannot NAME can.
+- **Severity:** Med — the editor had a control that appeared to work and
+  did nothing; and it removed a lever [`docs/PARTS.md`](docs/PARTS.md)
   § What could kill this design was counting on.
 - **Found while:** writing `docs/PARTS.md` (plan 20), checking whether
   "zoom in to see the detail" was an option if entity sprites read too
   small at `VIEW_PPM` 24.
-- **Repro:** `grep -rn "\.zoom" src/` — `camera.loft` moves it on the
-  wheel (`ZOOM_MIN..ZOOM_MAX`), `save.loft` persists it, `script.loft`
-  walks the camera to it and prints it in the state line.  **No file
-  under `src/` that draws anything reads it**: `render.loft` does not
-  mention `zoom`, and `render_editor_frame` takes `VIEW_PPM` as a
+- **Repro:** `grep -rn "\.zoom" src/` — `camera.loft` moved it on the
+  wheel (`ZOOM_MIN..ZOOM_MAX`), `save.loft` persisted it, `script.loft`
+  walked the camera to it and printed it in the state line.  **No file
+  under `src/` that drew anything read it**: `render.loft` did not
+  mention `zoom`, and `render_editor_frame` took `VIEW_PPM` as a
   constant.
 - **Expected:** scrolling the wheel changes how much world the frame
   shows.
-- **Observed:** the number changes, is saved, is reported by `snap`'s
-  state line — and the picture is identical at `z1` and at `z6`.
-- **Workaround:** none needed today; nothing depends on it.  ⚠ But
-  `tests/scripts/*.keys` walk the camera to a zoom and `at` asserts it
-  arrives, so **the gate is green over a control that does nothing** —
-  which is why this is Med rather than Low.
-- **Fix plan:** deferred, and deliberately NOT a phase of plan 20 —
-  that plan must not grow a second subject.  The fix is to derive the
-  render scale from the camera (`ppm = VIEW_PPM / zoom`, or a table) in
-  the ONE place `render_editor_frame` passes it, so the GL loop and
-  `snap` cannot disagree.  ⚠ It rebaselines every golden taken at a
-  zoom other than the default.
-- **Test:** none yet.  The shape it wants: two `snap`s of one map at two
-  zooms, and `classify_world` shares that DIFFER — a golden would
-  agree with whatever it started drawing.
-
-## Fixed
+- **Observed:** the number changed, was saved, was reported by `snap`'s
+  state line — and the picture was identical at `z1` and at `z6`.
+- **⚠⚠ What the fix turned out to be, and it was not one place.**  The
+  fix plan said *derive the render scale in the ONE place
+  `render_editor_frame` passes it, so the GL loop and `snap` cannot
+  disagree*.  There are **four** paths, and the fourth is not a drawing
+  at all: the GL loop's frame, `snap`'s frame, `classify_world` behind
+  the `frame` measurement, and **`screen_to_hex`**, which inverts a
+  pointer position back to a hex.  ⚠ Fixing only the drawing would have
+  made every click land on the wrong hex at any zoom but 1 — a worse
+  defect than the one being fixed — so the door is a function all four
+  call rather than a derivation inside one of them.
+- **⚠ And the rebaseline it warned about was an EMPTY SET.**  *It
+  rebaselines every golden taken at a zoom other than the default* —
+  measured: all 16 goldens in the tree are drawn at zoom 1
+  (`camera_default()` or `camera_at(…, 1)`), so not one moved, and
+  neither did any of the 827 gate measurements.  The only scenario at a
+  non-default zoom is `v1b_snap.keys`, which takes pictures and asserts
+  nothing.
+- **Test:** [`tests/c7_the_zoom.loft`](tests/c7_the_zoom.loft) and
+  [`tests/scripts/the-wheel-changes-the-view.keys`](tests/scripts/the-wheel-changes-the-view.keys)
+  — exactly the shape this entry asked for: one map at three distances,
+  read as `classify_world` SHARES rather than as an image, because a
+  golden would agree with whatever it started drawing.  The grass patch
+  covers **0.207 / 0.052 / 0.013** of the frame at z1 / z2 / z4 — a
+  quarter each doubling, because a share is an AREA, which is the half
+  a "they differ" reading cannot see.
 
 ### @D003 — the player is the one mover that throws its remainder away, so a shorter tick freezes it
 
@@ -330,56 +398,6 @@ Severity tiers:
   `catalogue_names()` entry, emitted TURNED and off the origin so a
   placement that mirrored a part would be caught too.  It goes RED
   against the pre-fix emitter naming 72 of 144.
-
-### @D006 — `walk_vehicle` is read by nothing, so the hovering movers cannot cross water
-
-- **Status:** OPEN.  Found and PINNED 2026-08-27 (BACKLOG C5), not fixed —
-  the fix is a change to the ONE passability rule and to what every
-  existing map means, which is not a line in a moat file.
-- **Severity:** Medium, and it went up the day the player could BUILD
-  water.  A trench the player closes is closed to them for the run, and
-  boost cannot answer it.
-- **Found while:** BACKLOG C5, probing the claim the moat feature was
-  designed around — *the depth is what stops the moat being free,
-  because the crew HOVER and fall in*.  The probe falsified it, which is
-  the whole reason it was written before the feature.
-- **Repro:** drive east along a painted grass strip whose middle hex is
-  `sea` (height **0.0**), with `CLIMB_VEHICLE` and six hexes of
-  allowance.  The mover stops **one hex short of it**.  Raise the climb
-  to `VEHICLE_BOOST_CLIMB_METRES` (3.0) and it stops in the same place.
-- **Expected:** [`docs/GROUND_TYPES.md`](docs/GROUND_TYPES.md) § The
-  master palette says *"Walkable (vehicle) is true even for `steep_rock`
-  and `waterfall` because the floating vehicle hovers above terrain;
-  per-agent-type traversal is the design"*, and every water and cliff
-  kind carries `walk_vehicle: true` in
-  [`examples/palette.json`](examples/palette.json).
-- **Observed:** `passable.loft::can_climb` refuses a step whose *either*
-  end fails `hex_walkable`, and `hex_walkable` answers `walk_ground` for
-  every caller.  `vehicle.loft::drive_along` — the shared chassis the
-  player and every helper use — asks `can_climb`, so **`walk_vehicle` is
-  read by no code in the tree**.  The vehicle is stopped by flat sea and
-  by `steep_rock` exactly as a robot is.
-- **⚠ Why it is not simply a bug to fix here:** `passable.loft`
-  § Where the climb limits come from already predicts it —
-  *"The day a class reads `walk_vehicle` instead, this gains a kind and
-  both of those go red"* — and `tests/11_f6_height_step.loft` pins
-  **one climb ⇒ one distance field** on the strength of a class's whole
-  contribution being its climb.  Giving the vehicle a second movement
-  axis changes what every authored map means (an island base becomes
-  drivable) and is a decision about the SIMULATION, not a patch.
-- **⚠ What it costs today:** the vehicle cannot cross a one-hex ditch or
-  reach an island, and BACKLOG C5's trench is the first thing the player
-  can build that they cannot get back over.
-  [`docs/PLAYING.md`](docs/PLAYING.md) says so in the row that offers it,
-  and [`src/moat.loft`](src/moat.loft) § And the hazard the same probe
-  exposed carries the argument for recording it rather than guarding it.
-- **Test:** [`tests/c5_the_moat.loft`](tests/c5_the_moat.loft)
-  `test_water_stops_the_player_and_the_crew_at_any_depth` — the reading,
-  with the control that says the drive itself works (the same drive over
-  grass crosses).  ⚠ It pins the CURRENT behaviour, so it is the test
-  that must be rewritten when this is fixed rather than the one that
-  proves the fix.
-
 
 ## See also
 

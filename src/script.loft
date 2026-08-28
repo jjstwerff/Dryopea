@@ -1209,8 +1209,11 @@ fn script_measure(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         if sm_flo == null || sm_fhi == null {
             return "frame: <lo> and <hi> must be shares of the canvas, 0.0..1.0";
         }
+        // ⚠ `view_ppm`, never a base scale: this classifies the same
+        // picture `snap` draws, and a band sized on a frame nobody saw
+        // measures nothing (BACKLOG C7).
         sm_fc = classify_world(s.cam, s.pw, len(s.picker.palette),
-                               VIEW_W, VIEW_H, VIEW_PPM);
+                               VIEW_W, VIEW_H, view_ppm(s.cam));
         // V2p proved the rasteriser hard-edged, and every band a
         // scenario carries was sized on that.  A pixel that is not
         // a palette colour means the renderer changed underneath
@@ -1903,7 +1906,7 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
         }
         mkdir_all(run.shots_dir);
         sc_png = "{run.shots_dir}/{sc_a1}.png";
-        sc_cv  = render_editor_frame(s, VIEW_W, VIEW_H, VIEW_PPM);
+        sc_cv  = render_editor_frame(s, VIEW_W, VIEW_H, view_ppm(s.cam));
         // `save_png` ANSWERS false on a write it could not do — an
         // absent directory above all.  Ignoring that answer is how
         // a run stays green over a picture that does not exist.

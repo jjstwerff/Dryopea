@@ -44,7 +44,50 @@ use graphics;
 // the same place.
 pub const VIEW_W:   integer = 960;
 pub const VIEW_H:   integer = 720;
-pub const VIEW_PPM: float   = 24.0;
+
+// Pixels per metre at the CLOSEST zoom — the base scale, and never the
+// one a caller wants.
+//
+// ⚠⚠ **PRIVATE, and that is the fix for `@D002` rather than a tidying**
+// (BACKLOG C7).  The wheel moved `cam.zoom` from plan 01 and **no file
+// that draws anything read it**: `main.loft` passed this constant to
+// the frame, to `screen_to_hex` and to `classify_world`, so the picture
+// was identical at `z1` and at `z6` while the number was moved, saved,
+// and reported in `snap`'s state line.  The gate was green over a
+// control that did nothing.
+//
+// ⚠ A test cannot stop the next caller reaching for a base scale that
+// looks like the answer; a constant it cannot NAME can.  `view_ppm` is
+// the one door, the same shape `passable.loft::hex_ground` and
+// `markers.loft::place_marker` are.
+const VIEW_PPM: float = 24.0;
+
+// Pixels per metre for THIS camera — the only scale anything may draw,
+// measure or invert a click through.
+//
+// ⚠⚠ **Every consumer of the scale must call this, and the reason is
+// that they must AGREE.**  Three separate paths read it — the GL loop's
+// frame, `snap`'s frame, and `classify_world` behind the `frame`
+// measurement — plus `screen_to_hex`, which inverts a pointer position
+// back to a hex.  A frame drawn at one scale and clicked through
+// another puts the paint on the wrong hex; a frame drawn at one scale
+// and CLASSIFIED at another makes every band a measurement of a picture
+// nobody saw.
+//
+// ⚠ **`zoom` is a DIVISOR because higher means more world visible**
+// (`camera.loft`: *1 = closest*), so the law is the one the field's own
+// comment already claimed: twice the zoom, half the pixels per metre,
+// twice the world across the window.
+//
+// ⚠ **The clamp is [loft#914], not defensiveness.**  A partial
+// `EditorCamera { }` literal takes `zoom: 0` silently, and 24.0 / 0 is
+// not a scale — clamping to `ZOOM_MIN` makes such a camera draw exactly
+// what it drew before this shipped, which is the rule every field on a
+// partial literal follows.
+// Example: @DRY-136
+pub fn view_ppm(cam: const EditorCamera) -> float {
+    VIEW_PPM / (max(cam.zoom, ZOOM_MIN) as float)
+}
 
 // Inset of the HUD from the canvas edge, in pixels.
 pub const VIEW_HUD_MARGIN: integer = 12;

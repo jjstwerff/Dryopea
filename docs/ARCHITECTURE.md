@@ -76,6 +76,22 @@ src/
                    gesture sets the GESTURE's state (`s.painting`),
                    never the input history
   editor_view.loft render_editor_frame(s, w, h, ppm) -> Canvas —
+                   ⚠⚠ VIEW_PPM IS PRIVATE and `view_ppm(cam)` is
+                   the one door (BACKLOG C7, @X285, @D002).  The
+                   base scale is 24.0 px/m at the closest zoom;
+                   the scale anything may DRAW, MEASURE or invert
+                   a click through is `VIEW_PPM / cam.zoom`.
+                   ⚠ Four paths read it and they must AGREE — the
+                   GL loop's frame, `snap`'s frame,
+                   `classify_world` behind the `frame`
+                   measurement, and `screen_to_hex`, which
+                   inverts a pointer back to a hex.  A frame drawn
+                   at one scale and clicked through another paints
+                   the wrong hex; drawn at one and CLASSIFIED at
+                   another, every band measures a picture nobody
+                   saw.  ⚠ The `zoom` clamp is [loft#914]: a
+                   partial `EditorCamera { }` takes 0, and
+                   clamping to ZOOM_MIN draws what it always drew.
                    what the player sees, composed ONCE: world, hover
                    preview, markers, ghost, picker, save indicator,
                    mode badge.  Both the GL loop and the script

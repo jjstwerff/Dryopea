@@ -1,0 +1,69 @@
+# the-wheel-changes-the-view — BACKLOG C7, and it is `@D002`'s own
+# proposed gate, built.
+#
+# ⚠⚠ **The defect it closes: `cam.zoom` changed no pixel.**  The wheel
+# moved it from plan 01, `save.loft` persisted it, and `snap`'s state
+# line reported it — while every file that drew anything took the base
+# `VIEW_PPM` as a constant, so the picture was **identical at `z1` and
+# at `z6`**.  ⚠ `PROBLEMS.md` called it Med rather than Low for exactly
+# the reason this file exists: scenarios already walked the camera to a
+# zoom and `at` already asserted it arrived, so **the gate was green
+# over a control that did nothing**.
+#
+# ── ⚠⚠ Why SHARES and not a snap ────────────────────────────────
+#
+# `@D002` named the shape before the fix existed: *two snaps of one map
+# at two zooms, and `classify_world` shares that DIFFER — a golden would
+# agree with whatever it started drawing.*  That is `CLAUDE.md` § A
+# golden AGREES WITH A SHEAR said in advance, so every reading below is
+# a share of the canvas and none of them is an image.
+#
+# ── What it reads ───────────────────────────────────────────────
+#
+# One 13x13 patch of grass, photographed from three distances.  The
+# share falls by roughly a QUARTER each time the zoom doubles, because a
+# share is an AREA and the scale is `VIEW_PPM / zoom` in both directions
+# at once — which is the half a "they differ" reading cannot see.
+
+echo the wheel changes the view: one map, three distances
+
+at 0 0 1
+
+palette 5
+drag -6 -6 6 -6
+drag -6 -5 6 -5
+drag -6 -4 6 -4
+drag -6 -3 6 -3
+drag -6 -2 6 -2
+drag -6 -1 6 -1
+drag -6 0 6 0
+drag -6 1 6 1
+drag -6 2 6 2
+drag -6 3 6 3
+drag -6 4 6 4
+drag -6 5 6 5
+drag -6 6 6 6
+count painted 169 169
+
+# ⚠⚠ **The closest view — the number every other gate in the tree was
+# sized at.**  If this one ever moves, C7 has changed the game rather
+# than the wheel.
+frame grass 0.206 0.209
+snap c7_the_wheel_z1
+
+# Twice as far out: a quarter of the pixels, because a share is an area.
+at 0 0 2
+frame grass 0.051 0.054
+snap c7_the_wheel_z2
+
+# ⚠ And `@D002`'s own example, four times out — the reading that was
+# bit-for-bit identical to the first one before this shipped.
+at 0 0 4
+frame grass 0.012 0.015
+snap c7_the_wheel_z4
+
+# ⚠ Back to the closest view, and the share comes back exactly: the
+# wheel is a SCALE and not a crop, so nothing about the world moved.
+at 0 0 1
+frame grass 0.206 0.209
+count painted 169 169

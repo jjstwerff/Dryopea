@@ -52,7 +52,8 @@ fn world_of(kind: integer) -> PaintedWorld {
 fn test_every_entry_reads_one_and_the_rest_zero() {
     tee_n = PALETTE_SIZE;
     for tee_k in 0..tee_n {
-        tee_fc = classify_world(camera_default(), world_of(tee_k), tee_n, MW, MH, VIEW_PPM);
+        tee_fc = classify_world(camera_default(), world_of(tee_k), tee_n, MW, MH,
+                               view_ppm(camera_default()));
 
         assert(tee_fc.unknown == 0,
                "entry {tee_k}: {tee_fc.unknown} pixels were not a palette colour");
@@ -80,7 +81,8 @@ fn test_a_mixed_world_is_still_only_palette_colours() {
         paint(tmw_pw, tmw_h.q, tmw_h.r, tmw_k as u8? ?? 0);
     }
 
-    tmw_fc = classify_world(camera_default(), tmw_pw, PALETTE_SIZE, MW, MH, VIEW_PPM);
+    tmw_fc = classify_world(camera_default(), tmw_pw, PALETTE_SIZE, MW, MH,
+                          view_ppm(camera_default()));
 
     assert(tmw_fc.unknown == 0,
            "{tmw_fc.unknown} pixels on a colour boundary were not a palette colour");

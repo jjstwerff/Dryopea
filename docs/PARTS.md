@@ -920,6 +920,9 @@ sprite baked for the occasion, and is therefore better evidence than it was.
    reports it — and `grep` finds no renderer that reads it.  It is not a
    regression; it was never wired.  *Decision: a row in
    [`PROBLEMS.md`](../PROBLEMS.md) (`@D002`), not a phase of this plan.*
+   ⚠⚠ **It landed 2026-08-28** (BACKLOG C7), so *zoom in to see the
+   detail* is a real option now rather than a lever that was counted
+   on and did nothing.
    ⚠ It was found as a *lever* for the pixel problem § D4 deleted, so it is now
    purely an **editor** defect — the game's camera is `RENDERER.md`'s and does
    not go through `EditorCamera` at all.

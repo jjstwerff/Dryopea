@@ -57,7 +57,7 @@ comes back.  ⚠ The HUD is one number and `docs/DESIGN.md` § HUD says it shoul
 be — no wave counter, no health bar, no minimap; everything else is diegetic.
 ⚠⚠ **`MAP=` and `SCRIPT=` are what give it a base to be.**  `make play
 MAP=starter_01` opens one of the three AUTHORED maps in `maps/` (BACKLOG A2,
-2026-08-27); `SCRIPT=<name>` opens any of the 45 `.keys` files in
+2026-08-27); `SCRIPT=<name>` opens any of the 46 `.keys` files in
 `tests/scripts/` + `tests/gl/` as a live starting position, cut at its first
 `tick` (`@X263`).  Bare `make play` opens the empty default slot.
 ⚠⚠ **THE PLAYER CAN BUILD** ([`plans/27`](plans/27-building/README.md),
@@ -74,8 +74,8 @@ critical path is **4, the SCRAMBLE**.
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1610 green**, ~320 s on a busy box, 120 files |
-| scenarios | `scripts/validate.sh` | **42 scripts, 827 measurements**, ~20 s |
+| tests | `scripts/test.sh` | **1618 green**, ~320 s on a busy box, 121 files |
+| scenarios | `scripts/validate.sh` | **43 scripts, 833 measurements**, ~20 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
 
 ⚠ `scripts/test.sh` is the canonical runner — **never `loft test` directly**
@@ -388,7 +388,7 @@ scripts/validate_gl.sh the-ground    # just one
 make play
 # One of the three AUTHORED maps in maps/ (BACKLOG A2) — repo content.
 make play MAP=starter_01
-# Open one of the 45 `.keys` scenarios as a live starting position
+# Open one of the 46 `.keys` scenarios as a live starting position
 # (BACKLOG A1).  ⚠ `script=`, never `--script` — loft strips a leading
 # `--` argument as its own and the entry would open a MAP of that name.
 make play SCRIPT=a-base-that-plays-its-list
@@ -750,15 +750,13 @@ docs/           ⚠ **listed once, in § Documentation index below** — a
                 second copy of this listing is the one that drifts, and this
                 one had grown three EXPLORATION.md rows saying three things.
 
-PROBLEMS.md             — dryopea-internal bugs (@D-prefixed; ⚠ @D002 and @D006 open —
+PROBLEMS.md             — dryopea-internal bugs (@D-prefixed; ⚠ ONE row open — @D006,
                           `walk_vehicle` is read by NOTHING, so the vehicle and the crew
-                          are stopped by flat sea exactly as a robot is, and `cam.zoom`
-                          changes no pixel; @D001, @D003, @D004 and @D005 fixed — the
-                          player truncated its movement and froze under a 250 ms tick
-                          until plan 26 L2 gave it a bank, and ⚠⚠ HALF OF EVERY BOX in
-                          the catalogue was wound INWARDS until plan 20 A5, which draws
-                          nothing under GL_CULL_FACE and changed no count, no vertex, no
-                          normal and no mesh_crc)
+                          are stopped by flat sea exactly as a robot is.  @D001-@D005 fixed,
+                          and ⚠⚠ @D002 closed 2026-08-28 by BACKLOG C7: the wheel moved a
+                          number NO RENDERER READ, so the picture was identical at z1 and
+                          z6 — and the fix is `view_ppm(cam)` plus making the base scale
+                          PRIVATE, because a test cannot stop the next caller reaching for it)
 QUESTIONS_FOR_LOFT.md   — outbound queue to loft (Open / Submitted / Resolved)
 README.md               — public project intro
 loft.toml               — package manifest (depends on graphics)
@@ -987,6 +985,7 @@ names; most of them exist because somebody did it without reading.
 | Goal | Start here |
 |---|---|
 | Ask what a KEY does, or what the game can do today | [`docs/PLAYING.md`](docs/PLAYING.md) — ⚠⚠ **the ONE controls list; do not write a second** |
+| Change how much world the frame shows, or add anything that draws, measures or inverts a click | `src/editor_view.loft::view_ppm` — ⚠⚠ **the ONE door, and the base scale is PRIVATE** (BACKLOG C7, `@X285`).  Four paths read it and they must AGREE: the GL loop's frame, `snap`'s frame, `classify_world`, and `screen_to_hex`, which un-projects a pointer back to a hex |
 | Play the game in a window | `make play SCRIPT=<name>` — ⚠ `script=`, never `--script` |
 | Play one of the AUTHORED maps, or add one | [`maps/README.md`](maps/README.md) — ⚠ the `.keys` is the SOURCE, the `.json` is BUILT |
 | Validate the GAME (not a function) | `scripts/validate.sh`, then [`plans/08-game-validation/README.md`](plans/08-game-validation/README.md) |

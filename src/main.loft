@@ -150,7 +150,7 @@ use dryopea;
 use graphics;
 
 // The window size and the frame composition both live in
-// `src/editor_view.loft` (VIEW_W / VIEW_H / VIEW_PPM +
+// `src/editor_view.loft` (VIEW_W / VIEW_H / view_ppm +
 // render_editor_frame), so a scripted `snap` photographs the same
 // picture at the same size this window shows.
 const PALETTE_PATH: text = "examples/palette.json";
@@ -366,7 +366,11 @@ fn main() {
         // the resolver with everything else.
         mx = gl_mouse_x() as integer;
         my = gl_mouse_y() as integer;
-        hovered = screen_to_hex(s.cam, mx, my, VIEW_W, VIEW_H, VIEW_PPM);
+        // ⚠ `view_ppm`, never a base scale — this INVERTS a pointer
+        // position back to a hex, so it has to be the exact number the
+        // frame below was drawn at or a click lands on the wrong hex
+        // (BACKLOG C7, `editor_view.loft` § view_ppm).
+        hovered = screen_to_hex(s.cam, mx, my, VIEW_W, VIEW_H, view_ppm(s.cam));
         if hovered.q != last_hover_q || hovered.r != last_hover_r {
             s.render_needed = true;   // hover preview / outline follows the cursor
         }
@@ -504,7 +508,7 @@ fn main() {
         // s.render_needed — and otherwise reuse the cached texture.
         do_render = s.render_needed || chunks_dirty_count(s.cf) > 0;
         if do_render {
-            cv = render_editor_frame(s, VIEW_W, VIEW_H, VIEW_PPM);
+            cv = render_editor_frame(s, VIEW_W, VIEW_H, view_ppm(s.cam));
 
             // Swap the cached GL texture (free the old one first).
             if cur_tex != 0 { gl_delete_texture(cur_tex); }

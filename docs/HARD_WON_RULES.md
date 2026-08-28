@@ -120,6 +120,29 @@ mechanic needed a constant of its own.  ⚠ On land and on the `sea` the
 depth is 0.0, so it is the old `rise > 0` unchanged everywhere anybody
 has ever painted — 745 gate measurements did not move.
 
+⚠⚠ **A SCALE IS ONLY CORRECT IF THE THING THAT INVERTS IT USES THE SAME
+NUMBER** (BACKLOG C7, `@D002`).  `cam.zoom` moved a number no renderer
+read for twenty-plus plans, and the fix plan in `PROBLEMS.md` said
+*derive the render scale in the ONE place `render_editor_frame` passes
+it, so the GL loop and `snap` cannot disagree*.  ⚠ **There are four
+paths and the fourth is not a drawing**: the GL loop's frame, `snap`'s
+frame, `classify_world` behind the `frame` measurement, and
+`screen_to_hex`, which un-projects a pointer position back to a hex.
+Deriving inside the renderer alone would have made every click land on
+the wrong hex at any zoom but 1 — **a worse defect than the one being
+fixed**.  ⚠ So when changing a projection, ask what UN-projects, and
+what MEASURES: a frame drawn at one scale and classified at another
+makes every band a measurement of a picture nobody saw.
+
+⚠⚠ **A CONSTANT A CALLER CANNOT NAME IS THE ONLY FIX THAT STICKS**
+(`@X285`).  `@D002` existed because the base scale was `pub` and looked
+like the answer — every caller reached for it and none of them was
+wrong to.  A test cannot stop the next one; making `VIEW_PPM` private
+and `view_ppm(cam)` the one door can, which is the same shape
+`hex_ground`, `place_marker` and `salvage_at` already have.  ⚠ Ask of
+any "someone forgot to use the derived value" defect whether the raw
+value needed to be reachable at all.
+
 ⚠⚠ **WHAT A DERIVED VALUE MAY BE DERIVED FROM IS DECIDED BY WHAT
 SURVIVES A SAVE** (BACKLOG C6, `@X284`).  *A wall is as strong as the
 ground it was cut from* has one obvious reading — the ground UNDER it —

@@ -1,0 +1,217 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// BACKLOG C7 — `@D002`: the wheel moved a number no renderer read.
+//
+// ⚠⚠ **The defect: `cam.zoom` changed no pixel.**  `camera.loft` moved
+// it on the wheel from plan 01, `save.loft` persisted it, `script.loft`
+// walked the camera to it and printed it in `snap`'s state line — and
+// **the picture was identical at `z1` and at `z6`**, because every file
+// that drew anything took the base `VIEW_PPM` as a constant.
+//
+// ⚠ It was Med rather than Low for one reason: `tests/scripts/*.keys`
+// walk the camera to a zoom and `at` asserts it arrives, so **the gate
+// was green over a control that did nothing.**
+//
+// ── ⚠⚠ WHAT THE GATE HAS TO BE, AND WHY IT IS NOT A GOLDEN ──────
+//
+// `PROBLEMS.md` § @D002 named the shape before the fix existed: *two
+// snaps of one map at two zooms, and `classify_world` shares that
+// DIFFER — a golden would agree with whatever it started drawing.*
+// That is `CLAUDE.md` § A golden AGREES WITH A SHEAR applied in
+// advance: rebaselining a golden certifies whatever the code now draws,
+// so it cannot gate a change to the drawing at all.
+//
+// ⚠ So every reading here is a SHARE of the canvas, and each one
+// carries the control that says it could have read otherwise.
+//
+// ── ⚠ And the second half of the defect, which is not the picture ─
+//
+// The scale is read by FOUR paths and they must AGREE: the GL loop's
+// frame, `snap`'s frame, `classify_world` behind the `frame`
+// measurement, and `screen_to_hex`, which inverts a pointer back to a
+// hex.  ⚠⚠ **Fixing only the drawing would have made every click land
+// on the wrong hex at any zoom but 1** — a worse defect than the one
+// being fixed, so § The pointer agrees with the picture is here.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+
+// A solid patch of grass around the origin, `r` hexes each way.
+fn patch(r: integer) -> PaintedWorld {
+    p_pw = painted_empty();
+    for p_q in -r..=r {
+        for p_rr in -r..=r { paint(p_pw, p_q, p_rr, as_u8(GRASS)); }
+    }
+    p_pw
+}
+
+// The share of the frame that patch covers, seen from `zoom`.
+fn grass_share(pw: PaintedWorld, zoom: integer) -> float {
+    gs_cam = camera_at(0, 0, zoom);
+    gs_fc  = classify_world(gs_cam, pw, PALETTE_SIZE,
+                            VIEW_W, VIEW_H, view_ppm(gs_cam));
+    frame_share(gs_fc, GRASS)
+}
+
+// ─── The law ────────────────────────────────────────────────────
+
+// @DRY-136 — ⚠⚠ **The scale is the base divided by the zoom**, which is
+// the law `camera.loft`'s own field comment already claimed: *1 =
+// closest; higher = more world visible*.
+fn test_the_scale_is_the_base_over_the_zoom() {
+    ttb_one = view_ppm(camera_at(0, 0, 1));
+    assert(ttb_one == 24.0,
+           "the closest zoom is the scale the game was drawn at: {ttb_one}");
+    assert(view_ppm(camera_at(0, 0, 2)) == ttb_one / 2.0,
+           "twice the zoom, half the pixels per metre: "
+           + "{view_ppm(camera_at(0, 0, 2))}");
+    assert(view_ppm(camera_at(0, 0, ZOOM_MAX)) == ttb_one / (ZOOM_MAX as float),
+           "and the far end: {view_ppm(camera_at(0, 0, ZOOM_MAX))}");
+    // ⚠⚠ The load-bearing one: the DEFAULT camera answers exactly what
+    // every caller used to pass, which is what kept 16 goldens
+    // byte-identical and 827 gate measurements still.
+    assert(view_ppm(camera_default()) == ttb_one,
+           "and a default camera is the game as it was: "
+           + "{view_ppm(camera_default())}");
+}
+
+// ⚠⚠ **[loft#914]'s silent default has to be today's game.**  A partial
+// `EditorCamera { }` literal takes `zoom: 0`, and 24.0 / 0 is not a
+// scale — the clamp is what makes such a camera draw what it always
+// drew rather than divide by zero.
+fn test_a_camera_with_no_zoom_draws_the_closest_view() {
+    tcn_partial = EditorCamera { pos: Hex { q: 0, r: 0 } };
+    assert(tcn_partial.zoom == 0, "a partial literal really does take 0");
+    assert(view_ppm(tcn_partial) == view_ppm(camera_default()),
+           "and it draws the closest view rather than dividing by zero: "
+           + "{view_ppm(tcn_partial)}");
+}
+
+// ─── ⚠⚠ The picture, in shares rather than in a golden ──────────
+
+// **THE DEFECT, and it is the reading that was impossible before C7.**
+// One map, two zooms, and the shares DIFFER.
+//
+// ⚠ Its control is the pair that says the instrument can read the same
+// thing twice — without it, "these two differ" is satisfied by any
+// unstable classifier.
+fn test_two_zooms_of_one_map_are_two_pictures() {
+    ttz_pw = patch(6);
+    ttz_1  = grass_share(ttz_pw, 1);
+    ttz_2  = grass_share(ttz_pw, 2);
+    assert(ttz_1 != ttz_2,
+           "the wheel changes what the frame shows: z1 {ttz_1} vs z2 {ttz_2}");
+    // ⚠ CONTROL — the same camera twice reads the same share, so the
+    // difference above is the ZOOM and not the instrument.
+    assert(grass_share(ttz_pw, 1) == ttz_1,
+           "CONTROL — the same zoom reads the same share twice");
+    assert(grass_share(ttz_pw, 6) != ttz_1,
+           "and `@D002`'s own example — z1 against z6 — is two pictures");
+}
+
+// ⚠⚠ **The SIGN, which "they differ" cannot see.**  A scale that
+// MULTIPLIED by the zoom would differ just as loudly and would zoom the
+// wrong way: a patch has to cover LESS of the frame the further out you
+// go, because further out is more world in the same window.
+fn test_zooming_out_shows_more_world() {
+    tzo_pw = patch(6);
+    tzo_1 = grass_share(tzo_pw, 1);
+    tzo_2 = grass_share(tzo_pw, 2);
+    tzo_4 = grass_share(tzo_pw, 4);
+    assert(tzo_1 > tzo_2 && tzo_2 > tzo_4,
+           "the patch shrinks as the camera pulls back: "
+           + "z1 {tzo_1} > z2 {tzo_2} > z4 {tzo_4}");
+    // ⚠ And it is a QUARTER-ish at half the scale, because a share is an
+    // area: the band is wide because a hex grid does not scale to whole
+    // pixels, and the point is the order of magnitude rather than the
+    // exact ratio.
+    assert(tzo_2 < tzo_1 * 0.4 && tzo_2 > tzo_1 * 0.15,
+           "and it shrinks as an AREA rather than as a length: "
+           + "{tzo_2} against {tzo_1}");
+}
+
+// ⚠ A patch small enough to fit the window at z1 still fits at z4, so
+// the whole of it is on screen and only its SIZE moved — which is what
+// says this is a scale and not a crop.
+fn test_it_is_a_scale_and_not_a_crop() {
+    tsc_pw = patch(2);
+    tsc_1 = grass_share(tsc_pw, 1);
+    tsc_4 = grass_share(tsc_pw, 4);
+    assert(tsc_1 > 0.0 && tsc_4 > 0.0,
+           "the patch is on screen at both: {tsc_1} and {tsc_4}");
+    assert(tsc_4 < tsc_1,
+           "and smaller further out: {tsc_4} against {tsc_1}");
+}
+
+// ─── ⚠⚠ The pointer agrees with the picture ─────────────────────
+
+// **The half a drawing-only fix would have broken.**  `screen_to_hex`
+// inverts a pointer position back to a hex, and if it kept the base
+// scale while the frame moved, every click at any zoom but 1 would land
+// on the wrong hex.
+fn test_the_pointer_agrees_with_the_picture() {
+    for tpa_z in [1, 2, 4, ZOOM_MAX] {
+        tpa_cam = camera_at(3, -2, tpa_z);
+        // The centre of the window is the hex the camera is on, at
+        // every zoom — that is what "the camera is at (3, -2)" means.
+        tpa_c = screen_to_hex(tpa_cam, VIEW_W / 2, VIEW_H / 2,
+                              VIEW_W, VIEW_H, view_ppm(tpa_cam));
+        assert(tpa_c.q == 3 && tpa_c.r == -2,
+               "z{tpa_z}: the centre pixel is the camera's own hex, "
+               + "got ({tpa_c.q}, {tpa_c.r})");
+    }
+}
+
+// ⚠⚠ **And the control that says the reading above is not vacuous**:
+// the SAME pixel, away from the centre, names a FURTHER hex as the
+// camera pulls back — which is the whole of what zooming does to a
+// click.  A `screen_to_hex` left on the base scale would answer the
+// same hex at every zoom and this goes red.
+fn test_a_pixel_off_centre_names_a_further_hex_further_out() {
+    tpo_near = screen_to_hex(camera_at(0, 0, 1), VIEW_W - 1, VIEW_H / 2,
+                             VIEW_W, VIEW_H, view_ppm(camera_at(0, 0, 1)));
+    tpo_far  = screen_to_hex(camera_at(0, 0, 4), VIEW_W - 1, VIEW_H / 2,
+                             VIEW_W, VIEW_H, view_ppm(camera_at(0, 0, 4)));
+    assert(tpo_far.q > tpo_near.q,
+           "the right-hand edge of the window is four times as far out "
+           + "at z4: q {tpo_far.q} against {tpo_near.q}");
+    assert(tpo_near.q > 0, "and the near reading is not the origin itself");
+}
+
+// ─── What did NOT move ──────────────────────────────────────────
+
+// ⚠⚠ **Every golden in the tree is drawn at zoom 1**, which is why this
+// phase rebaselined none of them — `PROBLEMS.md` § @D002's *it
+// rebaselines every golden taken at a zoom other than the default*
+// turned out to name an empty set, and this is the reading that says
+// so.  A golden added at another zoom has to re-read this note.
+fn test_the_frame_at_zoom_one_is_the_frame_it_always_was() {
+    tfz_s = editor_state_new(PALETTE);
+    tfz_s.pw = patch(3);
+    tfz_a = classify_canvas(render_editor_frame(tfz_s, VIEW_W, VIEW_H,
+                                                view_ppm(tfz_s.cam)),
+                            PALETTE_SIZE);
+    tfz_b = classify_canvas(render_editor_frame(tfz_s, VIEW_W, VIEW_H, 24.0),
+                            PALETTE_SIZE);
+    for tfz_i in 0..PALETTE_SIZE {
+        assert((tfz_a.counts[tfz_i] ?? -1) == (tfz_b.counts[tfz_i] ?? -2),
+               "bucket {tfz_i}: {tfz_a.counts[tfz_i] ?? -1} against "
+               + "{tfz_b.counts[tfz_i] ?? -2} — a default session draws "
+               + "exactly what the raw base scale drew");
+    }
+    // ⚠ `unknown` is NOT zero here and must not be asserted so: this is
+    // a whole EDITOR frame, so the HUD and the picker draw in colours
+    // that are deliberately not palette colours (`@X098`).  What the
+    // phase claims is that the two frames are the SAME frame, so the
+    // count of them has to match as well.
+    assert(tfz_a.unknown == tfz_b.unknown && tfz_a.total == tfz_b.total,
+           "including the HUD's own pixels: {tfz_a.unknown} against "
+           + "{tfz_b.unknown}");
+}

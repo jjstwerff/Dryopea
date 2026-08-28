@@ -736,7 +736,7 @@ size, a travel mechanic or what is out there.
    needs to tell two same-coloured surfaces apart.
 
 4. **Where the game's camera lives.**  Not on `EditorState.cam` — that is
-   `EditorCamera` (a hex position and an unwired zoom, `@D002`) and it is the
+   `EditorCamera` (a hex position and a zoom, wired by BACKLOG C7 — `@D002`) and it is the
    editor's.  *Decision: a `RenderCamera` on `PlayState`, beside the roster and
    the clock — it is a property of a live session, the same argument plan 19 P3
    made for `playing`.*
