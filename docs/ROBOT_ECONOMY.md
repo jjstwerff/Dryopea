@@ -1280,17 +1280,29 @@ refusing.
 
 ## What this design does NOT do
 
-- **No economy simulation.**  Nodes do not need inventories, production
-  chains or an internal tick.  Everything above is a static graph plus
-  a rate per edge; the player's actions perturb the rates.  ⚠ A
-  simulated economy is a strictly larger project and none of the design
-  value here needs it.
+- ⚠⚠ **SUPERSEDED 2026-08-28 by `@X298` — the simulation EXISTS, and it
+  is somewhere else.**  The economy runs **on the server, at 1.5 km
+  hexes**, and a scenario is a frozen SNAPSHOT of one cell fed from the
+  current state, so nothing produces or depletes while a sortie is
+  played.  ⚠ Which makes the bullet below true of a SORTIE and false of
+  the world, and the difference is a division of labour rather than a
+  refusal — see [`ERRANDS.md`](ERRANDS.md) § The two scales.  ⚠ Original,
+  kept because it is still exactly right about what a scenario carries:
+  *"No economy simulation.  Nodes do not need inventories, production
+  chains or an internal tick.  Everything above is a static graph plus a
+  rate per edge; the player's actions perturb the rates.  A simulated
+  economy is a strictly larger project and none of the design value here
+  needs it."*
 - **No AI strategy.**  Nothing in the graph reacts intelligently.  The
   escalation ladder is a threshold, and rerouting is a shortest-path
   recompute.
 - **No new mover.**  Robots on a route are the enemies dryopea already
   has, walking their heading, becoming a wave when the bubble deafens
-  them — `spawn.loft`'s approach mode, unchanged.
+  them — `spawn.loft`'s approach mode, unchanged.  ⚠ **Still true**:
+  [`ERRANDS.md`](ERRANDS.md) § Deviation gives a robot a DESTINATION
+  rather than a bearing, and that is what finally makes plan 11 F7b's
+  existing *step beside a companion* rule expressible for it — a field to
+  say which way *beside* is, not a second steering mode.
 - **No replacement for `plans/16` yet.**  That plan's schedule and
   triggers stay as scaffolding until this ships; see its § Status.
 

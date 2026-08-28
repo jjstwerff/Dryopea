@@ -206,3 +206,11 @@ clock in the view the game ships), not on the mechanism.
 ⚠ **The next base.**  Carryover is produced and measured; nothing consumes
 it, because a run is a sequence of bases and there is one base.  That is the
 next thing this plan makes possible and deliberately does not do.
+
+⚠⚠ **AND THE CONSUMER IS NAMED, 2026-08-28** (`@X306`,
+[`docs/ERRANDS.md`](../../docs/ERRANDS.md) § The compact RESULT): **the
+SERVER**.  The owner ruled that a finished scenario hands back a compact
+result *"to use as a basis for future missions"*, and `manifest_of` is
+its PLAYER half already built — the other half is the WORLD's, the same
+snapshot rows changed.  ⚠ So this plan's `Manifest` is not waiting on a
+second base; it is waiting on the store that reads it.

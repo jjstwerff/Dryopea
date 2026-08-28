@@ -15,6 +15,74 @@ either: [`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) is the GRAPH (what the
 economy is), [`ENEMY_MOVEMENT.md`](ENEMY_MOVEMENT.md) is the MOVER (how a
 body crosses a hex).  This is **what a mob is doing between those two**.
 
+> ⚠⚠ **It exists for two reasons and one test** (`@X303`): *do not
+> simulate a world for the scenario*, and *get realistic routes that make
+> the mobs have a believable behaviour*.  **Does this make behaviour more
+> BELIEVABLE, or does it only simulate MORE?**
+
+## ⚠⚠ WHY — two reasons, and everything else is machinery for them  `@X303`
+
+Owner, 2026-08-28:
+
+> *"this is all for 2 concrete reasons: **do not simulate a world for the
+> scenario**, but get **realistic routes that make the mobs have a
+> believable behaviour**."*
+
+⚠⚠ **Read them as a pair, because either alone is easy and the pair is
+the whole problem.**  A world simulation buys believability at a cost
+this game cannot pay; a cheap fake buys the cost saving and no
+believability.  Everything in this document — the rule instead of a
+state (`@X299`), the bound (`@X300`), the closed form (`@X302`) — exists
+to get the second without the first.
+
+> ⚠⚠ **THE TEST: does this make behaviour more BELIEVABLE, or does it
+> only simulate MORE?**
+
+⚠ Anything that adds simulation without adding something a player can
+SEE is refused by it.  Some worked answers, because the test is only
+useful if it decides cases:
+
+| proposal | verdict |
+|---|---|
+| node stock levels ticking during a sortie | ❌ **simulation only** — nobody can see a number that is not on screen, and `DESIGN.md` § HUD will not put one there |
+| a hauler carrying something **visible**, and putting it down | ✅ **believability** — the cargo is `@X053`'s harvester body, already drawn |
+| moods, needs, memory, an affinity bar | ❌ simulation, and `@X131` already refuses the bar one system over |
+| a robot walking **round** a rock instead of into it | ✅ — and `crawler` measured the ugly version: greedy *"walked into the first concave obstacle and stopped there — permanently"* |
+| a robot going **home** at the end of its round | ✅ — and it replaces a deletion (§ Home is a PLACE) |
+| a full economy tick per scenario | ❌ — and `@X298` puts it on the server, which is where it buys something |
+
+### ⚠⚠ BELIEVABILITY is owed where it can be OBSERVED; CONSISTENCY is owed everywhere
+
+⚠ This is the line that makes the rule/state split principled rather than
+an optimisation, and it is worth stating in one place:
+
+- **Inside the tracked window** a mob is watched, so it owes the player a
+  believable *path* — it goes round obstacles, it does not walk into
+  walls, it does not teleport, it does not stand in a doorway for the
+  run.  That is § Deviation, and it is why deviation exists **only**
+  there.
+- **Outside it** nobody can observe anything, so what is owed is not
+  believability but **consistency**: the rule must never produce a
+  contradiction the player can catch when they next look — a mob inside a
+  wall, two mobs on one hex at the moment of materialisation, a hauler
+  arriving home with a load it never picked up.
+
+⚠⚠ **So the cheap half is not a cheat.**  It is not a lower-fidelity
+simulation of the same thing; it is **the same answer, computed** — which
+is exactly `@X299`, and why plan 22's *"the outcome is unchanged"*
+objection does not apply.
+
+### ⚠ What it means for AUTHORING
+
+⚠ The reasons above are about the RUNTIME, and the rule is uniform.  What
+they do change is where **authoring effort** is worth spending: a leg of
+a cycle that crosses the patch is one the player will watch, and a leg
+that runs off to a shed two cells away is one nobody ever sees.  ⚠⚠ **The
+detail belongs on the legs that are visible** — which is a guideline for
+whoever places a POI, and deliberately NOT a runtime rule, because a
+runtime rule that varied with what the player can see is the thing
+[`plans/22`](../plans/22-the-field-cache/README.md) refuses.
+
 ## The ask, in one line
 
 > *"they have a resource/hauling/guarding task to fulfil that has a fixed
@@ -28,6 +96,38 @@ body crosses a hex).  This is **what a mob is doing between those two**.
 > point once in a while, and insects to their nest."*
 >
 > — project owner, 2026-08-28
+
+## ⚠⚠ The model in nine lines
+
+Read these first; everything below is the argument for one of them, and
+§ WHY is what they are all for.
+
+1. ⚠ **The economy is the SERVER's, at 1.5 km hexes.**  A scenario is a
+   frozen snapshot of ONE cell (`@X298`).
+2. ⚠ **A scenario carries POINTS OF INTEREST, and a POI owns its mobs**
+   (`@X301`) — the face, the shed, the nest, the heap.
+3. ⚠⚠ **A mob has a RULE, not a state**: its cycle is a closed-form
+   function of a few fixed anchors, so an un-tracked mob is COMPUTED
+   rather than simulated coarsely (`@X299`).
+4. ⚠⚠ **The rule must be BOUNDABLE** — *could this mob ever be in this
+   window?* answered statically, per POI, so a cull throws away a whole
+   population at once (`@X300`).
+5. ⚠⚠ **Elaborate costs LEGS, and `slip` keeps the closed form true when
+   a body steps aside** (`@X302`).  The rule is the ground truth; the
+   body is the approximation.
+6. ⚠⚠ **A mob is a rule until something makes it a STATE**, and the
+   bubble is the one-way door that does — which dryopea has had since
+   BACKLOG B4.
+7. ⚠⚠ **STATE BELONGS TO THE PLACE, NOT TO THE TRAVELLER** (`@X304`).  A
+   POI may be as stateful as it likes — there are few and they do not
+   move — and **it is never culled**: collapse a mine and its workers
+   still come, find out, and try to fix it.
+8. ⚠⚠ **TWO TO FOUR POIs, AND EACH EARNS ITS PLACE BY MOVING THE CLOCK**
+   (`@X305`).  A budget, like the key table's — and it is what makes 6
+   and 7 affordable at all.
+9. ⚠⚠ **THE RESULT IS THE SNAPSHOT, CHANGED** (`@X306`) — POI states and
+   denied throughput back to the WORLD, the `Manifest` to the PLAYER, and
+   half of it shipped with [`plans/28`](../plans/28-the-scramble/README.md).
 
 ## ⚠⚠ The two scales, and the ratio is the whole architecture  `@X298`
 
@@ -59,13 +159,15 @@ it, and only part of one.**  Measured against dryopea's own lattice:
 Three things fall straight out of the ratio, and each of them is a
 design decision the arithmetic makes for us:
 
-1. ⚠⚠ **A NODE IS ALMOST NEVER ON THE MAP.**  A cell holding a mine means
-   the mine is *somewhere* in 1.5 km; the odds a 156 m base lands on it
-   are about one in a hundred.  **So a node on a scenario map is a
-   DELIBERATE choice at sortie selection, never an accident** — *"land
-   next to the repair point"* is a decision, and it is the decision
+1. ⚠⚠ **AN ECONOMY NODE IS ALMOST NEVER *AT* A BASE, AND THAT IS NOT THE
+   SAME AS *not on the map*.**  A cell holding a mine means the mine is
+   *somewhere* in 1.5 km, so landing on top of it is about one chance in
+   a hundred — **which makes it a DELIBERATE sortie-selection choice**
+   (*"land next to the repair point"*), the decision
    [`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) § The graph says picking a
-   neighbourhood should be about.
+   neighbourhood should be about.  ⚠ **But the node is not the
+   scenario-scale object** — see § Points of interest, which is what the
+   patch actually carries.
 2. ⚠⚠ **WHAT YOU GET IS ROUTES, AND THEY CROSS.**  A route through a cell
    is 1.5 km long and your patch covers a tenth of it, so a route either
    crosses your ground or it does not.  That is
@@ -76,6 +178,208 @@ design decision the arithmetic makes for us:
    decides whether it touches a road at all.  § Transport routes already
    calls the bubble the aggro radius; the ratio is why that matters.
 
+### ⚠⚠ Points of interest — the scenario-scale object, and it OWNS the mobs  `@X301`
+
+Owner, 2026-08-28:
+
+> *"so a given scenario has a set of points of interest and these have
+> their attached mobs to them with their cycle that can be quite far and
+> elaborate."*
+
+⚠⚠ **This is the layer the ratio above was missing, and it corrects the
+reading of it.**  The economy's node is a **1.5 km cell fact** — *this
+cell mines*.  A **point of interest is its local expression on a
+patch**: the working face, the spoil heap, the maintenance shed, the
+nest, the wreck field, the outcrop.  ⚠ So a base does not need to land on
+a mine to have something to look at — **it lands in a neighbourhood, and
+the neighbourhood has features**, several of them, at scenario scale.
+
+| | the economy NODE | a point of INTEREST |
+|---|---|---|
+| scale | one 1.5 km cell | a hex, or a few |
+| how many | one per cell, or none | ⚠ **a SET per scenario** |
+| what it is | *this cell mines* | the face, the shed, the nest, the heap |
+| who owns it | the server, between sorties | the scenario snapshot |
+| what it does | sets a rate | ⚠⚠ **it OWNS MOBS** |
+
+#### ⚠⚠ FEW, AND EACH ONE LOAD-BEARING  `@X305`
+
+Owner, 2026-08-28:
+
+> *"there should be a limited set of POIs to prevent overload for
+> players.  But the ones who are there should have a profound impact on
+> the scenario."*
+
+⚠⚠ **A BUDGET, and the same one `@X139` puts on the key table** — *a new
+row needs an argument* — and the same discipline `DESIGN.md` § HUD keeps
+with one number on screen.  dryopea's sets are all small on purpose: four
+marker kinds, four robot roles, six helpers, eleven palette hotkeys.
+
+##### ⚠ How many — derived, not chosen
+
+⚠ The number falls out of what a SORTIE can act on.  Dealing with a POI
+is a **trip** (§ What a POI is FOR), a sortie affords a handful of them,
+and `@X197` wants **always more tasks than there is time for**.  So:
+
+> ⚠⚠ **The count should exceed what one sortie can act on, and not by
+> much.**  **Two to four** is the band that reads: fewer than two and
+> there is nothing to choose between; more than about four and the player
+> cannot hold them, and the ones they never reach stop being a decision
+> and become noise.
+
+⚠ It is the assignment pillar (`@X197`) one layer up — *which one you go
+to IS the decision* — and it is why the answer is not *as many as the map
+will hold*.
+
+##### ⚠⚠ THE ADMISSION TEST, in dryopea's own currency
+
+⚠ *"Profound impact"* has to be falsifiable or it is a wish, and this
+repo already knows how to say it — every mechanic here carries a measured
+worth: a wall is **+44 ticks** (`@M050`), a trench **130 / 174 / 221**
+(`@M059`), a re-armed plate **+106** (`@M057`), an order **+34**
+(`@M070`).  So:
+
+> ⚠⚠ **A POI earns its place if REMOVING IT MOVES THE SCENARIO'S CLOCK
+> measurably — a scenario pair one token apart.**  A POI that changes the
+> picture and not the play is scenery, and scenery does not get a
+> population.
+
+⚠ Three ways a POI can pay, and a good one pays more than once:
+
+| it pays in | example | already designed as |
+|---|---|---|
+| **pressure** | a route from it crosses your bubble, so it IS your wave | `ROBOT_ECONOMY.md` § Transport routes |
+| **a parameter** | a maintenance point in reach refunds your chip damage, so *kill* and *hurt* become different verbs | § 5, `damage_persistence` |
+| **a target** | raiding it changes the run, and the swarm answers (`@X304`) | § 5 *deny it* |
+
+⚠⚠ **And *scenery* is not a slur — it is a different budget.**  A wreck
+field with nothing attached is worth painting; it simply is not a POI,
+because a POI owns a population and a population has to be worth
+watching.
+
+##### ⚠ What the limit buys the rest of the design
+
+⚠ Few POIs is what makes `@X304`'s *never culled* affordable: a handful
+of places that always exist and always run their cycles is a cost that
+does not scale with the map, however far the player drives (`@X299`).
+⚠⚠ It is also what makes the CULL cheap in the first place — `@X300`
+indexes bounds **per POI**, so a scenario with four of them has four
+bounds to test, not four hundred.
+
+#### ⚠⚠ A mob belongs to a POI, and its cycle radiates from one
+
+**That is the attachment, and it is what makes the whole model cheap.**
+A mob is not spawned onto the map and given a job; **a POI has a
+population, and each of them has a cycle anchored on it** — which may run
+far off the patch and back (*"quite far and elaborate"*), because off the
+patch is simply un-tracked (§ The scenario GROWS).
+
+⚠⚠ **And it collapses the bound from per-mob to per-POI.**  `@X300`
+requires a static region that can be inspected against a window; if every
+mob is anchored on a POI, then
+
+> ⚠⚠ **the POI IS the bound, and culling one culls its whole
+> population** — one query instead of `N`.
+
+⚠ Which is the same shape `crawler` reaches for and does not build:
+`near_mobs_test.loft` measures a spatial index over individual mobs at
+22× fewer candidates, where an index over **POIs** is smaller again by
+the population factor and is **static for the sortie** where positions
+are not.
+
+⚠ It also makes a scenario authorable and generatable in one step —
+place the POIs, attach the populations — and it is what a `.keys` file
+and a map should carry rather than a mob list.
+
+#### ⚠⚠ A POI IS NEVER CULLED, AND A BROKEN ONE IS NOT AN ABSENCE  `@X304`
+
+Owner, 2026-08-28:
+
+> *"the POI should not be culled during a scenario, even when a mine
+> collapses the workers will still move towards it and be witness that it
+> is now impossible to work there and see if they can repair it."*
+
+⚠⚠ **This corrects a word this document was using for two different
+things, and the two must never be confused:**
+
+| | what it means | may a POI be it? |
+|---|---|---|
+| **not MATERIALISED** | outside the window, so no body is drawn and no collision exists.  ⚠ It is still there, and its mobs still run their cycles | ✅ always, and it costs nothing |
+| **CULLED** | removed from the scenario — gone, its population gone with it | ❌ **never** |
+
+⚠ Everywhere § The rule must be BOUNDABLE says *cull*, it means the
+first: **throw away the WORK of materialising, never the thing.**
+
+#### ⚠⚠ A collapsed mine is a STATE of the POI, not the end of it
+
+**The workers still come.**  They walk their cycle to a face that is no
+longer there, they arrive, and they find out — and *that* is the
+consequence of the player's raid arriving where the player can watch it.
+
+⚠⚠ **And it is the fiction's own behaviour, not an invention.**
+[`SETTING.md`](SETTING.md) § They approach to REPAIR: the robots'
+whole reading of a broken thing is *"they try to get to the source of the
+disruption to see what they can do about it."*  A collapsed mine
+producing a stream of confused workers who mill at it and try to fix it
+is **exactly what this swarm does**, and it is the single most
+believable thing in this document by `@X303`'s test — the player caused
+it and can stand there and see it.
+
+⚠ Three things follow, and each is a mechanic rather than flavour:
+
+- **A raid is not a permanent free win.**  The swarm answers a broken
+  thing by sending repair capability, which is
+  [`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) § 5 and `DESIGN.md` § Boss =
+  mobile REPAIR PLATFORM — **so collapsing a mine may SUMMON the machine
+  that fixes it.**  That is a real cost on the raid, and it is
+  `DESIGN.md` § 20's *nothing may permanently close* at scenario scale.
+- **The delta a sortie hands back gets a second column**: not only *what
+  the player destroyed* but *what the world had started to repair*.
+- **A POI has states, and they are few**: `working` / `damaged` /
+  `collapsed` / `raided` / `repaired`.  ⚠ A state a mob can SEE on
+  arrival, not a number on a screen.
+
+#### ⚠⚠ STATE BELONGS TO THE PLACE, NOT TO THE TRAVELLER
+
+**This is the division that lets a POI be as stateful as it likes while
+`@X302`'s closed form survives untouched**, and it is worth stating on
+its own:
+
+> ⚠⚠ **A POI may hold state — there are few of them and they do not
+> move.  A mob may not — there are many and they are everywhere.**
+
+⚠ So the cycle becomes a lookup wider by one argument and no more:
+
+```
+position(t) = cycle(poi.state, t - slip)
+```
+
+⚠⚠ **Still O(legs), and the BOUND is unchanged** — every cycle a POI can
+issue is anchored on that POI, so the region is the union over its states
+and the union is the same region.  ⚠ A state change is a rare, timestamped
+event (a player action), so the form is **piecewise** closed rather than
+closed: valid between changes, with the current segment's `t0` beside the
+state.  That is one extra field on a POI and nothing at all on a mob.
+
+⚠ **And *witnessing* costs no new mechanism**: what a mob does on arrival
+is a leg selected by the POI's state.  *Arrive, find it broken, mill,
+go home* is three legs; *arrive, work, go home* is three legs.  The
+elaborate part is the table, not the engine — which is § Roles are a
+TABLE, from the first line, applied to places instead of people.
+
+#### ⚠ What a POI is FOR, in play
+
+⚠⚠ **A POI is where a distraction gets its reason.**  § Distraction
+requires that a mob leaves its route for something the player DID or
+BUILT; the POI is the other half — **the thing the mob was doing it
+for** — so *"the haulers come because you left their cargo lying"* has a
+place the cargo was going, and a raid on the shed is a thing the player
+can go and do.
+
+⚠ And it is where the player's interference lands: `ROBOT_ECONOMY.md`
+§ 5's *deny it — a raid that makes your damage start sticking* is a POI
+on a patch, at scenario scale, reachable in a sortie.
+
 ### ⚠ What the snapshot actually is
 
 The server hands a sortie **one cell's economic state**, and it is small:
@@ -84,6 +388,8 @@ The server hands a sortie **one cell's economic state**, and it is small:
 cell:      which coarse hex, and what is in it (a node, or nothing)
 crossings: for each route through this cell — the bearing it enters on,
            the bearing it leaves on, robots per minute, and the mix
+pois:      the local features on THIS patch, and the population attached
+           to each — the face, the shed, the nest, the heap
 ```
 
 ⚠⚠ **Nothing in it ticks during the sortie.**  The economy advances on
@@ -99,6 +405,76 @@ since it was last touched.
 ⚠ **And the sortie hands back a DELTA**, which is the only thing that
 makes the player's interference matter: throughput denied, a node raided,
 mobs destroyed for good.  What exactly is in it is § Open questions 2.
+
+## ⚠⚠ The compact RESULT — what a finished scenario hands back  `@X306`
+
+Owner, 2026-08-28:
+
+> *"and the server should get a compact result of finished scenarios to
+> use as a basis for future missions."*
+
+⚠⚠ **HALF OF IT IS ALREADY BUILT.**
+[`plans/28`](../plans/28-the-scramble/README.md) S3 shipped
+`scramble.loft::manifest_of` — `Manifest { points, crew, left }`, read at
+liftoff, gated by `tests/28_s3` and measured by `@M068` (**200.0 cut
+short against 225.3 played out**).  Plan 28 closes on the exact sentence
+this request answers: *"carryover is produced and measured; **nothing
+consumes it**."*  ⚠ The server is what consumes it.
+
+### ⚠⚠ THE RESULT IS THE SNAPSHOT, CHANGED — not a second format
+
+⚠ `@X298` has a sortie READ one coarse cell.  The cleanest possible
+result is the same rows written back:
+
+| the snapshot carries | the result carries |
+|---|---|
+| the cell, and what is in it | unchanged — a cell is not destroyed |
+| each crossing: bearings, rate, mix | ⚠ **the rate the player DENIED** |
+| each POI, and its state | ⚠ **the state it was left in** (`@X304`) |
+| — | ⚠ the player's **`Manifest`** (already built) |
+
+⚠⚠ **So there is nothing to design a format for**: read a cell, play,
+write the same fields back.  A result that needed its own schema would be
+a second description of the world and would drift from the first — which
+is the mistake `damage.loft` § What the hex becomes and
+`compare.loft`'s hand-maintained field list both already cost dryopea
+once.
+
+### ⚠⚠ TWO destinations, and they must not be confused
+
+| | goes to | why |
+|---|---|---|
+| the **`Manifest`** — points, crew aboard, crew left | ⚠ **the PLAYER's account** | it is theirs: `@X188`'s per-planet-**per-player** path, and `DESIGN.md` § 14's 1:1 carryover |
+| the **cell delta** — POI states, throughput denied | ⚠⚠ **the WORLD, shared** | `@X177` settles the economy per-PLANET precisely because *"you cannot compete for a mine that only exists inside your own instance"* |
+
+⚠ Both are small.  ⚠⚠ **Compact is not an optimisation here, it is the
+requirement**: a server is a *persistent world-state store plus identity*
+(`@X243`) and not a live host, so what it keeps has to be the size of a
+few rows per finished sortie, for ever.
+
+### ⚠ And the world half must DECAY, or a planet only accumulates damage
+
+⚠⚠ `DESIGN.md` § 20 is categorical — **nothing may permanently close** —
+and `@X228` names the mechanism: *grow and crumble* needs decay, because
+nothing that only accumulates can be seen to fall.
+
+⚠ So a collapsed POI is **being rebuilt** between sorties, on the
+server, slowly.  ⚠⚠ **Which is the same behaviour as `@X304`, one system
+up**: inside a sortie the swarm sends repair capability at a broken
+thing, and between sorties the store does the same job on a longer
+clock.  The player's raid is a **setback they inflicted**, not a hole
+they punched, and coming back to a half-repaired mine is the most
+legible thing a persistent world can show them.
+
+### ⚠ What it makes possible, and where it is written down
+
+⚠ [`ROADMAP.md`](../plans/ROADMAP.md) § Then the run becomes a RUN item
+**7 — carryover** is this, and item **6 — the landing flow** is its other
+end: a sortie reads a cell that a previous sortie wrote.  ⚠⚠ **That is
+`ROBOT_ECONOMY.md` § Open questions 1's per-planet answer made
+concrete** — *"cutting a route in one sortie changes the next one, which
+is what would make a run feel like a campaign"* — and it needs no new
+mechanism beyond the two halves above.
 
 ## ⚠⚠ The scenario GROWS, and the tracked radius does not  `@X299`
 
@@ -163,6 +539,149 @@ streamed map that may be hundreds of metres across (§ The two scales), so
 reaches** — which is what makes growing the scenario cheap rather than
 quadratic.
 
+### ⚠⚠ The rule must be BOUNDABLE, not merely evaluable  `@X300`
+
+Owner, 2026-08-28:
+
+> *"that is the reason why crawler has this AI model — in a given area
+> there are far less mobs than there are on the complete map.  But that
+> is fine as long as the overall mobs have a rule that can be inspected
+> to see if they can be within a window."*
+
+⚠⚠ **This is the requirement that decides the shape, and it is stronger
+than *the rule can be evaluated*.**  A rule you can only evaluate tick by
+tick still costs one evaluation per mob per tick over the WHOLE map — the
+linear scan `crawler` measured and did not fix.  A rule you can **bound**
+costs a query.
+
+⚠ So a role must answer two questions, not one:
+
+| | question | cost | when |
+|---|---|---|---|
+| **bound** | *could this mob EVER be in this window?* | static | **once**, at spawn |
+| **evaluate** | *where is it right now?* | cheap | per tick, per **candidate** |
+
+⚠⚠ **And the bound is static because the ANCHORS are.**  § What a mob
+carries fixes `home` / `work` / `alt` when the mob enters the patch and
+never changes them — the same property `crawler` derives its cache size
+from (*"an actor can ask for at most three destinations"*,
+`src/sim.loft:3216`).  So a mob's reachable region is **the corridor
+hull of three fixed hexes**, known before it takes a step, and it can be
+indexed once for the whole sortie rather than re-derived per tick.
+
+Three tiers, and each throws away work the next one would have done:
+
+1. **CULL** — the window (plus a margin) against every mob's static
+   bound.  ⚠ A mob whose route never approaches is skipped **for the
+   sortie**, not for the tick.  ⚠⚠ **Skipped, never REMOVED** — it and
+   its POI are still there and its cycle still runs; what is thrown away
+   is the work of materialising it (`@X304`).
+2. **EVALUATE** — the rule, for the survivors, to get the hex.
+3. **MATERIALISE** — a body, with collision and § Deviation, for the ones
+   actually inside.
+
+⚠⚠ **A role whose route cannot be bounded cheaply is a role that breaks
+this model**, and that is the test to apply to a new one.  *Wander at
+random* has no bound; *patrol between two posts* has an exact one.  ⚠ It
+is the same shape as `ROBOT_ECONOMY.md` § The governing rule — *an
+installation that needs its own movement code has broken it* — one layer
+down.
+
+#### ⚠⚠ And against the BUBBLE the cull is not just static, it is the whole wave question
+
+[`plans/22`](../plans/22-the-field-cache/README.md) already establishes
+the fact this rests on:
+
+> *"the field's useful domain is FIXED for a whole run, because the
+> bubble is centred on the CORE.  It does not follow the player, it does
+> not follow the camera, and it does not move."*
+
+⚠⚠ **So *does this route ever get cut off?* is answerable the moment the
+base lands** — it is the bound against a disc of 25 hexes at a hex that
+never moves — and it is decided **once, for the sortie**.
+
+⚠ Which makes [`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) § The graph's
+*"the only thing that matters is which edges the base happens to sit
+on"* a **computable predicate** rather than a phrase, and it means the
+sortie knows its own wave pressure at landing — before a robot has
+walked anywhere.
+
+### ⚠⚠ And an ELABORATE cycle must stay CLOSED-FORM  `@X302`
+
+Owner, 2026-08-28:
+
+> *"but that should not make the calculations impossible to perform for a
+> given window"*
+
+⚠⚠ **This is the hard constraint on how elaborate a cycle may BE**, and
+it is the one that keeps § Points of interest honest: *"quite far and
+elaborate"* is affordable only while a window query stays cheap.
+
+> ⚠⚠ **A cycle must be evaluable at an arbitrary time `t` in O(legs) —
+> never by stepping forward from where the mob started.**
+
+⚠ A cycle of legs gives that for free:
+
+```
+phase = (t - t0) mod cycle_length      # one modulo
+leg   = the leg phase falls in         # O(legs), and legs are few
+pos   = along that leg                 # one interpolation
+```
+
+⚠ So *elaborate* costs **legs**, and legs are a handful.  A cycle with
+six of them is answered in six comparisons and is as cheap at hour two
+as at minute one, which is the property *"a rule that can be inspected to
+see if they can be within a window"* (`@X300`) actually needs.
+
+#### ⚠⚠ What would destroy it — and DEVIATION is the thing that tries
+
+**Anything path-dependent.**  A mob that was delayed, blocked, or pushed
+off its line has a HISTORY, and history has no closed form.  ⚠ § Which is
+also why DEVIATION only exists inside it is exactly that hazard: a
+sidestep is a departure from the rule.
+
+⚠⚠ **The resolution is one integer field, and it makes the deviation
+COST something instead of being free:**
+
+```
+Errand { … slip: integer }        # base units this mob has fallen behind
+
+position(t) = cycle(t - slip)
+```
+
+⚠ A deviation increments `slip` — the mob is genuinely later, not
+somewhere else.  ⚠⚠ **The closed form survives** (it is the same function
+with a shifted argument), and **the BOUND is untouched**, because the
+region a cycle covers does not depend on when it is traversed.  That
+second property is what keeps § The rule must be BOUNDABLE's cull cheap
+in the presence of deviation at all.
+
+> ⚠⚠ **THE RULE IS THE GROUND TRUTH AND THE BODY IS THE APPROXIMATION**,
+> never the other way round.  A materialised mob that steps aside
+> re-converges on the rule; what it spends is time, and `slip` is where
+> the spending is written down.
+
+#### ⚠ And the escape hatch is the one dryopea already owns
+
+⚠⚠ A mob that CANNOT re-converge — it was cut off by the bubble, wrecked,
+walled in — is exactly the transition § A mob is a RULE until something
+makes it a STATE describes, and it is **one-way**.  From that moment it
+is tracked and stepped like any enemy, and no closed form is claimed for
+it.
+
+⚠ So the model has two populations and one door between them, and the
+door is `wave_cutoff`, which has existed since BACKLOG B4:
+
+| | how it is answered | how many |
+|---|---|---|
+| **on a cycle** | closed form, O(legs), from a POI-bounded set | the map |
+| **cut off** | stepped, every tick, like any enemy today | ⚠ the wave — and `@M005` says the longest base the corpus plays is **321 ticks** |
+
+⚠⚠ **The budget test, and it is the one to gate on**: a window query is
+**O(POIs) to cull** plus **O(legs) per surviving mob** plus the tracked
+roster, which is the cost dryopea already pays.  A design that cannot
+state its answer in that form has broken `@X302`.
+
 ### ⚠ Which is also why DEVIATION only exists inside it
 
 The owner's original ask says it: *"**in the action that is visible to a
@@ -206,6 +725,7 @@ Errand {
     work:  Hex,    // the face, the picking ground, the post
     alt:   Hex,    // the drop-off, or the second patrol leg
     carry: u8,     // what is in the bag — 0 is empty
+    slip:  integer,// base units it has fallen behind its cycle (@X302)
 }
 ```
 
@@ -441,18 +961,26 @@ open with.
 
 ## Open questions — the owner's
 
-1. **Is a route's mob population a POOL or a TAP?**  A fixed set of
-   fourteen haulers on this cell that killing depletes, or a rate that
-   keeps producing?  ⚠ It decides whether the player can *see* their
-   interference during a sortie or only in the delta afterwards.
-   *Recommendation: a TAP during the sortie and a POOL on the server* —
-   the cell's rate is frozen (§ The two scales), and what the player
-   destroyed is in the delta.
-2. **What is in the delta a sortie hands back?**  Throughput denied,
-   nodes raided, mobs destroyed for good, cargo taken?  ⚠ It is what
-   makes a campaign out of a sequence of bases, and it is the same
-   question `ROBOT_ECONOMY.md` § Open questions 4 asks about waking the
-   military.
+1. **Is a mob population a POOL or a TAP?**  ⚠ `@X301` has largely
+   answered it: **a POI has a population**, and a population is a pool.
+   What is left is whether killing one is visible *within* the sortie —
+   fourteen haulers become thirteen and the road thins — or only in the
+   delta afterwards.  ⚠⚠ **§ WHY decides it**: a pool the player can
+   deplete and SEE thin is believability; a counter they cannot observe
+   is simulation.  *Recommendation: a POOL, and small enough to notice* —
+   which also makes a raid on a POI worth the trip, and is what
+   `ROBOT_ECONOMY.md` § 5's *deny it* needs to mean something at
+   scenario scale.
+2. ⚠ **ANSWERED by `@X306`** — § The compact RESULT.  The delta is *the
+   snapshot, changed*: throughput denied per crossing, the state each POI
+   was left in, plus the player's `Manifest`, which
+   [`plans/28`](../plans/28-the-scramble/README.md) S3 already built.
+   ⚠⚠ **What stays open is the RATE OF DECAY** — how fast the server
+   rebuilds what a raid broke.  Too fast and a raid buys nothing; too
+   slow and a planet only accumulates damage, which `DESIGN.md` § 20
+   forbids.  ⚠ It is the same question `ROBOT_ECONOMY.md` § Open
+   questions 4 asks about waking the military, and it wants a number
+   rather than an argument.
 3. **Do insects use this system or their own?**  Their pattern is
    foraging around a nest rather than an A→B haul.  *Recommendation: the
    same system, one more role row* — `DESIGN.md` § 10's ONE AI rule, and

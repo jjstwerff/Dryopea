@@ -900,7 +900,8 @@ second copy here is the one that drifts.
 | [docs/DESIGN_HISTORY.md](docs/DESIGN_HISTORY.md) | 2023 prototype seeds, and where each one was routed |
 | [docs/PROGRESSION.md](docs/PROGRESSION.md) | ⚠⚠ **REWRITTEN 2026-08-26** — the crew's skills, the station, and what an upgrade may buy.  The old *no stats* answer is superseded |
 | [docs/EXPLORATION.md](docs/EXPLORATION.md) | ⚠⚠ **Exploration IS scouting** — it ASSEMBLES rather than adding a pillar.  ⚠ § X0 points at `PROGRESSION.md`, which was rewritten under it |
-| [docs/ROBOT_ECONOMY.md](docs/ROBOT_ECONOMY.md) | ⚠ DESIGN, not built — the six robot installations whose traffic is what waves are made of, and the station capstone |
+| [docs/ROBOT_ECONOMY.md](docs/ROBOT_ECONOMY.md) | ⚠ DESIGN, not built — the six robot installations whose traffic is what waves are made of, and the station capstone.  ⚠⚠ Its *no economy simulation* bullet is SUPERSEDED by `@X298`: the simulation exists, on the SERVER |
+| [docs/ERRANDS.md](docs/ERRANDS.md) | ⚠ DESIGN, not built — **what a mob is DOING**, between the economy's graph and the mover.  ⚠⚠ Read § WHY first: *do not simulate a world for the scenario; get believable behaviour* (`@X303`).  A mob has a RULE rather than a state, and the rule must be BOUNDABLE and CLOSED-FORM (`@X298`-`@X302`); read against `../crawler`'s mob AI |
 | [docs/MATERIALS.md](docs/MATERIALS.md) | ⚠ DESIGN, not built — what things are MADE of.  ⚠⚠ Read § The governing rule first: a material earns its place because getting it is a TRIP |
 | [docs/ENEMY_MOVEMENT.md](docs/ENEMY_MOVEMENT.md) | Enemy movement — the two steering modes, passability as a height step, bodies as terrain, retaliation |
 | [docs/GROUND_TYPES.md](docs/GROUND_TYPES.md) | Palette spec — 11 painted types plus `rubble`, which the runtime deposits and nobody paints |
@@ -1103,6 +1104,12 @@ names; most of them exist because somebody did it without reading.
 | Hurt or kill an enemy | `src/spawn.loft::enemy_hurt`; `wave_deaths` is the ONE death path |
 | Judge what a wave's COMPOSITION is worth | [`plans/24`](plans/24-the-siege-front/README.md) § W2 — ⚠⚠ **the siege front is the wall's WIDTH** |
 | Add ambient life, or ask why a robot walks past instead of at you | `src/errand.loft` — ⚠⚠ **the bubble takes the errand, ONE WAY** |
+| Give a mob a JOB, a route, a home or a reason to leave one | [`docs/ERRANDS.md`](docs/ERRANDS.md) — ⚠⚠ **the bag steers, not the calendar**, and a distraction must be caused by something the player BUILT, never by being seen |
+| Judge ANY mob-behaviour idea | [`docs/ERRANDS.md`](docs/ERRANDS.md) § WHY (`@X303`) — ⚠⚠ **does this make behaviour more BELIEVABLE, or does it only simulate MORE?**  Believability is owed where it can be OBSERVED; consistency everywhere |
+| Add a POINT OF INTEREST to a scenario | [`docs/ERRANDS.md`](docs/ERRANDS.md) § FEW, AND EACH ONE LOAD-BEARING (`@X305`) — ⚠⚠ **two to four, and it earns its place only if REMOVING it moves the clock**.  A POI that changes the picture and not the play is scenery |
+| Ask what happens to a POI the player destroyed | [`docs/ERRANDS.md`](docs/ERRANDS.md) (`@X304`) — ⚠⚠ **nothing is culled**: the workers still come, find out, and try to fix it, and the swarm may send the machine that does |
+| Ask why an off-screen mob is not simulated, or propose simulation LOD | [`docs/ERRANDS.md`](docs/ERRANDS.md) § The scenario GROWS (`@X299`) — ⚠⚠ **it is COMPUTED, not approximated**, so [`plans/22`](plans/22-the-field-cache/README.md)'s LOD refusal stands untouched |
+| Ask how big the world behind a scenario is | [`docs/ERRANDS.md`](docs/ERRANDS.md) § The two scales (`@X298`) — ⚠ the economy's hex is **1.5 km against dryopea's 1.5 m**, so a whole scenario is ~1 % of ONE cell |
 | Turn the core OFF, or ask what the jammer switch costs | `src/jammer.loft` — ⚠⚠ **it stops the SUPPLY and never the SIEGE** |
 | Place a TRAP, or ask why re-arming one costs a trip | `src/trap.loft` — ⚠⚠ **a plate fired once is worth LESS than no plate**; the mechanic is the trip back (`@M057`) |
 | Judge whether a TRENCH is worth digging | `@M059` — ⚠⚠ **130 / 174 / 221: it outlasts the wall the same price buys, and it is a TIMER** since BACKLOG C9.  ⚠ Alone it still earns nothing; with a TOWER behind it, **335 ticks and nine of thirteen dead** (`@M060`) |
@@ -1262,7 +1269,7 @@ indexer yet.  Triggers for adding one:
 - First dryopea-side P-issue gets numerous enough that prose
   references stop being practical (PROBLEMS.md currently has
   one `@D` row; trigger fires somewhere around ~20).
-- Documentation count crosses ~25 (**currently 23** — `docs/*.md`; it read
+- Documentation count crosses ~25 (**currently 24** — `docs/*.md`; it read
   "~12" until 2026-08-26 and "21" until 2026-08-27, so this trigger is
   closer than it looked and is still moving).
 - A specific drift incident makes the manual scan painful.
