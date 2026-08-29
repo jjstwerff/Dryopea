@@ -2836,6 +2836,32 @@ the cargo manifest is *whatever made it onboard*:
 Force-launch leaves stragglers behind — by design.  The cost
 of haste.
 
+### ⚠⚠ Formal rules — what crosses a sortie boundary  `@X327`
+
+⚠ The citable form of what § 13 § Starting budget + 1:1 carryover and
+§ Scramble exit + cargo manifest argue.  ⚠⚠ **Spec-first, and that opens
+no deviation** — `manifest_of` is built and nothing consumes it, so
+there is no implementation to be breaking a rule; the build obligation
+is [`plans/31`](../plans/31-carryover/README.md), which cites these by
+name.
+
+```
+  (R-Carry-Once)     what a sortie carries out is applied to the next
+                     one EXACTLY ONCE, at the OPENING, by one door.
+                     The producer of a manifest converts nothing; the
+                     consumer converts once.  So the ratio applied
+                     twice is not a bug to be avoided but a state that
+                     cannot be reached.
+
+  (R-Opening)        a sortie's opening is a function of its MAP and of
+                     the carry it was opened with, and of nothing else.
+                     Nothing survives a sortie boundary that is not in
+                     the manifest — so a thing that does not cross is a
+                     thing the manifest does not carry, and the refusal
+                     is structural rather than a scope decision.
+```
+
+
 ## 15. Landing flow
 
 The complete landing sequence:

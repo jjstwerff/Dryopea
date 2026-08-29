@@ -411,6 +411,13 @@ fn traps_diff(a: const TrapState, b: const TrapState) -> text {
 
 fn wallet_diff(a: const Wallet, b: const Wallet) -> text {
     if a.spent != b.spent { return "wallet.spent: {a.spent} vs {b.spent}"; }
+    // ⚠ `plans/31` N3.  Added with the field rather than after it —
+    // `plans/30` R3's `now` grew a row late and went RED the same hour
+    // on `tests/18_s2`'s round trip, which is the cheap way to find out
+    // and the reason the row goes in BEFORE the value can differ.
+    if a.carried != b.carried {
+        return "wallet.carried: {a.carried} vs {b.carried}";
+    }
     ""
 }
 

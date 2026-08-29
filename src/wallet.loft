@@ -62,9 +62,14 @@
 // absence of the verb, it is that **the only caller needs a vehicle**.
 // A run with nobody in it clears nothing, so it earns nothing.
 //
-// Still not here: the tower order cost and the 1:1 carryover between
-// bases (`DESIGN.md` § Currency — points).  Both need something plan
-// 13 does not build — a beacon to buy, and a next base to carry to.
+// ── The two that were "still not here", and are now ────────────
+//
+// Plan 13 recorded the tower order cost and the 1:1 carryover between
+// bases as needing *"a beacon to buy, and a next base to carry to"*.
+// The beacon arrived with building ([`plans/27`](../plans/27-building/README.md)),
+// and the carry arrived with `plans/31` N1 — as ONE FIELD, spelled the
+// way § The CARRY and never the BUDGET explains.  ⚠ What a base opens
+// with is no longer a constant; `wallet_budget` is where it is asked.
 
 use lattice;
 use height;
@@ -113,22 +118,93 @@ pub const NIBBLE_REACH_HEXES: integer = 1;
 // world, a wave or a core to walk towards.
 pub struct Wallet {
     spent: float,
+
+    // What the LAST sortie carried into this one — `plans/31` N1,
+    // `DESIGN.md` § 13 § Starting budget + 1:1 carryover.
+    //
+    // ⚠⚠ **The CARRY and never the BUDGET, and that spelling is the
+    // whole of why this field is safe to add.**  [loft#914] takes an
+    // omitted field's default silently, so a `Wallet { }` written
+    // anywhere decides what a base opens with:
+    //
+    //   store a `budget` → the default is 0.0 → `wallet_left` goes
+    //   NEGATIVE → every partial literal opens a base that has already
+    //   fallen, and a test asserting *the base fell* passes with nobody
+    //   walking;
+    //
+    //   store a `carried` → the default is 0.0 → `wallet_left` is
+    //   `WALLET_STARTING_POINTS - spent` → **exactly the game that
+    //   existed before this field**.
+    //
+    // ⚠ The same move `spent` above makes for the same reason, and the
+    // one `play.loft::digging` and `part.loft::top_removed` make: choose
+    // the field's SENSE so that the silent default reproduces the
+    // behaviour that shipped.  Third instance; `CLAUDE.md` § Loft
+    // language gotchas is where the class lives.
+    //
+    // ⚠ Never negative — `wallet_carrying` refuses one at the door.  A
+    // carry is what a sortie KEPT, and unlike `errand.loft`'s `slip`
+    // (`@D009`, the one duration that may go below zero) there is no
+    // branch here that could produce one.
+    carried: float,
 }
 
-// Factory: the budget untouched.
+// Factory: the budget untouched, and nothing carried in.
 //
 // ⚠ Named `_new` and not `_empty` on purpose.  Its three siblings on
 // `WaveState` — `height_layer_empty`, `damage_layer_empty`,
 // `tower_state_empty` — are all empty MAPS, and an "empty wallet" is
 // the opposite of what this returns.
+//
+// ⚠⚠ **This is a FIRST base** — `numbers.json` calls the constant
+// `economy.starting_budget_first_base`, which is what it has always
+// said.  A base opened from a manifest uses `wallet_carrying`.
 pub fn wallet_new() -> Wallet {
-    Wallet { spent: 0.0 }
+    Wallet { spent: 0.0, carried: 0.0 }
+}
+
+// A base opened with what the last sortie carried out.
+//
+// ⚠⚠ **THE ONE DOOR, and the only place a ratio may ever be applied.**
+// Enforces @FR-R-Carry-Once.  `numbers.json`
+// § economy.carryover_points_ratio is 1.0 — *"all unspent points
+// carry"* — so there is no conversion here TODAY; what matters is that
+// there is exactly one place there could ever be one.  The producer
+// refuses to convert and says so in its own header
+// (`scramble.loft::manifest_of`: *"a ratio applied twice is the class
+// of defect `plans/26` spent four plans on"*), so the pair makes twice
+// unreachable rather than merely untested.
+//
+// ⚠ A negative carry is refused rather than clamped at the read, the
+// same argument `wallet_drain` makes about a negative drain: a caller
+// that could carry backwards would put the opening budget behind a
+// sign error.
+pub fn wallet_carrying(points: float) -> Wallet {
+    Wallet { spent: 0.0, carried: max(points, 0.0) }
+}
+
+// What this run may spend in total — the baseline plus what it carried.
+//
+// ⚠⚠ **THE ONE DOOR the budget is computed at.**  Enforces
+// @FR-R-Opening.  Three sites in this file re-state it — `wallet_left`,
+// `wallet_drain`'s clamp and `wallet_broke` — and a fourth lives in
+// `hud.loft`, where getting it wrong is SILENT: a ramp whose span is
+// the baseline sits at full colour for the whole of a carry.  Counting
+// those four before writing any of this is what found the HUD one
+// (`plans/31` § Re-assertion sites).
+pub fn wallet_budget(w: const Wallet) -> float {
+    WALLET_STARTING_POINTS + w.carried
+}
+
+// What this run carried in from the last one.
+pub fn wallet_carried(w: const Wallet) -> float {
+    w.carried
 }
 
 // What the run has left to spend, in points.  Never negative: the
 // ledger is clamped where it is written.
 pub fn wallet_left(w: const Wallet) -> float {
-    WALLET_STARTING_POINTS - w.spent
+    wallet_budget(w) - w.spent
 }
 
 // What the run has lost so far, in points — the other half, and the
@@ -140,7 +216,13 @@ pub fn wallet_spent(w: const Wallet) -> float {
 // Take `points` off the wallet.
 //
 // It ACCUMULATES over ticks and over nibblers, and it CLAMPS at the
-// starting budget — see § The clamp is on the WRITE.
+// RUN's budget — see § The clamp is on the WRITE.
+//
+// ⚠⚠ **`wallet_budget(w)` and never `WALLET_STARTING_POINTS`.**  A
+// clamp pinned to the baseline stops a carried run draining at 200, so
+// a base opened rich could never fall however long it was left — silent,
+// and every existing measurement would still read green because none of
+// them carries anything.  Enforces @FR-R-Opening.
 //
 // ⚠ A negative amount is refused rather than treated as income.
 // Crediting the wallet is a real mechanic (loot, carryover) and it is
@@ -148,7 +230,7 @@ pub fn wallet_spent(w: const Wallet) -> float {
 // draining backwards would put the one operation this phase promises
 // not to have behind a sign error.
 pub fn wallet_drain(w: Wallet, points: float) {
-    w.spent = min(w.spent + max(points, 0.0), WALLET_STARTING_POINTS);
+    w.spent = min(w.spent + max(points, 0.0), wallet_budget(w));
 }
 
 // ─── Income ─────────────────────────────────────────────────────
@@ -241,8 +323,13 @@ pub fn wallet_earn(w: Wallet, points: float) {
 // that is the whole of its authority: **the current implementation is a
 // stepstone and is not a rule.**  What it will keep being is a real,
 // measurable EVENT — the tick the player stopped earning.
+// ⚠ Against `wallet_budget` and not the baseline: a run that carried
+// 200 in is broke at 400 spent, and `script.loft`'s `fall` verb — which
+// plays until this answers true — would otherwise stop half a base
+// early and report *the base fell* about a base that had not.  Enforces
+// @FR-R-Opening.
 pub fn wallet_broke(w: const Wallet) -> boolean {
-    w.spent >= WALLET_STARTING_POINTS
+    w.spent >= wallet_budget(w)
 }
 
 // Is an enemy at (q, r) close enough to the core to be nibbling it?

@@ -303,7 +303,7 @@ fn test_every_colour_the_ramp_reaches_is_nobody_elses() {
     tr_first = "";
     tr_worst = 0 - 1;
     for tr_p in 0..tr_full + 1 {
-        tr_c = hud_ink_for(tr_p) & 0xffffff;
+        tr_c = hud_ink_for(tr_p, tr_full) & 0xffffff;
         for tr_k in 0..len(tr_pal) {
             tr_o = palette_color(as_u8(tr_k)) & 0xffffff;
             if tr_c == tr_o {
@@ -370,19 +370,19 @@ fn test_the_overlay_follows_the_wallet() {
 // @DRY-076 — the ramp runs from a full wallet to a broke one
 //
 // ⚠ The endpoints are the two constants and nothing between them is
-// authored — the span is `WALLET_STARTING_POINTS`, which the simulation
-// already owns, so the ramp invents no number.  ⚠ Clamped BOTH ways:
+// authored — the span is the RUN's budget, which the simulation already
+// owns, so the ramp invents no number.  ⚠ Clamped BOTH ways:
 // `wallet_earn` exists, so a run really can hold more than it started
 // with, and a wallet above full is amber rather than a colour past it.
 fn test_the_ramp_runs_from_full_to_broke() {
     tp_full = hud_wallet_points(wallet_new());
-    assert((hud_ink_for(tp_full) & 0xffffff) == HUD_INK_FULL,
-           "a full wallet is the full colour: {hud_ink_for(tp_full)}");
-    assert((hud_ink_for(0) & 0xffffff) == HUD_INK_BROKE,
-           "a broke wallet is the broke colour: {hud_ink_for(0)}");
-    assert((hud_ink_for(tp_full + 500) & 0xffffff) == HUD_INK_FULL,
+    assert((hud_ink_for(tp_full, tp_full) & 0xffffff) == HUD_INK_FULL,
+           "a full wallet is the full colour: {hud_ink_for(tp_full, tp_full)}");
+    assert((hud_ink_for(0, tp_full) & 0xffffff) == HUD_INK_BROKE,
+           "a broke wallet is the broke colour: {hud_ink_for(0, tp_full)}");
+    assert((hud_ink_for(tp_full + 500, tp_full) & 0xffffff) == HUD_INK_FULL,
            "a wallet ABOVE full is still the full colour, not one past it");
-    assert((hud_ink_for(0 - 20) & 0xffffff) == HUD_INK_BROKE,
+    assert((hud_ink_for(0 - 20, tp_full) & 0xffffff) == HUD_INK_BROKE,
            "a wallet below zero is the broke colour, not one past it");
 
     // ⚠ It really MOVES in between, or the two endpoints are a switch
@@ -394,7 +394,7 @@ fn test_the_ramp_runs_from_full_to_broke() {
     // and every one of these assertions fails for a reason that is not
     // the ramp.  The same top byte cost `gl_gate.loft` a false failure
     // (`@M041`), one layer out.
-    tp_mid = hud_ink_for((tp_full / 2) ?? 0) & 0xffffff;
+    tp_mid = hud_ink_for((tp_full / 2) ?? 0, tp_full) & 0xffffff;
     assert(tp_mid != HUD_INK_FULL && tp_mid != HUD_INK_BROKE,
            "half a wallet is drawn in an endpoint colour — this is a switch, "
            + "not a ramp: {tp_mid}");
@@ -404,7 +404,7 @@ fn test_the_ramp_runs_from_full_to_broke() {
     // colour must not do.
     tp_prev = 0 - 1;
     for tp_p in 0..tp_full + 1 {
-        tp_g = (hud_ink_for(tp_p) >> 8) & 255;
+        tp_g = (hud_ink_for(tp_p, tp_full) >> 8) & 255;
         assert(tp_g >= tp_prev,
                "the ramp doubles back at {tp_p} points ({tp_g} after {tp_prev}) "
                + "— a warning colour that recovers is worse than none");
@@ -423,7 +423,8 @@ fn test_the_colour_and_the_digits_read_one_number() {
     wallet_drain(tc_w, 60.7);
     assert(hud_wallet_points(tc_w) == 139,
            "the control: 139.3 points floors to {hud_wallet_points(tc_w)}");
-    assert(hud_wallet_ink(tc_w) == hud_ink_for(hud_wallet_points(tc_w)),
+    assert(hud_wallet_ink(tc_w) == hud_ink_for(hud_wallet_points(tc_w),
+                                              WALLET_STARTING_POINTS as integer? ?? 0),
            "the ink is not the ink of the number that is drawn");
     // ⚠ Two wallets that SHOW the same number must be drawn the same,
     // however far apart their floats are.

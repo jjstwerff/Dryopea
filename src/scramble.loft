@@ -244,3 +244,44 @@ pub fn manifest_of(w: const Wallet, crew: const vector<Helper>,
         left:   mo_off,
     }
 }
+
+// ─── ⚠⚠ The chain — a manifest OPENS the next base (`plans/31` N4) ──
+//
+// `DESIGN.md` § 14 § Base sequence: *a run is a **sequence of bases**,
+// chained by what the player carries out.*  `manifest_of` above has
+// answered *what left with them* since `plans/28` S3, and until this
+// function nothing read it: outside this file and its own test,
+// `manifest` appeared in `src/` exactly once, in a comment.
+//
+// ⚠⚠ **THIS IS WHERE THE REFUSALS LIVE, and they are the design's own
+// rather than a scope cut.**  Enforces @FR-R-Opening — *nothing
+// survives a sortie boundary that is not in the manifest* — and the
+// manifest has three columns of which exactly one crosses today:
+//
+//   `points` — crosses, 1:1.  `numbers.json`
+//              § economy.carryover_points_ratio is 1.0.
+//   `crew`   — does NOT.  `DESIGN.md` § 9 § Roster: **2 starting, and
+//              the two are FIXED** (`@X258`); between missions the
+//              roster is managed at a STATION that does not exist
+//              (`PROGRESSION.md` § P2i).  ⚠⚠ And `@X290`: **a crew
+//              member has no identity outside one run's roster**, so a
+//              COUNT that crossed would carry the number while losing
+//              the people — the half the design cares about.
+//   `left`   — does NOT.  § 9 § Stranded helpers is explicit: *"For
+//              validation: stranded is a data state only; the
+//              rescue-quest UI is deferred."*  It is a RECORD of what
+//              happened, never an input.
+//
+// ⚠ Each refusal is blocked on a thing with a NAME — a station, an
+// identity, a deposit — which is what `@X324` asks of a piece left out:
+// *a piece dropped for convenience is a regression even when everything
+// still works.*
+//
+// ⚠⚠ **And the CONVERSION happens exactly once.**  Enforces
+// @FR-R-Carry-Once.  `manifest_of` refuses to convert and says so in
+// its own header; `wallet_carrying` is the only place a ratio could
+// ever be applied.  So a carry applied twice is not a bug to be avoided
+// by review — it is a state the pair cannot reach.
+pub fn manifest_opens(m: const Manifest) -> Wallet {
+    wallet_carrying(m.points)
+}

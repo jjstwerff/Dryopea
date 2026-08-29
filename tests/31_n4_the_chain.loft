@@ -1,0 +1,165 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 31 phase N4 — a manifest opens the next base.
+//
+// `DESIGN.md` § 14 § Base sequence: *a run is a **sequence of bases**,
+// chained by what the player carries out.*  `plans/28` S3 built the
+// producer and `@M068` measured it — **200.0 cut short against 225.3
+// played out** — and then nothing read it for a plan and a half.
+//
+// ── What this gate pins ─────────────────────────────────────────
+//
+// ⚠⚠ **`@FR-R-Carry-Once`: the carry lands EXACTLY ONCE, at the
+// opening, by one door.**  The interesting half is not that one
+// application is right — it is that TWO is unreachable, and a gate that
+// only checked the arithmetic could not tell those apart.  So
+// § Twice below opens from the same manifest twice and asserts the two
+// wallets are INDEPENDENT rather than compounded.
+//
+// ⚠⚠ **`@FR-R-Opening`: nothing crosses that is not in the manifest.**
+// The manifest has three columns and one of them crosses; the other two
+// are gated by name, because *a piece dropped for convenience is a
+// regression even when everything still works* (`@X324`) and the way to
+// tell the two apart is to say what each is blocked on.
+//
+// ⚠ The conservation `plans/28` S3 gates — aboard plus left behind is
+// the living roster — is that file's and is not restated here.
+
+#cwd
+
+use dryopea;
+
+fn near(got: float, want: float) -> boolean {
+    got - want < 0.001 && want - got < 0.001
+}
+
+// ⚠ Two arguments, so it is a helper and not a collected test — the
+// same rule `near` above follows (`CLAUDE.md` § Loft language gotchas).
+fn core_at(q: integer, r: integer) -> Hex { Hex { q: q, r: r } }
+
+// ─── The chain ──────────────────────────────────────────────────
+
+// ⚠ The two ends of `@M068` walked all the way through: a sortie cut
+// short carries 200.0 and one played out carries 225.3, and the NEXT
+// base opens 25.3 points richer for it.
+fn test_a_sortie_carried_out_opens_the_next_base() {
+    tso_cut  = manifest_of(wallet_new(), [], core_at(0, 0));
+
+    tso_rich = wallet_new();
+    wallet_earn(tso_rich, 25.3);
+    tso_played = manifest_of(tso_rich, [], core_at(0, 0));
+
+    assert(tso_cut.points == 200.0,
+           "the sortie cut short carries the opening budget: {tso_cut.points}");
+    assert(near(tso_played.points, 225.3),
+           "the one played out carries more: {tso_played.points}");
+
+    tso_a = manifest_opens(tso_cut);
+    tso_b = manifest_opens(tso_played);
+
+    assert(wallet_budget(tso_a) == 400.0,
+           "a base opened on the cut-short manifest has baseline + 200: "
+           + "{wallet_budget(tso_a)}");
+    assert(near(wallet_budget(tso_b), 425.3),
+           "and one opened on the played-out manifest has more: "
+           + "{wallet_budget(tso_b)}");
+    assert(near(wallet_budget(tso_b) - wallet_budget(tso_a), 25.3),
+           "the difference between the two sorties survives the boundary "
+           + "EXACTLY: {wallet_budget(tso_b) - wallet_budget(tso_a)}");
+}
+
+// ⚠ The opening ledger is CLEAN.  A wallet that carried the last
+// base's `spent` across would open a base part-way through its own
+// budget, and every assertion about the budget above would still hold.
+fn test_the_next_base_opens_with_a_clean_ledger() {
+    tcl_w = wallet_new();
+    wallet_drain(tcl_w, 140.0);
+    tcl_m = manifest_of(tcl_w, [], core_at(0, 0));
+
+    assert(tcl_m.points == 60.0,
+           "the sortie carried out what was left: {tcl_m.points}");
+
+    tcl_next = manifest_opens(tcl_m);
+    assert(wallet_spent(tcl_next) == 0.0,
+           "the next base has spent nothing: {wallet_spent(tcl_next)}");
+    assert(wallet_left(tcl_next) == 260.0,
+           "and has baseline + 60 to spend: {wallet_left(tcl_next)}");
+    assert(!wallet_broke(tcl_next), "a base does not open broke");
+}
+
+// ─── ⚠⚠ Twice — the state the pair cannot reach ─────────────────
+
+// `manifest_of` READS a state rather than consuming one, so a scenario
+// may ask it twice (`plans/28` S3).  That is safe only because the
+// consumer BUILDS a wallet rather than crediting one: opening twice
+// gives two independent 425.3-point bases and never one at 650.6.
+fn test_opening_twice_gives_two_bases_and_not_one_rich_one() {
+    tot_w = wallet_new();
+    wallet_earn(tot_w, 25.3);
+    tot_m = manifest_of(tot_w, [], core_at(0, 0));
+
+    tot_a = manifest_opens(tot_m);
+    tot_b = manifest_opens(tot_m);
+
+    assert(near(wallet_budget(tot_a), 425.3) && near(wallet_budget(tot_b), 425.3),
+           "both openings are the same base: {wallet_budget(tot_a)} and "
+           + "{wallet_budget(tot_b)}");
+    assert(near(wallet_carried(tot_a), wallet_carried(tot_b)),
+           "and neither compounded the other's carry");
+
+    // ⚠ The arithmetic the wrong version would have produced, named so
+    // the assertion above cannot be read as trivially true: a consumer
+    // that CREDITED an existing wallet instead of building one would
+    // answer this.
+    assert(wallet_budget(tot_a) != WALLET_STARTING_POINTS + 225.3 + 225.3,
+           "⚠ a crediting consumer would have answered "
+           + "{WALLET_STARTING_POINTS + 225.3 + 225.3}");
+}
+
+// ─── ⚠⚠ What does NOT cross, gated by name ──────────────────────
+
+// The crew column is real, and it stays in the manifest.  `@X290`: a
+// crew member has no identity outside one run's roster, so a count that
+// crossed would carry the number while losing the people.
+fn test_the_crew_are_recorded_and_do_not_cross() {
+    tcc_crew = [helper_new(0, 0), helper_new(0, 1), helper_new(9, 9)];
+    tcc_m    = manifest_of(wallet_new(), tcc_crew, core_at(0, 0));
+
+    assert(tcc_m.crew == 2 && tcc_m.left == 1,
+           "the manifest RECORDS who boarded: {tcc_m.crew} aboard, "
+           + "{tcc_m.left} left behind");
+
+    // ⚠ And the opening the manifest produces is a WALLET and nothing
+    // else — there is no roster in it to be wrong.  The base that opens
+    // gets `helper.roster_start` = 2, fixed, wherever it authors them.
+    tcc_next = manifest_opens(tcc_m);
+    assert(near(wallet_carried(tcc_next), tcc_m.points),
+           "the points crossed: {wallet_carried(tcc_next)}");
+    assert(wallet_budget(tcc_next) == WALLET_STARTING_POINTS + tcc_m.points,
+           "and the budget is the baseline plus THEM and nothing else: "
+           + "{wallet_budget(tcc_next)}");
+}
+
+// ⚠ The same claim from the other side: two manifests that differ ONLY
+// in their crew columns open identical bases.  A consumer that had
+// quietly priced a boarded helper would fail this and no arithmetic
+// assertion above would notice.
+fn test_two_manifests_differing_only_in_crew_open_the_same_base() {
+    tdm_alone = manifest_of(wallet_new(), [helper_new(9, 9)], core_at(0, 0));
+    tdm_full  = manifest_of(wallet_new(),
+                            [helper_new(0, 0), helper_new(0, 1), helper_new(1, 0)],
+                            core_at(0, 0));
+
+    assert(tdm_alone.crew == 0 && tdm_full.crew == 3,
+           "the two manifests really differ: {tdm_alone.crew} against "
+           + "{tdm_full.crew} aboard");
+    assert(tdm_alone.points == tdm_full.points,
+           "and agree on the points: {tdm_alone.points}");
+
+    assert(wallet_budget(manifest_opens(tdm_alone))
+           == wallet_budget(manifest_opens(tdm_full)),
+           "so they open the SAME base: "
+           + "{wallet_budget(manifest_opens(tdm_alone))} against "
+           + "{wallet_budget(manifest_opens(tdm_full))}");
+}

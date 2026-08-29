@@ -254,6 +254,19 @@ fn emit_layers(pal: vector<GroundType>, state: const WaveState) -> text {
     if wallet_spent(state.wallet) != 0.0 {
         el_out = el_out + "spent {wallet_spent(state.wallet)}\n";
     }
+    // ⚠⚠ **The READER's half of `carried` (`plans/31` N3), and the pair
+    // is the point**: a value a writer can produce and a reader cannot
+    // parse — or the reverse — is invisible until a scenario reaches it
+    // (`@D007` a dropped beacon, `@D009` a negative `slip`).  Written
+    // BEFORE `carried` could appear anywhere in the corpus, so the pair
+    // is complete on the day the value first exists.
+    //
+    // ⚠ Suppressed at zero, exactly as `spent` is: a first base carried
+    // nothing, and a line saying so in all 55 fixtures would be noise
+    // that the round trip has to keep agreeing about.
+    if wallet_carried(state.wallet) != 0.0 {
+        el_out = el_out + "carried {wallet_carried(state.wallet)}\n";
+    }
     el_out
 }
 

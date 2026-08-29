@@ -159,6 +159,30 @@ saturates it — ***the first version of that pair read 118 against 118
 with four extra besiegers plainly on the map***.
 ⚠ **[`plans/30`](plans/30-the-mob-routine/README.md) is COMPLETE.**
 
+⚠⚠ **AND SINCE [`plans/31`](plans/31-carryover/README.md) N1-N4 A BASE OPENS
+WITH WHAT THE LAST ONE CARRIED** (2026-08-29, `@X347`, `@M086`) —
+`ROADMAP.md` item **7**, and the thing `plans/28` says it made possible and
+deliberately did not do: `manifest_of` had no reader outside its own test.
+⚠⚠ **The field is spelled as the CARRY and never as the BUDGET**, because
+[loft#914] takes an omitted field's default silently — a defaulted `budget`
+opens every base ALREADY FALLEN, a defaulted `carried` reproduces the game
+that shipped.  Third instance of that class after `wallet.spent` and
+`play.digging`.  ⚠⚠ **Counting the re-assertion sites BEFORE writing any code
+is what found the fourth**: three are in `wallet.loft` and the fourth is
+`hud.loft::hud_ink_for`, which read the BASELINE for the wallet ramp's span
+while clamping above it — a base opened with 200 carried would have sat at
+the full colour from 400 points down to 200, **the ramp dead for half the run
+on the one number the game shows**, and `tests/19_p7`'s exhaustive sweep of
+every reachable colour would have stayed green because ***it sweeps the span
+it is given***.  ⚠⚠ **Exactly one of the manifest's three columns crosses**
+and each refusal is blocked on a thing with a NAME — the crew on an IDENTITY
+(`@X290`) and a STATION, the stragglers on the same, the tops on a DEPOSIT.
+⚠ **The ratio is applied once by construction**: `manifest_of` refuses to
+convert, `manifest_opens` BUILDS a wallet rather than crediting one.
+⚠ **Measured so far: four beacons where the first base bought two**
+(`@M086`) — the landing exclusion `@M065` found moves with the wallet.
+⚠ N5's CLOCK half is open.
+
 ⚠⚠ **AND THE CREW WORK ON THEIR OWN** ([`plans/29`](plans/29-the-crews-own-work/README.md),
 complete 2026-08-28) — a crew member nobody has told anything takes the
 nearest of four jobs **inside their own senses** (3 hexes untrained), and
@@ -183,11 +207,11 @@ critical path is **4, the SCRAMBLE**.
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1777 green**, ~320 s on a busy box (592 s beside another suite, 753 s and 1252 s on 2026-08-29 — the second was a `graphics` cdylib rebuild), 143 files |
-| scenarios | `scripts/validate.sh` | **55 scripts, 974 measurements**, ~20 s |
+| tests | `scripts/test.sh` | **1790 green**, ~320 s on a busy box (592 s beside another suite, 753 s, 775 s and 1252 s on 2026-08-29 — one of them a `graphics` cdylib rebuild), 145 files |
+| scenarios | `scripts/validate.sh` | **56 scripts, 985 measurements**, ~20 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
-| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **431 defined, 427 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
-| ⚠⚠ formal rules | `scripts/rules.sh` — inside `test.sh` | **44 defined, 19 ENFORCED in 115 code sites** (`@X327`).  ⚠ It moved at `plans/30` R5 because `src/poi.loft` gave `@FR-E-Poi-Owns` and `@FR-E-Place-State` their first code at all — never because citations were sprinkled (`@X328`).  ⚠⚠ **This read 89 until 2026-08-29 and the tree measured 93 before R7a touched it** — the number aged against a tree that moved, which is `@M044`'s class one instrument over: **re-measure before quoting a delta**.  R7a's own contribution is **three**.  ⚠ Resolution GATES; coverage only REPORTS.  ⚠⚠ A doc reference is **not** an enforcing site (`@X330`) |
+| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **433 defined, 429 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
+| ⚠⚠ formal rules | `scripts/rules.sh` — inside `test.sh` | **46 defined, 21 ENFORCED in 124 code sites** (`@X327`).  ⚠ `plans/31` added `@FR-R-Carry-Once` and `@FR-R-Opening` and gave both code the same day, which is the order `@X328` asks for.  ⚠ It moved at `plans/30` R5 because `src/poi.loft` gave `@FR-E-Poi-Owns` and `@FR-E-Place-State` their first code at all — never because citations were sprinkled (`@X328`).  ⚠⚠ **This read 89 until 2026-08-29 and the tree measured 93 before R7a touched it** — the number aged against a tree that moved, which is `@M044`'s class one instrument over: **re-measure before quoting a delta**.  R7a's own contribution is **three**.  ⚠ Resolution GATES; coverage only REPORTS.  ⚠⚠ A doc reference is **not** an enforcing site (`@X330`) |
 
 ⚠ `scripts/test.sh` is the canonical runner — **never `loft test` directly**
 (§ Key commands says what it does that you would otherwise skip).

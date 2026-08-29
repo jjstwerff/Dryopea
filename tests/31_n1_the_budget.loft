@@ -1,0 +1,214 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 31 phase N1 + N2 — a base opens with what the last one carried.
+//
+// `DESIGN.md` § 13 § Starting budget + 1:1 carryover: *"On subsequent
+// bases (post-scramble), the budget = baseline + the player's unspent
+// wallet at scramble time (1:1 carry)."*  Until this phase the budget
+// was a CONSTANT — `WALLET_STARTING_POINTS`, read at three sites in
+// `wallet.loft` and a fourth in `hud.loft` — so there was nothing a
+// manifest could be carried INTO.
+//
+// ── What this gate has to pin, and what nothing could see ───────
+//
+// `plans/31` § Re-assertion sites counted FOUR before any code was
+// written, and ranked them by whether getting one wrong is silent:
+//
+//   `wallet_left`   — loud.  Every measurement in the corpus reads it.
+//   `wallet_drain`  — ⚠ SILENT.  A clamp pinned to the BASELINE stops a
+//                     carried run draining at 200, so a base opened
+//                     rich could never fall however long it was left.
+//   `wallet_broke`  — ⚠ SILENT.  `script.loft`'s `fall` verb plays until
+//                     this answers true, so it would stop a carried base
+//                     half way and report *the base fell* about a base
+//                     that had not.
+//   `hud_ink_for`   — ⚠⚠ SILENT, AND NOTHING IN THE CORPUS COULD SEE IT.
+//
+// ⚠⚠ **The fourth is why the sites were counted first.**  The ramp read
+// the BASELINE for its span while clamping above it on purpose — *"a
+// wallet above full is not a colour past amber — it is amber"* — so a
+// base opened with 200 carried would have sat at the full colour from
+// 400 points down to 200: the ramp dead for half the run, on the ONE
+// number the game shows (`DESIGN.md` § HUD).  And `tests/19_p7`'s
+// exhaustive sweep of every reachable colour would have stayed green,
+// because it sweeps **the span it is given** — `@M034`'s class, *are
+// the numbers I chose capable of disagreeing?*, with a new subject.
+//
+// ── Every silent site gets the WRONG VERSION reproduced ─────────
+//
+// ⚠ `docs/HARD_WON_RULES.md`: *a negative control the plausible WRONG
+// version also satisfies is not one.*  So each of the three silent
+// sites below is gated by computing what the baseline-pinned version
+// would have answered and asserting the real one DIFFERS — not by
+// asserting the right answer, which the wrong version can also give
+// wherever nothing is carried.
+//
+// Enforces @FR-R-Opening, @FR-R-Carry-Once.
+
+#cwd
+
+use dryopea;
+
+// A carry big enough that the baseline and the budget cannot be
+// confused, and not a round multiple of it — a span of exactly 2x is
+// the shape `@M034` warns about, where two different rules agree.
+const CARRY: float = 225.3;
+
+// ⚠ Two arguments, so it is a helper and not a collected test
+// (`CLAUDE.md` § Loft language gotchas: a zero-argument function in a
+// test file IS a test).
+fn near(got: float, want: float) -> boolean {
+    got - want < 0.001 && want - got < 0.001
+}
+
+// ─── The budget is the baseline PLUS the carry ──────────────────
+
+fn test_a_first_base_opens_on_the_baseline_alone() {
+    tfb = wallet_new();
+
+    assert(wallet_carried(tfb) == 0.0,
+           "a first base carried nothing in: {wallet_carried(tfb)}");
+    assert(wallet_budget(tfb) == WALLET_STARTING_POINTS,
+           "so its budget is the baseline: {wallet_budget(tfb)}");
+    assert(wallet_left(tfb) == WALLET_STARTING_POINTS,
+           "and all of it is left: {wallet_left(tfb)}");
+    assert(!wallet_broke(tfb), "and it has not ended before it started");
+}
+
+fn test_a_carried_base_opens_on_the_baseline_plus_the_carry() {
+    tcb = wallet_carrying(CARRY);
+
+    assert(wallet_carried(tcb) == CARRY,
+           "the carry is kept whole: {wallet_carried(tcb)}");
+    assert(wallet_budget(tcb) == WALLET_STARTING_POINTS + CARRY,
+           "the budget is baseline + carry: {wallet_budget(tcb)}");
+    assert(wallet_left(tcb) == WALLET_STARTING_POINTS + CARRY,
+           "and the ledger opens clean: {wallet_left(tcb)}");
+    assert(wallet_spent(tcb) == 0.0,
+           "spent nothing yet: {wallet_spent(tcb)}");
+}
+
+// ⚠⚠ **THE NEGATIVE CONTROL, and it is the door's and not the read's.**
+// A carry is what a sortie KEPT.  Unlike `errand.loft`'s `slip` — the
+// one duration in the game that may go below zero (`@D009`) — there is
+// no branch here that could produce a negative one, so a caller that
+// could carry backwards would put the opening budget behind a sign
+// error: `wallet_carrying(-50)` would open a base at 150 that every
+// arithmetic assertion above would still call consistent.
+fn test_a_negative_carry_is_refused_at_the_door() {
+    tnc = wallet_carrying(0.0 - 50.0);
+
+    assert(wallet_carried(tnc) == 0.0,
+           "a negative carry is refused, not banked: {wallet_carried(tnc)}");
+    assert(wallet_budget(tnc) == WALLET_STARTING_POINTS,
+           "so the base opens on the baseline: {wallet_budget(tnc)}");
+}
+
+// ─── The silent site: the CLAMP is on the run's budget ──────────
+
+// ⚠⚠ The wrong version reproduced.  Draining 300 from a base that
+// carried 225.3 must leave 125.3 — the baseline-pinned clamp would have
+// stopped the ledger at 200 and left 225.3, which is a base that cannot
+// be made to fall.
+fn test_the_clamp_is_the_runs_budget_and_not_the_baseline() {
+    tcr = wallet_carrying(CARRY);
+    wallet_drain(tcr, 300.0);
+
+    tcr_pinned = WALLET_STARTING_POINTS + CARRY - WALLET_STARTING_POINTS;
+
+    assert(wallet_spent(tcr) == 300.0,
+           "a carried run really drains past its baseline: {wallet_spent(tcr)}");
+    assert(near(wallet_left(tcr), 125.3),
+           "and what is left is budget - spent: {wallet_left(tcr)}");
+    assert(wallet_left(tcr) != tcr_pinned,
+           "⚠ the baseline-pinned clamp would have answered {tcr_pinned} and "
+           + "left a base that can never fall — it answers {wallet_left(tcr)}");
+    assert(!wallet_broke(tcr),
+           "and 300 spent of 425.3 is not broke");
+}
+
+fn test_the_ledger_still_floors_at_the_runs_budget() {
+    tlf = wallet_carrying(CARRY);
+    wallet_drain(tlf, 500.0);
+
+    assert(wallet_spent(tlf) == WALLET_STARTING_POINTS + CARRY,
+           "the ledger clamps at the budget: {wallet_spent(tlf)}");
+    assert(wallet_left(tlf) == 0.0,
+           "so the floor is EXACT rather than within an epsilon: "
+           + "{wallet_left(tlf)}");
+    assert(wallet_broke(tlf), "and the wallet has run out");
+}
+
+// ⚠ The other silent site.  A run that carried 225.3 is NOT broke at
+// 200 spent — the baseline-pinned test would have said it was, and
+// `script.loft`'s `fall` verb would have stopped there.
+fn test_broke_is_the_runs_budget_and_not_the_baseline() {
+    tbr = wallet_carrying(CARRY);
+    wallet_drain(tbr, WALLET_STARTING_POINTS);
+
+    assert(wallet_spent(tbr) >= WALLET_STARTING_POINTS,
+           "the wrong version's test is TRUE here — that is the point of "
+           + "this control: {wallet_spent(tbr)}");
+    assert(!wallet_broke(tbr),
+           "⚠ but the run is not over: it carried {CARRY} in and has "
+           + "{wallet_left(tbr)} left");
+
+    wallet_drain(tbr, CARRY);
+    assert(wallet_broke(tbr),
+           "and it IS over once the whole budget is gone: "
+           + "{wallet_left(tbr)} left");
+}
+
+// ─── N2: the HUD's span is the RUN's budget ─────────────────────
+
+// ⚠⚠ The fourth site.  Full at the top of a CARRIED span, broke at
+// zero, and — the assertion the old code fails — the colour at the
+// BASELINE is no longer the full one, because 200 of 425 is a wallet
+// most of the way down rather than a full one.
+fn test_the_ramp_spans_the_runs_budget_and_not_the_baseline() {
+    trs   = wallet_carrying(CARRY);
+    trs_b = floor(wallet_budget(trs)) as integer? ?? 0;
+    trs_n = floor(WALLET_STARTING_POINTS) as integer? ?? 0;
+
+    assert(trs_b == 425, "the span is the whole budget: {trs_b}");
+    assert((hud_wallet_ink(trs) & 0xffffff) == HUD_INK_FULL,
+           "an untouched carried wallet is the full colour");
+
+    // ⚠ The wrong version reproduced: the baseline-pinned ramp clamps
+    // everything at or above 200 to the full colour, so it cannot tell
+    // 425 points from 200.  The real one must.
+    trs_pinned = hud_ink_for(trs_n, trs_n) & 0xffffff;
+    trs_real   = hud_ink_for(trs_n, trs_b) & 0xffffff;
+    assert(trs_pinned == HUD_INK_FULL,
+           "the control: pinned to the baseline, 200 points is 'full'");
+    assert(trs_real != HUD_INK_FULL,
+           "⚠ but 200 of a 425-point budget is NOT a full wallet — the "
+           + "ramp would have been dead for half the run: {trs_real}");
+}
+
+// ⚠ And it is still a ramp over the carried span rather than a switch:
+// one way, all the way down, over every reachable value.
+fn test_the_carried_ramp_is_monotone_over_its_whole_span() {
+    tcm   = wallet_carrying(CARRY);
+    tcm_b = floor(wallet_budget(tcm)) as integer? ?? 0;
+
+    assert((hud_ink_for(tcm_b, tcm_b) & 0xffffff) == HUD_INK_FULL,
+           "the top of the span is the full colour");
+    assert((hud_ink_for(0, tcm_b) & 0xffffff) == HUD_INK_BROKE,
+           "the bottom is the broke colour");
+
+    tcm_prev = 0 - 1;
+    tcm_moves = 0;
+    for tcm_p in 0..tcm_b + 1 {
+        tcm_g = (hud_ink_for(tcm_p, tcm_b) >> 8) & 255;
+        assert(tcm_g >= tcm_prev,
+               "the carried ramp doubles back at {tcm_p} of {tcm_b} "
+               + "({tcm_g} after {tcm_prev})");
+        if tcm_g != tcm_prev && tcm_prev >= 0 { tcm_moves += 1; }
+        tcm_prev = tcm_g;
+    }
+    assert(tcm_moves > 1,
+           "and it really moves across the span rather than switching "
+           + "once: {tcm_moves} changes over {tcm_b} points");
+}

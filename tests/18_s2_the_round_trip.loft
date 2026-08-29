@@ -101,7 +101,7 @@ fn test_every_scenario_survives_the_round_trip() {
     // answered nothing would make every assertion above vacuous — the
     // same refusal `validate.loft` makes about being green over no
     // scripts at all.
-    assert(tes_n == 55, "all fifty-five scenarios: {tes_n}");
+    assert(tes_n == 56, "all fifty-six scenarios: {tes_n}");
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -120,6 +120,16 @@ fn test_the_fields_no_scenario_exercises_survive_too() {
              + "raise 5 1 1.5 carapace\n"
              + "tower 4 0 12 0.4 6.0 off\n"
              + "spent 30\n"
+             // ⚠⚠ **The CARRY** (`plans/31` N3) — the one thing that
+             // crosses a sortie boundary, and a field no shipped
+             // scenario exercised on the day it was added.  ⚠ A writer
+             // and its reader are a PAIR (`@D007` a dropped beacon,
+             // `@D009` a negative `slip`), and a pair is invisible
+             // until something produces the value: this line is what
+             // produces it.  ⚠ Not a whole number of points, so the
+             // float really round-trips rather than surviving as an
+             // integer that happens to agree.
+             + "carried 175.5\n"
              + "park 1 0\ndrive 3 0\nplayer off 1.5 2.5 20\n"
              + "crew 2 1\nsend 0 8 1\nmember 0 off 0.5 15 45\n"
              + "remit 0 clear\n"
@@ -145,7 +155,7 @@ fn test_the_fields_no_scenario_exercises_survive_too() {
 
     assert(state_diff(tfn_run.play.wave, tfn_back.play.wave) == "",
            "including a boost running, a recovery clock, a stripped "
-           + "tower, a spent cargo slot and a retuned lull: "
+           + "tower, a spent cargo slot, a retuned lull and a carry: "
            + "'{state_diff(tfn_run.play.wave, tfn_back.play.wave)}'");
 }
 

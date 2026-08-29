@@ -177,7 +177,7 @@ pub fn render_number(cv: Canvas, n: integer, right: integer, top: integer,
 // a function of `hud_wallet_points` rather than of `wallet_left`.  A
 // ramp over the FLOAT reaches uncountably many colours and can only be
 // sampled; a ramp over the integer the digits already show reaches
-// exactly `WALLET_STARTING_POINTS + 1`, so `tests/19_p7` sweeps EVERY
+// exactly `wallet_budget + 1`, so `tests/19_p7` sweeps EVERY
 // ONE of them against the palette, the entity table and the clear
 // colour.  ⚠ It also means the colour can never disagree with the
 // number, because it IS the number.
@@ -195,27 +195,39 @@ pub const HUD_INK_BROKE: integer = 0xff0000;   // red
 //
 // ⚠ LINEAR in the wallet's remaining points, which is the one curve
 // that invents no number: the endpoints are the two colours above and
-// the span is `WALLET_STARTING_POINTS`, which the simulation already
-// owns.  ⚠⚠ **The threshold a designer would reach for — *the number
+// the span is the RUN's budget, which the simulation already owns.  ⚠⚠ **The threshold a designer would reach for — *the number
 // goes warm when you can no longer buy the cheapest thing* — needs
 // `order_cost_points` (100), which lives in `examples/numbers.json`
 // and in NO `.loft` constant**, because building is not built.
 // Introducing a simulation constant nobody spends, to colour a HUD, is
 // a constant that drifts; the trigger to add the band is BUILDING.
 //
+// ⚠⚠ **THE SPAN IS A PARAMETER SINCE `plans/31` N2, and it is the one
+// re-assertion site of `@FR-R-Opening` that nothing could see.**  It
+// read `WALLET_STARTING_POINTS` — the BASELINE — while clamping above
+// it, so a base opened with 250 carried would have sat at the full
+// colour from 450 points down to 200: **the ramp dead for more than
+// half the run**, on the one number the game shows.  ⚠ And the sweep
+// below it would have stayed green, because an exhaustive sweep of the
+// reachable colours sweeps *the span it was given* (`@M034`'s class —
+// *are the numbers I chose capable of disagreeing?*).
+//
+// ⚠ Passed rather than read from a `Wallet`, so the ramp stays a
+// function of two integers and the sweep in `tests/19_p7` stays an
+// exhaustive statement rather than a sample.
+//
 // Example: @DRY-074, @DRY-076
-pub fn hud_ink_for(points: integer) -> integer {
-    hif_t = floor(WALLET_STARTING_POINTS) as integer? ?? 0;
-    if hif_t <= 0 { return HUD_INK_FULL; }
+pub fn hud_ink_for(points: integer, span: integer) -> integer {
+    if span <= 0 { return HUD_INK_FULL; }
     hif_p = points;
     // ⚠ Clamped BOTH ways: `wallet_earn` exists, so a run really can
     // hold more than it started with, and a wallet above full is not a
     // colour past amber — it is amber.
     if hif_p < 0 { hif_p = 0; }
-    if hif_p > hif_t { hif_p = hif_t; }
-    rgb(hud_ink_channel(16, hif_p, hif_t),
-        hud_ink_channel(8,  hif_p, hif_t),
-        hud_ink_channel(0,  hif_p, hif_t))
+    if hif_p > span { hif_p = span; }
+    rgb(hud_ink_channel(16, hif_p, span),
+        hud_ink_channel(8,  hif_p, span),
+        hud_ink_channel(0,  hif_p, span))
 }
 
 // One channel of the ramp.
@@ -251,6 +263,10 @@ pub fn hud_wallet_points(w: const Wallet) -> integer {
 // same integer the digits show.
 //
 // Example: @DRY-076, @DRY-077
+// ⚠ The span is this RUN's budget and not the baseline — a wallet that
+// carried 200 in is full at 400, and `wallet_budget` is the one door
+// that knows it.  Enforces @FR-R-Opening.
 pub fn hud_wallet_ink(w: const Wallet) -> integer {
-    hud_ink_for(hud_wallet_points(w))
+    hud_ink_for(hud_wallet_points(w),
+                floor(wallet_budget(w)) as integer? ?? 0)
 }

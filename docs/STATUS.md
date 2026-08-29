@@ -438,3 +438,23 @@ version of the pair ran the authored 5 + 8 and read 118 against 118 with
 four extra besiegers plainly on the map.*  ⚠ `@X303`'s test is answered
 the right way: the routine makes behaviour more believable **and** moves
 the clock.  Gates **55 scripts / 974 measurements**.
+
+**`plans/31` N1-N4 — a base opens with what the last one carried**
+(2026-08-29, `@X347`, `@M086`).  `ROADMAP.md` item **7**: `plans/28` built
+`manifest_of` and `@M068` measured it, and for a plan and a half nothing read
+it.  `Wallet` gains a `carried`, `wallet_budget` is the one door the budget is
+asked at, `wallet_carrying` is the only place a ratio could ever be applied,
+and `scramble.loft::manifest_opens` is where the manifest's three columns are
+sorted into the one that crosses and the two that do not.  ⚠⚠ **The field is
+spelled as the CARRY and never as the BUDGET** — [loft#914] takes an omitted
+field's default silently, so a defaulted `budget` would open every base
+already FALLEN while a defaulted `carried` reproduces the game that shipped.
+⚠⚠ **Counting the re-assertion sites before writing any code found a fourth
+nothing could have seen**: `hud.loft::hud_ink_for` read the BASELINE for the
+wallet ramp's span while clamping above it, so a base opened with 200 carried
+would have sat at the full colour from 400 points down to 200 — the ramp dead
+for half the run on the one number the game shows — with `tests/19_p7`'s
+exhaustive colour sweep still green, because *it sweeps the span it is given*.
+⚠ Measured: **four beacons where the first base bought two** (`@M086`), so
+`@M065`'s landing exclusion moves with the wallet.  ⚠ N5's CLOCK half is open.
+Gates **1790 green / 145 files**, **56 scripts / 985 measurements**.

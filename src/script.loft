@@ -1333,6 +1333,7 @@ fn script_ints(tok: vector<text>, n: integer) -> vector<integer> {
 // `script_command`, which the complexity advice already flags at 214.
 fn is_author_cmd(name: text) -> boolean {
     name == "tower" || name == "object" || name == "spent"
+    || name == "carried"
     || name == "player" || name == "member" || name == "pending"
     || name == "cursor" || name == "flag" || name == "order"
     || name == "skill" || name == "tired" || name == "trap"
@@ -1543,6 +1544,33 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         sa_sp = (tok[1] ?? "") as float?;
         if sa_sp == null { return "spent: <points> must be a number"; }
         run.play.wave.wallet.spent = sa_sp;
+        return "";
+    }
+
+    // What the LAST sortie carried into this one (`plans/31` N3).
+    //
+    // ⚠⚠ **The one thing that crosses a sortie boundary, and therefore
+    // the one thing a second base has to be able to SAY.**  A scenario
+    // is a starting POSITION, and *this base opened rich* is part of a
+    // position in exactly the way *this wall is half built* is —
+    // `@FR-R-Opening`.
+    //
+    // ⚠ It writes the field rather than calling `wallet_carrying`,
+    // because the door builds a WHOLE wallet and a `.keys` file may set
+    // `carried` and `spent` in either order.  ⚠⚠ The door's refusal is
+    // reproduced here rather than skipped: a negative carry is not a
+    // thing a sortie can produce, so a file that writes one is a file
+    // that is wrong, and it is REFUSED rather than clamped — the
+    // authoring door and the run-time door disagreeing about a value is
+    // `@D009`'s shape, where `fixstep` clamps and this file must not.
+    if sa_cmd == "carried" {
+        if sa_argc != 1 { return "carried needs <points>"; }
+        sa_cy = (tok[1] ?? "") as float?;
+        if sa_cy == null { return "carried: <points> must be a number"; }
+        if sa_cy < 0.0 {
+            return "carried: a carry is what a sortie KEPT and cannot be negative ({sa_cy})";
+        }
+        run.play.wave.wallet.carried = sa_cy;
         return "";
     }
 
