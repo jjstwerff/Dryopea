@@ -556,14 +556,91 @@ member is literally *"a way to build certain parts of your base quicker"*, and i
 is the one find whose value **compounds** — it builds, it scouts, it repairs and
 it salvages for the remainder of the session.
 
+⚠⚠ **THAT LAST CLAIM IS THE ONE PHASE 1 REFUTED** (`@M092`, § What phase 1
+measured below): a crew member is the one find on this list whose value does
+**not** compound, because it is the one that is **CONSUMABLE** — it is killed in
+the gate it is sent to, in both the early and the late column.  ⚠ The three
+others on the table buy something that stays.
+
 ⚠ **And its recovery clock is what makes early-vs-late bite.**  A retrieved crew
 member rejoins after **exactly 90 ticks** ([`plans/15`](../plans/15-the-carry-model/README.md)
 § C2).  Found in the opening, that clock runs out before the first wave and costs
 nothing; found at wave four, it runs out into a base that is already falling —
-which is plan 16 W4's *one tick*, exactly.
+which is plan 16 W4's *one tick*, exactly.  ⚠⚠ **Measured, that is not what
+happens**: the 90 ticks are real and they are not the pressure — a body delivered
+at 181 stands up at 272 and is worth **more** than one delivered at 21, so the
+clock delays the reward without discounting it.
 
 ⚠ **This is the first content in dryopea whose value the existing corpus can
 already measure**, and § The order of work phase 1 is what would do it.
+
+### ⚠⚠ What phase 1 measured — a sortie PAYS, and the decay runs the OTHER WAY  `@M092`
+
+⚠⚠ **Run 2026-08-30, and it inverted the order this section predicts.**  One
+base, one ramping wave list, one stranded crew member authored at (14, 0) on the
+road to the spawn marker; the only difference between the three files is when the
+player picks them up:
+
+| | ticks | against the control |
+|---|---|---|
+| `a-find-nobody-fetched.keys` | **248** | — |
+| `a-find-fetched-on-the-way.keys` — two presses on the opening trip | **322** | **+74** |
+| `a-find-fetched-late.keys` — a trip of its own at wave three | **364** | **+116** |
+| *(control)* the same crew member GIVEN at tick zero — no wreck, no trip, no recovery | **327** | **+79** |
+
+⚠⚠ **The control is not a ceiling**: the late fetch beats the free version by
+**37 ticks**.  ***A body given early is a body spent early.***
+
+⚠⚠ **So the find is worth HALF AS MUCH AGAIN fetched late — and it buys that
+with HALF THE LIFE.**  Both bodies are killed in the gate they are sent to:
+
+| delivered | stands up | killed | alive | worth |
+|---|---|---|---|---|
+| tick 21 | tick 112 | 187–202 | **~80 ticks** | **+74** |
+| tick 181 | tick 272 | 302–317 | **~40 ticks** | **+116** |
+
+⚠⚠ ***What a body is worth is the PRESSURE it stands against, not the time it
+stands*** — about **0.9 ticks of base per tick alive** early against about
+**3** late, because the list ramps and the last waves are three times the first.
+A stranded crew member is a **BODY and not a structure**, and a body is *spent by
+being used*, so spending it early spends it on the cheap half of the base.
+***What decays is not the opportunity to use the find — it is the find
+itself.***
+
+⚠ **The section is not wrong about the pressure, it is wrong about the
+mechanism.**  Its own inventory names four accelerants and this measurement
+tested the one that is CONSUMABLE.  A find that buys something PERMANENT — points
+spent on a tower, a wall raised, a tower type unlocked — still decays exactly as
+written, because a structure standing early is a structure standing for the whole
+session.  ⚠⚠ **So the rule this section wanted is sharper than the one it
+states: *a find decays with lateness only to the extent that what it buys is
+PERMANENT*.**
+
+### ⚠⚠ And the late fetch's real price is a RISK, not a discount
+
+⚠ The fetch tick was swept at **+0, +20, +40, +60, +80, +100, +120 and +140**
+past the opening trip, and **four of the eight FAILED**: the player is killed
+carrying the wreck and `vehicle_respawn` clears the carry (`plans/26` L2 — *what
+reappears at the core is a repaired vehicle rather than the wreck that was
+destroyed*), so the find goes back on the ground and the trip bought nothing.
+⚠⚠ **Tick 141 works only because it is a gap between waves 2 and 3.**  So the
+late sortie's expected value falls because the trip stops being SURVIVABLE, not
+because the reward shrinks — which is `CLAUDE.md`'s design test in its strongest
+form: at wave three, *using it* costs the vehicle.
+
+### ⚠⚠ And the BUILD half is not measurable at all yet — which is an ORDERING finding
+
+⚠⚠ **`@X024`'s mechanism is *more hands, early, to BUILD*, and dryopea cannot
+price that today.**  § X2b's own discovery is why: `@X022`'s recon window is
+**free and unlimited** — the list does not start until the player pokes a spawn
+marker — so a second builder before wave 1 saves the player's *wall-clock* and
+not one game-tick.  A build accelerant has nothing to accelerate against.
+
+⚠⚠ **The pressure this section needs is the PERMIT's** (§ X2d, `@X025`,
+[`ROADMAP.md`](../plans/ROADMAP.md) item **8**).  ⚠ That does not reorder the
+roadmap — finds still pay, and by a lot — but it qualifies it: **the incentive to
+scout EARLY does not exist until something is running while the player builds**,
+so item 8 is what turns exploration from *worth doing* into *worth doing NOW*.
 
 ---
 
@@ -891,11 +968,16 @@ fifth would be the thing that convention exists to stop.
 When one closes, the phases are in this order.  ⚠ **The first two are not
 features**, and the third is the cheapest code in the design:
 
-1. **A scouting scenario, in `.keys`, with today's binary** — a stranded helper
-   at radius ~20, on the way to the first spawn marker.  Measures what a sortie
-   costs and what it is worth, against the base that does not take one, and
-   against the SAME find collected at wave four (§ X2c).  ⚠ It is the § X7 case
-   precisely because it needs no code.
+1. ~~**A scouting scenario, in `.keys`, with today's binary**~~ ✅ **DONE —
+   2026-08-30, `@M092`, and it needed no code exactly as § X7 said.**
+   `tests/scripts/a-find-nobody-fetched.keys` /
+   `a-find-fetched-on-the-way.keys` / `a-find-fetched-late.keys`: a stranded
+   crew member authored at (14, 0) on the road to the spawn marker, and the only
+   difference between the three is WHEN the player picks them up.
+   ⚠⚠ **248 never fetched, 322 taken in passing, 364 fetched at wave three**
+   — so a sortie PAYS (+74 and +116 on a base that lives 248), and this page's
+   own falsifier below does not fire.  ⚠⚠ **But the two are in the wrong ORDER
+   for § X2c**, and §§ X2c and X2d carry what that changed.
 2. **A LAYOUT scenario** — the same defences and the same wave list, arranged
    two ways: compact, and spread.  ⚠ **Nothing in the 28-scenario corpus varies
    the layout while holding the defences equal**, so § X0's racing line is a
@@ -913,12 +995,14 @@ features**, and the third is the cheapest code in the design:
 7. **Wave composition as a readout** (§ X8 layer 3) — free once 3 lands,
    diegetic, and the cheapest reward in the design.
 
-⚠ **Phase 1 is worth running before any of the rest is designed further**,
-because it can falsify the whole thing cheaply: if a sortie to radius 20 and back
-costs more base than the find is worth, then exploration as designed is a trap
-and the numbers — not the mechanics — are what need work.  ⚠ And it is the one
-measurement that would confirm § X2c's early-versus-late curve, which every
-incentive on this page rests on.
+⚠ **Phase 1 was worth running before any of the rest was designed further**,
+because it could falsify the whole thing cheaply: if a sortie to radius 20 and
+back cost more base than the find is worth, then exploration as designed is a
+trap and the numbers — not the mechanics — are what need work.  ⚠⚠ **It did
+not fire, and the curve it was supposed to confirm came out INVERTED** — see
+§ X2c § What phase 1 measured.  ⚠ *A phase whose stated purpose is to falsify
+the page it is on is the one to run first*, and this is the second thing on it
+that a measurement has moved.
 
 ---
 

@@ -499,4 +499,20 @@ decision***, so `@X317`'s *land in the overlap* cannot be felt.  The cause is
 § 15 step 6's **random direction** for the free starter tower, not the
 touchdown; aiming it at the nearest live spawn is one line and contradicts
 § 15 as written, so it is left OPEN as the owner's ruling.
-Gates **1831 green / 150 files**, **64 scripts / 1077 measurements**.
+⚠⚠ **AND A SORTIE IS PRICED — `EXPLORATION.md` § The order of work phase 1,
+2026-08-30, `@M092`, with NO CODE WRITTEN.**  `a-find-nobody-fetched.keys` /
+`a-find-fetched-on-the-way.keys` / `a-find-fetched-late.keys`: a stranded crew
+member authored at (14, 0) on the road to the spawn marker, and the only
+difference between the three is when the player picks them up — **248 never
+fetched, 322 taken in passing, 364 fetched at wave three**.  ⚠⚠ **So a
+sortie PAYS and `@X024` is inverted**: the find is worth more LATE, and it buys
+that with **half the life** — ~80 ticks alive for +74 delivered early against
+~40 for +116 delivered late, because a body is *spent by being used* and what it
+is worth is the **pressure it stands against**, not the time it stands.  ⚠⚠ **And four of eight swept fetch ticks FAILED** — the
+player is killed carrying the wreck and the carry is cleared — so the late
+fetch's price is a RISK rather than a discount.  ⚠ The BUILD half of `@X024`
+cannot be priced at all while `@X022`'s recon window is free and unlimited,
+which makes the permit (`ROADMAP.md` item 8) the missing INCENTIVE rather than
+a follow-on.
+
+Gates **1831 green / 150 files**, **67 scripts / 1151 measurements**.

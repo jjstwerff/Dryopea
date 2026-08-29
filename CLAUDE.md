@@ -251,6 +251,37 @@ contradicts § 15 as written**, so it is left OPEN as the owner's ruling.
 ⚠ [`plans/32`](plans/32-the-landing/README.md) is COMPLETE, and the map
 selection / planet view half of item 6 is still [`plans/04`](plans/04-map-library/README.md).
 
+⚠⚠ **AND A SORTIE IS PRICED, WITH NO CODE WRITTEN** (2026-08-30, `@M092`) —
+[`docs/EXPLORATION.md`](docs/EXPLORATION.md) § The order of work **phase 1**,
+which that page put first precisely because *it can falsify the whole thing
+cheaply*.  One base, one ramping wave list, one stranded crew member authored on
+the road to the spawn marker, and the ONLY difference between three files is
+when the player picks them up: **248 never fetched, 322 taken in passing, 364
+fetched at wave three**.  ⚠⚠ **So a sortie PAYS — +74 and +116 against a base
+that lives 248 — and the falsifier does not fire.**  ⚠⚠ **But the two are in
+the WRONG ORDER and that is the finding**: `@X024` says *a find's value collapses
+once you are busy*, and a stranded crew member is a **BODY rather than a
+structure**, so it is ***spent by being used*** — and it buys the extra with
+**HALF THE LIFE**: ~80 ticks alive for +74 delivered at tick 21, ~40 ticks alive
+for +116 delivered at 181, because ***what a body is worth is the PRESSURE it
+stands against and not the time it stands***.  ⚠ The sharper
+rule the design wanted: **a find decays with lateness only to the extent that
+what it buys is PERMANENT.**  ⚠⚠ **And four of eight swept fetch ticks
+FAILED** — the player is killed carrying the wreck and `vehicle_respawn` clears
+the carry — so the late fetch's price is a **RISK, not a discount**, and tick 141
+works only because it is a gap between waves.  ⚠⚠ **The BUILD half of `@X024`
+is UNMEASURABLE today**, because `@X022`'s recon window is free and unlimited: a
+second builder before wave 1 saves the player's wall-clock and not one game-tick.
+**That makes the permit ([`plans/ROADMAP.md`](plans/ROADMAP.md) item 8) the
+missing INCENTIVE rather than a follow-on** — 9 before 8 for the CONTENT, 8 for
+the reason to go NOW.  ⚠⚠ **And the control is NOT a ceiling**: the same crew
+member GIVEN at tick zero — no wreck, no trip, no recovery — reads **327**, so
+the late fetch beats the free version by 37 ticks.  ***A body given early is a
+body spent early.***  ⚠ The generic control came FIRST and condemned a base: a
+ONE-front version read the same wallet to the decimal with the find, without it,
+and with a second crew member from tick zero (`@M020`'s saturation, new
+subject).
+
 ⚠⚠ **AND THE CREW WORK ON THEIR OWN** ([`plans/29`](plans/29-the-crews-own-work/README.md),
 complete 2026-08-28) — a crew member nobody has told anything takes the
 nearest of four jobs **inside their own senses** (3 hexes untrained), and
@@ -276,7 +307,7 @@ critical path is **4, the SCRAMBLE**.
 | gate | command | today |
 |---|---|---|
 | tests | `scripts/test.sh` | **1831 green**, ~320 s on a busy box (592 s beside another suite, 753 s, 775 s and 1252 s on 2026-08-29 — one of them a `graphics` cdylib rebuild), 150 files |
-| scenarios | `scripts/validate.sh` | **64 scripts, 1077 measurements**, ~20 s |
+| scenarios | `scripts/validate.sh` | **67 scripts, 1151 measurements**, ~20 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
 | ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **438 defined, 434 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
 | ⚠⚠ formal rules | `scripts/rules.sh` — inside `test.sh` | **48 defined, 29 ENFORCED in 155 code sites** (`@X327`).  ⚠⚠ **The `M-*` family went 6 covered → 10 by EVALUATION, and 2 of 6 would have been MIS-CITED** — `@FR-M-Waterline` had TWO implementations (`hex_ground` and `hex_surface_index` restated the threshold line for line, and the second one SAID SO in a comment), and `@FR-M-Besiege` is worded in `can_stand` + `can_climb` where `enemy_target` asks `can_step`.  ⚠ `@FR-M-One-AI` is **not citable at a site at all** — *no second mover exists* is a claim about ABSENCE and wants `@X333`'s `src/` sweep test.  ⚠⚠ **`--review` cannot answer this question**: it reports only rules with MORE THAN ONE site, and an uncovered rule has none.  ⚠⚠ **This read 49 until 2026-08-29 and the extra one was a GHOST**: `docs/FORMAL.md`'s worked example showing *where a rule is DEFINED* is a fenced line at exactly two spaces, so **the document teaching the registry was silently adding to it** — and the phantom RESOLVED, so the gate could never go red.  ⚠ `<!--norule-->` existed for the CITATION half of that hazard and the DEFINITION half never got it.  ⚠⚠ **And the fix produced its own false positive immediately**: a file is classified by its EXTENSION, so the checker's own `.sh` comment naming the rule counted as an ENFORCING site — ***prose about a rule that lives outside `docs/` reads as enforcement***.  ⚠⚠ **`plans/32` moved it by FOUR while defining THREE**, and the fourth is the interesting one: `@FR-W-Position-Hash` was a WORLDGEN rule with no code anywhere, and the LANDING gave it its first — *a rule earns code from whichever plan first needs it, not from the plan that wrote it*.  ⚠⚠ **And the gate caught a citation broken by a LINE WRAP** — a rule name hyphenated across two lines of a doc reads as a dangling tag naming a rule that does not exist, which is `@X325`'s whole point one family over.  ⚠ **Never let a `@FR-`/`@X`/`@M` tag straddle a line break**; reflow the line instead.  ⚠ `plans/31` added `@FR-R-Carry-Once` and `@FR-R-Opening` and gave both code the same day, which is the order `@X328` asks for.  ⚠ It moved at `plans/30` R5 because `src/poi.loft` gave `@FR-E-Poi-Owns` and `@FR-E-Place-State` their first code at all — never because citations were sprinkled (`@X328`).  ⚠⚠ **This read 89 until 2026-08-29 and the tree measured 93 before R7a touched it** — the number aged against a tree that moved, which is `@M044`'s class one instrument over: **re-measure before quoting a delta**.  R7a's own contribution is **three**.  ⚠ Resolution GATES; coverage only REPORTS.  ⚠⚠ A doc reference is **not** an enforcing site (`@X330`) |
@@ -1202,7 +1233,9 @@ names; most of them exist because somebody did it without reading.
 | Goal | Start here |
 |---|---|
 | Design EXPLORATION, or judge a scouting idea | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) — ⚠ not a new pillar; the first scenario is a `.keys` file |
-| Ask why a find has to be found EARLY | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X2c |
+| Ask why a find has to be found EARLY | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X2c — ⚠⚠ **MEASURED and INVERTED** (`@M092`): a stranded crew member is worth **+74 taken in passing and +116 fetched at wave three**, because a BODY is *spent by being used*.  ⚠ The rule that survives is **a find decays with lateness only to the extent that what it buys is PERMANENT** |
+| Judge whether a SORTIE is worth taking, or price exploration at all | `tests/scripts/a-find-nobody-fetched.keys` + its two partners (`@M092`) — ⚠⚠ **248 / 322 / 364**, and `EXPLORATION.md`'s own falsifier does not fire.  ⚠ **Four of eight swept fetch ticks FAILED**: the player is killed carrying the wreck and `vehicle_respawn` clears the carry, so a late fetch is a RISK rather than a discount |
+| Ask why a BUILD accelerant cannot be priced, or propose one | ⚠⚠ **`@X022`'s recon window is FREE AND UNLIMITED** (`@M092`) — the list does not start until the player pokes, so more hands before wave 1 save the player's WALL-CLOCK and not one game-tick.  **The pressure `@X024` needs is the PERMIT's** ([`plans/ROADMAP.md`](plans/ROADMAP.md) item 8) |
 | Ask what CLOCKS a run, or why the player must be efficient | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X2d — the permit.  ⚠⚠ **How the player TRACKS it is measured and still the owner's to rule** (`@X287`): the battleships cannot be the clock, because the default frame has **no sky** (`@M064`) |
 | Ask how the player learns the PERMIT window, or what the military say | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X0b |
 | Ask what a new player's FIRST FIFTEEN MINUTES are | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X0b — ⚠ a TEST, not a work queue |

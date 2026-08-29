@@ -1,0 +1,233 @@
+# a-find-fetched-late — phase 1's LATE column, and the one that
+# INVERTS the prediction.
+#
+# `a-find-nobody-fetched.keys` with a trip of its own bolted on at tick
+# 141 — out to the wreck, back to the core, deliver — where
+# `a-find-fetched-on-the-way.keys` takes the same wreck in passing at
+# tick 8 for nothing.
+#
+#   nobody fetched     248 ticks
+#   on the way         322 ticks       +74
+#   this file          364 ticks       +116
+#
+# ⚠⚠ **`@X024` PREDICTED THE OPPOSITE** — *a find is a build accelerant
+# and its value collapses once you are busy* — and on this base the late
+# fetch is worth **half as much again** as the early one.
+#
+# ⚠⚠ **AND IT BUYS THAT WITH HALF THE LIFE**, which is the mechanism
+# rather than the reading.  Both bodies are killed in the gate they are
+# sent to:
+#
+#     delivered   stands up   killed        ALIVE     worth
+#     tick 21     tick 112    187-202       ~80 tk    +74
+#     tick 181    tick 272    302-317       ~40 tk    +116
+#
+# ⚠⚠ ***So what a body is worth is the PRESSURE it stands against and
+# not the time it stands*** — about 0.9 ticks of base per tick alive
+# early, and about 3 late, because the list ramps and the last waves are
+# three times the first.  A find that is a BODY is spent by being used,
+# so spending it early spends it on the cheap half of the base.
+#
+# ⚠⚠ **So the decay `@X024` describes is real but it is not a CLOCK, it
+# is a MORTALITY** — what decays is not the opportunity to use the find,
+# it is the find itself, and a ramping wave list makes the last hour of
+# a body worth more than its first.  ⚠ `@M092` is where that is written
+# down against `@X024` rather than over it: the design's claim is about
+# a find that ACCELERATES A BUILD, and dryopea cannot measure one of
+# those yet — see § The recon window below.
+#
+# ── ⚠⚠ AND THE LATE SORTIE OFTEN DOES NOT COME HOME ─────────────
+#
+# The fetch tick was swept at +0, +20, +40, +60, +80, +100, +120 and
+# +140 past the opening trip.  **Four of the eight FAILED** — at +60,
+# +80, +100 and +140 the player is killed carrying the wreck, and
+# `vehicle_respawn` clears the carry (`plans/26` L2: *what reappears at
+# the core is a repaired vehicle rather than the wreck that was
+# destroyed*), so the find goes back on the ground and the trip bought
+# nothing at all.  Tick 141 is a GAP between waves 2 and 3, and it is
+# one of the four that works.
+#
+# ⚠ **That is the real late-fetch price, and it is a RISK rather than a
+# discount**: the expected value falls because the trip stops being
+# survivable, not because the reward shrinks.  ⚠ It is also the
+# strongest form of `CLAUDE.md`'s design test — *does this put something
+# in the player's hands at a moment when using it costs them
+# something?* — because at wave three the cost is the vehicle.
+#
+# ── ⚠⚠ § The recon window, and why the BUILD half is unmeasurable ──
+#
+# `@X024`'s mechanism is *more hands for the whole session*, and the
+# thing hands do early is BUILD.  dryopea cannot price that today:
+# `@X022`'s recon window is FREE AND UNLIMITED — the list does not start
+# until the player pokes — so a second builder before wave 1 saves the
+# player's wall-clock and not one game-tick.  ⚠⚠ **The pressure `@X024`
+# needs is the PERMIT's** (`@X025`, `ROADMAP.md` item 8), which is
+# `EXPLORATION.md` § X2d's whole subject.  So phase 1's third finding is
+# an ORDERING one: the incentive to scout EARLY does not exist until
+# something is running while the player builds.
+
+echo a find fetched late: a trip of its own at wave three, and worth MORE
+
+do toggle_mode
+
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+# Two towers, both EAST of the core, so the base is not mirror-symmetric
+# and nobody is tempted to read it as one — `plans/14` H2 measured a
+# 99-tick artefact on a map that looked mirrored, and `q -> -q` is not a
+# symmetry of an odd-r lattice.
+do cycle_kind
+click 1 0
+click 1 2
+marker 1 0 tower
+marker 1 2 tower
+
+# ── ⚠ TWO spawn markers, and that is the load-bearing choice ────
+#
+# `plans/14` H2 measured a second crew member standing beside the first
+# at worth **NOTHING** — 214 ticks against 214 — and the same person on
+# the other front at +28.  ⚠⚠ **A crew is COVERAGE and not
+# throughput**, so a ONE-front base would read the same in all three
+# columns for a reason that has nothing to do with WHEN the find was
+# collected.  That is `CLAUDE.md` § Testing something that moves' *a
+# gate whose reading is already saturated cannot see what you built*,
+# and it was caught here BEFORE the pair was written: a one-front
+# version of this base read the same wallet to the decimal with the
+# find, without it, and with a second crew member from tick zero.
+do cycle_kind
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 18 0
+marker 18 0 spawn 3
+do rotate
+do rotate
+do rotate
+click -18 0
+marker -18 0 spawn 0
+
+count markers 5 5
+do toggle_mode
+
+# ⚠ The ground reaches (14, 0) and past it, because an unpainted hex IS
+# sea and the find has to be stood on.
+palette 5
+drag -22 -2 22 -2
+drag -22 -1 22 -1
+drag -22 0 22 0
+drag -22 1 22 1
+drag -22 2 22 2
+count painted 225 225
+
+# A wall on each front with a GATE on row 0.  ⚠ The gate is not
+# decoration: `plans/12` B7 measured a sealed wall at nearly double the
+# clock and one with a gap in it at NOTHING, so a body standing in the
+# gap is the whole of the front — and it is also the only way the
+# player gets out, because a sealed base locks the player in as surely
+# as it locks the crew out (`plans/13` V2).
+palette 9
+click 6 -2
+click 6 -1
+click 6 1
+click 6 2
+click -6 -2
+click -6 -1
+click -6 1
+click -6 2
+kind 6 0 grass
+kind 6 1 wall
+kind -6 0 grass
+kind -6 1 wall
+
+# The crew this base starts with, holding the EAST gate — the one the
+# waves reach first.  The WEST gate has nobody, and that is the hole the
+# find is fetched to fill.
+crew 6 0
+send 0 6 0
+helper 0 6 0
+
+# ── ⚠⚠ THE FIND — a crew member who is already down ─────────────
+#
+# `DESIGN.md` § 9's stranded helper, AUTHORED rather than played: a
+# roster slot that is not standing, and their wreck lying on the hex
+# they fell on, four hexes short of the spawn marker the player has to
+# poke.  ⚠ Every mechanic this needs shipped in `plans/15` —
+# `cargo_spawn`, `wave_take`, `wave_drop`, `helper_begin_recovery` —
+# which is `EXPLORATION.md` § X7's whole point: **the first exploration
+# scenario in dryopea is a `.keys` file, not a feature.**
+crew 14 0
+send 1 14 0
+member 1 off 0.0 0.0 0.0
+object 14 0 wreck 1 ground
+roster 1 1
+cargo 1 1
+
+park 0 0
+wallet 200.0 200.0
+
+# ── The list — RAMPING, and that is deliberate ──────────────────
+#
+# ⚠⚠ A flat list saturates: `@M020`'s siege front is the wall's WIDTH,
+# so past a certain size every column reads the same whatever is behind
+# the wall (`@M085`, `@M087`).  A ramp gives the base an early half it
+# survives and a late half it does not, which is what lets a body
+# arriving at DIFFERENT moments be worth different amounts.
+schedule 12 12 12 16 20 24 30 36
+waves 0 0
+count alive 0 0
+
+# ── The opening trip, IDENTICAL in all three files ──────────────
+#
+# Out along the road, past the find, on to the marker, and home.  ⚠ The
+# find is a leg of its own rather than a hex driven through, because a
+# vehicle covers TWO hexes a tick and SKIPS every odd one — driving
+# straight to (18, 0) never stands on the wreck and never stands on the
+# marker either.
+drive 14 0
+tick 8
+vehicle 14 0
+drive 18 0
+tick 3
+vehicle 18 0
+waves 1 1
+
+drive 0 0
+tick 10
+vehicle 0 0
+
+# ── Three waves in, and a gap to drive through ──────────────────
+#
+# ⚠ Wave 1 goes on the poke at tick 10, wave 2 at about 81 and wave 3 at
+# about 181.  This trip leaves at 141, in the gap between the second and
+# the third — which is the only reason it comes home.
+tick 120
+
+drive 14 0
+tick 20
+vehicle 14 0
+take player
+
+# ⚠ TWO on the ground now, because the crew member who was holding the
+# east gate has been wrecked in it — this base loses one while the
+# player is away fetching another.
+cargo 2 2
+
+drive 0 0
+tick 20
+vehicle 0 0
+drop player
+
+# ⚠ One left: the gate-holder's wreck, which nobody fetches in any of
+# the three files.  `cargo` counts what is still IN THE WORLD, so the
+# fall from two to one is the only line that says the delivery happened.
+cargo 1 1
+
+tick 91
+roster 1 1
+send 1 -6 0
+
+fall 900
+ticks 360 368
