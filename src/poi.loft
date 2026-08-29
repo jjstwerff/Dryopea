@@ -193,6 +193,32 @@ pub fn poi_kind_of(kind: integer) -> PoiKind {
     pko_all[pko_i] ?? poi_kind_row("none", ANCHOR_NONE)
 }
 
+// Every kind, as one comma-separated phrase — for a REFUSAL that names
+// what it would have accepted.
+//
+// ⚠ Derived and never written out, which is `enemy_class_names`'s rule:
+// a hand-kept list in an error message drifts, and a message naming a
+// kind the table has not got sends a reader looking for it.
+pub fn poi_kind_names() -> text {
+    pkm_out = "";
+    for pkm_row in poi_kinds() {
+        if pkm_out != "" { pkm_out = pkm_out + ", "; }
+        pkm_out = pkm_out + pkm_row.name;
+    }
+    pkm_out
+}
+
+// Does the table have a kind of this name at all?
+//
+// ⚠ `errand_role_known`'s twin, and for its reason: `poi_kind_named`
+// answers `POI_KIND_NONE` for a word it does not know, and `"none"` is
+// a legal word — so a caller refusing a typo would have to compare a
+// KIND, which is the comparison `@X333` forbids for the same reason it
+// forbids one on a role.
+pub fn poi_kind_known(name: text) -> boolean {
+    poi_kind_of(poi_kind_named(name)).name == name
+}
+
 // The kind a script or a measurement spells `name`, or `POI_KIND_NONE`.
 //
 // ⚠ **The writer and the reader are ONE** (`@D007` is what happens when
@@ -217,6 +243,78 @@ pub const POI_STATE_COLLAPSED: integer = 2;
 pub const POI_STATE_RAIDED:    integer = 3;
 pub const POI_STATE_REPAIRED:  integer = 4;
 pub const POI_STATE_COUNT:     integer = 5;
+
+// ⚠⚠ **THE STATE NAMES, and they are a TABLE for the same reason the
+// kinds are** (`@X333`): a `.keys` file names a state and never numbers
+// one, so a state added to the list above is spellable the day it
+// exists — and the writer and the reader come out of ONE row, which is
+// `@D007`'s rule rather than a convenience.
+//
+// ⚠ The order IS the constants' order and `poi_state_fault` is what
+// holds it to that; a row moved without its constant would rename two
+// states at once and nothing would throw.
+pub fn poi_states() -> vector<text> {
+    pss: vector<text> = [];
+    pss += ["working"];
+    pss += ["damaged"];
+    pss += ["collapsed"];
+    pss += ["raided"];
+    pss += ["repaired"];
+    pss
+}
+
+// What this state is called.  ⚠ The ONE lookup; nothing else may index
+// the table.
+pub fn poi_state_name(state: integer) -> text {
+    psn_all = poi_states();
+    psn_i   = state;
+    if psn_i < 0 || psn_i >= len(psn_all) { psn_i = POI_STATE_WORKING; }
+    psn_all[psn_i] ?? "working"
+}
+
+// Every state, as one comma-separated phrase — `poi_kind_names`'s twin,
+// and for its reason.
+pub fn poi_state_names() -> text {
+    psm_out = "";
+    for psm_n in poi_states() {
+        if psm_out != "" { psm_out = psm_out + ", "; }
+        psm_out = psm_out + psm_n;
+    }
+    psm_out
+}
+
+// The state a script spells `name`, or -1 — which a caller must refuse
+// rather than fall back on `WORKING`, because *a name nobody knows*
+// and *the place is fine* are opposite answers.
+pub fn poi_state_named(name: text) -> integer {
+    psd_i = 0;
+    for psd_n in poi_states() {
+        if psd_n == name { return psd_i; }
+        psd_i += 1;
+    }
+    0 - 1
+}
+
+// Why the state table is not the state list, or "".
+//
+// ⚠ A row and a constant that drifted apart rename two states at once
+// and nothing throws — the same silent shape `errand_table_fault`
+// refuses one file over.
+pub fn poi_state_fault() -> text {
+    if len(poi_states()) != POI_STATE_COUNT {
+        return "the state table has {len(poi_states())} rows and "
+               + "POI_STATE_COUNT is {POI_STATE_COUNT}";
+    }
+    if poi_state_named("working") != POI_STATE_WORKING {
+        return "'working' names state {poi_state_named("working")}, not "
+               + "POI_STATE_WORKING";
+    }
+    if poi_state_named("repaired") != POI_STATE_REPAIRED {
+        return "'repaired' names state {poi_state_named("repaired")}, not "
+               + "POI_STATE_REPAIRED";
+    }
+    ""
+}
 
 // ─── ⚠⚠ THE PLACE ITSELF ────────────────────────────────────────
 
@@ -381,6 +479,40 @@ pub struct PoiWorld {
 // No places at all — which is every scenario today.
 pub fn poi_world_new() -> PoiWorld {
     PoiWorld { pois: [], routes: [], mobs: [] }
+}
+
+// Put a route's whole population on the roster of RULES — one record per
+// mob, seated in order.
+//
+// ⚠⚠ **THE ONE DOOR THAT CREATES A POPULATION**, and it exists because
+// a `.keys` file says *how many* and never *which ones* (`plans/30`
+// R7a).  A route carries a `count`; the mobs it stands for are `count`
+// records with seats `0 … count-1` and nothing else, so writing them out
+// one by one would be a second statement of a fact the route already
+// makes — and two statements of one fact is the shape this file spends
+// its comments refusing.
+//
+// ⚠ **Seats are DENSE and start at 0**, which is what `poi_seat_offset`
+// assumes: a rota with a hole in it would space its mobs unevenly round
+// the round and nothing would say so.
+//
+// ⚠⚠ **AND A RECORD IS NEVER REMOVED, WHICH IS WHY THE EMITTER CAN
+// COUNT.**  `poi_retire` sets `gone` and `poi_step` skips it, exactly as
+// `CARGO_GONE` keeps its slot — so `len(w.mobs)` stays the sum of every
+// route's `count` for the whole sortie, and `emit.loft` can write the
+// routes and let the reader rebuild the records.
+//
+// Answers how many it enlisted.
+// Example: @DRY-208
+pub fn poi_enlist(w: PoiWorld, route: integer) -> integer {
+    pel_rt = poi_route_of(w, route);
+    if route < 0 || route >= len(w.routes) { return 0; }
+    pel_i = 0;
+    while pel_i < pel_rt.count {
+        w.mobs += [poi_mob(route, pel_i)];
+        pel_i += 1;
+    }
+    pel_i
 }
 
 // The route at `i`, or a route that runs nothing.  ⚠ The ONE lookup.

@@ -94,6 +94,11 @@ fn test_every_field_of_the_state_is_reachable() {
         + "remit 0 repair\n"
         // the cargo and the schedule
         + "object 7 0 wreck 0 player\n"
+        // the PLACES, and one body's routine (`plans/30` R7a)
+        + "poi face 12 4 damaged 3.0\n"
+        + "route 0 haul robot 2 20 6 12 12\n"
+        + "mob 1 1.5 done body\n"
+        + "routine 0 haul load 2.5 2 4 4 12 4 8 8\n"
         + "schedule 4 6\ncompose 1 2 miner 4 scout\n"
         + "pending 1 5.0 9.0 on\n");
     assert(tef_run.ok, "the script runs: {script_describe(tef_run)}");
@@ -180,6 +185,39 @@ fn test_every_field_of_the_state_is_reachable() {
 
     tef_oi = cargo_spawn(tef_want.cargo, CARGO_WRECK, 0, 7, 0);
     (tef_want.cargo.items[tef_oi] ?? CarryObject { }).owner = BLOCKER_PLAYER;
+
+    // ⚠⚠ **The PLACES** (`plans/30` R7a), and every one of the four
+    // things a `PoiWorld` holds is set to something a fresh one would
+    // not produce — the state is DAMAGED with a `since`, the route
+    // carries both of its anchors, and the second mob is late, done and
+    // materialised.  ⚠ A default on both sides compares equal and proves
+    // nothing, which is the trap this file names five times over.
+    tef_wpl = poi_at(POI_KIND_FACE, 12, 4);
+    poi_state_set(tef_wpl, POI_STATE_DAMAGED, clock_units_from_seconds(3.0));
+    tef_want.pois.pois += [tef_wpl];
+    tef_want.pois.routes += [poi_route(0, ROLE_HAUL,
+                                       as_u8(ENEMY_KIND_REGULAR),
+                                       Hex { q: 20, r: 6 },
+                                       Hex { q: 12, r: 12 }, 2)];
+    // ⚠ Through the ONE door, so the seats are the ones the script's
+    // reader hands out — a hand-built rota with different seats would be
+    // a comparison of two conventions rather than of two states.
+    poi_enlist(tef_want.pois, 0);
+    tef_wmb = tef_want.pois.mobs[1] ?? PoiMob { };
+    tef_wmb.slip = clock_units_from_seconds(1.5);
+    tef_wmb.gone = true;
+    tef_wmb.live = true;
+
+    // ⚠⚠ **And one BODY's routine** — the tripwire `compare.loft` laid
+    // at R1 and could not fire until this phase gave the emitter a verb.
+    tef_wer = errand_at(ROLE_HAUL, Hex { q: 4, r: 4 }, Hex { q: 12, r: 4 },
+                        Hex { q: 8, r: 8 });
+    tef_wer.carry = ERRAND_BAG_LOAD;
+    tef_wer.slip  = clock_units_from_seconds(2.5);
+    tef_wer.mob   = 2;
+    tef_we0 = tef_want.enemies[0] ?? Enemy { };
+    tef_we0.route  = tef_wer;
+    tef_we0.errand = true;
 
     // ⚠ A delay the DEFAULT would not produce.  The first version of
     // this test used `INTER_WAVE_DELAY_SECONDS` on both sides, which

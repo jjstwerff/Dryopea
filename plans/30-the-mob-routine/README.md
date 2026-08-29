@@ -9,8 +9,39 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
+**R7a COMPLETE 2026-08-29 — a PLACE is four verbs in a `.keys` file,
+and the corpus has one.**  R7b is startable.  ⚠ Gates: **1770 green over
+142 files** (+9, all this phase's), `validate.sh` **51 scripts / 932
+measurements** (+1 script, +12 — the first captured scenario with a POI
+in it) and `validate_gl.sh` **3 fixtures / 55 measurements**,
+unchanged.
+
+⚠⚠ **R7 IS SPLIT, for R6's reason and R5's and R6b's own words** — both
+closed saying *no `.keys` vocabulary, and R7's scenario pair is what
+needs one*.  R7a is the vocabulary; R7b is the distraction and the
+scenario pair it gates.
+
+⚠⚠ **`@X345` — `poi` / `route` / `mob` SAY WHAT A PLACE ISSUES AND
+`routine` SAYS WHAT ONE BODY HOLDS**, and neither is derivable from the
+other once a tick has run: `errand_arrive` flips the bag and
+`errand_step` adds to `slip` without asking any place.  ⚠ **A route
+ENLISTS its own population** — a file says *how many* and never *which
+ones* — which works only because a record is never removed.
+⚠⚠ **And `routine` is the first command in the vocabulary carrying THREE
+hexes**, so `KeysSchema` grew a third pair position.
+
+⚠⚠ **`@M083` — twelve mutations, twelve caught, and BOTH real defects
+came from somewhere else.**  `compare.loft`'s `errand` row, laid the same
+hour, went red on `a-road-that-passes-by`: **the flag and the role are
+two facts**, and an AMBIENT robot carries `errand: true` with
+`ROLE_NONE`.  And `tests/18_s2`'s corpus sweep went red on the first
+scenario with a POI: **`slip` is the one duration in the game that may be
+NEGATIVE** and the authoring door refuses one on purpose (`@D009`).
+⚠ Neither was on the mutation list, *because a mutation list is written
+by the person who wrote the code*.
+
 **R6b COMPLETE 2026-08-29 — the game materialises its own mobs, and two
-window sizes give one answer.**  R7 is startable.  ⚠ Gates: **1761 green
+window sizes give one answer.**  R7 was startable.  ⚠ Gates: **1761 green
 over 141 files** (+8, all this phase's), `validate.sh` **50 scripts / 920
 measurements** and `validate_gl.sh` **3 fixtures / 55 measurements**,
 both **UNCHANGED**.
@@ -237,7 +268,7 @@ code rather than imagined, and the pair shares its harness, its anchors
 and its walker.  ⚠ `@X333`: the role table is INDEXED and never
 compared, and `tests/30_r1_the_errand.loft` sweeps `src/` to say so —
 crawler has `role == 7` in eight places and no compiler can refuse one.
-⚠ `@X334`: a mob's bag is not `carry.loft`'s ledger, and R7 is where
+⚠ `@X334`: a mob's bag is not `carry.loft`'s ledger, and R7b is where
 that stops being true.
 
 ⚠ **R0 COMPLETE 2026-08-28 — all four probes answered, and two of them
@@ -400,8 +431,9 @@ behaviour and clocks, gated by scenarios and counts.
 | **R6a** — the three tiers, and what an un-materialised mob IS | M | `tests/30_r6a_the_tiers.loft` (8) — the round trip, and its blocked pair | ✅ **COMPLETE 2026-08-29** — `@X343`, `@M081` |
 | **R6b** — the materialiser in the TICK, and the `R` vs `2R` pair | M | `tests/30_r6b_the_materialiser.loft` (8) — ⚠ the `R` vs `2R` gate **and its differ-control** | ✅ **COMPLETE 2026-08-29** — `@X344`, `@M082` |
 | **Rc** — the CONFORMANCE gate | S | `tests/30_rc_the_conformance.loft` (6) | ✅ **COMPLETE 2026-08-28** — ⚠ and it needed a LIVENESS gate beside it (`@X337`) |
-| **R7** — distraction: the hauler and your heap | M | a scenario pair + the *merely seen* negative control | Blocked on R5 |
-| **R8** — what a routine is WORTH | S | a scenario pair, one token apart | Blocked on R7 |
+| **R7a** — the places, said in a `.keys` file | M | `tests/30_r7a_the_places_said.loft` (9) + `tests/scripts/a-place-that-sends-robots.keys` (12) | ✅ **COMPLETE 2026-08-29** — `@X345`, `@M083`, `@D009` |
+| **R7b** — distraction: the hauler and your heap | M | a scenario pair + the *merely seen* negative control | Blocked on R7a |
+| **R8** — what a routine is WORTH | S | a scenario pair, one token apart | Blocked on R7b |
 
 ---
 
@@ -610,12 +642,12 @@ refuse, and `crawler` has `role == 7` in eight places with its own file
 recording the bill.  ⚠ The gate carries its own control: it must catch a
 planted comparison and must **not** call `ROLE_KIND_COUNT` one.  ⚠ Four
 columns, because `errand_leg` reads four — *what draws a role off its
-route* is R7's and is deliberately not a column yet.
+route* is R7b's and is deliberately not a column yet.
 
 ⚠⚠ **`@X334` — a mob's bag is not `carry.loft`'s ledger**, and the
 difference is nameable: *that file conserves an object that is on the
 map and the player could pick up instead; a bag holds material that was
-never on the map.*  ⚠ **R7 is where that stops being true**, and the
+never on the map.*  ⚠ **R7b is where that stops being true**, and the
 obligation is written at the field rather than left to be discovered.
 
 ⚠⚠ **`@X332` cashed in**: `errand_destination` answers a `task.loft`
@@ -1483,7 +1515,94 @@ scenario has no places to lose.  ⚠⚠ When it does fire the answer is a
 verb and never a looser comparison: the writer and the reader are a PAIR
 (`@D007`), and R7's scenario pair is what needs them.
 
-## R7 — distraction: the hauler and your heap
+## R7a — the places, said in a `.keys` file
+
+⚠⚠ **R5 and R6b both closed on the same sentence** — *no `.keys`
+vocabulary, and R7's scenario pair is what needs one* — so this is the
+phase that pays that bill, and it is a phase rather than a preamble
+because it found two defects and grew the corpus.
+
+**What it built**
+
+| verb | says |
+|---|---|
+| `poi <kind> <q> <r> [state] [since]` | a PLACE, named by its kind and its state and never numbered |
+| `route <poi> <role> <class> <count> <aq> <ar> <bq> <br>` | a population — and it ENLISTS one |
+| `mob <i> <slip> <working\|done> <rule\|body>` | what a played tick changed about ONE record |
+| `routine <i> <role> <bag> <slip> <mob> <hq> <hr> <wq> <wr> <aq> <ar>` | what one BODY on the roster holds |
+
+⚠⚠ **A ROUTE ENLISTS ITS OWN POPULATION**, and that is the shape worth
+keeping: a file says *how many* and never *which ones*, because the mobs
+a route stands for are `count` records on dense seats `0 … count-1` and
+nothing else.  ⚠ It works only because a record is never REMOVED —
+`poi_retire` sets `gone` and keeps the slot, exactly as `CARGO_GONE`
+does — so the seats a reader rebuilds are the seats the writer had.
+
+⚠⚠ **AND `routine` IS THE FIRST COMMAND IN THE VOCABULARY CARRYING THREE
+HEXES.**  `KeysSchema` had two pair positions since plan 09; a converter
+that rewrote two of a routine's three anchors would leave a fixture in
+two lattices at once, which is the exact silent failure that table
+exists to refuse.
+
+### ⚠⚠ Both defects came from a TRIPWIRE, not from the sweep  `@M083`
+
+⚠ Twelve mutations, twelve caught — and **a green mutation sweep is a
+statement about the gate rather than about the tree**.  The three things
+that were actually wrong were found by gates laid before they could
+fire:
+
+- ⚠⚠ **The FLAG is a second fact.**  `Enemy.errand` is *this robot is on
+  an errand*; `route.role` is *which routine, if any*.  An AMBIENT robot
+  (BACKLOG B4) carries the flag with `ROLE_NONE`, so an emitter keyed on
+  the ROUTINE loses it on every traffic scenario in the corpus — and
+  `wave_cutoff` clears exactly that flag, so a capture without it is a
+  robot the bubble has already taken walking on.  `compare.loft` gained
+  the row this phase and it went red on `a-road-that-passes-by` within
+  one suite run.
+- ⚠⚠ **`slip` is the one duration that may be NEGATIVE** (`@D009`).
+  `poi_materialise` folds a mob's seat offset in as a negative lateness,
+  and `fixstep`'s authoring door refuses a negative on purpose.  A
+  captured sortie's whole ROTA came back stacked.  ⚠ And the half worth
+  copying is not the fix but the MESSAGE: `compare.loft`'s first version
+  named the role and the bag alone, so the failure read *"role 1 carry 0
+  vs role 1 carry 0"* — a difference that refuses to say where it is.
+- ⚠⚠ **And R1's own sweep caught the third**:
+  `test_no_role_is_ever_compared_anywhere_in_src` named both new verbs
+  refusing an unknown role with `== ROLE_NONE`, which is `@X333`
+  exactly.  ⚠ The cause is that **`errand_role_named` cannot say no** —
+  it answers the zero row for a word it does not know, and `none` is a
+  legal word, so *a typo* and *the role with no round* come back one
+  number.  `errand_role_known` is the answer (*the row I got back is
+  called what I asked for*), and `poi_kind_known` beside it, because the
+  kind table had the same hole.
+
+### ⚠ The scenario, and what it measures
+
+`tests/scripts/a-place-that-sends-robots.keys` — a working face 50 hexes
+east shipping to a depot 16 back along a road that never enters the
+bubble.  **Nothing in the file places a robot**: `poi_step` gives the two
+mobs a body the moment the player is near enough.
+
+⚠⚠ **And it is the first place in the corpus where `slip` is VISIBLE.**
+Two mobs half a period apart on an out-and-back round meet HEAD-ON twice
+a round; a mob that can only step BESIDE has not got closer, so the hex
+is spent and recorded.  Sixty-one ticks at 1.5 hex/s is 61 hexes and the
+closed form puts them at (37, 0) and (47, 0); they are at (42, −1) and
+(43, −1), off the middle row and still on the road — `@FR-E-Non-Increasing`
+bounding the deviation in SPACE while `@FR-E-Slip` pays for it in TIME.
+
+⚠ **The first draft's road was ONE hex wide** and the two haulers simply
+jammed — `CLAUDE.md` § Testing something that moves, measured again: a
+corridor has no *beside*, so the fixture would have gated a queue.
+
+### What R7a did NOT build
+
+⚠ **The distraction.**  Nothing here draws a mob off its route; R7b is
+that.  ⚠ **No `Role` column for what lures one** — the plan's own note at
+`@X333` says *what draws a role off its route is R7's and is deliberately
+not a column yet*, and it is still not one.
+
+## R7b — distraction: the hauler and your heap
 
 ⚠⚠ **The failure mode that eats the feature**, measured by `crawler`:
 without its *an incursion does not break formation for a hero it has
@@ -1565,7 +1684,7 @@ adds ticks of work and moves no clock has answered the second.
    (R0 probe 2 / `@X332`, cashed in by R1).  `errand_destination`
    answers a `task.loft` `Job`; `job_pick` is not called and must not be
    — *the crew CHOOSE what to do from where they stand; a mob is TOLD
-   where to go.*  ⚠ `Job.kind` stays `TASK_ANY` until R7 reads one.
+   where to go.*  ⚠ `Job.kind` stays `TASK_ANY` until R7b reads one.
 2. ⚠⚠ **Is a POI's population a POOL or a TAP?**  `ERRANDS.md` § Open
    questions 1 recommends a pool small enough to notice, on `@X303`'s
    grounds — *a pool the player can deplete and SEE thin is

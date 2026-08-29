@@ -244,6 +244,8 @@ use helper;
 use task;
 use occupancy;
 use spawn;
+use errand;
+use poi;
 use fixstep;
 use play;
 use graphics;
@@ -1335,6 +1337,8 @@ fn is_author_cmd(name: text) -> boolean {
     || name == "cursor" || name == "flag" || name == "order"
     || name == "skill" || name == "tired" || name == "trap"
     || name == "remit"
+    || name == "poi" || name == "route" || name == "mob"
+    || name == "routine"
 }
 
 // Read an on/off word.  -1 when it is neither, so a caller can refuse.
@@ -1741,6 +1745,215 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         sa_cn = (tok[1] ?? "") as integer?;
         if sa_cn == null { return "cursor: <n> must be an integer"; }
         run.play.wave.pick_cursor = sa_cn;
+        return "";
+    }
+
+    // ── ⚠⚠ THE PLACES, AND WHAT WALKS BETWEEN THEM (`plans/30` R7a) ──
+    //
+    // Three verbs and they are ORDERED, because two of them name an
+    // earlier one by INDEX: a `route` names a `poi`, and a `mob` names a
+    // `route`.  ⚠ `emit.loft` writes them in that order for the same
+    // reason and `poi_route_fault` is what refuses a file that does not.
+    //
+    // ⚠⚠ **A ROUTE ENLISTS ITS OWN POPULATION**, so a file says *how
+    // many* and never *which ones* — `poi_enlist` is the one door and
+    // the seats it hands out are what `poi_seat_offset` assumes.  ⚠ A
+    // `mob` line then OVERRIDES one record, and it is written only for a
+    // record that is not the default, exactly as `skill`, `tired` and
+    // `remit` are.
+
+    // A place.  ⚠ The kind and the state are NAMED and never numbered,
+    // which is `flag`'s rule and `@D007`'s: the writer and the reader
+    // come out of one row, so a kind added to `poi_kinds()` is spellable
+    // the day it exists.
+    if sa_cmd == "poi" {
+        if sa_argc < 3 || sa_argc > 5 {
+            return "poi needs <kind> <q> <r> [state] [since]";
+        }
+        sa_pkn = tok[1] ?? "";
+        if !poi_kind_known(sa_pkn) {
+            return "poi: unknown kind '{sa_pkn}' — {poi_kind_names()}";
+        }
+        sa_pk = poi_kind_named(sa_pkn);
+        sa_poq = (tok[2] ?? "") as integer?;
+        sa_por = (tok[3] ?? "") as integer?;
+        if sa_poq == null || sa_por == null {
+            return "poi: <q> and <r> must be integers";
+        }
+        sa_pst = POI_STATE_WORKING;
+        if sa_argc >= 4 {
+            sa_pst = poi_state_named(tok[4] ?? "");
+            if sa_pst < 0 {
+                return "poi: unknown state '{tok[4] ?? ""}' — {poi_state_names()}";
+            }
+        }
+        sa_psn = 0.0;
+        if sa_argc == 5 {
+            sa_psv = (tok[5] ?? "") as float?;
+            if sa_psv == null { return "poi: <since> must be a number"; }
+            sa_psn = sa_psv ?? 0.0;
+        }
+        sa_pplace = poi_at(sa_pk, sa_poq ?? 0, sa_por ?? 0);
+        // ⚠ Through the ONE door, so a state authored without its `since`
+        // cannot happen — `poi_state_set` writes both halves and the
+        // piecewise form has its `t0` (`@FR-E-Place-State`).
+        poi_state_set(sa_pplace, sa_pst, clock_units_from_seconds(sa_psn));
+        run.play.wave.pois.pois += [sa_pplace];
+        return "";
+    }
+
+    // A route, and the population on it.
+    //
+    // ⚠ **Refused BEFORE it is appended**, so a bad line leaves the
+    // world exactly as it found it: `poi_route_fault` is the same
+    // judgement `poi_world_fault` sweeps with, asked one route at a time
+    // — a route on a place that is not one, or whose role never visits
+    // that place, would be a population the bound does not contain.
+    if sa_cmd == "route" {
+        if sa_argc != 8 {
+            return "route needs <poi> <role> <class> <count> <aq> <ar> <bq> <br>";
+        }
+        sa_rp = (tok[1] ?? "") as integer?;
+        if sa_rp == null { return "route: <poi> must be an integer"; }
+        sa_rrn = tok[2] ?? "";
+        // ⚠ Asked of the ROW and never of the role id — the table is
+        // INDEXED and never compared (`@X333`), and
+        // `tests/30_r1_the_errand.loft` sweeps `src/` to say so.  ⚠ It
+        // caught the first draft of this very line.
+        if !errand_role_known(sa_rrn) {
+            return "route: unknown role '{sa_rrn}' — {errand_role_names()}";
+        }
+        sa_rr = errand_role_named(sa_rrn);
+        sa_rcv = enemy_class_of(tok[3] ?? "");
+        if sa_rcv == null {
+            return "route: unknown class '{tok[3] ?? ""}' — {enemy_class_names()}";
+        }
+        sa_rn = (tok[4] ?? "") as integer?;
+        if sa_rn == null { return "route: <count> must be an integer"; }
+        // ⚠ The four coordinates read one at a time and never through
+        // `script_ints`: two of this line's arguments are NAMES, and a
+        // sweep from token 1 would refuse every well-formed route.
+        sa_rv: vector<integer> = [];
+        for sa_rk in 5..=8 {
+            sa_rkv = (tok[sa_rk] ?? "") as integer?;
+            if sa_rkv == null {
+                return "route: <aq> <ar> <bq> <br> must be integers";
+            }
+            sa_rv += [sa_rkv ?? 0];
+        }
+        sa_rt = poi_route(sa_rp ?? 0, sa_rr,
+                          (sa_rcv ?? ENEMY_KIND_REGULAR) as u8? ?? 0,
+                          Hex { q: sa_rv[0] ?? 0, r: sa_rv[1] ?? 0 },
+                          Hex { q: sa_rv[2] ?? 0, r: sa_rv[3] ?? 0 },
+                          sa_rn ?? 0);
+        sa_rwhy = poi_route_fault(run.play.wave.pois, sa_rt);
+        if sa_rwhy != "" { return "route: {sa_rwhy}"; }
+        run.play.wave.pois.routes += [sa_rt];
+        poi_enlist(run.play.wave.pois, len(run.play.wave.pois.routes) - 1);
+        return "";
+    }
+
+    // One mob's record — everything a route cannot say.
+    //
+    // ⚠⚠ **`slip` is the only field that ACCUMULATES**, and it is why
+    // this verb exists at all: a captured situation whose mobs came back
+    // with `slip` of 0 would have **refunded every delay** and the
+    // routines would replay early (`@FR-E-Slip`, `plans/30` § Count the
+    // RE-ASSERTION SITES, sites 7 and 8).  ⚠ `gone` and `live` are
+    // states a played tick reaches and a fresh route never does.
+    if sa_cmd == "mob" {
+        if sa_argc != 4 {
+            return "mob needs <i> <slip> <working|done> <rule|body>";
+        }
+        sa_mbi = (tok[1] ?? "") as integer?;
+        if sa_mbi == null { return "mob: <i> must be an integer"; }
+        sa_mbn = sa_mbi ?? 0;
+        if sa_mbn < 0 || sa_mbn >= len(run.play.wave.pois.mobs) {
+            return "mob: no mob {sa_mbn} — this world has {len(run.play.wave.pois.mobs)}, enlisted by its routes";
+        }
+        sa_mbs = (tok[2] ?? "") as float?;
+        if sa_mbs == null { return "mob: <slip> must be a number"; }
+        sa_mbg = tok[3] ?? "";
+        if sa_mbg != "working" && sa_mbg != "done" {
+            return "mob: <working|done> for the round, not '{sa_mbg}'";
+        }
+        sa_mbl = tok[4] ?? "";
+        if sa_mbl != "rule" && sa_mbl != "body" {
+            return "mob: <rule|body> for a materialised one, not '{sa_mbl}'";
+        }
+        sa_mbr = run.play.wave.pois.mobs[sa_mbn] ?? PoiMob { };
+        sa_mbr.slip = slip_units(sa_mbs ?? 0.0);
+        sa_mbr.gone = sa_mbg == "done";
+        sa_mbr.live = sa_mbl == "body";
+        return "";
+    }
+
+    // ONE BODY's routine — every field of an `Errand`, on one line.
+    //
+    // ⚠⚠ **It is the fourth verb and it is not optional** (`plans/18`
+    // S1b's rule: *the vocabulary has to be able to SAY every field of a
+    // `WaveState`*).  A `poi` + `route` pair says what the PLACE issues;
+    // this says what one body on the roster is actually carrying and how
+    // late it is, and neither is derivable from the other once a tick
+    // has run — `errand_arrive` flips the bag and `errand_step` adds to
+    // `slip` without asking any place.
+    //
+    // ⚠ `<mob>` is the ONE-BASED back-pointer into `pois.mobs`, and 0 is
+    // *no place owns this body* — a routine a test authored by hand,
+    // which is every routine before R7.
+    if sa_cmd == "routine" {
+        if sa_argc != 11 {
+            return "routine needs <i> <role> <bag> <slip> <mob> <hq> <hr> <wq> <wr> <aq> <ar>";
+        }
+        sa_rti = (tok[1] ?? "") as integer?;
+        if sa_rti == null { return "routine: <i> must be an integer"; }
+        sa_rtn = sa_rti ?? 0;
+        if sa_rtn < 0 || sa_rtn >= len(run.play.wave.enemies) {
+            return "routine: no enemy {sa_rtn} — the roster is {len(run.play.wave.enemies)} long";
+        }
+        sa_rtrn = tok[2] ?? "";
+        if !errand_role_known(sa_rtrn) {
+            return "routine: unknown role '{sa_rtrn}' — {errand_role_names()}";
+        }
+        sa_rtr = errand_role_named(sa_rtrn);
+        sa_rtb = errand_bag_named(tok[3] ?? "");
+        if sa_rtb < 0 {
+            return "routine: unknown bag '{tok[3] ?? ""}' — {errand_bag_names()}";
+        }
+        sa_rts = (tok[4] ?? "") as float?;
+        if sa_rts == null { return "routine: <slip> must be a number"; }
+        sa_rtm = (tok[5] ?? "") as integer?;
+        if sa_rtm == null { return "routine: <mob> must be an integer"; }
+        // ⚠ The six coordinates one at a time, for `route`'s reason: the
+        // role and the bag are NAMES and a sweep from token 1 would
+        // refuse every well-formed line.
+        sa_rtv: vector<integer> = [];
+        for sa_rtk in 6..=11 {
+            sa_rtkv = (tok[sa_rtk] ?? "") as integer?;
+            if sa_rtkv == null {
+                return "routine: the three anchors must be integers";
+            }
+            sa_rtv += [sa_rtkv ?? 0];
+        }
+        sa_rte = run.play.wave.enemies[sa_rtn] ?? Enemy { };
+        // ⚠ Built from `errand_at` and never from a partial literal —
+        // [loft#914] would take an anchor's default silently and put the
+        // drop-off on the origin.
+        sa_rter = errand_at(sa_rtr,
+                            Hex { q: sa_rtv[0] ?? 0, r: sa_rtv[1] ?? 0 },
+                            Hex { q: sa_rtv[2] ?? 0, r: sa_rtv[3] ?? 0 },
+                            Hex { q: sa_rtv[4] ?? 0, r: sa_rtv[5] ?? 0 });
+        sa_rter.carry = sa_rtb as u8? ?? 0;
+        sa_rter.slip  = slip_units(sa_rts ?? 0.0);
+        sa_rter.mob   = sa_rtm ?? 0;
+        sa_rte.route  = sa_rter;
+        // ⚠⚠ **`errand` is the FLAG and the role is one of the COLUMNS**
+        // — two facts, and this line is what says the first.  A robot on
+        // AMBIENT traffic (BACKLOG B4) is flagged with `ROLE_NONE`, so a
+        // verb that inferred the flag from the role could not say what
+        // half the corpus already holds; `wave_cutoff` clears the flag
+        // and nothing else, so it has to be sayable on its own.
+        sa_rte.errand = true;
         return "";
     }
 

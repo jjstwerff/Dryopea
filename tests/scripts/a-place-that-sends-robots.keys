@@ -1,0 +1,110 @@
+# a-place-that-sends-robots — `plans/30` R7a, and it is the vocabulary
+# reaching the GAME.
+#
+# ⚠⚠ **A PLACE is three lines in a file, and the robots are the game's
+# own** (`@X344`): nothing here places a robot.  A `poi` and a `route`
+# say that a working face 50 hexes east ships to a depot 16 hexes back
+# along the road, and `poi_step` — which runs at the top of every tick,
+# before `wave_tick` — gives the two mobs on that round a body the
+# moment the PLAYER is near enough to see one.
+#
+# ⚠⚠ **The road is outside the bubble for its whole length**, which is
+# `a-road-that-passes-by`'s rule with a new subject: a route that entered
+# the 25 hexes round the core would have its mobs CUT OFF (`wave_cutoff`,
+# one way) and this file would be measuring a siege.  The nearest hex of
+# this round is 34 out.
+#
+# ⚠ The wallet is the control and it does not move: these robots are
+# going about their business and the base is not on their round.
+
+echo a place that sends robots: a POI in a file puts bodies on the map
+
+do toggle_mode
+
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+count markers 1 1
+do toggle_mode
+
+# A patch under the core, so the base is somewhere real.
+palette 5
+drag -2 -2 2 -2
+drag -2 -1 2 -1
+drag -2 0 2 0
+drag -2 1 2 1
+drag -2 2 2 2
+
+# The road the round is walked on — far enough east that no hex of it
+# is inside the bubble.
+#
+# ⚠⚠ **THREE ROWS WIDE, AND THAT IS NOT SCENERY** (`CLAUDE.md`
+# § Testing something that moves): on a ONE-hex road the two haulers
+# meet head-on with nowhere to step beside, block each other, and every
+# hex they lose goes to `slip` — measured, at **four hexes each over
+# sixty ticks**.  The file would then be gating a queue rather than a
+# round, and the positions would agree with no closed form at all.
+drag 32 -1 54 -1
+drag 32 0 54 0
+drag 32 1 54 1
+
+# ── The place, and the population attached to it ────────────────
+#
+# ⚠ The face is the POI; the depot is the anchor it is NOT, and which
+# of the two hexes lands where is decided by the KIND's row and the
+# ROLE's row together — never by their order on this line.
+poi face 50 0
+route 0 haul robot 2 34 0 0 0
+
+# The player, parked mid-road.  ⚠⚠ **The materialiser measures from the
+# PLAYER and never from the core** — a place nobody is near costs one
+# subtraction a tick, and this is the file where somebody IS near.
+park 42 0
+player on 0 0 0
+
+# ── Nothing exists until a tick asks ────────────────────────────
+#
+# ⚠ The roster is EMPTY before the first tick: the two mobs are rules,
+# and a rule is not a body.
+count alive 0 0
+wallet 200.0 200.0
+
+tick 1
+count alive 2 2
+
+# ⚠⚠ **THE SEATS ARE HALF A ROUND APART, and that is `poi_enlist`'s
+# doing** — a `route` line says *two*, and `poi_seat_offset` spaces them
+# evenly round a 32-hex round.  One left the depot a tick ago; the other
+# is a tick out of the face, sixteen hexes away.
+enemy 0 35 0
+enemy 1 49 0
+
+# ── And they walk their round ───────────────────────────────────
+#
+# ⚠⚠ **The base never notices.**  Sixty ticks of hauling, and the wallet
+# is untouched — the round does not pass the core and the bubble never
+# reaches it.  ⚠ `range` is the reading that says so: the nearest robot
+# stays out on the road.
+tick 60
+count alive 2 2
+wallet 200.0 200.0
+range 34 50
+
+# ⚠⚠ **AND THEY ARE BEHIND THEIR OWN RULE, WHICH IS `slip` ON A ROAD
+# YOU CAN WATCH** (`@FR-E-Slip`).  Sixty-one ticks at 1.5 hex/s is 61
+# hexes, and the closed form puts the two seats at **(37, 0) and
+# (47, 0)**.  They are not there: an out-and-back round with two mobs
+# half a period apart makes them meet HEAD-ON twice a round, and a mob
+# that can only step BESIDE has not got closer — so the hex is spent,
+# recorded, and never re-banked.
+#
+# ⚠ Both have stepped off the middle row and neither has left the road,
+# which is `@FR-E-Non-Increasing` doing its work: the deviation is
+# bounded in SPACE and paid for in TIME.  ⚠⚠ It is the first place in
+# the corpus where `slip` is VISIBLE, and that is worth a fixture on its
+# own — every other reading of it is a unit test.
+enemy 0 42 -1
+enemy 1 43 -1
+
+snap r7a_a_place_that_sends_robots

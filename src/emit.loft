@@ -54,6 +54,8 @@ use task;
 use carry;
 use waves;
 use spawn;
+use errand;
+use poi;
 use fixstep;
 
 // ─── The pieces ─────────────────────────────────────────────────
@@ -125,6 +127,34 @@ fn emit_enemies(state: const WaveState) -> text {
         ee_bk = bank_fraction(ee_e.bank, BANK_WHOLE);
         if ee_bk != 0.0 { ee_out = ee_out + "banked {ee_i} {ee_bk}\n"; }
         if !ee_e.alive { ee_out = ee_out + "dead {ee_i}\n"; }
+        // ⚠⚠ **The ROUTINE** (`plans/30` R7a), and it is the line
+        // `compare.loft`'s `errand_same` row has been waiting for since
+        // R1: nothing wrote a non-default routine, so a captured
+        // situation could lose one and no gate could see it.
+        //
+        // ⚠⚠ **THE FLAG IS THE CONDITION AND THE ROLE IS ONE OF THE
+        // COLUMNS**, and getting that round the wrong way was caught by
+        // `compare.loft`'s new `errand` row within one suite run: an
+        // AMBIENT robot (BACKLOG B4) is `errand: true` with `ROLE_NONE`,
+        // so a line written only for a robot with a ROUTINE loses the
+        // flag on every traffic scenario the corpus has — and
+        // `wave_cutoff` clears exactly that flag, so a capture without
+        // it is a robot the bubble has already taken walking on.
+        //
+        // ⚠ The role and the bag are NAMED and the `slip` is SECONDS,
+        // which is `banked`'s rule and `remit`'s: a `.keys` file is read
+        // by a person, and the round trip is exact because the door
+        // rounds.
+        if ee_e.errand {
+            ee_out = ee_out + "routine {ee_i} "
+                            + errand_role_of(ee_e.route.role).name + " "
+                            + errand_bag_name(ee_e.route.carry)
+                            + " {slip_seconds(ee_e.route.slip)}"
+                            + " {ee_e.route.mob}"
+                            + " {ee_e.route.home.q} {ee_e.route.home.r}"
+                            + " {ee_e.route.work.q} {ee_e.route.work.r}"
+                            + " {ee_e.route.alt.q} {ee_e.route.alt.r}\n";
+        }
         ee_i += 1;
     }
     ee_out
@@ -335,6 +365,54 @@ fn emit_schedule(state: const WaveState) -> text {
     es_out
 }
 
+// ⚠⚠ **THE PLACES, AND WHAT WALKS BETWEEN THEM** (`plans/30` R7a).
+//
+// Three lines in a fixed order, because two of them name an earlier one
+// by INDEX: a `route` names a `poi`, a `mob` names a `route`.  ⚠ It is
+// `emit_ground`'s rule with a new subject — the ORDER a `.keys` file is
+// written in is load-bearing, not cosmetic.
+//
+// ⚠⚠ **A ROUTE'S `count` REBUILDS ITS OWN MOBS**, so the records are not
+// written out one by one: `poi_enlist` seats `count` of them and a `mob`
+// line then says what a played tick changed.  That works only because a
+// record is never REMOVED — `poi_retire` sets `gone` and keeps the slot,
+// exactly as `CARGO_GONE` does — so the seats a reader rebuilds are the
+// seats the writer had.
+//
+// ⚠ Only the mobs that are NOT fresh get a line, which is the *what is
+// not neutral* rule every emitter here follows: a scenario that has just
+// authored its places emits none at all.
+// Example: @DRY-209
+fn emit_places(state: const WaveState) -> text {
+    ep_out = "";
+    for ep_p in state.pois.pois {
+        ep_out = ep_out + "poi " + poi_kind_of(ep_p.kind).name
+                        + " {ep_p.q} {ep_p.r} " + poi_state_name(ep_p.state)
+                        + " {clock_seconds_from_units(ep_p.since)}\n";
+    }
+    for ep_rt in state.pois.routes {
+        ep_out = ep_out + "route {ep_rt.poi} "
+                        + errand_role_of(ep_rt.role).name + " "
+                        + enemy_class_name(ep_rt.kind)
+                        + " {ep_rt.count}"
+                        + " {ep_rt.a.q} {ep_rt.a.r}"
+                        + " {ep_rt.b.q} {ep_rt.b.r}\n";
+    }
+    ep_i = 0;
+    for ep_m in state.pois.mobs {
+        if ep_m.slip != 0 || ep_m.gone || ep_m.live {
+            ep_out = ep_out + "mob {ep_i} "
+                            + "{slip_seconds(ep_m.slip)} "
+                            + (if ep_m.gone { "done" } else { "working" })
+                            + " "
+                            + (if ep_m.live { "body" } else { "rule" })
+                            + "\n";
+        }
+        ep_i += 1;
+    }
+    ep_out
+}
+
 // ─── The door ───────────────────────────────────────────────────
 //
 // ⚠ LAST, and every helper above it — loft#918 panics the parser on a
@@ -360,6 +438,7 @@ pub fn emit_keys(pal: vector<GroundType>, pw: const PaintedWorld,
     ek_out = ek_out + emit_layers(pal, state);
     ek_out = ek_out + emit_movers(state);
     ek_out = ek_out + emit_cargo(state);
+    ek_out = ek_out + emit_places(state);
     ek_out = ek_out + emit_schedule(state);
     ek_out
 }

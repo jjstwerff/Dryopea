@@ -68,7 +68,7 @@ comes back.  ⚠ The HUD is one number and `docs/DESIGN.md` § HUD says it shoul
 be — no wave counter, no health bar, no minimap; everything else is diegetic.
 ⚠⚠ **`MAP=` and `SCRIPT=` are what give it a base to be.**  `make play
 MAP=starter_01` opens one of the three AUTHORED maps in `maps/` (BACKLOG A2,
-2026-08-27); `SCRIPT=<name>` opens any of the 50 `.keys` files in
+2026-08-27); `SCRIPT=<name>` opens any of the 51 `.keys` files in
 `tests/scripts/` + `tests/gl/` as a live starting position, cut at its first
 `tick` (`@X263`).  Bare `make play` opens the empty default slot.
 ⚠⚠ **AND A ROBOT ON THE MAP CAN GO SOMEWHERE FOR A REASON**
@@ -123,7 +123,19 @@ claim that survives it.  ⚠⚠ **Its mutations found all four survivors in
 what the GATE could not see** (`@M082`), headed by ***a saving is not a
 behaviour***: deleting the cull changed no position and made no extra
 body, because the cull is work NOT DONE and only a COUNT can read it.
-⚠ R7 (distraction) is what is left.
+⚠⚠ **AND SINCE R7a A PLACE IS FOUR VERBS IN A `.keys` FILE** (`@X345`,
+`@M083`, `@D009`) — `poi` / `route` / `mob` say what a PLACE issues and
+`routine` says what one BODY holds, and neither is derivable from the
+other once a tick has run.  ⚠ **A route ENLISTS its own population**, so
+a file says *how many* and never *which ones*.  ⚠⚠ **All three defects came
+from a GATE laid earlier and none was on the mutation list** — the FLAG
+is a second fact (an ambient robot is `errand: true` with `ROLE_NONE`),
+**`slip` is the one duration that may be NEGATIVE** while the authoring
+door refuses one on purpose, and **R1's `src/` sweep caught both new
+verbs comparing a role** because `errand_role_named` cannot say no.  ⚠⚠ **And the corpus has a base the game
+populates itself**: `a-place-that-sends-robots` places no robot, and it
+is the first fixture in which `slip` is VISIBLE.
+⚠ R7b (distraction) is what is left.
 
 ⚠⚠ **AND THE CREW WORK ON THEIR OWN** ([`plans/29`](plans/29-the-crews-own-work/README.md),
 complete 2026-08-28) — a crew member nobody has told anything takes the
@@ -149,11 +161,11 @@ critical path is **4, the SCRAMBLE**.
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1761 green**, ~320 s on a busy box (592 s beside another suite, 753 s and 1252 s on 2026-08-29 — the second was a `graphics` cdylib rebuild), 141 files |
-| scenarios | `scripts/validate.sh` | **50 scripts, 920 measurements**, ~20 s |
+| tests | `scripts/test.sh` | **1770 green**, ~320 s on a busy box (592 s beside another suite, 753 s and 1252 s on 2026-08-29 — the second was a `graphics` cdylib rebuild), 142 files |
+| scenarios | `scripts/validate.sh` | **51 scripts, 932 measurements**, ~20 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
-| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **426 defined, 422 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
-| ⚠⚠ formal rules | `scripts/rules.sh` — inside `test.sh` | **44 defined, 18 ENFORCED in 89 code sites** (`@X327`).  ⚠ It moved at `plans/30` R5 because `src/poi.loft` gave `@FR-E-Poi-Owns` and `@FR-E-Place-State` their first code at all — never because citations were sprinkled (`@X328`).  ⚠ Resolution GATES; coverage only REPORTS.  ⚠⚠ A doc reference is **not** an enforcing site (`@X330`) |
+| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **428 defined, 424 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
+| ⚠⚠ formal rules | `scripts/rules.sh` — inside `test.sh` | **44 defined, 18 ENFORCED in 98 code sites** (`@X327`).  ⚠ It moved at `plans/30` R5 because `src/poi.loft` gave `@FR-E-Poi-Owns` and `@FR-E-Place-State` their first code at all — never because citations were sprinkled (`@X328`).  ⚠⚠ **This read 89 until 2026-08-29 and the tree measured 93 before R7a touched it** — the number aged against a tree that moved, which is `@M044`'s class one instrument over: **re-measure before quoting a delta**.  R7a's own contribution is **three**.  ⚠ Resolution GATES; coverage only REPORTS.  ⚠⚠ A doc reference is **not** an enforcing site (`@X330`) |
 
 ⚠ `scripts/test.sh` is the canonical runner — **never `loft test` directly**
 (§ Key commands says what it does that you would otherwise skip).
@@ -590,7 +602,7 @@ source of truth and the listing is a navigational summary of it.
 | **`fixstep`** (library) | ⚠⚠ **a PACKAGE, not in `src/`** — `TickClock`, `Bank`, `Timer`, the `approach` ease.  `loft api fixstep` is the surface |
 | `play_view.loft` | **what a live session LOOKS LIKE** — the composition `main.loft` calls in play mode |
 | `bindings.loft` | **the ONE key table** — keys → actions → `EditorInput`.  ⚠ Never add a `gl_key_pressed` |
-| `script.loft` | the `.keys` script runner and its whole vocabulary — commands name ACTIONS, never keys |
+| `script.loft` | the `.keys` script runner and its whole vocabulary — commands name ACTIONS, never keys.  ⚠⚠ Since `plans/30` R7a it can say a PLACE: `poi` / `route` / `mob` / `routine` (`@X345`), and **a route ENLISTS its own population** |
 | `scenario.loft` | **a `.keys` scenario opened as a live STARTING POSITION** — and the command line's `script=` |
 | `validate.loft` / `validate_main.loft` | the SECOND gate: sweep `tests/scripts/`, sum the measurements, report the FIRST failure |
 | `maps.loft` / `mapbuild_main.loft` | **a MAP, as repo content** — its two files, how one is BUILT from a `.keys` source, and `map_fault` |
@@ -598,10 +610,10 @@ source of truth and the listing is a navigational summary of it.
 | `measure.loft` | frame measurement — `classify_canvas` / `classify_world` → `FrameCounts` |
 | `golden.loft` | `assert_golden` — write `tests/actual/`, compare bytes to `tests/golden/` |
 | `compare.loft` | `state_diff` — are two runs in the same state? |
-| `emit.loft` | write a situation down as `.keys`, plus `crop_keys` |
+| `emit.loft` | write a situation down as `.keys`, plus `crop_keys`.  ⚠ The WRITER half of every `.keys` pair (`@D007`, `@D009`) |
 | `reduce.loft` | cut a fixture to what a behaviour needs, against a predicate |
 | `lattice.loft` | **THE lattice** — pointy-top odd-r offset, `Hex`, every `lat_*` verb.  Delegates to `hex_grid` |
-| `relabel.loft` / `convert.loft` | plan 09's old-label → new-label bijection, and the `.keys` converter |
+| `relabel.loft` / `convert.loft` | plan 09's old-label → new-label bijection, and the `.keys` converter.  ⚠ `keys_schemas` carries **three** pair positions since `plans/30` R7a — `routine` is the one command with three hexes |
 | `camera.loft` | `EditorCamera` + `camera_update`.  ⚠ pan NORTH is `r += 1` |
 | `render_camera.loft` | **the GAME's camera** — `RenderCamera`, the two presets, `lat_to_world`, and the EASE (`CameraRig`, `camera_boom_free`) |
 | `ground_mesh.loft` | **the GROUND, as triangles** — a six-triangle top fan per hex, one vertical quad per faced edge, one TILE per palette kind |
@@ -1158,7 +1170,9 @@ names; most of them exist because somebody did it without reading.
 | Author any part of a `WaveState` in a `.keys` file | `src/script.loft::script_author` |
 | Author ONE enemy in a `.keys` file | `place <q> <r> <class> [heading]`, plus `stand` / `banked` / `dead` / `hit` |
 | Author what a WAVE IS MADE OF | `schedule` then `compose` — ⚠⚠ **a wave is worth its FASTEST class**; `compose` after `schedule` |
-| Add a `.keys` verb that takes a hex | `src/script.loft` **and** a row in `convert.loft::keys_schemas` — ⚠ a missing schema row is silent |
+| Add a `.keys` verb that takes a hex | `src/script.loft` **and** a row in `convert.loft::keys_schemas` — ⚠ a missing schema row is silent.  ⚠⚠ A verb with THREE hexes is what grew the third pair position (`@X345`) |
+| Author a PLACE, a route or a mob in a `.keys` file | `src/script.loft` § THE PLACES + `@X345` — ⚠⚠ **`poi` / `route` / `mob` are the PLACE's and `routine` is the BODY's**, and neither is derivable from the other once a tick has run.  ⚠ A route says *how many* and `poi_enlist` seats them; a `mob` line is written only for a record a tick has changed.  ⚠⚠ **The FLAG is a second fact**: an ambient robot is `errand: true` with `ROLE_NONE`, so `routine` is emitted on the flag and never on the role |
+| Write a mob's `slip` down, or convert one to seconds | `src/errand.loft::slip_units` / `slip_seconds` (`@D009`) — ⚠⚠ **it is the one duration in the game that may be NEGATIVE** (`poi_materialise` folds a seat offset in as a negative lateness), and `fixstep`'s authoring door clamps a negative to zero on purpose |
 | Save something that outlives the process, or ask what a PLANET is | `src/persist.loft` — ⚠ read `@M052` before reaching for `store_persist_bind` |
 
 ### The simulation — movement, waves, combat, the clock

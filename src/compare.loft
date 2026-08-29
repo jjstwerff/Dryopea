@@ -114,23 +114,55 @@ fn enemies_diff(a: const WaveState, b: const WaveState) -> text {
         if bank_progress(ed_x.bank) != bank_progress(ed_y.bank) {
             return "enemies[{ed_i}].bank: {bank_progress(ed_x.bank)} vs {bank_progress(ed_y.bank)}";
         }
-        // ⚠⚠ **A TRIPWIRE, here before it can differ** — the same move
-        // the banked carry above records, and for the reason `plans/30`
-        // § Count the RE-ASSERTION SITES gives: this file is site 9 of
-        // twelve that could drop a mob's routine, and **every one of the
-        // twelve fails silently**.  Nothing writes a non-default routine
-        // today, so the line is free and cannot fire.
+        // ⚠⚠ **THE FLAG, and it is a SECOND FACT beside the routine.**
+        // `errand_role` reads `errand` before it reads `route.role`, so
+        // a body carrying a hauler's anchors with the flag off is a
+        // robot with a round nobody walks — and `errand_same` cannot see
+        // it, because the anchors agree.  ⚠ It is site 5's record:
+        // `wave_cutoff` clears the flag and nothing else, so a capture
+        // that lost it would resurrect a routine the bubble had already
+        // taken.
         //
-        // ⚠ **When it DOES fire, the answer is a `.keys` verb and never
-        // a looser comparison here.**  `emit_keys` has to write a
-        // routine down and `script.loft` has to read it back — the
-        // writer and the reader are a PAIR (`@D007`) — and a captured
-        // scenario losing a hauler's anchors on the round trip is
-        // exactly what this line exists to say out loud.
+        // ⚠ It went RED on `a-road-that-passes-by` the first time the
+        // suite ran with it, because an AMBIENT robot (BACKLOG B4)
+        // carries the flag with `ROLE_NONE` and `emit.loft` was writing
+        // a `routine` line only for a robot with a ROLE.
+        if ed_x.errand != ed_y.errand {
+            return "enemies[{ed_i}].errand: {ed_x.errand} vs {ed_y.errand}";
+        }
+        // ⚠⚠ **A TRIPWIRE LAID BEFORE IT COULD FIRE, and `plans/30` R7a
+        // is where it fired** — the same move the banked carry above
+        // records, and for the reason `plans/30` § Count the
+        // RE-ASSERTION SITES gives: this file is site 9 of twelve that
+        // could drop a mob's routine, and **every one of the twelve
+        // fails silently**.
+        //
+        // ⚠ **And the answer was a `.keys` verb rather than a looser
+        // comparison here**, which is what the line was written to
+        // demand: `emit.loft` writes a `routine` and `script.loft` reads
+        // it back, because the writer and the reader are a PAIR
+        // (`@D007`).
+        //
+        // ⚠ **Every field, not the two a reader would guess at.**  The
+        // first version named the role and the bag alone, and the first
+        // difference it ever caught was in NEITHER —
+        // `a-place-that-sends-robots` came back reading *role 1 carry 0
+        // vs role 1 carry 0*, a message that says a difference exists
+        // and refuses to say where.  It was a negative `slip` (`@D009`),
+        // and a comparison that names a field is worth the width.
         if !errand_same(ed_x.route, ed_y.route) {
-            return "enemies[{ed_i}].route: role {ed_x.route.role} carry "
-                   + "{ed_x.route.carry} vs role {ed_y.route.role} carry "
-                   + "{ed_y.route.carry}";
+            return "enemies[{ed_i}].route: role {ed_x.route.role} bag "
+                   + "{ed_x.route.carry} slip {ed_x.route.slip} mob "
+                   + "{ed_x.route.mob} home ({ed_x.route.home.q},"
+                   + "{ed_x.route.home.r}) work ({ed_x.route.work.q},"
+                   + "{ed_x.route.work.r}) alt ({ed_x.route.alt.q},"
+                   + "{ed_x.route.alt.r})"
+                   + " vs role {ed_y.route.role} bag "
+                   + "{ed_y.route.carry} slip {ed_y.route.slip} mob "
+                   + "{ed_y.route.mob} home ({ed_y.route.home.q},"
+                   + "{ed_y.route.home.r}) work ({ed_y.route.work.q},"
+                   + "{ed_y.route.work.r}) alt ({ed_y.route.alt.q},"
+                   + "{ed_y.route.alt.r})";
         }
         ed_i += 1;
     }
@@ -544,12 +576,13 @@ pub fn state_diff(a: const WaveState, b: const WaveState) -> text {
     // **every mob's `slip` is in here**, which is the whole of what an
     // un-materialised mob remembers (`@X343`).
     //
-    // ⚠ **A TRIPWIRE, here before it can differ**, the same move the
-    // banked carry and the routine above record: nothing writes a
-    // non-empty `PoiWorld` today, so the line is free and cannot fire.
-    // ⚠⚠ **When it DOES fire, the answer is a `.keys` verb and never a
-    // looser comparison** — the writer and the reader are a PAIR
-    // (`@D007`), and R7's scenario pair is what needs the vocabulary.
+    // ⚠ **A TRIPWIRE, laid before it could differ and LIVE since
+    // `plans/30` R7a** — the same move the banked carry and the routine
+    // above record.  ⚠⚠ **And the answer was a `.keys` verb rather than
+    // a looser comparison here**, which is what the line was written to
+    // demand: `poi` / `route` / `mob` write a `PoiWorld` down and
+    // `script.loft` reads it back, because the writer and the reader are
+    // a PAIR (`@D007`).
     sd_poi = pois_diff(a.pois, b.pois);
     if sd_poi != "" { return sd_poi; }
     // ⚠ The core's own switch (BACKLOG C3).  Two runs are not in the

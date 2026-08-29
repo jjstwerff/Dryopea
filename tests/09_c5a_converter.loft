@@ -53,7 +53,7 @@ fn test_every_real_script_round_trips() {
                "{tes_f} does not survive there and back");
         tes_n += 1;
     }
-    assert(tes_n == 50, "all fifty scripts were converted, got {tes_n}");
+    assert(tes_n == 51, "all fifty-one scripts were converted, got {tes_n}");
 }
 
 // A conversion that changed nothing would round-trip perfectly too.
@@ -303,6 +303,9 @@ fn test_the_schema_covers_the_vocabulary() {
         "park", "drive", "vehicle", "crew", "send", "helper",
         "shots", "top", "place", "tower", "object", "flag", "order",
         "trap", "armed",
+        // ⚠ `plans/30` R7a — the places, and the one command in the
+        // vocabulary that carries THREE hexes.
+        "poi", "route", "routine",
     ];
     tsc_plain: vector<text> = [
         "echo", "do", "hold", "step", "palette", "snap", "wave",
@@ -311,6 +314,11 @@ fn test_the_schema_covers_the_vocabulary() {
         "roster", "schedule", "compose", "waves", "stand", "dead",
         "spent", "player", "member", "pending", "cursor", "banked",
         "paint", "traffic", "skill", "tired", "jammer",
+        // ⚠ `mob <i> <slip> <working|done> <rule|body>` names a RECORD
+        // and never a hex — a schema row for it would rewrite the index
+        // as a coordinate, which is exactly the silent failure the
+        // pass-through half of this table exists to refuse.
+        "mob",
     ];
 
     tsc_n = 0;

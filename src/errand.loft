@@ -201,7 +201,7 @@ pub fn traffic_due(t: Traffic, elapsed: integer) -> integer {
 // load comes from off-map and leaves with the hauler, so there is no
 // object to conserve and no second copy to disagree with.
 //
-// ⚠⚠ **R7 is where that stops being true and the obligation is here so
+// ⚠⚠ **R7b is where that stops being true and the obligation is here so
 // it is not discovered there**: the moment a mob picks up *the player's
 // salvage heap* it is holding a thing the player could have had, and
 // that load must be a `carry.loft` object with the bag as the routine's
@@ -293,6 +293,53 @@ pub const ANCHOR_ALT:  integer = 3;
 pub const ERRAND_BAG_EMPTY:    u8 = 0;
 pub const ERRAND_BAG_LOAD:     u8 = 1;
 pub const ERRAND_BAG_HOMEWARD: u8 = 2;
+pub const ERRAND_BAG_COUNT: integer = 3;
+
+// ⚠⚠ **THE BAG'S NAMES, and they are a TABLE for `@X333`'s reason** —
+// a `.keys` file says `empty` and never `0`, so a fourth value of the
+// bag is spellable the day it exists and the WRITER and the READER come
+// out of one row (`@D007`).
+//
+// ⚠ The order IS the constants' order and `errand_table_fault` holds it
+// to that; a row moved without its constant would rename two bags at
+// once and nothing would throw.
+pub fn errand_bags() -> vector<text> {
+    ebs: vector<text> = [];
+    ebs += ["empty"];
+    ebs += ["load"];
+    ebs += ["homeward"];
+    ebs
+}
+
+// What is in this bag, as a word.  ⚠ The ONE lookup.
+pub fn errand_bag_name(bag: u8) -> text {
+    ebn_all = errand_bags();
+    ebn_i   = bag as integer;
+    if ebn_i < 0 || ebn_i >= len(ebn_all) { ebn_i = 0; }
+    ebn_all[ebn_i] ?? "empty"
+}
+
+// Every bag, as one comma-separated phrase — `errand_role_names`'s twin.
+pub fn errand_bag_names() -> text {
+    ebm_out = "";
+    for ebm_n in errand_bags() {
+        if ebm_out != "" { ebm_out = ebm_out + ", "; }
+        ebm_out = ebm_out + ebm_n;
+    }
+    ebm_out
+}
+
+// The bag a script spells `name`, or -1 — which a caller must REFUSE
+// rather than read as empty, because *a word nobody knows* and *this
+// mob is carrying nothing* are opposite answers.
+pub fn errand_bag_named(name: text) -> integer {
+    ebd_i = 0;
+    for ebd_n in errand_bags() {
+        if ebd_n == name { return ebd_i; }
+        ebd_i += 1;
+    }
+    0 - 1
+}
 
 // How long a guard stands one leg of its post, in `fixstep` base units
 // — 10 s, which is 15 ticks at today's 2/3 s.
@@ -444,6 +491,37 @@ pub fn errand_role_of(role: integer) -> Role {
     ero_i   = role;
     if ero_i < 0 || ero_i >= len(ero_all) { ero_i = ROLE_NONE; }
     ero_all[ero_i] ?? errand_row("none", ANCHOR_NONE, ANCHOR_NONE, 0, 0)
+}
+
+// Every role, as one comma-separated phrase — for a REFUSAL that names
+// what it would have accepted.  ⚠ Derived and never written out, which
+// is `enemy_class_names`'s rule: a hand-kept list in an error message
+// drifts, and one naming a role the table has not got sends a reader
+// looking for it.
+pub fn errand_role_names() -> text {
+    ern2_out = "";
+    for ern2_row in errand_roles() {
+        if ern2_out != "" { ern2_out = ern2_out + ", "; }
+        ern2_out = ern2_out + ern2_row.name;
+    }
+    ern2_out
+}
+
+// Does the table have a role of this name at all?
+//
+// ⚠⚠ **IT EXISTS BECAUSE `errand_role_named` CANNOT SAY NO** (`plans/30`
+// R7a).  That function answers `ROLE_NONE` for a word it does not know
+// — and `"none"` is a legal word, so *a typo* and *the role with no
+// round* come back the same number.  A caller that wanted to refuse a
+// typo therefore reached for `== ROLE_NONE`, which is exactly the
+// comparison `@X333` forbids and which `tests/30_r1_the_errand.loft`
+// swept `src/` and CAUGHT.
+//
+// ⚠ So the question is asked of the ROW instead: a name comes out of the
+// row it names, so *the row I got back is called what I asked for* is
+// the whole test — and there is no role id anywhere in it.
+pub fn errand_role_known(name: text) -> boolean {
+    errand_role_of(errand_role_named(name)).name == name
 }
 
 // The role a script or a measurement spells `name`, or `ROLE_NONE`.
@@ -1349,7 +1427,45 @@ pub fn errand_table_fault() -> text {
         }
         etf_i += 1;
     }
+    // ⚠ The BAG's table, held to its constants for the same reason the
+    // roles are — a row and a constant that drifted apart rename two
+    // bags at once and nothing throws.
+    if len(errand_bags()) != ERRAND_BAG_COUNT {
+        return "the bag table has {len(errand_bags())} rows and "
+               + "ERRAND_BAG_COUNT is {ERRAND_BAG_COUNT}";
+    }
+    if errand_bag_named("empty") != (ERRAND_BAG_EMPTY as integer)
+       || errand_bag_named("homeward") != (ERRAND_BAG_HOMEWARD as integer) {
+        return "the bag names are out of step with their constants";
+    }
     ""
+}
+
+// Seconds to base units for a SIGNED span.
+//
+// ⚠⚠ **`slip` is the one duration in the game that goes NEGATIVE**, and
+// `fixstep`'s authoring door refuses one on purpose — a timer counting
+// backwards is the defect `clock_advance` exists to name.  ⚠ But
+// `poi_materialise` folds a mob's SEAT OFFSET into `slip` as a negative
+// lateness (`@X343`: *the one liberty this function takes with `slip`'s
+// meaning*), so a body seated part-way round its round carries one —
+// and a reader that clamped it to zero would put the whole rota back at
+// the same place on the round.
+//
+// ⚠ Found by `tests/18_s2`'s round trip on the very first scenario with
+// a POI in it: `slip -24000000 vs slip 0`, silent, and the mobs would
+// have replayed stacked.
+//
+// Example: @DRY-210
+pub fn slip_units(seconds: float) -> integer {
+    if seconds < 0.0 { return 0 - clock_units_from_seconds(0.0 - seconds); }
+    clock_units_from_seconds(seconds)
+}
+
+// The other half, so the writer and the reader are ONE rule.
+pub fn slip_seconds(units: integer) -> float {
+    if units < 0 { return 0.0 - clock_seconds_from_units(0 - units); }
+    clock_seconds_from_units(units)
 }
 
 // ─── ⚠⚠ THE MOVER — the ONE DOOR that writes a mob's position ───

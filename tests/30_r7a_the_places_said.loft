@@ -1,0 +1,399 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 30 phase R7a — a PLACE, said in a `.keys` file.
+//
+// R5 built the POI, R6 gave it the three tiers and the materialiser, and
+// both phases end with the same sentence: *no `.keys` vocabulary, and
+// R7's scenario pair is what needs one*.  This is that vocabulary.
+//
+// ── ⚠⚠ Four verbs, and they are a WRITER and a READER ───────────
+//
+// `poi`, `route` and `mob` say what a place issues; `routine` says what
+// one BODY on the roster is carrying.  Each is written by `emit.loft`
+// and read by `script.loft`, and **the pair is the point** (`@D007`):
+// a kind added to one and not the other is invisible until a scenario
+// produces it, which is how a dropped BEACON round-tripped as a WRECK.
+//
+// ⚠ `compare.loft` is the third leg and it had two tripwires laid here
+// before they could fire — `errand_same` since R1 and `pois_diff` since
+// R6b.  **One of them went red inside a single suite run** (§ The flag
+// is a second fact), which is what a tripwire is for.
+//
+// ── ⚠ What this file does NOT gate ──────────────────────────────
+//
+// The DISTRACTION is R7b.  Nothing here draws a mob off its route; this
+// is the phase that makes a scenario able to SAY there is a route at
+// all.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SHOTS:   text = "tests/actual";
+
+// A session with a core and a long strip of ground, and one source
+// played into it.
+//
+// ⚠ The strip is painted because a walking test must paint the ground
+// it walks on — an unpainted hex IS sea, and `cycle_build` refuses a leg
+// that does not connect.
+fn r7_play(src: text) -> ScriptRun {
+    rp_head = "do toggle_mode\ndo cycle_kind\nclick 0 0\n"
+            + "do toggle_mode\npalette 5\ndrag -2 0 24 0\n"
+            + "drag -2 4 24 4\ndrag -2 6 24 6\ndrag -2 12 24 12\n";
+    script_run(editor_state_new(PALETTE), rp_head + src, SHOTS)
+}
+
+// The same, but keeping the session so the WORLD can be emitted too.
+fn r7_session(src: text, s: EditorState) -> ScriptRun {
+    rs_head = "do toggle_mode\ndo cycle_kind\nclick 0 0\n"
+            + "do toggle_mode\npalette 5\ndrag -2 0 24 0\n"
+            + "drag -2 4 24 4\ndrag -2 6 24 6\ndrag -2 12 24 12\n";
+    script_run(s, rs_head + src, SHOTS)
+}
+
+// The three lines a place needs, as one source.
+fn r7_places(extra: text) -> text {
+    "poi face 12 4 damaged 3.0\n"
+    + "route 0 haul robot 3 20 6 12 12\n"
+    + extra
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The verbs
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ Every column of a `Poi` at a value a fresh one would NOT produce —
+// the state is DAMAGED and the `since` is not zero.  A default on both
+// sides compares equal and proves nothing, which is
+// `tests/18_s1b`'s lesson with a new subject.
+fn test_a_place_is_said_in_a_file() {
+    tap_r = r7_play("poi face 12 4 damaged 3.0\n");
+    assert(tap_r.ok, "the script runs: {script_describe(tap_r)}");
+    tap_w = tap_r.play.wave.pois;
+    assert(len(tap_w.pois) == 1, "one place: {len(tap_w.pois)}");
+    tap_p = poi_of(tap_w, 0);
+    assert(tap_p.kind == POI_KIND_FACE && tap_p.q == 12 && tap_p.r == 4
+           && tap_p.state == POI_STATE_DAMAGED
+           && tap_p.since == clock_units_from_seconds(3.0),
+           "kind {tap_p.kind} at ({tap_p.q},{tap_p.r}) state {tap_p.state} "
+           + "since {tap_p.since}");
+}
+
+// ⚠⚠ **A route says HOW MANY and never WHICH ONES** — `poi_enlist` is
+// the one door, and the seats it hands out are dense and start at 0,
+// which is exactly what `poi_seat_offset` assumes.  A rota with a hole
+// in it would space its mobs unevenly round the round and nothing would
+// say so.
+// @DRY-208 — a route says how many, and `poi_enlist` seats them
+fn test_a_route_enlists_its_own_population() {
+    tar_r = r7_play(r7_places(""));
+    assert(tar_r.ok, "the script runs: {script_describe(tar_r)}");
+    tar_w = tar_r.play.wave.pois;
+    assert(len(tar_w.routes) == 1, "one route: {len(tar_w.routes)}");
+    tar_rt = poi_route_of(tar_w, 0);
+    assert(tar_rt.poi == 0 && tar_rt.role == ROLE_HAUL
+           && (tar_rt.kind as integer) == ENEMY_KIND_REGULAR
+           && tar_rt.count == 3
+           && tar_rt.a.q == 20 && tar_rt.a.r == 6
+           && tar_rt.b.q == 12 && tar_rt.b.r == 12,
+           "route: poi {tar_rt.poi} role {tar_rt.role} count {tar_rt.count} "
+           + "a ({tar_rt.a.q},{tar_rt.a.r}) b ({tar_rt.b.q},{tar_rt.b.r})");
+
+    assert(len(tar_w.mobs) == 3, "three mobs enlisted: {len(tar_w.mobs)}");
+    tar_seats = 0;
+    tar_i = 0;
+    while tar_i < len(tar_w.mobs) {
+        tar_m = tar_w.mobs[tar_i];
+        if tar_m == null { break; }
+        if tar_m.route == 0 && tar_m.seat == tar_i && tar_m.slip == 0
+           && !tar_m.gone && !tar_m.live {
+            tar_seats += 1;
+        }
+        tar_i += 1;
+    }
+    assert(tar_seats == 3, "seats 0..2, fresh, on route 0: {tar_seats}");
+}
+
+// ⚠⚠ **`slip` is the only field that ACCUMULATES**, and it is why the
+// `mob` verb exists: a captured situation whose mobs came back at 0
+// would have **refunded every delay** and the routines would replay
+// early (`@FR-E-Slip`).  ⚠ And the line is written only for a record a
+// played tick has changed, which is the *what is not neutral* rule
+// every emitter in this repo follows.
+fn test_a_mob_line_says_what_a_tick_changed() {
+    tam_fresh = r7_play(r7_places(""));
+    assert(tam_fresh.ok, "the fresh script runs: {script_describe(tam_fresh)}");
+    tam_pal = load_palette(PALETTE);
+    tam_none = emit_keys(tam_pal, painted_empty(), marker_empty(),
+                         tam_fresh.play.wave, "fresh");
+    assert(tam_none.find("\nmob ") < 0,
+           "a fresh population emits no `mob` line");
+
+    tam_r = r7_play(r7_places("mob 1 1.5 done body\n"));
+    assert(tam_r.ok, "the script runs: {script_describe(tam_r)}");
+    tam_m = tam_r.play.wave.pois.mobs[1];
+    assert(tam_m != null, "there is a mob 1");
+    tam_ok = false;
+    if tam_m != null {
+        tam_ok = tam_m.slip == clock_units_from_seconds(1.5)
+                 && tam_m.gone && tam_m.live;
+    }
+    assert(tam_ok, "mob 1 is late, done and materialised");
+
+    tam_said = emit_keys(tam_pal, painted_empty(), marker_empty(),
+                         tam_r.play.wave, "played");
+    assert(tam_said.find("mob 1 1.5 done body") >= 0,
+           "the emitter writes it back: '{tam_said}'");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ THE GATE: a place and a body's routine survive the round trip
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠ **`tests/18_s2` sweeps the corpus and the corpus has no places**, so
+// the round trip that matters for this phase has to build one.  ⚠⚠ And
+// it carries its own vacuity control: a comparison blind to `pois` would
+// be green over an emitter that wrote nothing at all, so the last two
+// assertions CHANGE one field apiece and require the diff to see it
+// (`CLAUDE.md` § a gate that reads PERFECT is as suspect as one that
+// reads wrong).
+// @DRY-209 — a place and a body's routine, written down and read back
+fn test_a_place_and_a_routine_survive_the_round_trip() {
+    tap2_a = editor_state_new(PALETTE);
+    tap2_run = r7_session(
+        "place 6 4 robot 0\n"
+        + r7_places("mob 2 0.666666 working body\n")
+        + "routine 0 haul load 2.5 3 4 4 12 4 20 6\n", tap2_a);
+    assert(tap2_run.ok, "the script runs: {script_describe(tap2_run)}");
+
+    tap2_pal  = load_palette(PALETTE);
+    tap2_keys = emit_keys(tap2_pal, tap2_a.pw, tap2_a.mw,
+                          tap2_run.play.wave, "r7a");
+    tap2_b = editor_state_new(PALETTE);
+    tap2_back = script_run(tap2_b, tap2_keys, SHOTS);
+    assert(tap2_back.ok,
+           "the captured fixture replays: {script_describe(tap2_back)}");
+    assert(state_diff(tap2_run.play.wave, tap2_back.play.wave) == "",
+           "state survives: "
+           + "'{state_diff(tap2_run.play.wave, tap2_back.play.wave)}'");
+    assert(world_diff(tap2_a.pw, tap2_a.mw, tap2_b.pw, tap2_b.mw) == "",
+           "world survives: "
+           + "'{world_diff(tap2_a.pw, tap2_a.mw, tap2_b.pw, tap2_b.mw)}'");
+
+    // ⚠ The control, first half: the comparison can SEE a place.
+    poi_state_set(tap2_back.play.wave.pois.pois[0] ?? Poi { },
+                  POI_STATE_RAIDED, 0);
+    assert(state_diff(tap2_run.play.wave, tap2_back.play.wave) != "",
+           "a changed POI state is a difference the gate can see");
+
+    // ⚠ The control, second half: and it can see a body's ROUTINE.
+    tap2_e = tap2_back.play.wave.enemies[0] ?? Enemy { };
+    tap2_e.route.carry = ERRAND_BAG_EMPTY;
+    assert(state_diff(tap2_run.play.wave, tap2_back.play.wave) != "",
+           "a changed bag is a difference the gate can see");
+}
+
+// ⚠⚠ **THE FLAG IS A SECOND FACT, AND THE TRIPWIRE FOUND IT.**
+// `Enemy.errand` is *this robot is on an errand*; `route.role` is *which
+// routine, if any*.  An AMBIENT robot (BACKLOG B4) is flagged with
+// `ROLE_NONE`, so an emitter that wrote a line only for a robot with a
+// ROUTINE loses the flag on every traffic scenario in the corpus — and
+// `wave_cutoff` clears exactly that flag, so a capture without it is a
+// robot the bubble has already taken walking on.
+//
+// ⚠ It is not hypothetical: `compare.loft`'s new `errand` row went red
+// on `a-road-that-passes-by` the first time the suite ran with it.
+fn test_the_flag_survives_without_a_routine() {
+    ttf_run = r7_play("place 6 4 robot 0\n"
+                      + "routine 0 none empty 0.0 0 0 0 0 0 0 0\n");
+    assert(ttf_run.ok, "the script runs: {script_describe(ttf_run)}");
+    ttf_e = ttf_run.play.wave.enemies[0] ?? Enemy { };
+    assert(ttf_e.errand && errand_role(ttf_e) == ROLE_NONE,
+           "flagged, with no routine: errand {ttf_e.errand} "
+           + "role {errand_role(ttf_e)}");
+
+    ttf_pal  = load_palette(PALETTE);
+    ttf_keys = emit_keys(ttf_pal, painted_empty(), marker_empty(),
+                         ttf_run.play.wave, "ambient");
+    assert(ttf_keys.find("routine 0 none empty") >= 0,
+           "the emitter writes the flag down: '{ttf_keys}'");
+
+    // ⚠ The control: the comparison can see the flag on its own, with
+    // every anchor and the role identical on both sides.
+    ttf_want = wave_state_empty();
+    ttf_want.enemies += [Enemy { q: 6, r: 4,
+                                 kind: ENEMY_KIND_REGULAR as u8? ?? 0,
+                                 alive: true, errand: false }];
+    assert(state_diff(ttf_run.play.wave, ttf_want) != "",
+           "the flag alone is a difference the gate can see");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠ The refusals
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠⚠ **A route is refused BEFORE it is appended**, so a bad line leaves
+// the world exactly as it found it — `poi_route_fault` is the judgement
+// `poi_world_fault` sweeps with, asked one route at a time.
+//
+// ⚠ Each of these is a way a typo becomes a green lie: a population
+// attached to a place its role never visits would not be bounded by that
+// place, and the bound is the whole point of a POI (`@X342`).
+fn test_the_refusals_name_themselves() {
+    trn_cases: vector<text> = [
+        "poi hut 3 3\n",                          // no such kind
+        "poi face 3 3 wrecked\n",                 // no such state
+        "route 0 haul robot 2 1 1 2 2\n",         // no POI at all
+        "poi none 3 3\nroute 0 haul robot 2 1 1 2 2\n",   // not a place
+        "poi nest 3 3\nroute 0 haul robot 2 1 1 2 2\n",   // haul never goes home
+        "poi face 3 3\nroute 0 haul robot 0 1 1 2 2\n",   // nobody on it
+        "poi face 3 3\nroute 0 digger robot 2 1 1 2 2\n", // no such role
+        "poi face 3 3\nroute 0 haul robot 2 1 1 2 2\nmob 9 0 working rule\n",
+        "place 6 4 robot 0\nroutine 0 haul spilled 0.0 0 1 1 2 2 3 3\n",
+        "place 6 4 robot 0\nroutine 7 haul empty 0.0 0 1 1 2 2 3 3\n",
+    ];
+    trn_bad = 0;
+    for trn_c in trn_cases {
+        trn_r = r7_play(trn_c);
+        if !trn_r.ok { trn_bad += 1; }
+    }
+    assert(trn_bad == len(trn_cases),
+           "every one of them is refused: {trn_bad} of {len(trn_cases)}");
+
+    // ⚠⚠ **The control the refusals need**: the same shapes with the one
+    // wrong token corrected must PLAY.  A verb that refused everything
+    // would satisfy the sweep above and say nothing.
+    trn_ok = r7_play("place 6 4 robot 0\n"
+                     + "poi face 3 3\nroute 0 haul robot 2 1 1 2 2\n"
+                     + "mob 1 0 working rule\n"
+                     + "routine 0 haul empty 0.0 0 1 1 2 2 3 3\n");
+    assert(trn_ok.ok, "the corrected shapes play: {script_describe(trn_ok)}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The converter, and the tables
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠⚠ **THE THIRD PAIR IS NOT DECORATION.**  `routine` is the first
+// command in the vocabulary carrying three hexes, and a converter that
+// rewrote two of them would leave a fixture in two lattices at once —
+// which is exactly the silent failure `keys_schemas` exists to refuse.
+// ⚠ So the assertion is against `relabel_hex` itself rather than against
+// *something changed*: a superset of the right answer is not the right
+// answer.
+fn test_the_converter_moves_all_three_anchors() {
+    tcm_a = relabel_hex(Hex { q: 1, r: 1 });
+    tcm_b = relabel_hex(Hex { q: 3, r: 3 });
+    tcm_c = relabel_hex(Hex { q: 5, r: 5 });
+    tcm_got = convert_keys_line("routine 0 haul load 2.5 2 1 1 3 3 5 5", true);
+    assert(tcm_got.1, "the line is understood");
+    assert(tcm_got.0 == "routine 0 haul load 2.5 2 {tcm_a.q} {tcm_a.r} "
+                        + "{tcm_b.q} {tcm_b.r} {tcm_c.q} {tcm_c.r}",
+           "all three anchors move: '{tcm_got.0}'");
+
+    // ⚠ The control: the conversion has to be capable of MOVING these
+    // hexes at all.  A relabelling that happened to be the identity on
+    // the three chosen would make the assertion above vacuous.
+    assert(tcm_a.q != 1 || tcm_a.r != 1 || tcm_b.q != 3 || tcm_b.r != 3
+           || tcm_c.q != 5 || tcm_c.r != 5,
+           "the three test hexes are ones the relabelling moves");
+
+    // ⚠ And `mob` names a RECORD, never a hex — a schema row for it
+    // would rewrite the index as a coordinate.
+    tcm_mob = convert_keys_line("mob 3 1.5 done body", true);
+    assert(tcm_mob.0 == "mob 3 1.5 done body",
+           "`mob` passes through: '{tcm_mob.0}'");
+}
+
+// ⚠⚠ **A NAME COMES OUT OF THE ROW IT NAMES** (`@D007`), so the writer
+// and the reader cannot drift — and the two tables are held to their
+// constants, because a row moved without its constant would rename two
+// values at once and nothing would throw.
+fn test_the_name_tables_agree_with_their_constants() {
+    assert(poi_state_fault() == "", "the states: '{poi_state_fault()}'");
+    assert(errand_table_fault() == "",
+           "the roles and the bags: '{errand_table_fault()}'");
+
+    tnt_states = 0;
+    for tnt_s in poi_states() {
+        if poi_state_name(poi_state_named(tnt_s)) == tnt_s { tnt_states += 1; }
+    }
+    assert(tnt_states == POI_STATE_COUNT,
+           "every state round-trips: {tnt_states} of {POI_STATE_COUNT}");
+
+    tnt_bags = 0;
+    for tnt_b in errand_bags() {
+        tnt_i = errand_bag_named(tnt_b);
+        if errand_bag_name(tnt_i as u8? ?? 0) == tnt_b { tnt_bags += 1; }
+    }
+    assert(tnt_bags == ERRAND_BAG_COUNT,
+           "every bag round-trips: {tnt_bags} of {ERRAND_BAG_COUNT}");
+
+    // ⚠ And a word no row carries answers *refuse* rather than the first
+    // row — *a name nobody knows* and *the default* are opposite answers,
+    // and one value for both is a typo that plays.
+    assert(poi_state_named("wrecked") < 0 && errand_bag_named("spilled") < 0,
+           "an unknown word is refused, not defaulted");
+
+    // ⚠⚠ **AND THE REFUSAL NAMES WHAT IT WOULD HAVE ACCEPTED, FROM THE
+    // TABLE.**  A hand-kept list inside an error message is a second
+    // statement of the table that drifts from it — and a message naming
+    // a kind the engine has not got sends a reader looking for one.
+    // `enemy_class_names` is the precedent; these are its twins.
+    assert(poi_kind_names().find("heap") >= 0
+           && poi_state_names().find("collapsed") >= 0
+           && errand_role_names().find("harvest") >= 0
+           && errand_bag_names().find("homeward") >= 0,
+           "the refusals name the whole table: '{poi_kind_names()}' / "
+           + "'{poi_state_names()}' / '{errand_role_names()}' / "
+           + "'{errand_bag_names()}'");
+    assert(poi_kind_names().find("hut") < 0,
+           "and nothing else — the control");
+
+    // ⚠⚠ **`none` IS A LEGAL WORD, WHICH IS WHY *is it known?* CANNOT BE
+    // *is it NONE?*.**  `errand_role_named` and `poi_kind_named` both
+    // answer the zero row for a word they do not know, so a caller
+    // refusing a typo reached for `== ROLE_NONE` — which is exactly the
+    // comparison `@X333` forbids, and `tests/30_r1_the_errand.loft`
+    // swept `src/` and CAUGHT the first draft of the `route` verb.
+    // ⚠ The question is asked of the ROW instead: *the row I got back is
+    // called what I asked for*.
+    assert(errand_role_known("none") && errand_role_known("harvest")
+           && !errand_role_known("digger"),
+           "a role is known by its row and never by its number");
+    assert(poi_kind_known("none") && poi_kind_known("heap")
+           && !poi_kind_known("hut"),
+           "and so is a kind");
+}
+
+// ⚠⚠ **`slip` IS THE ONE DURATION IN THE GAME THAT GOES NEGATIVE, AND
+// THE AUTHORING DOOR REFUSES ONE ON PURPOSE.**  `poi_materialise` folds
+// a mob's SEAT OFFSET into `slip` as a negative lateness (`@X343`: *the
+// one liberty this function takes with `slip`'s meaning*), so a body
+// seated half a round along genuinely carries one — while
+// `clock_units_from_seconds` clamps a negative to zero, because a timer
+// counting backwards is the defect `fixstep` exists to name.
+//
+// ⚠ Found by `tests/18_s2`'s corpus sweep on the FIRST scenario with a
+// POI in it — `slip -24000000 vs slip 0` — and it is silent: the rota
+// would have replayed with every mob at the same place on its round.
+// ⚠ `slip_units` / `slip_seconds` are the pair, and they live beside
+// the field they convert.
+// @DRY-210 — the one duration that may be negative
+fn test_a_negative_slip_survives_the_door() {
+    tns_back = slip_units(slip_seconds(0 - 24000000));
+    assert(tns_back == 0 - 24000000,
+           "a negative span round-trips: {tns_back}");
+    assert(clock_units_from_seconds(slip_seconds(0 - 24000000)) == 0,
+           "and the unsigned door is what clamps it — the control");
+
+    tns_r = r7_play("place 6 4 robot 0\n"
+                    + "routine 0 haul empty -2.5 1 4 4 12 4 20 6\n");
+    assert(tns_r.ok, "the script runs: {script_describe(tns_r)}");
+    tns_e = tns_r.play.wave.enemies[0] ?? Enemy { };
+    assert(tns_e.route.slip == 0 - clock_units_from_seconds(2.5),
+           "a mob ahead of its rule reads back ahead: {tns_e.route.slip}");
+}

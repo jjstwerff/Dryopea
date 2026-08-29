@@ -385,3 +385,24 @@ deleting the cull changed no position and made no extra body, so
 `poi_step` grew a fourth answer and the far run reads **0 against 160**.
 ⚠ Still INERT: nothing builds a `PoiWorld`, and the 920 gate measurements
 did not move.
+
+**`plans/30` R7a — a PLACE is four verbs in a `.keys` file** (2026-08-29,
+`@X345`, `@M083`, `@D009`).  `poi` / `route` / `mob` say what a PLACE
+issues and `routine` says what one BODY holds — and neither is derivable
+from the other once a tick has run, because `errand_arrive` flips the bag
+and `errand_step` adds to `slip` without asking any place.  ⚠ **A route
+ENLISTS its own population** (`poi_enlist`), so a file says *how many*
+and never *which ones*; that works only because a record is never
+removed.  ⚠⚠ `routine` is the first command in the vocabulary carrying
+THREE hexes, so `KeysSchema` grew a third pair position.  ⚠⚠ **Twelve
+mutations, twelve caught — and all THREE real defects came from a gate
+laid earlier** (`@M083`): the FLAG is a second fact (an ambient robot is
+`errand: true` with `ROLE_NONE`), **`slip` is the one duration that may
+be NEGATIVE** while the authoring door refuses one on purpose (`@D009`),
+and **R1's `src/` sweep caught both new verbs comparing a role** —
+`errand_role_named` cannot say no, so `errand_role_known` is what a
+refusal asks.  ⚠ **No longer inert**:
+`tests/scripts/a-place-that-sends-robots.keys` authors a face, a depot
+and two haulers and places no robot — the game does — and it is the
+first fixture in which `slip` is VISIBLE.  Gates **51 scripts / 932
+measurements**.

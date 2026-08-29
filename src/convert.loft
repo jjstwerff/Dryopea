@@ -43,20 +43,29 @@ use relabel;
 
 // One command's coordinate layout.
 //
-// `ks_pair_a` / `ks_pair_b` are the token indices of each `(q, r)`
-// pair's `q` (its `r` is the next token); -1 for absent.  `ks_dir`
-// is the token index of a marker direction, or -1.
+// `ks_pair_a` / `ks_pair_b` / `ks_pair_c` are the token indices of each
+// `(q, r)` pair's `q` (its `r` is the next token); -1 for absent.
+// `ks_dir` is the token index of a marker direction, or -1.
+//
+// ⚠⚠ **THREE, because a routine has three anchors** (`plans/30` R7a).
+// Two was every command's layout until `routine` said where a mob's
+// home, its face and its drop-off are on ONE line — and a converter
+// that rewrote two of the three would leave a fixture in two lattices
+// at once, which is the exact failure this table exists to refuse.
 //
 // Token 0 is the command word itself, so indices start at 1.
 pub struct KeysSchema {
     ks_cmd:    text,
     ks_pair_a: integer,
     ks_pair_b: integer,
+    ks_pair_c: integer,
     ks_dir:    integer,
 }
 
-fn ks(cmd: text, a: integer, b: integer, dir: integer) -> KeysSchema {
-    KeysSchema { ks_cmd: cmd, ks_pair_a: a, ks_pair_b: b, ks_dir: dir }
+fn ks(cmd: text, a: integer, b: integer, c: integer,
+      dir: integer) -> KeysSchema {
+    KeysSchema { ks_cmd: cmd, ks_pair_a: a, ks_pair_b: b, ks_pair_c: c,
+                 ks_dir: dir }
 }
 
 // THE table.  Every `.keys` command that carries a hex coordinate is
@@ -70,34 +79,40 @@ fn ks(cmd: text, a: integer, b: integer, dir: integer) -> KeysSchema {
 // assertion that still passes.
 pub fn keys_schemas() -> vector<KeysSchema> {
     kss: vector<KeysSchema> = [];
-    kss += [ks("at",     1, -1, -1)];   // at <q> <r> [zoom]
-    kss += [ks("hover",  1, -1, -1)];   // hover <q> <r>
-    kss += [ks("click",  1, -1, -1)];   // click <q> <r>
-    kss += [ks("drag",   1,  3, -1)];   // drag <q1> <r1> <q2> <r2>
-    kss += [ks("raise",  1, -1, -1)];   // raise <q> <r> <m> [source]
-    kss += [ks("clear",  1, -1, -1)];   // clear <q> <r>
-    kss += [ks("damage", 1, -1, -1)];   // damage <q> <r> <hp>
-    kss += [ks("hp",     1, -1, -1)];   // hp <q> <r> <lo> <hi>
-    kss += [ks("pile",   1, -1, -1)];   // pile <q> <r> <lo> <hi>
-    kss += [ks("kind",   1, -1, -1)];   // kind <q> <r> <name>
-    kss += [ks("marker", 1, -1,  4)];   // marker <q> <r> <kind> [dir]
-    kss += [ks("target", 2, -1, -1)];   // target <i> <q> <r>
-    kss += [ks("enemy",  2, -1, -1)];   // enemy <i> <q> <r>
-    kss += [ks("park",   1, -1, -1)];   // park <q> <r>
-    kss += [ks("drive",  1, -1, -1)];   // drive <q> <r>
-    kss += [ks("vehicle",1, -1, -1)];   // vehicle <q> <r>
-    kss += [ks("crew",   1, -1, -1)];   // crew <q> <r>
-    kss += [ks("send",   2, -1, -1)];   // send <i> <q> <r>
-    kss += [ks("helper", 2, -1, -1)];   // helper <i> <q> <r>
-    kss += [ks("shots",  1, -1, -1)];   // shots <q> <r> <lo> <hi>
-    kss += [ks("top",    1, -1, -1)];   // top <q> <r> <on|off>
-    kss += [ks("place",  1, -1, -1)];   // place <q> <r> <class> [heading]
-    kss += [ks("tower",  1, -1, -1)];   // tower <q> <r> <shots> <charge> <repair> <on|off>
-    kss += [ks("object", 1, -1, -1)];   // object <q> <r> <kind> <subj> <owner>
-    kss += [ks("flag",   1, -1,  4)];   // flag <q> <r> <kind> [dir]
-    kss += [ks("order",  1, -1, -1)];   // order <q> <r> <kind> <done>
-    kss += [ks("trap",   1, -1, -1)];   // trap <q> <r> <on|off> <rearm>
-    kss += [ks("armed",  1, -1, -1)];   // armed <q> <r> <on|off>
+    kss += [ks("at",     1, -1, -1, -1)];   // at <q> <r> [zoom]
+    kss += [ks("hover",  1, -1, -1, -1)];   // hover <q> <r>
+    kss += [ks("click",  1, -1, -1, -1)];   // click <q> <r>
+    kss += [ks("drag",   1,  3, -1, -1)];   // drag <q1> <r1> <q2> <r2>
+    kss += [ks("raise",  1, -1, -1, -1)];   // raise <q> <r> <m> [source]
+    kss += [ks("clear",  1, -1, -1, -1)];   // clear <q> <r>
+    kss += [ks("damage", 1, -1, -1, -1)];   // damage <q> <r> <hp>
+    kss += [ks("hp",     1, -1, -1, -1)];   // hp <q> <r> <lo> <hi>
+    kss += [ks("pile",   1, -1, -1, -1)];   // pile <q> <r> <lo> <hi>
+    kss += [ks("kind",   1, -1, -1, -1)];   // kind <q> <r> <name>
+    kss += [ks("marker", 1, -1, -1,  4)];   // marker <q> <r> <kind> [dir]
+    kss += [ks("target", 2, -1, -1, -1)];   // target <i> <q> <r>
+    kss += [ks("enemy",  2, -1, -1, -1)];   // enemy <i> <q> <r>
+    kss += [ks("park",   1, -1, -1, -1)];   // park <q> <r>
+    kss += [ks("drive",  1, -1, -1, -1)];   // drive <q> <r>
+    kss += [ks("vehicle",1, -1, -1, -1)];   // vehicle <q> <r>
+    kss += [ks("crew",   1, -1, -1, -1)];   // crew <q> <r>
+    kss += [ks("send",   2, -1, -1, -1)];   // send <i> <q> <r>
+    kss += [ks("helper", 2, -1, -1, -1)];   // helper <i> <q> <r>
+    kss += [ks("shots",  1, -1, -1, -1)];   // shots <q> <r> <lo> <hi>
+    kss += [ks("top",    1, -1, -1, -1)];   // top <q> <r> <on|off>
+    kss += [ks("place",  1, -1, -1, -1)];   // place <q> <r> <class> [heading]
+    kss += [ks("tower",  1, -1, -1, -1)];   // tower <q> <r> <shots> <charge> <repair> <on|off>
+    kss += [ks("object", 1, -1, -1, -1)];   // object <q> <r> <kind> <subj> <owner>
+    kss += [ks("flag",   1, -1, -1,  4)];   // flag <q> <r> <kind> [dir]
+    kss += [ks("order",  1, -1, -1, -1)];   // order <q> <r> <kind> <done>
+    kss += [ks("trap",   1, -1, -1, -1)];   // trap <q> <r> <on|off> <rearm>
+    kss += [ks("armed",  1, -1, -1, -1)];   // armed <q> <r> <on|off>
+    // ⚠⚠ **The PLACES** (`plans/30` R7a).  `route` carries the two
+    // anchors its POI is not; `routine` carries all three a BODY holds,
+    // which is what the third pair position is for.
+    kss += [ks("poi",     2, -1, -1, -1)];  // poi <kind> <q> <r> [state] [since]
+    kss += [ks("route",   5,  7, -1, -1)];  // route <poi> <role> <class> <count> <aq> <ar> <bq> <br>
+    kss += [ks("routine", 6,  8, 10, -1)];  // routine <i> <role> <bag> <slip> <mob> <hq> <hr> <wq> <wr> <aq> <ar>
     kss
 }
 
@@ -162,6 +177,7 @@ pub fn convert_keys_line(line: text, forward: boolean) -> (text, boolean) {
 
     ckl_ok = put_pair(ckl_tok, ckl_s.ks_pair_a, forward);
     if !put_pair(ckl_tok, ckl_s.ks_pair_b, forward) { ckl_ok = false; }
+    if !put_pair(ckl_tok, ckl_s.ks_pair_c, forward) { ckl_ok = false; }
     if !put_dir(ckl_tok, ckl_s.ks_dir, forward)     { ckl_ok = false; }
     if !ckl_ok { return (line, false); }
 

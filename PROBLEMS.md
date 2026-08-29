@@ -45,10 +45,52 @@ Severity tiers:
 ## Open
 
 ⚠ **Nothing is open today.**  `@D002` was closed by BACKLOG C7 and
-`@D006` by BACKLOG C10, both on 2026-08-28; `@D007` and `@D008` were
+`@D006` by BACKLOG C10, both on 2026-08-28; `@D009` was found and fixed
+on 2026-08-29 by the first `.keys` scenario with a POI in it; `@D007`
+and `@D008` were
 found and fixed the same day they were found.
 
 ## Fixed
+
+### @D009 — a mob's NEGATIVE `slip` round-trips as zero: the authoring door clamps the one duration that may be signed
+
+- **Status:** **FIXED** 2026-08-29, `plans/30` R7a — `errand.loft`
+  gained `slip_units` / `slip_seconds`, and `emit.loft` and
+  `script.loft` both go through them.
+- **Severity:** Med — it silently changed captured content, exactly as
+  `@D007` did.  A captured sortie's whole ROTA came back stacked: every
+  mob of a population replayed at the same place on its round.
+- **Found while:** `plans/30` R7a, adding the first `.keys` scenario
+  with a POI in it.  `tests/18_s2`'s corpus sweep named it on the very
+  first run: `enemies[1].route: … slip -24000000 … vs … slip 0 …`.
+- **Repro:** author a `poi` + a `route` with a population of two, tick
+  once so both mobs are materialised, `emit_keys` the situation, and
+  replay it.  The second mob's `slip` comes back 0.
+- **Observed:** `fixstep::clock_units_from_seconds` REFUSES a negative
+  and answers 0 — deliberately, because a timer counting backwards is
+  the defect that door exists to name.  But `poi_materialise` folds a
+  mob's **seat offset** into `slip` as a negative lateness (`@X343`,
+  *the one liberty this function takes with `slip`'s meaning*), so a
+  body seated half a round along genuinely carries one.
+- **⚠⚠ The class, and it is a new one:** not *a value the writer can
+  produce and the reader cannot name* (`@D007`'s) but **a value the
+  writer can produce and the reader's door is built to refuse.**  The
+  spelling was right and the conversion was right for every other
+  duration in the file; `slip` is the only one with a sign, and it got
+  the unsigned door because every other caller wanted it.
+- **⚠ Why the message mattered more than the fix.**  The first version
+  of `compare.loft`'s `errand` row named only the role and the bag, so
+  the failure read *"role 1 carry 0 vs role 1 carry 0"* — a difference
+  that refuses to say where it is.  Widening the message to every field
+  is what turned a puzzle into a one-line fix, and it is the half worth
+  copying.
+- **Test:** `tests/30_r7a_the_places_said.loft`
+  `test_a_negative_slip_survives_the_door`, which round-trips
+  −24 000 000 base units and carries the CONTROL beside it — the
+  unsigned door still clamps the same number, so the test says which of
+  the two doors is which.  ⚠ And the corpus is the second guard:
+  `tests/scripts/a-place-that-sends-robots.keys` is the case that
+  reaches the branch.
 
 ### @D008 — a mob that turns at an anchor MID-TICK has no field for the next leg, and `slip` swallows the hexes
 

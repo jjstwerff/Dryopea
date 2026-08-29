@@ -337,6 +337,25 @@ src/
                    `tests/09_c5a_converter.loft` § The schema is
                    complete is the gate, and it only fires if its
                    vocabulary list is updated too
+                   plans/30 R7a added the PLACES (@X345): `poi <kind>
+                   <q> <r> [state] [since]`, `route <poi> <role> <class>
+                   <count> <aq> <ar> <bq> <br>`, `mob <i> <slip>
+                   <working|done> <rule|body>` and `routine <i> <role>
+                   <bag> <slip> <mob>` + three anchor pairs.  ⚠⚠ The
+                   first three say what a PLACE issues and the fourth
+                   what one BODY holds, and neither is derivable from
+                   the other once a tick has run — `errand_arrive` flips
+                   the bag and `errand_step` adds to `slip` without
+                   asking any place.  ⚠ A `route` ENLISTS its own
+                   population through `poi_enlist`, so a file says HOW
+                   MANY and never WHICH ONES; a `mob` line is written
+                   only for a record a played tick changed.  ⚠⚠ The
+                   verbs are ORDERED — a route names a POI by index and
+                   a mob names a route — and `poi_route_fault` refuses a
+                   route BEFORE it is appended, so a bad line leaves the
+                   world as it found it.  ⚠⚠ `routine` is the first
+                   command in the vocabulary carrying THREE hexes, which
+                   is what grew `KeysSchema`'s third pair position
   maps.loft        a MAP, as repo content (BACKLOG A2) — map_slot_path /
                    map_marker_slot_path (the two files one map is stored
                    in, defined ONCE because the launcher and the builder
@@ -1907,9 +1926,22 @@ src/
                    is the only way to see the cull at all: deleting the
                    cull changes no position and makes no extra body, so
                    the saving is work NOT DONE (@M082).
-                   ⚠ INERT: nothing builds a PoiWorld yet, POI_KIND_NONE
-                   is 0, and no .keys verb authors one — R7's scenario
-                   pair is what needs the vocabulary
+                   plans/30 R7a made it AUTHORABLE (@X345): poi_states
+                   / poi_state_name / poi_state_named + poi_state_fault
+                   (the state NAMES, a table for the same @X333 reason
+                   the kinds are), and poi_enlist — THE ONE DOOR THAT
+                   CREATES A POPULATION, seating a route's `count` mobs
+                   on dense seats 0..count-1, which is what
+                   poi_seat_offset assumes.  ⚠ It works only because a
+                   record is never REMOVED (poi_retire sets `gone` and
+                   keeps the slot, as CARGO_GONE does), so `len(mobs)`
+                   stays the sum of every route's count and the emitter
+                   can write the ROUTES and let the reader rebuild the
+                   records.
+                   ⚠ NO LONGER INERT: `tests/scripts/a-place-that-sends-
+                   robots.keys` authors a face, a depot and two haulers,
+                   and poi_step gives them bodies — the first captured
+                   scenario in which the GAME places the robots
   skill.loft       CREW SKILLS — build, repair, scout (BACKLOG C1) —
                    SKILL_EFFECT_SPAN / _HALF, Skills { build, repair,
                    scout } on Helper, skill_factor, skill_work_units,
