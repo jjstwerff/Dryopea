@@ -122,7 +122,7 @@ kill F2** — `crawler` measured that *greedy is not pathing*.
 | **F8e** | ⚠ **The BLOCK CATALOGUE** — rows of (conditions → contents), and the first one is a steep mountain side | M | `@X318`.  ⚠⚠ **A block declares what it NEEDS, never where it goes.**  ⚠⚠ **The palette is already the output vocabulary** — `rock` 20 / `steep_rock` 40 / `rapids` 3 / `waterfall` 8, priced against the boost since plan 01 — **and nothing has ever placed a waterfall**, which is the strongest unused thing in it.  ⚠ THE STITCHING RULE: a river block is indexed by its entry/exit EDGE PAIR and the flow picks it, so the catalogue is edge-matching |
 | **F8g** | ⚠⚠ **The RESIDUAL** — block detail ADDED to the coarse field, never replacing it | S | `@X321`.  ⚠⚠ **The same block on a different slope is a different landform**, which is the real answer to tiling and makes F8f's variant count a pessimistic bound.  ⚠ A residual tapering to zero at the edges satisfies F8f's edge contract by construction.  ⚠ dryopea already composes this way at 1.5 m — `height.loft` is *a LAYER, never a repaint* — so `hex_height` is the same equation one scale down |
 | **F8f** | ⚠ **VARIANTS and the edge contract** — several blocks per common case, and edges the block does not own | M | `@X319`, `@X320`.  ⚠⚠ **The budget goes to the DULL cases** — repetition is only visible in what appears often.  ⚠ Block SIZE is the lever and it trades quadratically; 6 rotations × 2 reflections are free.  ⚠⚠ **A variant may differ only in its INTERIOR**, which is not a seam trick but the reason variants are substitutable at all.  ⚠ Position hash, never a stream, or the 16 goldens stop reproducing |
-| **F10** | ⚠⚠ **LAND IN THE OVERLAP** — the placement rule | S | `@X317`.  ⚠⚠ **The overlap is what makes a choice EXIST**: one area in reach is a task list, several with time for fewer is `@X197` at sortie scale.  ⚠ **No new geometry** — it is `@X300`'s bounds intersecting, and the unit is a TRIP not a radius.  ⚠⚠ The anti-pattern is already measured: `@M058`'s base standing at 378 with zero targets is *no overlap* by geography.  ⚠ **Gate**: moving the base OUT of the overlap must change which POI the player deals with — a pair whose one token is the landing hex |
+| **F10** | ⚠⚠ **LAND IN THE OVERLAP** — the placement rule | S | `@X317`.  ⚠⚠ **The overlap is what makes a choice EXIST**: one area in reach is a task list, several with time for fewer is `@X197` at sortie scale.  ⚠ **No new geometry** — it is `@X300`'s bounds intersecting, and the unit is a TRIP not a radius.  ⚠⚠ The anti-pattern is already measured: `@M058`'s base standing at 378 with zero targets is *no overlap* by geography.  ⚠ **Gate**: moving the base OUT of the overlap must change which POI the player deals with — a pair whose one token is the landing hex.  ⚠⚠ **THAT PAIR IS BUILT AND IT DOES NOT HOLD YET** ([`plans/32`](32-the-landing/README.md) L4, `@M091`): `a-base-landed-near-the-road.keys` / `a-base-landed-far-from-the-road.keys` are one token apart and read **174 against 221** — but swept along the band the pick is **not monotone** in its distance and its whole spread is **58 ticks**, while holding the pick and sweeping only the SEED spreads **59**.  ***The dice are worth as much as the decision***, so the overlap cannot be FELT even where the geometry puts one there.  ⚠⚠ **So F10 is not blocked on the placement rule — it is blocked on `DESIGN.md` § 15 step 6's *random direction* for the free starter tower**, which puts the base's only defence anywhere on a ring twenty hexes across and swamps everything a pick decides.  Aiming it at the nearest live spawn is one line and contradicts § 15 as written, so it is the **owner's ruling** and F10 should not be attempted before it |
 | **F9** | ⚠ **The earned VIEW** — a vista that brings its own frame | M | `@X312`.  ⚠⚠ **The default frame contains NO SKY** (`@M064`: 0.96° short of the horizon), which is what falsified the battleship clock — so the earning must be a PLACE whose geometry puts the horizon in view.  ⚠ The horizon enters at exactly **30.0°** against the follow camera's 30.96°, so it is one degree away rather than a redesign.  ⚠ *Impactful* means it tells you something: a view is `EXPLORATION.md`'s scouting done from a height |
 
 ## G. The FORMAL system — `@FR-` rules, and the catalogue that generates
@@ -181,11 +181,13 @@ an order:
 - ⚠⚠ **THE CRITICAL PATH'S FOUR GAPS ARE ALL CLOSED** — item **4, the
   SCRAMBLE**, shipped 2026-08-28 ([`plans/28`](28-the-scramble/README.md)),
   and it is the mechanic the game is named after.  ⚠ What follows is
-  `ROADMAP.md` § Then the run becomes a RUN: **5 helper ORDERS** (in
-  progress, [`plans/29`](29-the-crews-own-work/README.md)), **6 the
-  landing flow**, **7 carryover** — the scramble produces it and nothing
-  consumes it — and **8 the permit clock**, still blocked on `@X287`'s
-  ruling rather than on a mechanism.
+  `ROADMAP.md` § Then the run becomes a RUN: **5 helper ORDERS**
+  (shipped, [`plans/29`](29-the-crews-own-work/README.md)), **6 the
+  landing flow** (shipped, [`plans/32`](32-the-landing/README.md) — the
+  map-selection half is still [`plans/04`](04-map-library/README.md)),
+  **7 carryover** (shipped, [`plans/31`](31-carryover/README.md)) and
+  **8 the permit clock**, still blocked on `@X287`'s ruling rather than
+  on a mechanism.
 
 ⚠ **Most of this is not a plan** (`README.md` § Pick the lightest
 workflow that fits).  Only **B2** is clearly multi-phase; the rest are

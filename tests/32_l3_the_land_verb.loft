@@ -1,0 +1,219 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 32 phase L3 — `land <q> <r> [seed]` in a `.keys` file.
+//
+// ── ⚠⚠ It needs NO new emit verb, and that is the finding ───────
+//
+// The plan's invariant-gate row asked for `land 4 -2` → emit → re-read
+// → `state_diff` empty, expecting a new writer and a new reader to be
+// the risk (`@D007`, `@D009` — a writer and its reader are a PAIR).
+// **There is no new pair**: a landing's whole output is a POSITION —
+// markers and a crew — and both already round-trip through
+// `emit_markers` and `crew`.
+//
+// ⚠ So what this file gates is that the claim HOLDS, rather than that a
+// new pair was written: a landed state survives capture and replay
+// using vocabulary that predates the landing entirely.
+//
+// ⚠⚠ **And the SEED is in the file rather than the state.**  Replaying
+// the line re-runs the landing instead of restoring its result, which
+// is only sound because a landing is a FUNCTION
+// (`@FR-L-Landing-Is-A-Function`) — a stream would make a `.keys` file
+// mean something different on its second reading.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SHOTS:   text = "tests/actual";
+
+fn pal_at(p: text) -> vector<GroundType> { load_palette(p) }
+
+fn played(src: text) -> ScriptRun {
+    p_s = editor_state_new(PALETTE);
+    script_run(p_s, src, SHOTS)
+}
+
+// A world with ground, an authored core and a spawn far enough out.
+//
+// ⚠ **`drag` paints a LINE and not a rectangle** — every fixture in the
+// corpus calls it once per row, and a single diagonal `drag` leaves the
+// ground looking painted while a landing's 3-hex disc falls off it.
+fn band() -> text {
+    "do toggle_mode\ndo cycle_kind\nclick 0 0\nmarker 0 0 target\n"
+    + "do cycle_kind\ndo cycle_kind\ndo cycle_kind\n"
+    + "do rotate\ndo rotate\ndo rotate\nclick 18 0\nmarker 18 0 spawn 3\n"
+    + "do toggle_mode\npalette 5\n"
+    + "drag -4 -6 22 -6\n"
+    + "drag -4 -5 22 -5\n"
+    + "drag -4 -4 22 -4\n"
+    + "drag -4 -3 22 -3\n"
+    + "drag -4 -2 22 -2\n"
+    + "drag -4 -1 22 -1\n"
+    + "drag -4 0 22 0\n"
+    + "drag -4 1 22 1\n"
+    + "drag -4 2 22 2\n"
+    + "drag -4 3 22 3\n"
+    + "drag -4 4 22 4\n"
+    + "drag -4 5 22 5\n"
+    + "drag -4 6 22 6\n"
+}
+
+// ─── The verb ───────────────────────────────────────────────────
+
+fn test_the_land_verb_moves_the_base() {
+    tl = played(band() + "land 6 2 5\n");
+    assert(tl.ok, "the landing plays: {script_describe(tl)}");
+}
+
+fn test_a_landing_leaves_exactly_one_core_somewhere_new() {
+    tc_s = editor_state_new(PALETTE);
+    tc_r = script_run(tc_s, band() + "land 6 2 5\n", SHOTS);
+    assert(tc_r.ok, "it plays: {script_describe(tc_r)}");
+
+    tc_core = play_core(tc_s.mw);
+    assert(tc_core.0 == 1, "exactly one core: {tc_core.0}");
+    assert(tc_core.1 != 0 || tc_core.2 != 0,
+           "and it moved off the authored origin: ({tc_core.1}, {tc_core.2})");
+    assert(len(tc_r.play.wave.crew) == LANDING_CREW,
+           "with the crew out: {len(tc_r.play.wave.crew)}");
+}
+
+// ⚠ A script asserts INTENT: a refused landing is a FAULT and never a
+// quiet no-op, the same rule `take` and `boost` follow.
+fn test_a_refused_landing_fails_the_script() {
+    // Every spawn inside the disable radius.
+    tr_src = "do toggle_mode\ndo cycle_kind\nclick 0 0\nmarker 0 0 target\n"
+           + "do cycle_kind\ndo cycle_kind\ndo cycle_kind\n"
+           + "do rotate\ndo rotate\ndo rotate\n"
+           + "click 2 0\nmarker 2 0 spawn 3\n"
+           + "do toggle_mode\npalette 5\n"
+           + "drag -4 -6 12 -6\n"
+           + "drag -4 -5 12 -5\n"
+           + "drag -4 -4 12 -4\n"
+           + "drag -4 -3 12 -3\n"
+           + "drag -4 -2 12 -2\n"
+           + "drag -4 -1 12 -1\n"
+           + "drag -4 0 12 0\n"
+           + "drag -4 1 12 1\n"
+           + "drag -4 2 12 2\n"
+           + "drag -4 3 12 3\n"
+           + "drag -4 4 12 4\n"
+           + "drag -4 5 12 5\n"
+           + "drag -4 6 12 6\n"
+           + "land 0 0 1\n";
+    tr = played(tr_src);
+    assert(!tr.ok, "a base nothing could attack fails the script");
+    assert(script_describe(tr).contains("land"),
+           "and the failure names the verb: {script_describe(tr)}");
+}
+
+fn test_the_verb_refuses_a_malformed_line() {
+    assert(!played(band() + "land\n").ok, "no hex at all");
+    assert(!played(band() + "land 6\n").ok, "half a hex");
+    assert(!played(band() + "land 6 2 5 9\n").ok, "a token too many");
+    assert(!played(band() + "land x 2\n").ok, "a q that is not a number");
+    assert(!played(band() + "land 6 2 zz\n").ok, "a seed that is not a number");
+}
+
+// ─── ⚠⚠ The seed is an INPUT, and the file carries it ──────────
+
+fn test_the_same_file_lands_the_same_way_twice() {
+    ta_s = editor_state_new(PALETTE);
+    script_run(ta_s, band() + "land 6 2 5\n", SHOTS);
+    tb_s = editor_state_new(PALETTE);
+    script_run(tb_s, band() + "land 6 2 5\n", SHOTS);
+
+    ta_c = play_core(ta_s.mw);
+    tb_c = play_core(tb_s.mw);
+    assert(ta_c.1 == tb_c.1 && ta_c.2 == tb_c.2,
+           "the same file lands in the same place: ({ta_c.1}, {ta_c.2}) "
+           + "against ({tb_c.1}, {tb_c.2}) — a `.keys` file that meant "
+           + "something different on its second reading would be unusable");
+}
+
+fn test_a_different_seed_is_a_different_file() {
+    td_a = editor_state_new(PALETTE);
+    script_run(td_a, band() + "land 6 2 5\n", SHOTS);
+    td_b = editor_state_new(PALETTE);
+    script_run(td_b, band() + "land 6 2 40\n", SHOTS);
+
+    td_ca = play_core(td_a.mw);
+    td_cb = play_core(td_b.mw);
+    assert(td_ca.0 == 1 && td_cb.0 == 1, "both land");
+    // ⚠ They MAY coincide on a given pair of seeds — what must not
+    // happen is that the seed is ignored, so this sweeps until it moves.
+    td_moved = false;
+    for td_s in 0..24 {
+        td_x = editor_state_new(PALETTE);
+        script_run(td_x, band() + "land 6 2 {td_s}\n", SHOTS);
+        td_cx = play_core(td_x.mw);
+        if td_cx.1 != td_ca.1 || td_cx.2 != td_ca.2 { td_moved = true; }
+    }
+    assert(td_moved, "some seed lands elsewhere — the token is an input");
+}
+
+// ─── ⚠⚠ The round trip, on vocabulary that predates the landing ─
+
+fn test_a_landed_state_survives_capture_and_replay() {
+    tp_a = editor_state_new(PALETTE);
+    tp_run = script_run(tp_a, band() + "land 6 2 5\n", SHOTS);
+    assert(tp_run.ok, "the landing plays: {script_describe(tp_run)}");
+
+    tp_keys = emit_keys(pal_at(PALETTE), tp_a.pw, tp_a.mw,
+                        tp_run.play.wave, "landed");
+    // ⚠⚠ **The capture contains no `land` line**, because a captured
+    // state is a POSITION and not the story of how it was reached —
+    // `emit.loft` writes *"an authored STARTING POSITION"*.  The landing
+    // is in the file as its RESULT: a core marker and two crew.
+    assert(!tp_keys.contains("land "),
+           "the capture is a position, not a replay of the descent");
+    assert(tp_keys.contains("crew "),
+           "and the crew that stepped out are in it");
+
+    tp_b = editor_state_new(PALETTE);
+    tp_back = script_run(tp_b, tp_keys, SHOTS);
+    assert(tp_back.ok, "and it replays: {script_describe(tp_back)}");
+    assert(state_diff(tp_run.play.wave, tp_back.play.wave) == "",
+           "with nothing lost: '{state_diff(tp_run.play.wave, tp_back.play.wave)}'");
+
+    tp_ca = play_core(tp_a.mw);
+    tp_cb = play_core(tp_b.mw);
+    assert(tp_ca.1 == tp_cb.1 && tp_ca.2 == tp_cb.2,
+           "and the core came back where it landed: ({tp_ca.1}, {tp_ca.2}) "
+           + "against ({tp_cb.1}, {tp_cb.2})");
+}
+
+// ⚠⚠ A verb that carries a hex needs a `keys_schemas` row, and a
+// MISSING one is silent — the converter would leave `land`'s
+// coordinates in the old lattice while moving every other verb's.
+fn test_the_land_verb_has_a_schema_row() {
+    // ⚠ Gated through the converter's own door rather than by reading
+    // the table: what a missing row COSTS is that the coordinates are
+    // left alone, so that is what to look for.
+    // ⚠ The second member is *was it UNDERSTOOD*, not *did it fault* —
+    // `convert_keys_line`'s own header says so, and reading it the other
+    // way round is the mistake this comment exists to stop.
+    tsr_in  = "land 6 2 5";
+    tsr_out = convert_keys_line(tsr_in, true);
+
+    assert(tsr_out.1, "the converter understands the line: '{tsr_out.0}'");
+    assert(tsr_out.0 != tsr_in,
+           "⚠⚠ and its HEX really moved — a `land` line the converter "
+           + "left alone is a missing `keys_schemas` row, which is "
+           + "silent: '{tsr_out.0}'");
+
+    // ⚠ The control: the seed is NOT a coordinate and must survive.
+    assert(tsr_out.0.contains(" 5"),
+           "the seed is not a coordinate and is carried through: "
+           + "'{tsr_out.0}'");
+
+    // ⚠ And it round-trips, which is what `tests/09_c5a` asks of every
+    // verb in the corpus.
+    tsr_back = convert_keys_line(tsr_out.0, false);
+    assert(tsr_back.1, "and understands it coming back");
+    assert(tsr_back.0.trim() == tsr_in,
+           "there and back: '{tsr_back.0.trim()}' against '{tsr_in}'");
+}

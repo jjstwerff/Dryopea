@@ -1,0 +1,87 @@
+# a-base-that-landed — plan 32 L3, and the first scenario in the corpus
+# whose base is not where its author put it.
+#
+# ⚠⚠ **`land <q> <r> [seed]` MOVES the core**, so this file authors a
+# map the ordinary way — ground, a core, a spawn — and then drops a
+# rocket on it.  `maps.loft::map_fault` requires exactly ONE target
+# marker and validates the map against it, so the authored core is
+# *where the rocket lands if the player does not choose*
+# (`@FR-L-Map-Stays-Valid`).
+#
+# ⚠ **The seed is IN THE FILE**, so replaying this line re-runs the
+# descent rather than restoring its result — which is only sound because
+# a landing is a FUNCTION (`@FR-L-Landing-Is-A-Function`).  dryopea has
+# no RNG: § 15 says *random* four times and `@FR-W-Position-Hash` is how
+# this project spells it.
+#
+# ⚠⚠ **And a capture of this file contains no `land` line at all** — a
+# captured state is a POSITION and not the story of how it was reached,
+# so the landing is in it as its RESULT: a core marker somewhere new and
+# two crew standing on its ring.
+
+echo a base that landed: the rocket chose, and the crew came out
+
+do toggle_mode
+do cycle_kind
+click 0 0
+marker 0 0 target
+do cycle_kind
+do cycle_kind
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 18 0
+marker 18 0 spawn 3
+count markers 2 2
+do toggle_mode
+
+palette 5
+drag -4 -6 22 -6
+drag -4 -5 22 -5
+drag -4 -4 22 -4
+drag -4 -3 22 -3
+drag -4 -2 22 -2
+drag -4 -1 22 -1
+drag -4 0 22 0
+drag -4 1 22 1
+drag -4 2 22 2
+drag -4 3 22 3
+drag -4 4 22 4
+drag -4 5 22 5
+drag -4 6 22 6
+
+# ── ⚠⚠ The landing ─────────────────────────────────────────────
+#
+# The pick is (6, 2); where the rocket actually touches down is within
+# `core_landing_area_radius` of it, chosen by hashing the pick and the
+# seed.  ⚠ The count goes 2 -> 4: the core moved (still one), a starter
+# tower came down 5-10 hexes out, and nothing else was added.
+land 6 2 5
+count markers 3 3
+
+# ⚠ Two helpers stepped out onto the core's own ring
+# (`numbers.json` § helper.roster_start, and `@X258` — the two are FIXED
+# and the player does not choose them).
+roster 2 2
+
+# ⚠⚠ **And the base plays.**  A landing that produced an unplayable base
+# would be `@M058`'s reading — a base standing with ZERO targets — so
+# this file pokes the spawn and lets a wave in.
+# ⚠ The player is put in the world at the core the ROCKET chose — not
+# at the authored origin, which is the whole point of the file.
+park 6 2
+
+schedule 5
+waves 0 0
+drive 18 0
+tick 14
+waves 1 1
+
+# ⚠⚠ **FOUR of the five, not five** — and that is § 15 step 6 showing
+# itself: the free starter tower comes down *"already standing +
+# firing-ready"*, so it is shooting before the player has built
+# anything.  ⚠ It is the *free defensive guarantee that prevents wave-1
+# deadlock*, and this is the first fixture in the corpus where a base
+# defends itself with something nobody placed.
+count alive 4 4

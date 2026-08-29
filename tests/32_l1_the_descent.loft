@@ -1,0 +1,254 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 32 phase L1 — the descent.  A pick becomes a core hex.
+//
+// `DESIGN.md` § 15 step 3: *"The rocket lands at a random hex within
+// `core_landing_area_radius` around the pick.  If the candidate hex is
+// invalid … the algorithm searches outward for a valid landing.
+// Visually diegetic — the rocket appears to choose safe ground."*
+//
+// ── What this gate pins ─────────────────────────────────────────
+//
+// ⚠⚠ **@FR-L-Landing-Is-A-Function**: the same world, pick and seed
+// answer the same hex.  dryopea has NO RNG, and `@FR-W-Position-Hash`
+// is why — *a world that cannot be reproduced cannot be gated*.  A
+// stream would make every assertion below depend on test ordering.
+//
+// ⚠⚠ **@FR-L-Landing-Is-Total**: every answer is a site that passes
+// `landing_site_fault`, or a refusal that NAMES its reason.  There is
+// no half-landed base.
+//
+// ⚠⚠ **And the bounded search is the claim a naive descent gets
+// wrong**: an unbounded outward search always "succeeds", on the far
+// side of the map — a rocket that teleports rather than one that
+// appears to choose safe ground.  § No landing below is that control.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+const WATER:   integer = 1;
+
+fn pal_at(p: text) -> vector<GroundType> { load_palette(p) }
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+
+// A painted rectangle of grass, wide enough that the edge is never the
+// thing under test.
+fn field(radius: integer) -> PaintedWorld {
+    f_pw = painted_empty();
+    for f_q in (0 - radius)..(radius + 1) {
+        for f_r in (0 - radius)..(radius + 1) {
+            paint(f_pw, f_q, f_r, as_u8(GRASS));
+        }
+    }
+    f_pw
+}
+
+// One spawn marker far enough out that it survives the silencing.
+fn markers_with_spawn(q: integer, r: integer) -> MarkerWorld {
+    mw_w = marker_empty();
+    place_marker(mw_w, q, r, MARKER_KIND_SPAWN, as_u8(3));
+    mw_w
+}
+
+// ─── ⚠⚠ A landing is a FUNCTION ────────────────────────────────
+
+// @DRY-216 — the descent is a FUNCTION — the same world, pick and seed answer the
+// same hex, which is what lets a `.keys` file author a landing.
+fn test_the_same_pick_and_seed_land_on_the_same_hex() {
+    ts_pal = pal_at(PALETTE);
+    ts_pw  = field(20);
+    ts_mw  = markers_with_spawn(18, 0);
+    ts_p   = Hex { q: 0, r: 0 };
+
+    ts_a = landing_descend(ts_pal, ts_pw, ts_mw, ts_p, 7);
+    ts_b = landing_descend(ts_pal, ts_pw, ts_mw, ts_p, 7);
+
+    assert(ts_a.ok && ts_b.ok, "both land: '{ts_a.why}' / '{ts_b.why}'");
+    assert(ts_a.q == ts_b.q && ts_a.r == ts_b.r,
+           "and on the same hex: ({ts_a.q}, {ts_a.r}) against "
+           + "({ts_b.q}, {ts_b.r}) — a landing that differs between two "
+           + "calls cannot be authored, emitted or gated");
+}
+
+// ⚠ And the seed really is an input: two seeds may land differently, or
+// the seed is decoration and § 15's *random* is a lie.
+// @DRY-223 — the seed really moves the touchdown, or `core_landing_area_radius`
+// decides nothing and § 15's *random* is a lie.
+fn test_the_seed_is_an_input_and_not_decoration() {
+    tsi_pal = pal_at(PALETTE);
+    tsi_pw  = field(20);
+    tsi_mw  = markers_with_spawn(18, 0);
+    tsi_p   = Hex { q: 0, r: 0 };
+
+    tsi_moved = 0;
+    for tsi_s in 0..24 {
+        tsi_l = landing_descend(tsi_pal, tsi_pw, tsi_mw, tsi_p, tsi_s);
+        assert(tsi_l.ok, "seed {tsi_s} lands: {tsi_l.why}");
+        if tsi_l.q != tsi_p.q || tsi_l.r != tsi_p.r { tsi_moved += 1; }
+    }
+    assert(tsi_moved > 0,
+           "some seed puts the rocket off the pick — otherwise the pick "
+           + "is literal and `core_landing_area_radius` decides nothing");
+}
+
+// ⚠ The touchdown stays inside the zone the design gives it.
+// @DRY-222 — on good ground the pick is an intention rather than a suggestion: the
+// touchdown stays inside `core_landing_area_radius`.
+fn test_the_rocket_lands_near_the_pick() {
+    tr_pal = pal_at(PALETTE);
+    tr_pw  = field(20);
+    tr_mw  = markers_with_spawn(18, 0);
+    tr_p   = Hex { q: 0, r: 0 };
+
+    for tr_s in 0..24 {
+        tr_l = landing_descend(tr_pal, tr_pw, tr_mw, tr_p, tr_s);
+        assert(tr_l.ok, "seed {tr_s} lands");
+        assert(lat_distance(tr_p, landing_hex(tr_l))
+               <= CORE_LANDING_AREA_RADIUS,
+               "seed {tr_s} came down {lat_distance(tr_p, landing_hex(tr_l))} "
+               + "hexes from the pick, and the zone is "
+               + "{CORE_LANDING_AREA_RADIUS} — on good ground the pick is "
+               + "an intention, not a suggestion");
+    }
+}
+
+// ─── ⚠⚠ A landing is TOTAL ─────────────────────────────────────
+
+// Whatever comes back, it is a site that would pass its own fault
+// check — which is the whole of @FR-L-Landing-Is-Total on the success
+// side.
+// @DRY-218 — whatever comes back would pass its own site check — the success side
+// of a landing being TOTAL.
+fn test_every_landing_is_a_site_that_passes_its_own_check() {
+    te_pal = pal_at(PALETTE);
+    te_pw  = field(20);
+    te_mw  = markers_with_spawn(18, 0);
+
+    for te_q in (0 - 6)..7 {
+        te_p = Hex { q: te_q, r: 0 };
+        te_l = landing_descend(te_pal, te_pw, te_mw, te_p, 3);
+        if !te_l.ok { continue; }
+        assert(landing_site_fault(te_pal, te_pw, te_mw,
+                                  landing_hex(te_l)) == "",
+               "the landing at ({te_l.q}, {te_l.r}) fails its own site "
+               + "check: {landing_site_fault(te_pal, te_pw, te_mw, landing_hex(te_l))}");
+    }
+}
+
+// ⚠⚠ **The rescue**: a pick over water lands on ground, and the ground
+// is near.  This is § 15's *auto-steers off invalid hexes*.
+// @DRY-220 — the rescue — a pick over water is steered onto ground the footprint
+// and its clearance both fit on.
+fn test_a_pick_over_water_is_steered_onto_ground() {
+    tw_pal = pal_at(PALETTE);
+    tw_pw  = field(20);
+    tw_mw  = markers_with_spawn(18, 0);
+
+    // ⚠ A lake big enough to swallow the pick's own footprint and
+    // clearance, small enough that a landing exists inside the bound.
+    // ⚠⚠ Sized against the constants rather than guessed: a site needs
+    // a clear disc of `1 + LANDING_CLEARANCE_BUFFER`, so a lake of
+    // radius 1 puts the nearest site four hexes out and the search
+    // reaches five.
+    for tw_q in (0 - 1)..2 {
+        for tw_r in (0 - 1)..2 {
+            paint(tw_pw, tw_q, tw_r, as_u8(WATER));
+        }
+    }
+    tw_p = Hex { q: 0, r: 0 };
+
+    assert(landing_site_fault(tw_pal, tw_pw, tw_mw, tw_p) != "",
+           "the control: the pick itself is not a site");
+
+    tw_l = landing_descend(tw_pal, tw_pw, tw_mw, tw_p, 5);
+    assert(tw_l.ok, "and the rocket still lands: {tw_l.why}");
+    assert(landing_site_fault(tw_pal, tw_pw, tw_mw, landing_hex(tw_l)) == "",
+           "on ground it can stand on");
+    assert(lat_distance(tw_p, landing_hex(tw_l)) <= LANDING_SEARCH_LIMIT,
+           "and near the pick: {lat_distance(tw_p, landing_hex(tw_l))} hexes");
+}
+
+// ⚠⚠ **THE CONTROL AN UNBOUNDED SEARCH WOULD FAIL.**  A lake wider than
+// the search limit has no landing in it, and the honest answer is a
+// REFUSAL — not a hex on the far shore.  An unbounded search would
+// "succeed" here, which is a rocket that teleports.
+// @DRY-221 — a refusal names its reason, and a lake wider than the search bound is
+// one — an unbounded search would 'succeed' on the far shore.
+fn test_no_landing_is_refused_rather_than_found_far_away() {
+    tn_pal = pal_at(PALETTE);
+    tn_pw  = field(30);
+    tn_mw  = markers_with_spawn(28, 0);
+
+    tn_wide = LANDING_SEARCH_LIMIT + 6;
+    for tn_q in (0 - tn_wide)..(tn_wide + 1) {
+        for tn_r in (0 - tn_wide)..(tn_wide + 1) {
+            paint(tn_pw, tn_q, tn_r, as_u8(WATER));
+        }
+    }
+
+    tn_l = landing_descend(tn_pal, tn_pw, tn_mw, Hex { q: 0, r: 0 }, 5);
+    assert(!tn_l.ok,
+           "a lake wider than the search is a refusal, not a landing on "
+           + "the far shore at ({tn_l.q}, {tn_l.r})");
+    assert(tn_l.why != "", "and the refusal says why: '{tn_l.why}'");
+    assert(tn_l.why.contains("{LANDING_SEARCH_LIMIT}"),
+           "naming the bound it gave up at: '{tn_l.why}'");
+}
+
+// ⚠⚠ **The refusal L0 measured as the BINDING one.**  A base every
+// spawn is silenced around can never be attacked — `@M058`'s 378 ticks
+// with zero targets — so it is refused rather than landed.
+// @DRY-219 — the binding refusal: a base every spawn is silenced around can never
+// be attacked, which `@M058` measured as 378 ticks with zero targets.
+fn test_a_base_nothing_could_attack_is_refused() {
+    tb_pal = pal_at(PALETTE);
+    tb_pw  = field(20);
+    // Every spawn inside the disable radius.
+    tb_mw  = markers_with_spawn(2, 0);
+
+    tb_l = landing_descend(tb_pal, tb_pw, tb_mw, Hex { q: 0, r: 0 }, 1);
+    assert(!tb_l.ok,
+           "a base with every spawn silenced is refused, not landed at "
+           + "({tb_l.q}, {tb_l.r})");
+    assert(tb_l.why.contains("attack"),
+           "and the refusal names the reason: '{tb_l.why}'");
+
+    // ⚠ The negative control: move the SAME marker outside the radius
+    // and the same pick lands.  So the refusal is about the spawn and
+    // not about the ground.
+    tb_far = markers_with_spawn(18, 0);
+    tb_ok  = landing_descend(tb_pal, tb_pw, tb_far, Hex { q: 0, r: 0 }, 1);
+    assert(tb_ok.ok,
+           "the same pick with the marker moved out lands: {tb_ok.why}");
+}
+
+fn test_an_empty_world_is_refused() {
+    te2_l = landing_descend(pal_at(PALETTE), painted_empty(),
+                            marker_empty(), Hex { q: 0, r: 0 }, 1);
+    assert(!te2_l.ok, "there is nowhere to land on an unpainted world");
+    assert(te2_l.why != "", "and it says so: '{te2_l.why}'");
+}
+
+// ─── ⚠ The hash is a hash of POSITION ──────────────────────────
+
+// Enforces @FR-W-Position-Hash: no accumulator, no draw count, so the
+// answer does not depend on how many landings came before it.
+// @DRY-217 — random spelled as a POSITION HASH — fifty hashes later the same
+// position answers the same, where a stream would not.
+fn test_the_hash_depends_on_position_and_seed_alone() {
+    th_a = landing_hash(4, -2, 9);
+    for th_i in 0..50 { landing_hash(th_i, th_i * 3, th_i + 1); }
+    th_b = landing_hash(4, -2, 9);
+
+    assert(th_a == th_b,
+           "fifty hashes later the same position answers the same: "
+           + "{th_a} against {th_b} — a STREAM would not");
+    assert(landing_hash(4, -2, 9) != landing_hash(4, -2, 10)
+           || landing_hash(4, -2, 9) != landing_hash(5, -2, 9),
+           "and it moves with its inputs rather than being a constant");
+}

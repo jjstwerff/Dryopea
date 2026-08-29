@@ -211,6 +211,46 @@ with a new subject).  ⚠ It also buys **four beacons where the first base
 bought two** (`@M086`), so `@M065`'s landing exclusion moves with the wallet.
 ⚠ [`plans/31`](plans/31-carryover/README.md) is COMPLETE.
 
+⚠⚠ **AND SINCE [`plans/32`](plans/32-the-landing/README.md) WHERE THE BASE
+GOES IS A DECISION AND NOT AN AUTHORED FACT** (2026-08-29, `@M091`) —
+`ROADMAP.md` item **6**, and the step § THE SESSION IS THE GAP NOW put first
+because `plans/31` made a run possible and **nothing in the game could reach
+it**.  `land <q> <r> [seed]` is a `.keys` verb, and `landing_of` is a pure
+function of the world, the pick and the seed.  ⚠⚠ **A landing MOVES the
+authored core rather than creating one**, which is the load-bearing choice:
+`map_fault` validates a map AGAINST its core, so a map stays valid as
+authored and **a map cannot be checked against a pick nobody has made yet**.
+⚠⚠ **Three of `DESIGN.md` § 15's eight steps needed NO CODE and saying so was
+half the plan** — the core's six faces do not exist (`@X294`), close-spawn
+silencing has read the core's CURRENT hex since plan 16, and step 8's wallet
+shipped as `wallet_carrying`.  ⚠ **Random is a HASH OF POSITION**
+(`@FR-W-Position-Hash`, given its **first code** here by a plan that is not
+worldgen's): dryopea has no RNG and this plan introduced none.
+⚠⚠ **BOTH OF THE PLAN'S OWN DEFECTS WERE ONE RULE WRITTEN TWICE.**  L0's
+probe restated `landing_ground_ok` with a disc of ONE where the real door
+needs THREE, reporting 210 / 395 / 196 landable hexes against a truth of
+**80 / 159 / 71** — *two implementations of one rule is a defect with a
+delay* — and L1's search bound was derived cleanly from
+`LANDING_PICK_EDGE_BUFFER` but measured from the **hashed start**, itself 3
+hexes out, so 3 + 5 = 8 reached past the very buffer the derivation rested
+on.  ⚠ Only **14-30 %** of an authored map takes a landing, dominated by the
+CLEARANCE and not the spawn rule, and `crossroads_02` loses nothing only
+because its two markers sit at opposite ends — **so the content rule is
+*spawns at opposite ends***.
+⚠⚠ **AND IT CLOSED ON A PROBLEM RATHER THAN A NUMBER** (`@M091`): the pick is
+worth **58 ticks** across the band it can be made in, and holding the pick
+while sweeping only the SEED is worth **59**.  ***The dice are worth as much
+as the decision***, so `@X317`'s *land in the OVERLAP, because the overlap is
+what makes a choice exist* cannot be felt through this landing, and
+`DESIGN.md` § What kind of game this is' *the player cannot lean back* is a
+decision the dice can match.  ⚠ The cause is § 15 step 6's **random
+direction** for the free starter tower, not the touchdown — a hashed bearing
+puts the base's only defence anywhere on a ring twenty hexes across.
+⚠⚠ **Pointing it at the nearest LIVE SPAWN is a one-line change and
+contradicts § 15 as written**, so it is left OPEN as the owner's ruling.
+⚠ [`plans/32`](plans/32-the-landing/README.md) is COMPLETE, and the map
+selection / planet view half of item 6 is still [`plans/04`](plans/04-map-library/README.md).
+
 ⚠⚠ **AND THE CREW WORK ON THEIR OWN** ([`plans/29`](plans/29-the-crews-own-work/README.md),
 complete 2026-08-28) — a crew member nobody has told anything takes the
 nearest of four jobs **inside their own senses** (3 hexes untrained), and
@@ -235,11 +275,11 @@ critical path is **4, the SCRAMBLE**.
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1805 green**, ~320 s on a busy box (592 s beside another suite, 753 s, 775 s and 1252 s on 2026-08-29 — one of them a `graphics` cdylib rebuild), 146 files |
-| scenarios | `scripts/validate.sh` | **61 scripts, 1053 measurements**, ~20 s |
+| tests | `scripts/test.sh` | **1831 green**, ~320 s on a busy box (592 s beside another suite, 753 s, 775 s and 1252 s on 2026-08-29 — one of them a `graphics` cdylib rebuild), 150 files |
+| scenarios | `scripts/validate.sh` | **64 scripts, 1077 measurements**, ~20 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
-| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **437 defined, 433 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
-| ⚠⚠ formal rules | `scripts/rules.sh` — inside `test.sh` | **46 defined, 21 ENFORCED in 129 code sites** (`@X327`).  ⚠ `plans/31` added `@FR-R-Carry-Once` and `@FR-R-Opening` and gave both code the same day, which is the order `@X328` asks for.  ⚠ It moved at `plans/30` R5 because `src/poi.loft` gave `@FR-E-Poi-Owns` and `@FR-E-Place-State` their first code at all — never because citations were sprinkled (`@X328`).  ⚠⚠ **This read 89 until 2026-08-29 and the tree measured 93 before R7a touched it** — the number aged against a tree that moved, which is `@M044`'s class one instrument over: **re-measure before quoting a delta**.  R7a's own contribution is **three**.  ⚠ Resolution GATES; coverage only REPORTS.  ⚠⚠ A doc reference is **not** an enforcing site (`@X330`) |
+| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **438 defined, 434 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
+| ⚠⚠ formal rules | `scripts/rules.sh` — inside `test.sh` | **49 defined, 25 ENFORCED in 152 code sites** (`@X327`).  ⚠⚠ **`plans/32` moved it by FOUR while defining THREE**, and the fourth is the interesting one: `@FR-W-Position-Hash` was a WORLDGEN rule with no code anywhere, and the LANDING gave it its first — *a rule earns code from whichever plan first needs it, not from the plan that wrote it*.  ⚠⚠ **And the gate caught a citation broken by a LINE WRAP** — a rule name hyphenated across two lines of a doc reads as a dangling tag naming a rule that does not exist, which is `@X325`'s whole point one family over.  ⚠ **Never let a `@FR-`/`@X`/`@M` tag straddle a line break**; reflow the line instead.  ⚠ `plans/31` added `@FR-R-Carry-Once` and `@FR-R-Opening` and gave both code the same day, which is the order `@X328` asks for.  ⚠ It moved at `plans/30` R5 because `src/poi.loft` gave `@FR-E-Poi-Owns` and `@FR-E-Place-State` their first code at all — never because citations were sprinkled (`@X328`).  ⚠⚠ **This read 89 until 2026-08-29 and the tree measured 93 before R7a touched it** — the number aged against a tree that moved, which is `@M044`'s class one instrument over: **re-measure before quoting a delta**.  R7a's own contribution is **three**.  ⚠ Resolution GATES; coverage only REPORTS.  ⚠⚠ A doc reference is **not** an enforcing site (`@X330`) |
 
 ⚠ `scripts/test.sh` is the canonical runner — **never `loft test` directly**
 (§ Key commands says what it does that you would otherwise skip).
@@ -676,7 +716,7 @@ source of truth and the listing is a navigational summary of it.
 | **`fixstep`** (library) | ⚠⚠ **a PACKAGE, not in `src/`** — `TickClock`, `Bank`, `Timer`, the `approach` ease.  `loft api fixstep` is the surface |
 | `play_view.loft` | **what a live session LOOKS LIKE** — the composition `main.loft` calls in play mode |
 | `bindings.loft` | **the ONE key table** — keys → actions → `EditorInput`.  ⚠ Never add a `gl_key_pressed` |
-| `script.loft` | the `.keys` script runner and its whole vocabulary — commands name ACTIONS, never keys.  ⚠⚠ Since `plans/30` R7a it can say a PLACE: `poi` / `route` / `mob` / `routine` (`@X345`), and **a route ENLISTS its own population** |
+| `script.loft` | the `.keys` script runner and its whole vocabulary — commands name ACTIONS, never keys.  ⚠⚠ Since `plans/30` R7a it can say a PLACE: `poi` / `route` / `mob` / `routine` (`@X345`), and **a route ENLISTS its own population**.  ⚠⚠ Since `plans/32` L3 it can say a LANDING: `land <q> <r> [seed]`, which **runs the landing rather than recording its result** (`@FR-L-Landing-Is-A-Function`) — a `.keys` file names the seed because dryopea has no RNG |
 | `scenario.loft` | **a `.keys` scenario opened as a live STARTING POSITION** — and the command line's `script=` |
 | `validate.loft` / `validate_main.loft` | the SECOND gate: sweep `tests/scripts/`, sum the measurements, report the FIRST failure |
 | `maps.loft` / `mapbuild_main.loft` | **a MAP, as repo content** — its two files, how one is BUILT from a `.keys` source, and `map_fault` |
@@ -707,7 +747,7 @@ source of truth and the listing is a navigational summary of it.
 | `skill.loft` | **CREW SKILLS — build, repair, scout**.  `Skills` on `Helper`, `skill_factor`, and the DETECTION rule |
 | `endure.loft` | **ENDURANCE — work spends it, rest restores it**.  ⚠ A tired person works LESS and never stops |
 | `jammer.loft` | **THE JAMMER SWITCH — turning your own core off**.  ⚠ It stops the SUPPLY and never the SIEGE |
-| `task.loft` | **A JOB, and which one a crew member goes to** — the four `TASK_*` kinds, `jobs_in_scope`, `job_pick`.  ⚠⚠ **The remit trades BREADTH for REACH**, and the radius is the crew member's ALONE
+| `task.loft` | **A JOB, and which one a crew member goes to** — the four `TASK_*` kinds, `jobs_in_scope`, `job_pick`.  ⚠⚠ **The remit trades BREADTH for REACH**, and the radius is the crew member's ALONE |
 | `trap.loft` | **A TRAP THAT DOES NOT AUTOMATICALLY RESET** — placed in advance, fires ONCE, re-armed by a standing vehicle.  ⚠ The trigger is a CROSSING, never a standing position |
 | `moat.loft` | **A MOAT — the one hex whose surface is BELOW the ground around it**, the palette's `drop` read at last, and what a besieger shovels into one.  ⚠⚠ Its depth decides ONE thing: how much it takes to FILL — so it is a TIMER |
 | `font.loft` | **THE FONT — the ONE seam to `graphics::draw_text`**.  ⚠ The path is ABSOLUTE and that is enforced at the door |
@@ -723,6 +763,7 @@ source of truth and the listing is a navigational summary of it.
 | `wallet.loft` | the run's budget, and `wallet_broke` — ⚠⚠ POVERTY, not an ending (`@X292`) |
 | `scramble.loft` | **THE RUN'S ENDING, and the only one there is** — ⚠⚠ *the base never ends itself* (`@X293`).  Drive onto the core's own hex and stay six seconds; exiting CANCELS and resets.  ⚠ Beside the core you TRADE, on the core you LEAVE (`@X294`) |
 | `vehicle.loft` | the PLAYER — drive, boost, salvage.  `salvage_at` is the shared chassis |
+| `landing.loft` | **WHERE THE BASE GOES — a pick, a map and a seed become a landed base** (`plans/32`).  ⚠⚠ **A landing MOVES the authored core rather than creating one** (`@FR-L-Map-Stays-Valid`), so a map stays valid as authored and **a map cannot be checked against a pick nobody has made yet**.  ⚠⚠ **Random is a HASH OF POSITION and never a stream** (`@FR-W-Position-Hash`, given its FIRST CODE here) — dryopea has no RNG.  ⚠ **The hashed offset is the START and the search is the RESCUE**, bounded from the PICK: an unbounded outward search always succeeds, on the far side of the map.  ⚠ **A refusal changes nothing** (`@FR-L-Landing-Is-Total`) and **the TOWER is dropped, not the landing**.  ⚠⚠ What a pick is WORTH is an open design question (`@M091`) |
 | `helper.loft` | the NPC crew — banked movement, wrecking, and the 60 s recovery |
 | `carry.loft` | one record per carryable thing, with an `owner` — conservation is STRUCTURAL.  ⚠ Since `plans/30` R7b an owner may be a MOB (`BLOCKER_MOB + PoiMob index`), which is an identity that OUTLIVES a body |
 | `part.loft` | **what an entity IS** — the `Socket` a part offers and the `Binding` that fills it, over `hex_body::Rig` |
@@ -1331,6 +1372,9 @@ names; most of them exist because somebody did it without reading.
 | Ask whether a mover survives a SHORTER tick, or change `TICK_SECONDS` | `tests/26_l0_the_timestep_sweep.loft` — ⚠⚠ **the instrument is a CROSS-PRODUCT** |
 | Ask whether a TIMER survives a shorter tick | `tests/26_l3_the_timers.loft` — ⚠ the GUARDED sites were the healthy ones |
 | Ask whether the run is over | ⚠⚠ **`DESIGN.md` § 14 — the player LAUNCHES; there is no fail screen** (`@X292`).  `wallet_broke` terminates a run today as a **STEPSTONE**, and `plans/28` replaces it |
+| START a base, or ask where a landing may GO | `src/landing.loft::landing_descend` + `landing_place` (`plans/32`) — ⚠⚠ **a landing MOVES the authored core rather than creating one**, so a map stays valid as authored and *a map cannot be checked against a pick nobody has made yet*.  ⚠ **The hashed offset is the START and the search is the RESCUE**, bounded from the PICK.  ⚠ Only **14-30 %** of an authored map takes a landing at all, dominated by the CLEARANCE |
+| Author a LANDING in a `.keys` file | `land <q> <r> [seed]` (`plans/32` L3) — ⚠⚠ **the seed is written down because dryopea has NO RNG**: random is a HASH of position (`@FR-W-Position-Hash`), so a scenario replays exactly.  ⚠ It needed **no new emit verb and no `state_diff` row** — a landing's whole output is a POSITION, and markers and crew already round-trip |
+| Judge whether a landing SITE is a real choice | ⚠⚠ **`@M091` — it is not yet, and that is the open question**: the pick is worth **58 ticks** across the band and the SEED alone is worth **59**, so *the dice are worth as much as the decision* and `@X317`'s *land in the overlap* cannot be felt.  ⚠ The cause is `DESIGN.md` § 15 step 6's **random direction** for the free starter tower, not the touchdown; aiming it at the nearest live spawn is one line and contradicts § 15, so it is the **owner's ruling** |
 | End a run, or ask what a sortie was WORTH | `src/scramble.loft` + [`plans/28`](plans/28-the-scramble/README.md) — ⚠⚠ **the LAUNCH is the ending and the only one** (`@X293`).  Drive onto the core's own hex for six seconds; `launch <max>` / `launched <yes\|no>` are the verbs.  ⚠ 200.0 cut short against 225.3 played out (`@M068`) |
 
 ### Structures, towers, the crew and what they carry

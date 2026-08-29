@@ -2906,6 +2906,66 @@ The complete landing sequence:
 Wave 1 fires when either trigger satisfies (see [§ Spawn
 system + waves § Wave-1 triggers](#wave-1-triggers--walls-or-provocation)).
 
+### ⚠⚠ Step 6's *random direction* is what makes the pick unreadable — an OPEN ruling
+
+⚠⚠ **Built and measured** ([`plans/32`](../plans/32-the-landing/README.md)
+L4, `@M091`): swept along the band a pick can be made in, **where the player
+lands moves the clock 58 ticks** — and holding the pick while sweeping only
+the SEED moves it **59**.  ***The dice are worth as much as the decision.***
+
+⚠ The cause is step 6 and not the touchdown.  `core_landing_area_radius`
+moves a base by 3 hexes; a **random direction** on a 5-10 hex ring puts the
+base's only defence anywhere on a ring twenty hexes across, which swamps
+everything the pick decides.  ⚠⚠ **A *"free defensive guarantee"* that lands
+on the wrong side is not one.**
+
+⚠⚠ It contradicts two things this document already says: `@X317`'s **land in
+the OVERLAP, because the overlap is what makes a choice exist**, and § What
+kind of game this is' **the player cannot lean back** — *a decision the dice
+can match is not a decision*.
+
+⚠ **The fix is one line — point the lander at the nearest LIVE spawn marker
+instead of a hashed bearing** — and it contradicts step 6 as written, so
+`plans/32` left it OPEN rather than tuning it away.  ⚠⚠ **This is the
+owner's ruling**, and it is the only thing the landing flow still owes.
+
+
+### ⚠⚠ Formal rules — what a landing is  `@X327`
+
+⚠ The citable form of the eight steps above.  ⚠⚠ **Spec-first**: three of
+the eight need no code at all — the core's six faces do not exist
+(`@X294`), close-spawn silencing has worked off the core's current hex
+since plan 16, and the carryover wallet shipped with
+[`plans/31`](../plans/31-carryover/README.md).  The build obligation for
+the rest is [`plans/32`](../plans/32-the-landing/README.md).
+
+```
+  (L-Landing-Is-A-Function)
+                     a landing is a pure function of the world, the pick
+                     and the seed.  Same three in, same base out, every
+                     time — so a scenario can author one, `emit` can
+                     write it down, and a gate can measure what a pick
+                     was worth.  ⚠ § 15 says *random* four times, and
+                     `@FR-W-Position-Hash` is how this project spells it:
+                     a hash of POSITION, never a draw from a stream.
+
+  (L-Landing-Is-Total)
+                     a landing either yields a base that can be played or
+                     is REFUSED by name.  There is no half-landed base: a
+                     core on water, a footprint over a cliff, and a base
+                     every spawn marker is silenced around are the same
+                     defect — a sortie that cannot happen — and each is
+                     named before anything is placed.
+
+  (L-Map-Stays-Valid)
+                     a landing MOVES the authored core rather than
+                     creating one, so a map is playable as authored and
+                     the authored core is where the rocket lands if the
+                     player does not choose.  A map cannot be checked
+                     against a pick nobody has made yet.
+```
+
+
 ## 16. Meta-game hub
 
 ### The central space station

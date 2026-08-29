@@ -2314,6 +2314,85 @@ src/
                    with a TOWER behind it that inverts: 335 ticks and
                    NINE of thirteen dead (@M060), because a besieger
                    has to stand at a fixed distance and dig
+  landing.loft     WHERE THE BASE GOES — a pick, a map and a seed
+                   become a landed base (plans/32, ROADMAP item 6).
+                   LANDING_PICK_EDGE_BUFFER / CORE_LANDING_AREA_RADIUS
+                   / LANDING_CLEARANCE_BUFFER / LANDING_SEARCH_LIMIT /
+                   STARTER_TOWER_MIN / STARTER_TOWER_MAX /
+                   LANDING_CREW, Landing { ok, q, r, why },
+                   landing_hash, landing_ground_ok,
+                   landing_spawn_lives, landing_site_fault,
+                   landing_descend, landing_tower_site,
+                   landing_crew_sites, landing_place.
+                   ⚠⚠ A LANDING MOVES THE AUTHORED CORE RATHER THAN
+                   CREATING ONE (@FR-L-Map-Stays-Valid), and that is
+                   the load-bearing choice: `maps.loft::map_fault`
+                   validates a map AGAINST its core — every spawn
+                   pokeable, the core's ground not sea, a regular robot
+                   able to reach it — so a map stays playable as
+                   authored, `make maps` keeps refusing a map nobody
+                   could play, and the authored core is simply where
+                   the rocket lands if the player does not choose.
+                   ⚠ A map cannot be checked against a pick nobody has
+                   made yet, which is the only form that guarantee can
+                   take.
+                   ⚠⚠ RANDOM IS A HASH OF POSITION AND NEVER A STREAM
+                   (@FR-W-Position-Hash, given its FIRST CODE here by a
+                   plan that is not worldgen's).  DESIGN.md § 15 says
+                   *random* four times — the touchdown within 3 hexes,
+                   the tower's direction, its distance, the rotation —
+                   and dryopea has NO RNG at all; a `.keys` file
+                   authors a landing by naming its seed, and the gates
+                   need it reproducible.
+                   ⚠⚠ THE HASHED OFFSET IS THE START AND THE SEARCH IS
+                   THE RESCUE, in that order, so a pick over good
+                   ground lands near where it was made and only a bad
+                   one wanders (§ 15 step 3's *"the rocket appears to
+                   choose safe ground"*).  The search goes outward by
+                   RING so the nearest valid ground wins.
+                   ⚠⚠ AND IT IS BOUNDED FROM THE PICK, NOT THE HASHED
+                   START — an unbounded outward search ALWAYS succeeds,
+                   on the far side of the map.  The first version
+                   bounded from the start, itself up to
+                   CORE_LANDING_AREA_RADIUS out, so 3 + 5 = 8 reached
+                   past the very edge buffer the derivation rested on;
+                   `tests/32_l1` § A pick over water caught it at seven
+                   hexes.
+                   ⚠⚠ A REFUSAL CHANGES NOTHING
+                   (@FR-L-Landing-Is-Total): every fault is named
+                   before anything is placed, so there is no
+                   half-landed base.  A core on
+                   water, a footprint over a cliff and a base every
+                   spawn marker is silenced around are one defect — a
+                   sortie that cannot happen — and @M058 measured what
+                   the last one produces: a base standing at 378 ticks
+                   with ZERO targets.
+                   ⚠ THE TOWER IS DROPPED, NOT THE LANDING: a base with
+                   no room for its free 5-10 hex starter tower is
+                   poorer, not impossible, and the same is true of a
+                   crew member whose emergence hex is taken — it steps
+                   aside.
+                   ⚠ `landing_ground_ok` is the ONE ground door and the
+                   probe in `tests/32_l0` calls it: L0's first version
+                   restated it with a disc of ONE where the real rule
+                   needs THREE (footprint + clearance) and reported
+                   210 / 395 / 196 landable hexes where the truth is
+                   80 / 159 / 71 — *two implementations of one rule is
+                   a defect with a delay*.
+                   ⚠ Only 14-30 % of an authored map takes a landing,
+                   dominated by the CLEARANCE and not the spawn rule;
+                   `crossroads_02` loses nothing to the spawn rule only
+                   because its two markers sit at opposite ends, so the
+                   CONTENT rule is *spawns at opposite ends*.
+                   ⚠⚠ AND WHAT A PICK IS WORTH IS AN OPEN DESIGN
+                   QUESTION (@M091): the pick moves the clock 58 ticks
+                   across the band and the SEED alone moves it 59 — the
+                   dice are worth as much as the decision — because
+                   § 15 step 6's random DIRECTION puts the base's only
+                   defence anywhere on a ring twenty hexes across.
+                   Pointing it at the nearest live spawn is one line
+                   and contradicts § 15 as written, so it is the
+                   owner's ruling and not this file's
   font.loft        THE FONT — the ONE seam to graphics::draw_text
                    (BACKLOG B1) — TEXT_FONT_FILE, Font { handle, path,
                    loaded }, font_load / font_load_from / font_ready /

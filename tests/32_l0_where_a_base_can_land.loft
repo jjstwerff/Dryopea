@@ -1,0 +1,104 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 32 phase L0 — the probe.  Where can a base actually land?
+//
+// ⚠⚠ **Nothing below L0 should be built before this reads**, which is
+// the shape `plans/30` F0 used: the descent's whole job is to find
+// standing ground near a pick, and how hard that is decides whether the
+// search needs to be clever or merely correct.
+//
+// ── What the probe has to answer ────────────────────────────────
+//
+// 1. How many hexes of each authored map could hold a core at all —
+//    `can_stand`, plus the 7-hex footprint and its 2-hex clearance?
+// 2. ⚠⚠ **How many of those leave a LIVE SPAWN?**  `plans/32` § Failure
+//    paths says a base every spawn is silenced around must be refused,
+//    and `@M058` measured what one produces: a base standing at 378
+//    ticks with ZERO targets.  ⚠ All three maps carry ONE or TWO spawn
+//    markers where `DESIGN.md` § 15 assumes four to six, so this is the
+//    refusal most likely to fire on real content.
+// 3. Is a pick that misses ever RESCUED by the outward search?
+//
+// ⚠ **A probe that answers *every pick lands* has not found the water**,
+// which is this file's own negative control (`plans/32` § Invariant
+// gate).
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const MAPS:    text = "maps";
+const SHOTS:   text = "tests/actual";
+
+fn pal_at(p: text) -> vector<GroundType> { load_palette(p) }
+
+// ⚠⚠ **The probe asks the REAL doors and does not restate them.**  Its
+// first version had its own `footprint_stands` checking a disc of ONE —
+// the 7-hex footprint — while `landing_ground_ok` requires a disc of
+// THREE, the footprint plus its `obstruction_clearance_buffer`.  The
+// two answers differ by hundreds of hexes, and `tests/32_l2` § a real
+// map is what found it: a pick L0 called landable had no landing within
+// five hexes.
+//
+// ⚠ *Two implementations of one rule is a defect with a delay* — so the
+// probe calls `landing_ground_ok` and `landing_spawn_lives` themselves,
+// and the numbers below are what the descent will actually accept.
+
+fn probe_map(name: text) -> integer {
+    pm_pal = pal_at(PALETTE);
+    pm_s   = editor_state_new(PALETTE);
+    pm_run = map_play_source(pm_s, MAPS, name, SHOTS);
+    assert(pm_run.ok, "{name} plays: {script_describe(pm_run)}");
+
+    pm_stand = 0;      // hexes a core could stand on, footprint and all
+    pm_live  = 0;      // ...that also leave a spawn alive
+    pm_all   = 0;
+
+    for pm_h in pm_s.pw.painted {
+        pm_all += 1;
+        pm_at = Hex { q: pm_h.q, r: pm_h.r };
+        if !landing_ground_ok(pm_pal, pm_s.pw, pm_at) { continue; }
+        pm_stand += 1;
+        if landing_spawn_lives(pm_s.mw, pm_at) { pm_live += 1; }
+    }
+
+    println("L0 {name}: {pm_all} painted, {pm_stand} take a landing "
+            + "(footprint + clearance), {pm_live} of those leave a live spawn");
+    pm_live
+}
+
+// ─── The three authored maps ────────────────────────────────────
+
+fn test_where_a_base_can_land_on_each_map() {
+    tw_a = probe_map("starter_01");
+    tw_b = probe_map("crossroads_02");
+    tw_c = probe_map("the_gap_03");
+
+    // ⚠ The probe must be able to say NO somewhere, or it has not found
+    // the water and every number above is a count of the whole map.
+    assert(tw_a > 0 && tw_b > 0 && tw_c > 0,
+           "every map can be landed on somewhere: {tw_a} / {tw_b} / {tw_c}");
+}
+
+// ⚠⚠ **The negative control the probe needs**: a footprint check that
+// accepted everything would count the sea.  `the_gap_03` is the map
+// whose whole lesson is *the gap is the only way through for anybody*
+// (BACKLOG C10), so it must have ground a core cannot stand on.
+fn test_the_probe_can_say_no() {
+    tp_pal = pal_at(PALETTE);
+    tp_s   = editor_state_new(PALETTE);
+    tp_run = map_play_source(tp_s, MAPS, "the_gap_03", SHOTS);
+    assert(tp_run.ok, "the map plays: {script_describe(tp_run)}");
+
+    tp_no = 0;
+    for tp_h in tp_s.pw.painted {
+        if !landing_ground_ok(tp_pal, tp_s.pw, Hex { q: tp_h.q, r: tp_h.r }) {
+            tp_no += 1;
+        }
+    }
+    assert(tp_no > 0,
+           "the probe refuses SOME hex of the gap map — otherwise it is "
+           + "counting the whole world: {tp_no}");
+}

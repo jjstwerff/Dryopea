@@ -241,6 +241,7 @@ use damage;
 use wallet;
 use vehicle;
 use helper;
+use landing;
 use task;
 use occupancy;
 use spawn;
@@ -2272,6 +2273,46 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
     // Start a wave.  The core is the target marker — a wave has to
     // walk towards something, and the marker layer already says
     // where that is.
+    // ⚠⚠ **THE LANDING** (`plans/32` L3) — a base placed from a pick.
+    //
+    // ⚠ **NOT an author command.**  `is_author_cmd`'s rule is *they
+    // AUTHOR and never simulate — each writes a field and triggers no
+    // consequence*, and a landing is nothing but consequence: it moves
+    // the core, drops a tower and lets the crew out.  It belongs with
+    // `wave` and `do`, which also make something happen.
+    //
+    // ⚠⚠ **It needs no new emit verb and no `state_diff` row, and that
+    // is a fact about the design rather than an omission**: a landing's
+    // whole output is a POSITION — markers and a crew — and both
+    // already round-trip (`emit_markers`, `crew`).  ⚠ The SEED is in
+    // the file, so replaying the line reproduces the landing rather
+    // than recording its result (`@FR-L-Landing-Is-A-Function`, and
+    // `DESIGN.md` § 20's *a seed is unknowable in advance but not
+    // un-recorded*).
+    //
+    // ⚠ A refused landing is a script FAULT, not a silent no-op: a
+    // script asserts INTENT, the same rule `take` and `boost` follow.
+    if sc_cmd == "land" {
+        if sc_argc < 2 || sc_argc > 3 { return "land needs <q> <r> [seed]"; }
+        sc_lq = (tok[1] ?? "") as integer?;
+        sc_lr = (tok[2] ?? "") as integer?;
+        if sc_lq == null || sc_lr == null {
+            return "land: <q> and <r> must be whole numbers";
+        }
+        sc_lseed = 0;
+        if sc_argc == 3 {
+            sc_lsv = (tok[3] ?? "") as integer?;
+            if sc_lsv == null { return "land: <seed> must be a whole number"; }
+            sc_lseed = sc_lsv ?? 0;
+        }
+        sc_landed = landing_place(s.picker.palette, s.pw, s.mw,
+                                  run.play.wave,
+                                  Hex { q: sc_lq ?? 0, r: sc_lr ?? 0 },
+                                  sc_lseed);
+        if !sc_landed.ok { return "land: {sc_landed.why}"; }
+        return "";
+    }
+
     if sc_cmd == "wave" {
         if sc_argc < 1 || sc_argc > 2 { return "wave needs <count> [class]"; }
         sc_n = sc_a1 as integer?;

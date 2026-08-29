@@ -1,0 +1,393 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// #examples
+//
+// THE LANDING — a base placed on a map from a pick.
+//
+// `docs/DESIGN.md` § 15 Landing flow, [`plans/32`](../plans/32-the-landing/README.md).
+// Until this file existed a sortie began with the core already on the
+// map: `plans/31` made a run a sequence of bases and **nothing in the
+// game could reach the second one**.
+//
+// ── ⚠⚠ A landing MOVES the authored core ────────────────────────
+//
+// Enforces @FR-L-Map-Stays-Valid.  `maps.loft::map_fault` refuses a map
+// without exactly ONE target marker and then validates the map against
+// that core — every spawn pokeable, the ground under it not sea, a
+// regular robot able to reach it.  So the authored core is **where the
+// rocket lands if the player does not choose**, and a landing moves it.
+// ⚠ A map cannot be checked against a pick nobody has made yet.
+//
+// ── ⚠⚠ Random, spelled the way this project spells it ───────────
+//
+// § 15 says *random* four times.  Enforces @FR-W-Position-Hash: **a
+// hash of POSITION, never a draw from a stream**, because *"a world
+// that cannot be reproduced cannot be gated"* — and dryopea has no RNG
+// at all, which this file must not change.  ⚠ Two calls with the same
+// world, pick and seed answer the same hex, which is
+// @FR-L-Landing-Is-A-Function and what lets a `.keys` file author one.
+
+use lattice;
+use painted;
+use palette;
+use passable;
+use markers;
+use height;
+use spawn;
+use helper;
+use play;
+
+// ─── The numbers ────────────────────────────────────────────────
+//
+// `examples/numbers.json` § core, restated here — the same note every
+// other file carries, because nothing loads that file yet.
+
+// numbers.json § core.core_landing_area_radius.  How far from the
+// player's pick the rocket may actually touch down.
+//
+// ⚠ *"Tunable: larger = more variance from pick; smaller = pick is
+// literal."*  It is what makes a pick an INTENTION rather than a
+// coordinate.
+pub const CORE_LANDING_AREA_RADIUS: integer = 3;
+
+// numbers.json § core.landing_pick_edge_buffer.  Closest the pick may
+// be to the edge of the painted world.
+pub const LANDING_PICK_EDGE_BUFFER: integer = 5;
+
+// numbers.json § core.obstruction_clearance_buffer.  The ring around
+// the 7-hex footprint that must be clear at landing time.
+pub const LANDING_CLEARANCE_BUFFER: integer = 2;
+
+// How far the descent may search outward before giving up.
+//
+// ⚠⚠ **DERIVED, not chosen** — and the derivation is the whole reason
+// the search is bounded at all.  An unbounded outward search always
+// "succeeds", on the far side of the map, which is a rocket that
+// teleports rather than one that *"appears to choose safe ground"*
+// (§ 15 step 3).
+//
+// ⚠⚠ **Measured from the PICK and never from the hashed start, and the
+// first version of this file got that wrong**: the start may already
+// sit `CORE_LANDING_AREA_RADIUS` from the pick, so a search bounded
+// from THERE reaches `3 + 5 = 8` — past the very edge buffer the bound
+// was derived from.  `tests/32_l1` § A pick over water caught it at
+// seven hexes, which is the design-protocol's own point: *the build is
+// the last probe*.
+//
+// ⚠ The pick is required to sit `LANDING_PICK_EDGE_BUFFER` from the
+// edge, so a search bounded FROM THE PICK by the same number cannot
+// walk off the world — the buffer pays for itself twice, and there is
+// no second constant to keep in step with it.
+pub const LANDING_SEARCH_LIMIT: integer = LANDING_PICK_EDGE_BUFFER;
+
+// ─── What a landing IS ──────────────────────────────────────────
+
+// Where the rocket came down, or why it could not.
+//
+// ⚠ **`ok` and a `why`, rather than a nullable hex** — enforces
+// @FR-L-Landing-Is-Total: a landing either yields a base that can be
+// played or is refused BY NAME, and a caller that could only see `null`
+// reports the wrong one of five different reasons.
+//
+// ⚠ Stored so that a `Landing { }` literal is a REFUSAL: [loft#914]
+// takes an omitted field's default silently, and *not landed* is the
+// safe neutral — the same spelling rule `wallet.carried` follows.
+pub struct Landing {
+    q:   integer,
+    r:   integer,
+    ok:  boolean,
+    why: text,
+}
+
+// Example: @DRY-221
+pub fn landing_none(why: text) -> Landing {
+    Landing { q: 0, r: 0, ok: false, why: why }
+}
+
+// Example: @DRY-222
+pub fn landing_at(q: integer, r: integer) -> Landing {
+    Landing { q: q, r: r, ok: true, why: "" }
+}
+
+// Example: @DRY-223
+pub fn landing_hex(l: const Landing) -> Hex {
+    Hex { q: l.q, r: l.r }
+}
+
+// ─── The hash ───────────────────────────────────────────────────
+
+// A small deterministic hash of a hex and a seed.
+//
+// ⚠⚠ **Enforces @FR-W-Position-Hash.**  It is a function of the
+// POSITION and the seed and of nothing else — no accumulator, no draw
+// count — so the same pick answers the same offset however many
+// landings came before it.  ⚠ A stream here would make every gate in
+// this plan depend on test ordering.
+//
+// ⚠ The constants are odd and coprime-ish so the low bits move; this is
+// a spreader and not a cryptographic hash, and the only property it
+// owes is *the same input gives the same answer*.
+// Example: @DRY-217
+pub fn landing_hash(q: integer, r: integer, seed: integer) -> integer {
+    lh = (q * 73856093) ^ (r * 19349663) ^ (seed * 83492791);
+    if lh < 0 { lh = 0 - lh; }
+    lh
+}
+
+// ─── Is a hex a place a base could stand? ───────────────────────
+
+// The 7-hex footprint plus its clearance ring, all standable.
+//
+// ⚠ `can_stand` for the REGULAR robot, the class `map_fault` already
+// checks a map against: a base only an insect could reach is not what
+// the footprint test is for.
+// Example: @DRY-220
+pub fn landing_ground_ok(pal: vector<GroundType>, pw: PaintedWorld,
+                         at: const Hex) -> boolean {
+    lg_hl = height_layer_empty();
+    lg_k  = ENEMY_KIND_REGULAR as u8;
+    lg_r  = 1 + LANDING_CLEARANCE_BUFFER;
+    // ⚠ ONE disc rather than a footprint test and a ring test: the
+    // footprint is a disc of 1 and the clearance is the ring outside
+    // it, so the union is a disc of 3 and two loops would be one rule
+    // in two places.
+    for lg_dq in (0 - lg_r)..(lg_r + 1) {
+        for lg_dr in (0 - lg_r)..(lg_r + 1) {
+            lg_h = Hex { q: at.q + lg_dq, r: at.r + lg_dr };
+            if lat_distance(at, lg_h) > lg_r { continue; }
+            if !can_stand(pal, pw, lg_hl, lg_k, lg_h.q, lg_h.r) { return false; }
+        }
+    }
+    true
+}
+
+// Would a base here leave any spawn marker alive?
+//
+// ⚠⚠ **The refusal `plans/32` L0 measured as the BINDING one.**  Spawn
+// markers within `SPAWN_DISABLE_RADIUS` of the core are silenced for
+// the mission (`spawn.loft::active_spawn_markers`), so a base every
+// marker is close to can never be attacked — and `@M058` measured what
+// that produces: **a base standing at 378 ticks with zero targets.**
+//
+// ⚠ L0 found it refuses more than half the standable ground of two of
+// the three authored maps (210 of 348 on `starter_01`, 196 of 352 on
+// `the_gap_03`), so it is not a hypothetical guard.
+// Example: @DRY-219
+pub fn landing_spawn_lives(mw: const MarkerWorld, at: const Hex) -> boolean {
+    for ls_m in mw.markers {
+        if ls_m.kind != MARKER_KIND_SPAWN as u8 { continue; }
+        if lat_distance(at, Hex { q: ls_m.q, r: ls_m.r }) > SPAWN_DISABLE_RADIUS {
+            return true;
+        }
+    }
+    false
+}
+
+// Everything that makes a hex unusable as a landing, or "".
+// Example: @DRY-218
+pub fn landing_site_fault(pal: vector<GroundType>, pw: PaintedWorld,
+                          mw: const MarkerWorld, at: const Hex) -> text {
+    if !landing_ground_ok(pal, pw, at) {
+        return "({at.q}, {at.r}): the footprint and its {LANDING_CLEARANCE_BUFFER}-hex clearance are not all standable";
+    }
+    if !landing_spawn_lives(mw, at) {
+        return "({at.q}, {at.r}): every spawn marker is within {SPAWN_DISABLE_RADIUS} hexes, so nothing could ever attack this base";
+    }
+    ""
+}
+
+// ─── The descent ────────────────────────────────────────────────
+
+// Where the rocket comes down, given a pick.
+//
+// ⚠⚠ **Enforces @FR-L-Landing-Is-A-Function and
+// @FR-L-Landing-Is-Total.**  The same world, pick and seed answer the
+// same hex; and the answer is either a site that passes
+// `landing_site_fault` or a refusal that names why.
+//
+// § 15 step 3: *"The rocket lands at a random hex within
+// core_landing_area_radius around the pick.  If the candidate hex is
+// invalid … the algorithm searches outward for a valid landing.
+// Visually diegetic — the rocket appears to choose safe ground."*
+//
+// ⚠ **The hashed offset is the START and the search is the RESCUE**, in
+// that order, so a pick over good ground lands near where it was made
+// and only a bad one wanders.  ⚠⚠ The search is bounded by
+// `LANDING_SEARCH_LIMIT` — see its own note: an unbounded one always
+// succeeds, somewhere else entirely.
+//
+// Example: @DRY-216
+pub fn landing_descend(pal: vector<GroundType>, pw: PaintedWorld,
+                       mw: const MarkerWorld, pick: const Hex,
+                       seed: integer) -> Landing {
+    // ⚠ The pick's own refusal first, because it is about the PICK and
+    // not about any candidate: a pick too near the edge is a mis-click
+    // and the rocket should not go hunting for a rescue.
+    if painted_count(pw) == 0 {
+        return landing_none("the world is empty — there is nowhere to land");
+    }
+
+    // The hashed start: a hex within CORE_LANDING_AREA_RADIUS of the
+    // pick, chosen by position and never by a stream.
+    ld_h    = landing_hash(pick.q, pick.r, seed);
+    ld_span = 2 * CORE_LANDING_AREA_RADIUS + 1;
+    ld_sq   = pick.q + ((ld_h % ld_span) ?? 0) - CORE_LANDING_AREA_RADIUS;
+    ld_sr   = pick.r + (((ld_h / ld_span) ?? 0) % ld_span ?? 0)
+              - CORE_LANDING_AREA_RADIUS;
+    ld_start = Hex { q: ld_sq, r: ld_sr };
+    if lat_distance(pick, ld_start) > CORE_LANDING_AREA_RADIUS {
+        ld_start = pick;
+    }
+
+    if landing_site_fault(pal, pw, mw, ld_start) == "" {
+        return landing_at(ld_start.q, ld_start.r);
+    }
+
+    // ⚠ Outward by RING, so the nearest valid ground wins and the
+    // rocket visibly steers off the bad hex rather than jumping.
+    ld_ring = 1;
+    while ld_ring <= LANDING_SEARCH_LIMIT {
+        for ld_dq in (0 - ld_ring)..(ld_ring + 1) {
+            for ld_dr in (0 - ld_ring)..(ld_ring + 1) {
+                ld_c = Hex { q: ld_start.q + ld_dq, r: ld_start.r + ld_dr };
+                if lat_distance(ld_start, ld_c) != ld_ring { continue; }
+                // ⚠⚠ Bounded from the PICK — see `LANDING_SEARCH_LIMIT`.
+                // A candidate the search can reach but the pick cannot
+                // is outside the map's own edge guarantee.
+                if lat_distance(pick, ld_c) > LANDING_SEARCH_LIMIT { continue; }
+                if landing_site_fault(pal, pw, mw, ld_c) == "" {
+                    return landing_at(ld_c.q, ld_c.r);
+                }
+            }
+        }
+        ld_ring += 1;
+    }
+
+    landing_none("no landing within {LANDING_SEARCH_LIMIT} hexes of ({pick.q}, {pick.r}): "
+                 + landing_site_fault(pal, pw, mw, ld_start))
+}
+
+
+// ─── ⚠⚠ THE BASE — what the landing puts on the ground (L2) ─────
+//
+// § 15 steps 6 and 7: *"A separate lander touches down 5-10 hex from
+// the core in a random direction, already standing + firing-ready"*,
+// and *"Two NPC helpers exit through the lift-off face within 2-3 s."*
+
+// numbers.json § core.starter_tower_landing_offset — `[5, 10]` hexes,
+// *"Random within this range, random direction."*
+//
+// ⚠ It is the **free defensive guarantee that prevents wave-1
+// deadlock** (§ 15 step 6), which is why a base that cannot place one
+// is poorer rather than impossible — see `landing_place`.
+pub const STARTER_TOWER_MIN: integer = 5;
+pub const STARTER_TOWER_MAX: integer = 10;
+
+// numbers.json § helper.roster_start — *"Helpers emerging from the core
+// on landing."*
+//
+// ⚠ **Two, FIXED, and the player does not choose them** (`@X258`,
+// `PROGRESSION.md` § P2b): a small co-op brings who it has, and since
+// most players play only a few sorties these two are the only crew most
+// people ever meet.
+pub const LANDING_CREW: integer = 2;
+
+// Where the free starter tower comes down.
+//
+// ⚠⚠ **A hashed DIRECTION and a hashed DISTANCE, then a walk** —
+// enforces @FR-W-Position-Hash like the descent above it, so the same
+// landing always puts the tower in the same place and a scenario can be
+// replayed.  ⚠ It tries every direction from the hashed one before
+// giving up, so a tower is dropped only when the ring really has no
+// room.
+//
+// Example: @DRY-224
+pub fn landing_tower_site(pal: vector<GroundType>, pw: PaintedWorld,
+                          mw: const MarkerWorld, core: const Hex,
+                          seed: integer) -> Landing {
+    lt_hl   = height_layer_empty();
+    lt_k    = ENEMY_KIND_REGULAR as u8;
+    lt_h    = landing_hash(core.q, core.r, seed + 1);
+    lt_span = STARTER_TOWER_MAX - STARTER_TOWER_MIN + 1;
+    lt_d0   = (lt_h % 6) ?? 0;
+    lt_far  = STARTER_TOWER_MIN + (((lt_h / 6) ?? 0) % lt_span ?? 0);
+
+    for lt_i in 0..6 {
+        lt_dir = ((lt_d0 + lt_i) % 6) ?? 0;
+        lt_at  = core;
+        for lt_step in 0..lt_far { lt_at = lat_neighbour(lt_at, lt_dir); }
+        // ⚠ A tower needs standable ground and a free hex — never the
+        // core's own, and never on top of an authored marker.
+        if has_marker(mw, lt_at.q, lt_at.r) { continue; }
+        if !can_stand(pal, pw, lt_hl, lt_k, lt_at.q, lt_at.r) { continue; }
+        return landing_at(lt_at.q, lt_at.r);
+    }
+    landing_none("no room for the starter tower {lt_far} hexes from ({core.q}, {core.r})")
+}
+
+// Where the crew step out.
+//
+// ⚠ The core's own footprint is a disc of one, and § 15 has them *exit
+// through the lift-off face*, so they emerge onto the ring around the
+// core — the nearest free standable hexes, in direction order so a
+// replay puts them back where they were.
+//
+// Example: @DRY-225
+pub fn landing_crew_sites(pal: vector<GroundType>, pw: PaintedWorld,
+                          core: const Hex, want: integer) -> vector<Hex> {
+    lc_out: vector<Hex> = [];
+    lc_hl = height_layer_empty();
+    lc_k  = ENEMY_KIND_REGULAR as u8;
+    for lc_d in 0..6 {
+        if len(lc_out) >= want { continue; }
+        lc_at = lat_neighbour(core, lc_d);
+        if !can_stand(pal, pw, lc_hl, lc_k, lc_at.q, lc_at.r) { continue; }
+        lc_out += [lc_at];
+    }
+    lc_out
+}
+
+// Land a base: move the core, drop the starter tower, let the crew out.
+//
+// ⚠⚠ **Enforces @FR-L-Landing-Is-Total AND @FR-L-Map-Stays-Valid.**  On
+// a refusal it changes NOTHING — no moved core, no half-placed tower,
+// no crew standing on a map that was never landed on — because a
+// half-landed base is the defect the rule exists to forbid, and it is
+// the one a caller cannot detect afterwards.
+//
+// ⚠ The core is MOVED rather than created: `map_fault` already refuses
+// a map without exactly one target marker and validates the map against
+// it, so the authored core is *where the rocket lands if the player
+// does not choose*.
+//
+// ⚠ **A tower that will not fit is DROPPED and the landing stands**: it
+// is § 15's *free defensive guarantee*, and a base without it is poorer
+// rather than impossible.  The crew are not optional in the same way —
+// but the ring around a landable core is standable by construction,
+// since `landing_ground_ok` already checked a disc of three.
+//
+// Example: @DRY-226
+pub fn landing_place(pal: vector<GroundType>, pw: PaintedWorld,
+                     mw: MarkerWorld, state: WaveState,
+                     pick: const Hex, seed: integer) -> Landing {
+    lp_l = landing_descend(pal, pw, mw, pick, seed);
+    if !lp_l.ok { return lp_l; }
+    lp_at = landing_hex(lp_l);
+
+    // ⚠ The authored core steps aside first, so `play_core` answers ONE
+    // marker afterwards and `map_fault`'s invariant survives a landing.
+    lp_core = play_core(mw);
+    if lp_core.0 > 0 { remove_marker(mw, lp_core.1, lp_core.2); }
+    place_target(mw, lp_at.q, lp_at.r);
+
+    lp_t = landing_tower_site(pal, pw, mw, lp_at, seed);
+    if lp_t.ok {
+        place_tower(mw, lp_t.q, lp_t.r);
+    }
+
+    for lp_c in landing_crew_sites(pal, pw, lp_at, LANDING_CREW) {
+        state.crew += [helper_new(lp_c.q, lp_c.r)];
+    }
+
+    lp_l
+}

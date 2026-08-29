@@ -1,0 +1,252 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 32 phase L2 — the base a landing puts on the ground.
+//
+// `DESIGN.md` § 15 steps 6 and 7: a starter tower 5-10 hex out *"already
+// standing + firing-ready"*, and two helpers out of the core.
+//
+// ── What this gate pins ─────────────────────────────────────────
+//
+// ⚠⚠ **@FR-L-Map-Stays-Valid**: the core is MOVED, not created, so
+// `play_core` still answers exactly ONE marker afterwards and
+// `map_fault`'s invariant survives a landing.  A landing that ADDED a
+// target would make every map it touched unplayable, and nothing in the
+// map path would notice until something asked for the core.
+//
+// ⚠⚠ **@FR-L-Landing-Is-Total, on the failure side**: a refused landing
+// changes NOTHING.  ⚠ That is the half a caller cannot check afterwards
+// — a half-landed base looks like a landed one — so it is gated here
+// rather than trusted.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+const WATER:   integer = 1;
+
+fn pal_at(p: text) -> vector<GroundType> { load_palette(p) }
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+
+fn field(radius: integer) -> PaintedWorld {
+    f_pw = painted_empty();
+    for f_q in (0 - radius)..(radius + 1) {
+        for f_r in (0 - radius)..(radius + 1) {
+            paint(f_pw, f_q, f_r, as_u8(GRASS));
+        }
+    }
+    f_pw
+}
+
+// A map as authored: a core at the origin and a spawn far out.
+fn authored(core_q: integer, core_r: integer) -> MarkerWorld {
+    a_w = marker_empty();
+    place_target(a_w, core_q, core_r);
+    place_spawn(a_w, 18, 0, as_u8(3));
+    a_w
+}
+
+fn towers_in(mw: const MarkerWorld) -> integer {
+    ti_n = 0;
+    for ti_m in mw.markers {
+        if ti_m.kind == MARKER_KIND_TOWER as u8 { ti_n += 1; }
+    }
+    ti_n
+}
+
+// ─── ⚠⚠ The core MOVES ─────────────────────────────────────────
+
+fn test_the_core_moves_and_there_is_still_exactly_one() {
+    tc_pal = pal_at(PALETTE);
+    tc_pw  = field(22);
+    tc_mw  = authored(0, 0);
+    tc_st  = wave_state_empty();
+
+    tc_before = play_core(tc_mw);
+    assert(tc_before.0 == 1 && tc_before.1 == 0 && tc_before.2 == 0,
+           "the authored core is one marker at the origin");
+
+    tc_l = landing_place(tc_pal, tc_pw, tc_mw, tc_st, Hex { q: 8, r: 2 }, 4);
+    assert(tc_l.ok, "the landing takes: {tc_l.why}");
+
+    tc_after = play_core(tc_mw);
+    assert(tc_after.0 == 1,
+           "⚠ STILL exactly one target marker: {tc_after.0} — a landing "
+           + "that ADDED one makes every map it touches unplayable, and "
+           + "`map_fault` would not be asked until something wanted the core");
+    assert(tc_after.1 == tc_l.q && tc_after.2 == tc_l.r,
+           "and it is where the rocket came down: ({tc_after.1}, "
+           + "{tc_after.2}) against ({tc_l.q}, {tc_l.r})");
+    assert(tc_after.1 != 0 || tc_after.2 != 0,
+           "which is not where it was authored — otherwise this test "
+           + "passes on a landing that did nothing");
+}
+
+// ─── ⚠⚠ The starter tower and the crew ─────────────────────────
+
+// @DRY-224 — the free starter tower comes down 5-10 hexes out, in a
+// direction the hash chose, on ground it can stand on.
+fn test_the_starter_tower_lands_in_range() {
+    ts_pal = pal_at(PALETTE);
+    ts_pw  = field(22);
+    ts_mw  = authored(0, 0);
+    ts_st  = wave_state_empty();
+
+    ts_l = landing_place(ts_pal, ts_pw, ts_mw, ts_st, Hex { q: 0, r: 0 }, 11);
+    assert(ts_l.ok, "the landing takes: {ts_l.why}");
+    assert(towers_in(ts_mw) == 1, "one tower: {towers_in(ts_mw)}");
+
+    for ts_m in ts_mw.markers {
+        if ts_m.kind != MARKER_KIND_TOWER as u8 { continue; }
+        ts_d = lat_distance(landing_hex(ts_l), Hex { q: ts_m.q, r: ts_m.r });
+        assert(ts_d >= STARTER_TOWER_MIN && ts_d <= STARTER_TOWER_MAX,
+               "the tower is {ts_d} hexes out and the range is "
+               + "{STARTER_TOWER_MIN}-{STARTER_TOWER_MAX}");
+    }
+}
+
+// @DRY-225 — two helpers step out of the core, onto its own ring.
+fn test_two_helpers_emerge() {
+    th_pal = pal_at(PALETTE);
+    th_pw  = field(22);
+    th_mw  = authored(0, 0);
+    th_st  = wave_state_empty();
+
+    assert(len(th_st.crew) == 0, "the roster starts empty");
+
+    th_l = landing_place(th_pal, th_pw, th_mw, th_st, Hex { q: 3, r: 1 }, 6);
+    assert(th_l.ok, "the landing takes: {th_l.why}");
+    assert(len(th_st.crew) == LANDING_CREW,
+           "and {LANDING_CREW} helpers are out: {len(th_st.crew)}");
+
+    for th_c in th_st.crew {
+        assert(th_c.alive, "each of them alive");
+        assert(lat_distance(landing_hex(th_l), Hex { q: th_c.q, r: th_c.r }) == 1,
+               "and standing on the core's own ring: ({th_c.q}, {th_c.r})");
+    }
+}
+
+// @DRY-226 — a landing is REPLAYABLE: the same pick and seed put the
+// core, the tower and the crew back in the same places.
+fn test_a_landing_replays_exactly() {
+    tr_pal = pal_at(PALETTE);
+
+    tr_a_mw = authored(0, 0); tr_a_st = wave_state_empty();
+    tr_b_mw = authored(0, 0); tr_b_st = wave_state_empty();
+
+    tr_a = landing_place(tr_pal, field(22), tr_a_mw, tr_a_st, Hex { q: 5, r: -2 }, 13);
+    tr_b = landing_place(tr_pal, field(22), tr_b_mw, tr_b_st, Hex { q: 5, r: -2 }, 13);
+
+    assert(tr_a.ok && tr_b.ok, "both land");
+    assert(tr_a.q == tr_b.q && tr_a.r == tr_b.r, "on the same hex");
+    assert(marker_count(tr_a_mw) == marker_count(tr_b_mw),
+           "with the same markers: {marker_count(tr_a_mw)} against "
+           + "{marker_count(tr_b_mw)}");
+    assert(len(tr_a_st.crew) == len(tr_b_st.crew), "and the same crew");
+
+    tr_i = 0;
+    while tr_i < len(tr_a_st.crew) {
+        tr_x = tr_a_st.crew[tr_i] ?? Helper { };
+        tr_y = tr_b_st.crew[tr_i] ?? Helper { };
+        assert(tr_x.q == tr_y.q && tr_x.r == tr_y.r,
+               "crew {tr_i} stands in the same place: ({tr_x.q}, {tr_x.r}) "
+               + "against ({tr_y.q}, {tr_y.r})");
+        tr_i += 1;
+    }
+}
+
+// ─── ⚠⚠ A refusal changes NOTHING ──────────────────────────────
+
+// The half a caller cannot check afterwards: a half-landed base looks
+// exactly like a landed one.
+fn test_a_refused_landing_leaves_the_map_alone() {
+    tf_pal = pal_at(PALETTE);
+    tf_pw  = field(22);
+    // Every spawn inside the disable radius — the refusal L0 measured
+    // as the binding one.
+    tf_mw  = marker_empty();
+    place_target(tf_mw, 0, 0);
+    place_spawn(tf_mw, 2, 0, as_u8(3));
+    tf_st  = wave_state_empty();
+
+    tf_markers = marker_count(tf_mw);
+    tf_l = landing_place(tf_pal, tf_pw, tf_mw, tf_st, Hex { q: 0, r: 0 }, 2);
+
+    assert(!tf_l.ok, "the landing is refused: '{tf_l.why}'");
+    assert(marker_count(tf_mw) == tf_markers,
+           "and NOTHING was placed: {marker_count(tf_mw)} markers against "
+           + "{tf_markers} — a half-landed base looks like a landed one");
+    assert(len(tf_st.crew) == 0,
+           "no crew stepped out of a rocket that never came down: "
+           + "{len(tf_st.crew)}");
+
+    tf_core = play_core(tf_mw);
+    assert(tf_core.0 == 1 && tf_core.1 == 0 && tf_core.2 == 0,
+           "and the authored core is untouched at the origin");
+}
+
+// ⚠ The negative control for the test above: the SAME map with the
+// spawn moved out lands and really does change things — otherwise
+// "nothing was placed" is true of a function that never places anything.
+fn test_the_same_map_with_a_far_spawn_really_lands() {
+    tn_pal = pal_at(PALETTE);
+    tn_mw  = authored(0, 0);
+    tn_st  = wave_state_empty();
+    tn_before = marker_count(tn_mw);
+
+    tn_l = landing_place(tn_pal, field(22), tn_mw, tn_st, Hex { q: 0, r: 0 }, 2);
+    assert(tn_l.ok, "it lands: {tn_l.why}");
+    assert(marker_count(tn_mw) > tn_before,
+           "and the tower really was added: {marker_count(tn_mw)} against "
+           + "{tn_before}");
+    assert(len(tn_st.crew) == LANDING_CREW, "and the crew really came out");
+}
+
+// ─── ⚠⚠ On a REAL map, which a painted square cannot stand in for ──
+
+// L0 measured that 210 of `starter_01`'s 348 footprint-holding hexes
+// leave a live spawn.  ⚠ This lands on the real thing and asks the
+// question `map_fault` asks: **is what came down still a playable map?**
+fn test_a_landing_on_an_authored_map_is_still_a_map() {
+    tam_pal = pal_at(PALETTE);
+    tam_s   = editor_state_new(PALETTE);
+    tam_run = map_play_source(tam_s, "maps", "crossroads_02", "tests/actual");
+    assert(tam_run.ok, "the map plays: {script_describe(tam_run)}");
+
+    // ⚠ `crossroads_02` is the map L0 scored at 100 % — two spawns at
+    // opposite ends — so a landing anywhere standable leaves one alive.
+    assert(map_fault(tam_pal, tam_s.pw, tam_s.mw) == "",
+           "the control: the map is playable as authored");
+
+    // ⚠ The pick is DISCOVERED rather than guessed, so this test does
+    // not go red the day somebody edits the map.  ⚠⚠ The first version
+    // hard-coded (6, 2) and failed — which is how L0's probe was found
+    // to be measuring a disc of ONE where the descent wants THREE.
+    tam_pick = Hex { q: 0, r: 0 };
+    tam_found = false;
+    for tam_h in tam_s.pw.painted {
+        if tam_found { continue; }
+        tam_c = Hex { q: tam_h.q, r: tam_h.r };
+        if tam_c.q == 0 && tam_c.r == 0 { continue; }
+        if landing_site_fault(tam_pal, tam_s.pw, tam_s.mw, tam_c) != "" { continue; }
+        tam_pick = tam_c;
+        tam_found = true;
+    }
+    assert(tam_found, "the map has somewhere to land that is not the core");
+
+    tam_st = wave_state_empty();
+    tam_l  = landing_place(tam_pal, tam_s.pw, tam_s.mw, tam_st, tam_pick, 21);
+    assert(tam_l.ok, "and a base lands on it: {tam_l.why}");
+    assert(tam_l.q != 0 || tam_l.r != 0,
+           "somewhere other than the authored core: ({tam_l.q}, {tam_l.r})");
+
+    // ⚠⚠ **THE CLAIM**: what the landing left behind is a map the game
+    // would still accept — one core, standing on painted ground, with a
+    // spawn that can reach it.  A landing that broke this would break it
+    // silently, because nothing re-runs `map_fault` after one.
+    assert(map_fault(tam_pal, tam_s.pw, tam_s.mw) == "",
+           "and it is STILL a playable map: "
+           + "'{map_fault(tam_pal, tam_s.pw, tam_s.mw)}'");
+}

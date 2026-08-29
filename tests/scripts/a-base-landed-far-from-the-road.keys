@@ -1,0 +1,98 @@
+# a-base-landed-far-from-the-road — plan 32 L4, the other half.
+#
+# ⚠⚠ **The same everything, landed at the far end of the band.**  One
+# token apart from `a-base-landed-near-the-road.keys`: the pick.
+#
+# ⚠ `@X317` — *land in the OVERLAP* — says a base goes where several
+# areas' influence overlaps, *because the overlap is what makes a choice
+# exist*.  This pair is the cheapest possible reading of that: one
+# influence (a spawn), two distances.
+
+echo a base landed far from the road: everything is a longer trip
+
+do toggle_mode
+do cycle_kind
+click 0 0
+marker 0 0 target
+do cycle_kind
+do cycle_kind
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 26 0
+marker 26 0 spawn 3
+count markers 2 2
+do toggle_mode
+
+palette 5
+drag -6 -7 30 -7
+drag -6 -6 30 -6
+drag -6 -5 30 -5
+drag -6 -4 30 -4
+drag -6 -3 30 -3
+drag -6 -2 30 -2
+drag -6 -1 30 -1
+drag -6 0 30 0
+drag -6 1 30 1
+drag -6 2 30 2
+drag -6 3 30 3
+drag -6 4 30 4
+drag -6 5 30 5
+drag -6 6 30 6
+drag -6 7 30 7
+
+# ── ⚠⚠ The ONE token: where the player put the rocket ───────────
+land -2 0 5
+count markers 3 3
+roster 2 2
+
+park -2 0
+
+schedule 5 8
+waves 0 0
+drive 26 0
+tick 30
+waves 1 1
+drive -2 0
+tick 30
+
+
+# ── ⚠⚠ THE READING, AND IT IS A PROBLEM RATHER THAN A NUMBER ────
+#
+# **174 near against 221 far — landing beside the road costs 47 ticks.**
+# ⚠⚠ **And that number does not mean what it looks like.**
+#
+# Swept along the band, the pick is NOT monotone in its distance from
+# the spawn (`@M091`):
+#
+#     pick q=12  14 hexes out   221      q=2   24 hexes out   184
+#     pick q=10  16 hexes out   222      q=0   26 hexes out   232
+#     pick q=8   18 hexes out   174      q=-2  28 hexes out   221
+#     pick q=6   20 hexes out   210      q=-4  30 hexes out   never falls
+#     pick q=4   22 hexes out   209
+#
+# ⚠⚠ **Spread 58 ticks, and no trend.**  So the walk is not what the
+# pick buys.  Holding the pick at (8, 0) and sweeping only the SEED —
+# which moves the touchdown by up to `core_landing_area_radius` and the
+# free tower by up to twenty hexes around the base — gives **171, 188,
+# 194, 194, 198, 206, 230**: **spread 59.**
+#
+# ⚠⚠ **THE DICE ARE WORTH AS MUCH AS THE DECISION.**  A player choosing
+# where to land buys the same 58 ticks the landing's own randomness
+# hands out for free, so the choice is unreadable — and `DESIGN.md`
+# § What kind of game this is is explicit that *the player cannot lean
+# back*, while `@X317` wants a landing site to be a CHOICE because *the
+# overlap is what makes a choice exist*.
+#
+# ⚠ **The cause is § 15 step 6's *random direction* for the starter
+# tower**, not the touchdown: a free tower that lands 5-10 hexes out on
+# a hashed bearing puts the base's only defence anywhere on a ring, and
+# a *"free defensive guarantee that prevents wave-1 deadlock"* that
+# lands on the wrong side is not one.  ⚠⚠ **It is a design question and
+# is left OPEN rather than tuned away** ([`plans/32`](../../plans/32-the-landing/README.md)
+# § Open questions 3): pointing the tower at the nearest live spawn
+# would make the pick legible, and that is the owner's call.
+
+fall 900
+ticks 217 225

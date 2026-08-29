@@ -53,7 +53,7 @@ fn test_every_real_script_round_trips() {
                "{tes_f} does not survive there and back");
         tes_n += 1;
     }
-    assert(tes_n == 61, "all sixty-one scripts were converted, got {tes_n}");
+    assert(tes_n == 64, "all sixty-four scripts were converted, got {tes_n}");
 }
 
 // A conversion that changed nothing would round-trip perfectly too.
@@ -306,6 +306,9 @@ fn test_the_schema_covers_the_vocabulary() {
         // ⚠ `plans/30` R7a — the places, and the one command in the
         // vocabulary that carries THREE hexes.
         "poi", "route", "routine",
+        // ⚠ `plans/32` L3 — `land <q> <r> [seed]`.  The hex is the PICK;
+        // the optional seed is not a coordinate and must not be rewritten.
+        "land",
     ];
     tsc_plain: vector<text> = [
         "echo", "do", "hold", "step", "palette", "snap", "wave",
@@ -319,6 +322,8 @@ fn test_the_schema_covers_the_vocabulary() {
         // as a coordinate, which is exactly the silent failure the
         // pass-through half of this table exists to refuse.
         "mob",
+        // ⚠ `plans/31` N3 — `carried <points>` is a wallet amount.
+        "carried",
     ];
 
     tsc_n = 0;

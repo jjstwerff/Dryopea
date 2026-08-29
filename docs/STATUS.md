@@ -466,3 +466,37 @@ defence is broke before a robot arrives.  ⚠ The sweep is the finding: +124
 points at the authored wave, **standing against falling** from 26 robots to
 50, +11 ticks past 115, then nothing once the wave saturates the siege front.
 Gates **1790 green / 145 files**, **58 scripts / 1011 measurements**.
+
+**`plans/32` L0-L4 — where the base goes stops being AUTHORED and becomes a
+DECISION** (2026-08-29, `@M091`).  `ROADMAP.md` item **6**, and the step
+§ THE SESSION IS THE GAP NOW put first because `plans/31` made a run possible
+and **nothing in the game could reach it**.  `src/landing.loft` turns a pick,
+a map and a seed into a landed base — core moved, free starter tower down,
+two crew out — and `land <q> <r> [seed]` is a `.keys` verb.  ⚠⚠ **A landing
+MOVES the authored core rather than creating one** (`@FR-L-Map-Stays-Valid`):
+`map_fault` validates a map AGAINST its core, so a map stays playable as
+authored, `make maps` keeps refusing a map nobody could play, and the
+authored core is simply where the rocket lands if the player does not choose
+— *a map cannot be checked against a pick nobody has made yet*.  ⚠⚠ **Three
+of `DESIGN.md` § 15's eight steps needed no code and saying so was half the
+plan**: the core's six faces do not exist (`@X294`), close-spawn silencing
+has read the core's CURRENT hex since plan 16, and step 8's wallet shipped as
+`wallet_carrying`.  ⚠ **Random is a HASH of position** (`@FR-W-Position-Hash`,
+given its **first code** by a plan that is not worldgen's) — dryopea has no
+RNG and this plan introduced none.  ⚠⚠ **Both of the plan's own defects were
+one rule written twice**: L0's probe restated `landing_ground_ok` with a disc
+of ONE where the real door needs THREE, reporting 210 / 395 / 196 landable
+hexes against a truth of **80 / 159 / 71**, and L1's search bound was derived
+cleanly from `LANDING_PICK_EDGE_BUFFER` but measured from the **hashed
+start**, itself 3 hexes out, so 3 + 5 = 8 reached past the very buffer the
+derivation rested on.  ⚠ Only **14-30 %** of an authored map takes a landing,
+dominated by the CLEARANCE and not the spawn rule, and `crossroads_02` loses
+nothing only because its two markers sit at opposite ends — **so the content
+rule is *spawns at opposite ends***.  ⚠⚠ **AND IT CLOSED ON A PROBLEM RATHER
+THAN A NUMBER** (`@M091`): the pick is worth **58 ticks** across the band and
+the SEED alone is worth **59** — ***the dice are worth as much as the
+decision***, so `@X317`'s *land in the overlap* cannot be felt.  The cause is
+§ 15 step 6's **random direction** for the free starter tower, not the
+touchdown; aiming it at the nearest live spawn is one line and contradicts
+§ 15 as written, so it is left OPEN as the owner's ruling.
+Gates **1831 green / 150 files**, **64 scripts / 1077 measurements**.
