@@ -179,6 +179,21 @@ and each refusal is blocked on a thing with a NAME — the crew on an IDENTITY
 (`@X290`) and a STATION, the stragglers on the same, the tops on a DEPOSIT.
 ⚠ **The ratio is applied once by construction**: `manifest_of` refuses to
 convert, `manifest_opens` BUILDS a wallet rather than crediting one.
+⚠⚠ **AND THE WAVE LIST CARRIES A COMPOSITION, IN JSON AND NOWHERE ELSE**
+(2026-08-29, `@M089`, `@M090`) — `examples/waves.json` § `parts`, read by
+`wave_schedule_new`; `waves.loft` holds **no copy**, and `wave_list_default`
+is seven counts with nowhere to put a class.  ⚠⚠ **A WAVE IS DECIDED BY THE
+WORST CLASS HOLDING A SLOT IN THE FRONT** — `@M020` cashed at the level of a
+wave's contents: all-regular **452**, all-builder **452**, all-scout **671**,
+all-miner **752**, all-harvester **never falls**, so **no composition can be
+harder than all-regular**.  ⚠⚠ **And MORE BODIES MAKE A WAVE WEAKER** — the
+counts plus extra scouts read **641** against the flat **452** — *a wave
+cannot be strengthened by adding to it, only diluted*.  ⚠ `builder` is the
+one class that joins for free (1.5 hex/s like a regular, and its 1.5x damage
+buys nothing where the breach clock is saturated), so the shipped mix is
+regular + builder at **452 against 452**.  ⚠ A richer mix is a **RATES**
+problem, not a tuning one, and rates are balance — deferred to the economy.
+
 ⚠⚠ **AND THE CARRY COMPOUNDS** (`@M087`): **230.0 against 106.0** on the
 same base, crew, wave and tower sites **with the same 100 points left when
 the ferry ends** — a hundred points spent on two more towers came back as a
@@ -220,10 +235,10 @@ critical path is **4, the SCRAMBLE**.
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1804 green**, ~320 s on a busy box (592 s beside another suite, 753 s, 775 s and 1252 s on 2026-08-29 — one of them a `graphics` cdylib rebuild), 146 files |
-| scenarios | `scripts/validate.sh` | **60 scripts, 1039 measurements**, ~20 s |
+| tests | `scripts/test.sh` | **1805 green**, ~320 s on a busy box (592 s beside another suite, 753 s, 775 s and 1252 s on 2026-08-29 — one of them a `graphics` cdylib rebuild), 146 files |
+| scenarios | `scripts/validate.sh` | **61 scripts, 1053 measurements**, ~20 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
-| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **436 defined, 432 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
+| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **437 defined, 433 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
 | ⚠⚠ formal rules | `scripts/rules.sh` — inside `test.sh` | **46 defined, 21 ENFORCED in 129 code sites** (`@X327`).  ⚠ `plans/31` added `@FR-R-Carry-Once` and `@FR-R-Opening` and gave both code the same day, which is the order `@X328` asks for.  ⚠ It moved at `plans/30` R5 because `src/poi.loft` gave `@FR-E-Poi-Owns` and `@FR-E-Place-State` their first code at all — never because citations were sprinkled (`@X328`).  ⚠⚠ **This read 89 until 2026-08-29 and the tree measured 93 before R7a touched it** — the number aged against a tree that moved, which is `@M044`'s class one instrument over: **re-measure before quoting a delta**.  R7a's own contribution is **three**.  ⚠ Resolution GATES; coverage only REPORTS.  ⚠⚠ A doc reference is **not** an enforcing site (`@X330`) |
 
 ⚠ `scripts/test.sh` is the canonical runner — **never `loft test` directly**

@@ -432,17 +432,23 @@ born with is composed and **the game sends more than one symbol at the
 player**.  A `schedule` line still means a flat list, which is what keeps
 every scenario in the corpus meaning what it meant.
 
-⚠⚠ **And the measurement inverted the obvious expectation** (`@M089`): the
-composed list makes the base last **63 ticks LONGER** — 452 flat against 515
-composed — and the **scouts are the whole of it** (scouts-alone reads 515,
-the slow strong classes alone read 464).  It is `@M020` with its sign
-flipped: the siege front is the wall's WIDTH, a scout moves 2.5 hex/s against
-1.5 and does **0.1 wall damage against 1.0**, so scouts arrive first, take
-every slot in the front and chew at a tenth of the rate while the
-triple-damage miners are still walking.  ***A fast weak class in a wave makes
-the wave weaker***, which no arithmetic over the rates shows.  ⚠ So the
-shipped composition SOFTENS the authored list by 14 %, recorded rather than
-tuned away.
+⚠⚠ **And the measurement inverted the obvious expectation** (`@M089`,
+`@M090`).  The first composition made the base last **63 ticks LONGER** —
+452 flat against 515 — because it is `@M020` cashed at the level of a wave's
+CONTENTS: the siege front is the wall's WIDTH, so a fixed number of robots
+chew at once and ***a wave is decided by the WORST class holding a slot***.
+A scout moves 2.5 hex/s against 1.5 and does **0.1 wall damage against 1.0**,
+so scouts arrive first, take every slot and chew at a tenth of the rate.
+⚠⚠ **And more bodies make a wave WEAKER** — the counts plus extra scouts read
+641 against the flat 452 — so a wave cannot be strengthened by adding to it,
+only diluted.
+
+⚠ **Swept as pure lists: all-regular 452, all-builder 452, all-scout 671,
+all-miner 752, all-harvester never falls.**  So `builder` is the one class
+that joins a wave for free, and the shipped composition is regular + builder
+at **452 against 452** — the mix costs nothing.  ⚠⚠ **A richer mix is a RATES
+problem, not a tuning one**, and rates are balance, deferred to the economy
+(item 10).
 
 ⚠ The same probe frees `MapFile`'s six-field cap and
 [`plans/01`](../plans/01-ground-editor/README.md) E4's *"expanded once loft

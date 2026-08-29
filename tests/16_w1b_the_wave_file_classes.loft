@@ -86,8 +86,8 @@ fn test_a_composed_wave_is_really_mixed() {
            "and nothing else");
 
     // Wave 2 does.
-    assert(part_count(tcw, 2, ENEMY_KIND_SCOUT) > 0,
-           "wave 2 carries scouts: {part_count(tcw, 2, ENEMY_KIND_SCOUT)}");
+    assert(part_count(tcw, 2, ENEMY_KIND_BUILDER) > 0,
+           "wave 2 carries builders: {part_count(tcw, 2, ENEMY_KIND_BUILDER)}");
     assert(part_count(tcw, 2, ENEMY_KIND_REGULAR) > 0,
            "and regulars beside them");
 }
@@ -106,7 +106,7 @@ fn test_the_shipped_list_sends_more_than_one_symbol() {
         }
         tsl_kinds += tsl_any;
     }
-    assert(tsl_kinds >= 3,
+    assert(tsl_kinds >= 2,
            "the shipped list is more than one symbol: {tsl_kinds} classes");
 }
 
@@ -203,45 +203,56 @@ fn test_a_faulty_file_falls_back_to_its_counts() {
            "with nothing of the class it could not read");
 }
 
-// ─── ⚠⚠ The copy — what makes the hand mirror safe ─────────────
+// ─── ⚠⚠ There is no copy — the file is the only source ─────────
 
-// `wave_parts_default` is a HAND COPY of `examples/waves.json` § parts,
-// and `waves.loft` says why it has to be one: `wave_schedule_new` is
-// called by `wave_state_empty` for every `WaveState` in the tree, so
-// reading a file there would put disk I/O and a cwd dependency inside
-// the hottest factory in the repo.
+// ⚠⚠ **A `wave_parts_default` mirroring the file stood in `waves.loft`
+// for one commit, and this test compared the two part for part.**  The
+// owner ruled the composition belongs in JSON and not in code
+// (2026-08-29), so the copy is gone and the comparison with it: what
+// replaces both is that `wave_schedule_new` READS the file.
 //
-// ⚠⚠ **What makes a second copy acceptable is THIS TEST and not the
-// care taken writing it.**  Everywhere else the repo refuses a second
-// copy because it drifts; here the copy is gated part for part, so a
-// divergence is loud on the run that introduces it rather than silent
-// for twenty plans.  ⚠ It is the same bargain `numbers.json` has with
-// its `.loft` constants, with the gate that file's rows mostly lack.
-fn test_the_default_composition_matches_the_authored_file() {
-    tdc_file = wave_file_load(WAVES);
-    tdc_hand = wave_parts_default();
+// ⚠ A second copy needs a gate to stay honest; no copy needs nothing,
+// which is the stronger position and the reason the ruling is right.
+// What is still in code is `wave_list_default` — a length and seven
+// counts, used only when the file cannot be read — and it carries no
+// class at all.
+fn test_the_code_holds_no_composition() {
+    tch = wave_list_default();
 
-    assert(len(tdc_file.parts) == len(tdc_hand),
-           "the file has {len(tdc_file.parts)} parts and the hand copy "
-           + "{len(tdc_hand)} — one of them was edited alone");
+    assert(len(tch) == 7, "the fallback is seven counts: {len(tch)}");
 
-    tdc_i = 0;
-    while tdc_i < len(tdc_hand) {
-        tdc_f = tdc_file.parts[tdc_i] ?? WaveFilePart { };
-        tdc_h = tdc_hand[tdc_i] ?? WaveFilePart { };
-        assert(tdc_f.wave == tdc_h.wave && tdc_f.count == tdc_h.count
-               && tdc_f.class == tdc_h.class,
-               "part {tdc_i} differs — file says wave {tdc_f.wave} "
-               + "{tdc_f.count} {tdc_f.class}, the hand copy says wave "
-               + "{tdc_h.wave} {tdc_h.count} {tdc_h.class}");
-        tdc_i += 1;
+    // ⚠ The fallback is all-REGULAR by construction: a `vector<integer>`
+    // has nowhere to put a class.  That is the claim — the only place a
+    // class is written down is `examples/waves.json`.
+    tch_s = wave_schedule_of(tch, INTER_WAVE_DELAY_SECONDS);
+    tch_i = 0;
+    while tch_i < 7 {
+        assert(wave_schedule_pure(tch_s, tch_i),
+               "fallback wave {tch_i} is plain regulars — the code cannot "
+               + "express a composition and must not");
+        tch_i += 1;
     }
+}
 
-    // ⚠ And the delay too, which is the other thing the file carries.
-    assert(tdc_file.inter_wave_delay_seconds
-           == INTER_WAVE_DELAY_SECONDS as integer,
-           "the lull agrees: {tdc_file.inter_wave_delay_seconds} against "
-           + "{INTER_WAVE_DELAY_SECONDS}");
+// ⚠ And the file really is what the factory reads: edit the JSON and
+// this moves, which is the whole point of the ruling.
+fn test_the_factory_reads_the_file() {
+    tfr_file = wave_file_load(WAVES);
+    tfr_new  = wave_schedule_new();
+
+    assert(len(tfr_file.parts) > 0, "the file composes something");
+    assert(wave_schedule_count(tfr_new) == len(tfr_file.waves),
+           "and the factory's list is the file's: "
+           + "{wave_schedule_count(tfr_new)} against {len(tfr_file.waves)}");
+
+    tfr_i = 0;
+    while tfr_i < len(tfr_file.waves) {
+        assert(wave_schedule_size(tfr_new, tfr_i)
+               == (tfr_file.waves[tfr_i] ?? 0),
+               "wave {tfr_i} is the file's count: "
+               + "{wave_schedule_size(tfr_new, tfr_i)}");
+        tfr_i += 1;
+    }
 }
 
 // ⚠⚠ **The wiring itself**: the schedule every `WaveState` is born with
@@ -258,9 +269,9 @@ fn test_a_fresh_wave_state_carries_the_composition() {
            + "sight of a robot stays legible");
     assert(!wave_schedule_pure(tfw.schedule, 2),
            "and wave 2 is a MIX, which no fresh state has ever carried");
-    assert(part_count(tfw.schedule, 2, ENEMY_KIND_SCOUT) == 4,
-           "four of them scouts: "
-           + "{part_count(tfw.schedule, 2, ENEMY_KIND_SCOUT)}");
+    assert(part_count(tfw.schedule, 2, ENEMY_KIND_BUILDER) == 4,
+           "four of them builders: "
+           + "{part_count(tfw.schedule, 2, ENEMY_KIND_BUILDER)}");
 }
 
 // ⚠ **A `schedule` line still means a FLAT list**, which is what keeps

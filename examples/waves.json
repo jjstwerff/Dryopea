@@ -1,5 +1,5 @@
 {
-  "_comment": "Validation-tier wave list. `waves` is the list's LENGTH and each wave's all-regular count; `parts` REPLACES what a named wave is made of, exactly as `.keys`'s `compose` verb does (waves.loft § WaveFile). A wave with no part is its count in regulars. Class names come from passable.loft::enemy_class_of — an unknown one is refused, never defaulted. Spawn marker selection per enemy is random across the markers placed on the map; their direction governs the approach heading.",
+  "_comment": "Validation-tier wave list, and the ONLY place the composition lives \u2014 waves.loft holds no copy of it (@M090). `waves` is the list's LENGTH and each wave's all-regular count; `parts` REPLACES what a named wave is made of, exactly as .keys's `compose` verb does. A wave with no part is its count in regulars. Class names come from passable.loft::enemy_class_of - an unknown one is refused, never defaulted. WHY THE MIX IS regular+builder ONLY: the siege front is the wall's WIDTH, so a fixed number of robots chew at once and a wave is decided by the WORST class holding a slot. Measured (@M090): all-regular and all-builder both fall the gate base at 452 ticks; all-scout 671, all-miner 752, all-harvester never. Scouts (2.5 hex/s) arrive first and do 0.1 wall damage against a regular's 1.0, so they take slots and dilute - adding them as EXTRA bodies is worse still (12 regulars fall it at 452, the same 12 plus 4 scouts at 641). Builder is the one class tied with regular on both axes (1.5 hex/s, and damage at the front is saturated so its 1.5x buys nothing and costs nothing), so regular+builder is the only mix that cannot soften the list. A richer mix needs the class RATES changed, which is balance and deferred to the economy (ROADMAP.md item 10).",
   "inter_wave_delay_seconds": 15,
   "waves": [
     5,
@@ -11,25 +11,55 @@
     80
   ],
   "parts": [
-    { "wave": 2, "count": 8, "class": "robot" },
-    { "wave": 2, "count": 4, "class": "scout" },
-
-    { "wave": 3, "count": 12, "class": "robot" },
-    { "wave": 3, "count": 4, "class": "scout" },
-    { "wave": 3, "count": 4, "class": "miner" },
-
-    { "wave": 4, "count": 18, "class": "robot" },
-    { "wave": 4, "count": 6, "class": "scout" },
-    { "wave": 4, "count": 6, "class": "miner" },
-
-    { "wave": 5, "count": 28, "class": "robot" },
-    { "wave": 5, "count": 8, "class": "scout" },
-    { "wave": 5, "count": 8, "class": "miner" },
-    { "wave": 5, "count": 6, "class": "harvester" },
-
-    { "wave": 6, "count": 44, "class": "robot" },
-    { "wave": 6, "count": 12, "class": "scout" },
-    { "wave": 6, "count": 12, "class": "miner" },
-    { "wave": 6, "count": 12, "class": "harvester" }
+    {
+      "wave": 2,
+      "count": 8,
+      "class": "robot"
+    },
+    {
+      "wave": 2,
+      "count": 4,
+      "class": "builder"
+    },
+    {
+      "wave": 3,
+      "count": 13,
+      "class": "robot"
+    },
+    {
+      "wave": 3,
+      "count": 7,
+      "class": "builder"
+    },
+    {
+      "wave": 4,
+      "count": 20,
+      "class": "robot"
+    },
+    {
+      "wave": 4,
+      "count": 10,
+      "class": "builder"
+    },
+    {
+      "wave": 5,
+      "count": 33,
+      "class": "robot"
+    },
+    {
+      "wave": 5,
+      "count": 17,
+      "class": "builder"
+    },
+    {
+      "wave": 6,
+      "count": 53,
+      "class": "robot"
+    },
+    {
+      "wave": 6,
+      "count": 27,
+      "class": "builder"
+    }
   ]
 }

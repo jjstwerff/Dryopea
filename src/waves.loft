@@ -331,80 +331,51 @@ pub fn wave_schedule_of(waves: vector<integer>, delay: float) -> WaveSchedule {
                    delay: clock_units_from_seconds(delay), running: false }
 }
 
-// What the design's list is MADE of — the mirror of
-// `examples/waves.json` § `parts`.
+// Where the authored wave list lives.
 //
-// ⚠⚠ **A HAND COPY, and it is gated rather than trusted.**  It is the
-// rule `CLAUDE.md` states for every tunable — *`numbers.json` is a
-// guide; edit the `.loft` constant too* — and the reason it applies
-// here is `wave_state_empty`: it calls `wave_schedule_new` for every
-// `WaveState` in the tree, so reading a FILE there would put disk I/O
-// and a cwd dependency inside the hottest factory in the repo.  ⚠ The
-// palette settles the same question the same way: a SESSION loads
-// files, a factory does not.
-//
-// ⚠⚠ **What makes the copy safe is the gate, not the care**:
-// `tests/16_w1b` § The copy asserts this function and the file agree
-// part for part, so a divergence is loud on the run that introduces it.
-// Without that this is exactly the second-copy-that-drifts the repo
-// refuses everywhere else.
-//
-// ⚠ Wave 0 and wave 1 carry no part on purpose — the opening five and
-// eight are the player's first sight of a robot, and `@X246`'s neutral
-// landing zone wants them LEGIBLE.  A mix is what arrives once the
-// player has learned to read one.
-pub fn wave_parts_default() -> vector<WaveFilePart> {
-    wpd: vector<WaveFilePart> = [];
-    wpd += [WaveFilePart { wave: 2, count:  8, class: "robot" }];
-    wpd += [WaveFilePart { wave: 2, count:  4, class: "scout" }];
-
-    wpd += [WaveFilePart { wave: 3, count: 12, class: "robot" }];
-    wpd += [WaveFilePart { wave: 3, count:  4, class: "scout" }];
-    wpd += [WaveFilePart { wave: 3, count:  4, class: "miner" }];
-
-    wpd += [WaveFilePart { wave: 4, count: 18, class: "robot" }];
-    wpd += [WaveFilePart { wave: 4, count:  6, class: "scout" }];
-    wpd += [WaveFilePart { wave: 4, count:  6, class: "miner" }];
-
-    wpd += [WaveFilePart { wave: 5, count: 28, class: "robot" }];
-    wpd += [WaveFilePart { wave: 5, count:  8, class: "scout" }];
-    wpd += [WaveFilePart { wave: 5, count:  8, class: "miner" }];
-    wpd += [WaveFilePart { wave: 5, count:  6, class: "harvester" }];
-
-    wpd += [WaveFilePart { wave: 6, count: 44, class: "robot" }];
-    wpd += [WaveFilePart { wave: 6, count: 12, class: "scout" }];
-    wpd += [WaveFilePart { wave: 6, count: 12, class: "miner" }];
-    wpd += [WaveFilePart { wave: 6, count: 12, class: "harvester" }];
-    wpd
-}
-
-// The design's list AS A FILE — counts plus what each wave is made of.
-pub fn wave_file_default() -> WaveFile {
-    wfd = WaveFile { inter_wave_delay_seconds: INTER_WAVE_DELAY_SECONDS as integer,
-                     waves: wave_list_default(),
-                     parts: wave_parts_default() };
-    wfd
-}
+// ⚠ Repo-root-relative, exactly as `examples/palette.json` is, and it
+// resolves for the same reason: every ENTRY declares `#cwd`, so a
+// relative path is cwd-relative and both gates run from the repo root
+// (`CLAUDE.md` § Relative paths resolve against the PROGRAM's
+// directory).
+pub const WAVES_PATH: text = "examples/waves.json";
 
 // Factory: a run with the design's list, not yet started.
 //
-// ⚠⚠ **It carries the design's COMPOSITION since 2026-08-29**, so the
-// game sends more than one symbol at the player — until then a mixed
-// wave could only be authored in a `.keys` file, and every wave the
-// game sent ITSELF was the same wave (`EXPLORATION.md` § The hole this
-// section named, `ROBOT_ECONOMY.md`'s *"composition is a readout"*).
+// ⚠⚠ **It reads `examples/waves.json`, and the COMPOSITION IS NOT IN
+// THIS FILE** (owner, 2026-08-29: *"keep the composition out of the
+// code and in json configuration files"*).  A `wave_parts_default`
+// mirroring the file stood here for one commit and is gone: a second
+// copy needs a gate to stay honest, and no copy needs nothing.
+//
+// ⚠ **`wave_list_default` remains as the FALLBACK and is only counts**
+// — what a run gets when the file cannot be read at all.  It is a
+// length and a size, never a composition, so the ONE place a class is
+// written down is the JSON.
+//
+// ⚠⚠ **A file read per `WaveState`, and that is a real cost this
+// accepts**: `wave_state_empty` calls this for every state in the tree.
+// It is the same bargain `examples/palette.json` already makes, and it
+// buys the property the owner asked for — there is no second copy to
+// drift.  ⚠ Measured at `@M090`: the suite's wall clock did not move
+// out of its own noise band.
 //
 // ⚠ **`wave_schedule_of` still means what it always meant** — a bare
 // `vector<integer>` is all regulars — so a scenario that authors its
-// own list with a `schedule` line is untouched by this, and the two
-// fixtures that measure the difference are one such line apart.
+// own list with a `schedule` line is untouched, and the two fixtures
+// that measure the difference are one such line apart.
 //
 // ⚠ The call is BOUND rather than returned in tail position: a struct
 // returned through two nested tail calls loses what its loop wrote
 // ([loft#880](https://github.com/loft-lang/loft/issues/880)), and
 // `wave_file_schedule` builds its parts in a loop.
 pub fn wave_schedule_new() -> WaveSchedule {
-    wsn_s = wave_file_schedule(wave_file_default());
+    wsn_f = wave_file_load(WAVES_PATH);
+    if len(wsn_f.waves) == 0 {
+        wsn_fb = wave_schedule_of(wave_list_default(), INTER_WAVE_DELAY_SECONDS);
+        return wsn_fb;
+    }
+    wsn_s = wave_file_schedule(wsn_f);
     wsn_s
 }
 

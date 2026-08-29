@@ -3,8 +3,8 @@
 # ⚠⚠ **The same base as `a-list-of-one-symbol.keys` with the `schedule`
 # line REMOVED**, so it plays the schedule every `WaveState` is born
 # with — which since 2026-08-29 carries the design's composition from
-# `examples/waves.json` § parts, mirrored by `waves.loft::
-# wave_parts_default` and gated against the file part for part.
+# `examples/waves.json` § parts — which is the ONLY place the
+# composition lives, `waves.loft` holding no copy of it.
 #
 # ⚠ So the pair is one line apart and the line is *author a flat list*
 # against *take the shipped one*.  Same ground, wall, tower, crew,
@@ -107,40 +107,42 @@ tick 14
 vehicle 0 0
 
 
-# ── ⚠⚠ THE READING, AND THE SCOUTS ARE THE WHOLE OF IT ──────────
+# ── ⚠⚠ THE READING: 452 AGAINST 452 — THE MIX COSTS NOTHING ────
 #
-# **452 flat against 515 composed — the mix makes the base last 63
-# ticks LONGER**, which is the opposite of what the raw arithmetic
-# says.  On wall damage per second the composed list is mostly
-# STRONGER: wave 3 is 24.4 against 20.0, wave 6 is 87.2 against 80.0.
+# **Same base, same counts, same poke — and the same clock to the tick.**
+# The composed list is exactly as hard as the flat one, which is what
+# the owner asked for and is NOT what a mix does by default.
 #
-# ⚠⚠ **The attribution is measured, not reasoned** (`@M089`).  Swapping
-# in only the slow, strong classes reads **464**; swapping in only the
-# scouts reads **515**; the full mix reads **515** — identical to
-# scouts-alone, so the miners contribute nothing once scouts are there:
+# ⚠⚠ **THE FIRST VERSION OF THIS FILE READ 515 AGAINST 452 — a mix
+# SOFTENED the list by 14 %** — and the retune is the finding (`@M090`).
+# Swept over pure compositions on this base:
 #
-#     flat, all regular                       452
-#     miners + harvesters, no scouts          464   (+12)
-#     scouts only                             515   (+63)
-#     the shipped composition                 515   (+63)
+#     all regular      452        all miner        752
+#     all builder      452        all harvester    never falls
+#     all scout        671
 #
-# ⚠⚠ **The mechanism is `@M020` with its sign flipped.**  The siege
-# front is the wall's WIDTH, so only about six robots chew at once and
-# the rest of a wave is queued behind them — *a wave is worth its front
-# class PLUS what the front cannot cover*.  A **scout moves 2.5 hex/s
-# against a regular's 1.5 and does 0.1 wall damage against a regular's
-# 1.0**, so scouts reach the wall FIRST, take every slot in the front,
-# and chew at a TENTH of the rate — while the miners that would do
-# triple damage are still walking.  ⚠ **The fast class screens the wall
-# from the slow one**, and the wave's own composition is what defends
-# the base.
+# ⚠⚠ **The siege front is the wall's WIDTH (`@M020`), so a fixed number
+# of robots chew at once and the rest queue — which means a wave is
+# decided by the WORST class holding a slot.**  A scout moves 2.5 hex/s
+# against a regular's 1.5 and does **0.1 wall damage against 1.0**, so
+# scouts arrive first, take every slot and chew at a tenth of the rate
+# while the triple-damage miners are still walking.
 #
-# ⚠⚠ **So this composition SOFTENS the authored list by 14 %, and that
-# is a content decision nobody has ruled on.**  It is recorded rather
-# than tuned away: `ROADMAP.md` § THE SESSION IS THE GAP NOW says the
-# wave list is a placeholder for the economy (item 10) and that tuning
-# it now is balancing a placeholder.  ⚠ What this pair makes possible is
-# the tuning being INFORMED when it happens — *adding a fast weak class
-# to a wave makes it weaker*, which no arithmetic over the rates shows.
+# ⚠⚠ **AND MORE BODIES MAKE IT WORSE, WHICH IS THE COUNTER-INTUITIVE
+# HALF**: the authored counts PLUS extra weak bodies read 641 (scouts),
+# 534 (miners) and 660 (both) against the flat 452.  A wave cannot be
+# strengthened by adding to it — only diluted.
+#
+# ⚠ **So `builder` is the one class that can join a wave for free**:
+# 1.5 hex/s like a regular, and its 1.5x wall damage buys nothing
+# because the breach clock is already saturated — all-builder ties
+# all-regular to the tick.  ⚠⚠ **A richer mix is not a tuning problem
+# but a RATES problem**, and rates are balance — deferred to the economy
+# (`ROADMAP.md` item 10, § THE SESSION IS THE GAP NOW).
+#
+# ⚠ And the tuning was NOT fitted to this number: one scout per wave
+# read 620 and two read 453, which is non-monotonic — evidence that
+# fitting a composition to a tick count is fitting noise.  What is
+# shipped is the structural claim, not the fitted one.
 fall 900
-ticks 511 519
+ticks 448 456
