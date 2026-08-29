@@ -51,6 +51,7 @@ use scramble;
 use task;
 use waves;
 use fixstep;
+use poi;
 
 // The radius of the core's comms-jamming bubble, in hexes — the
 // boundary where an enemy stops following its spawn heading and starts
@@ -603,6 +604,22 @@ pub struct WaveState {
     scramble:    Scramble,
     traps:       TrapState,
 
+    // The scenario's PLACES, and the populations attached to them
+    // (`plans/30` R6b, `poi.loft`).
+    //
+    // ⚠⚠ **HERE rather than on `PlayState`, for the two reasons the
+    // jammer and the scramble are here**: a scenario has to be able to
+    // author it, and `state_diff` has to be able to see it.  ⚠ What is
+    // NOT here is the sortie-long cache the materialiser reads — that is
+    // `PlayState.reach`, because it is derived from the world rather
+    // than authored, and because a `vector<Cycle>` in a long-lived field
+    // is [loft#974]'s shape.
+    //
+    // ⚠ **Nothing builds one yet**, so `poi_world_new()`'s empty lists
+    // are the whole game today and `poi_step` returns before it reads
+    // anything.
+    pois:    PoiWorld,
+
     // What time it is, in `fixstep` base units since this run began
     // (`plans/30` R3).
     //
@@ -645,6 +662,7 @@ pub fn wave_state_empty() -> WaveState {
         jammer:  jammer_new(),
         scramble: scramble_new(),
         traps:   trap_state_empty(),
+        pois:    poi_world_new(),
         now:     0,
     }
 }

@@ -9,6 +9,32 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
+**R6b COMPLETE 2026-08-29 — the game materialises its own mobs, and two
+window sizes give one answer.**  R7 is startable.  ⚠ Gates: **1761 green
+over 141 files** (+8, all this phase's), `validate.sh` **50 scripts / 920
+measurements** and `validate_gl.sh` **3 fixtures / 55 measurements**,
+both **UNCHANGED**.
+
+⚠⚠ **`@X344` — A POI'S REACH IS ONE INTEGER, AND THE CULL IN THE TICK IS
+ONE SUBTRACTION.**  R5's bound is a union of discs, and asking it needs
+the rounds — two flow sweeps a route — so a POI culled every tick for a
+whole sortie would pay for the rounds that prove it can be.  ⚠ Folded
+once to `max(lat_distance(poi, centre_i) + radius_i)`, the question
+becomes `lat_distance(poi, player) <= reach + window`: no world read, no
+round built.  ⚠ The cache is a `vector<integer>` on `PlayState` —
+DERIVED rather than authored — and it carries no vectors-in-structs,
+because that is [loft#974]'s shape and **a green reading of it is not
+evidence**.
+
+⚠⚠ **`@M082` — eleven mutations, seven caught, and ALL FOUR SURVIVORS
+WERE THINGS THE GATE COULD NOT SEE.**  ⚠⚠ ***A saving is not a
+behaviour***: deleting the cull changed no position and made no extra
+body, so the cull had to be read as **work NOT DONE** — `poi_step` grew a
+fourth answer and the far run reads **0 against 160**.  ⚠ And the
+fixture's geometry hid the reach formula: `max(radius)` is exactly right
+on a straight out-and-back and a defect on every bend, so that claim is
+asserted directly rather than played.
+
 **R6a COMPLETE 2026-08-29 — a mob nobody can see costs one integer, and
 giving it a body back changes nothing.**  R6b is startable.
 ⚠ Gates: **1753 green over 140 files** (+8, all this phase's),
@@ -372,7 +398,7 @@ behaviour and clocks, gated by scenarios and counts.
 | **R4b** — the TERMINAL leg: a round that ends somewhere it does not pass | M | `tests/30_r4b_the_terminal_leg.loft` (6) — a played HARVESTER, plus R2's sweep extended | ✅ **COMPLETE 2026-08-29** — `@X341`, `@M078` |
 | **R5** — the POI, its population, its BOUND | M | `tests/30_r5_the_bound.loft` (8) — ⚠ the containment gate above, asked PER LEG | ✅ **COMPLETE 2026-08-29** — `@X342`, `@M079`, `@M080` |
 | **R6a** — the three tiers, and what an un-materialised mob IS | M | `tests/30_r6a_the_tiers.loft` (8) — the round trip, and its blocked pair | ✅ **COMPLETE 2026-08-29** — `@X343`, `@M081` |
-| **R6b** — the materialiser in the TICK, and the `R` vs `2R` pair | M | ⚠ the `R` vs `2R` gate **and its differ-control** | **STARTABLE** — ⚠ needs `WaveState.pois` and the three round-trip sites |
+| **R6b** — the materialiser in the TICK, and the `R` vs `2R` pair | M | `tests/30_r6b_the_materialiser.loft` (8) — ⚠ the `R` vs `2R` gate **and its differ-control** | ✅ **COMPLETE 2026-08-29** — `@X344`, `@M082` |
 | **Rc** — the CONFORMANCE gate | S | `tests/30_rc_the_conformance.loft` (6) | ✅ **COMPLETE 2026-08-28** — ⚠ and it needed a LIVENESS gate beside it (`@X337`) |
 | **R7** — distraction: the hauler and your heap | M | a scenario pair + the *merely seen* negative control | Blocked on R5 |
 | **R8** — what a routine is WORTH | S | a scenario pair, one token apart | Blocked on R7 |
@@ -1368,55 +1394,94 @@ sweep.
 
 ## R6b — the materialiser in the TICK, and the `R` vs `2R` pair
 
-⚠ What R6a left: `WaveState.pois`, the materialiser at the TOP of
-`wave_tick` (beside `errand_depart`, and for the same reason — a body
-made this tick must be one this tick's fields, occupancy and move order
-already know about), and the round-trip sites `compare.loft::state_diff`
-and `emit.loft::crop_state`.
+✅ **COMPLETE 2026-08-29** — `src/poi.loft` § THE REACH + § THE STEP,
+`WaveState.pois`, `PlayState.reach`, `src/play.loft::play_one_tick`,
+`compare.loft::pois_diff`, `emit.loft::crop_state`,
+`tests/30_r6b_the_materialiser.loft` (8).
 
-⚠⚠ **THE EQUALITY CLAIM IS NARROWER THAN `@X299` STATES IT, and this
-plan's first version stated it wrongly.**  *Materialising at `R` and at
-`2R` gives identical positions* is **false whenever anything can deviate
-a body**, because the `2R` copy has been a body for longer and has
-therefore deviated more.  ⚠ The claim that survives is:
+### What was built, and the three things the phase decided
+
+**1. ⚠⚠ A POI'S REACH IS ONE INTEGER, AND THE CULL IS ONE SUBTRACTION**
+(`@X344`).  ⚠ R5's bound is a union of discs and R6a asks it with
+`bound_meets` — but **the bound needs the rounds, and the rounds are two
+flow sweeps a route**, so a POI culled every tick for a whole sortie
+would pay for the rounds that prove it can be.  ⚠⚠ So the bound is folded
+ONCE to a single radius about the POI's own hex,
+`max(lat_distance(poi, centre_i) + radius_i)`, and the tick's per-POI
+question becomes `lat_distance(poi, player) <= reach + window` — no world
+read, no round built.  ⚠ A superset again, and the same safe direction
+`bound_holds` takes: **an UNDER-estimate is the one direction that is a
+defect**, and `max(radius)` is exactly that.
+
+**2. ⚠ THE CACHE IS INTEGERS, AND IT LIVES ON THE SESSION.**
+`PlayState.reach` rather than `WaveState`, because it is **derived rather
+than authored** — the same division `state_diff` already draws.  ⚠⚠ And
+a `vector<Cycle>` or a `vector<Bound>` in a long-lived field is
+[loft#974]'s shape; a probe of exactly that shape read correctly four
+times of four, and **that gotcha's own warning is that a green reading is
+not evidence**, so the cache carries no vectors-in-structs at all.
+⚠ The materialiser runs in `play.loft` **before** `wave_tick`, for
+`errand_depart`'s own reason — a body made now must be one this tick's
+fields, occupancy and move order already know about — and OUTSIDE
+`wave_tick` because a sortie-long cache threaded through it would be a
+parameter thirty test call sites had to carry.
+
+**3. ⚠⚠ A DEAD ROBOT IS NOT A BODY ITS POI OWNS.**  `wave_deaths` MARKS
+rather than removes — a corpse stays on the roster and raises rubble,
+because *bodies are terrain* — so a sweep that did not ask `alive` would
+report a body for ever and the record would never learn the player had
+killed it.  ⚠ That is what `live` is for: the roster's *no body here*
+means both *we never made one* and *the one we made is dead*, and only
+the record tells them apart.  **Getting it wrong is a RESURRECTION** —
+a POI quietly making a second copy of a robot the player watched die.
+
+### The pair, and what it actually claims
+
+⚠⚠ **THE EQUALITY CLAIM IS NARROWER THAN `@X299` STATES IT.**
+*Materialising at `R` and at `2R` gives identical positions* is false
+whenever anything can deviate a body.  What survives:
 
 > ⚠⚠ **Identical where nothing can deviate a body; and where something
 > can, they differ by EXACTLY `slip`.**
 
-⚠ Which recovers `@X299` rather than weakening it, because **two
-un-materialised mobs cannot block each other** — neither has a body — so
-deviation only ever happens where bodies are.  ⚠⚠ **R6a has already
-gated that half on one mob** (`test_r6a_a_blocked_mob_differs_by_exactly
-_its_slip`): a mob released across the stretch that would have delayed it
-comes out **less late**, and both runs stay exactly on their own rule in
-the one currency that is total — the DISTANCE to the anchor, never the
-hex (`@X336`).
+⚠ Both halves are gated and **the differ half asserts that they DID
+differ**, or the clean half is simply being proved twice.  ⚠⚠ **And the
+boundary leaks, which the file states rather than assumes**: in the `2R`
+run the extra bodies live in the band `R < d ≤ 2R`, and a mob at `d = R`
+can be blocked by one at `d = R+1`, materialised only in the larger run.
+So the two runs are not identical even inside `R` — the difference is a
+one-hex collar, paid in `slip`.  ⚠ That is `@X336` one radius over, which
+is why the crowded half asks the **DISTANCE** and never the hex.
 
-⚠⚠ **AND THE BOUNDARY LEAKS, WHICH R6b MUST STATE RATHER THAN ASSUME.**
-In the `2R` run the extra bodies live in the band `R < d ≤ 2R`, and a mob
-at `d = R` can be blocked by one at `d = R+1` — materialised only in the
-larger run.  So the two runs are **not identical even inside `R`**: the
-difference is confined to a one-hex collar at the smaller radius, and it
-is paid in `slip`.  ⚠ That is `@X336` one radius over, which the plan
-already predicted — *R6's own correction arriving three phases early*.
+### ⚠⚠ Eleven mutations, and all four survivors were things the GATE could not see  `@M082`
 
-⚠ So the gate is **a pair**: the clean world where they agree, and the
-blocked world where they differ and `slip` explains the difference
-exactly.  A single-sided gate here would be `CLAUDE.md` § a gate that
-reads PERFECT is as suspect as one that reads wrong.
+⚠⚠ **A SAVING IS NOT A BEHAVIOUR.**  Deleting the cull entirely changed
+no position and made no extra body — a mob outside the window gets none
+either way — so **the cull is work NOT DONE, and only a COUNT can see
+it**.  `poi_step` grew a fourth answer, *mobs looked at*, and the far run
+reads **0 against 160**.  ⚠ `@M029` from the other side: that one says
+*do not reach for a stopwatch*; this one says *a count is the only
+instrument there is*.
 
-⚠⚠ **A POI is never CULLED** (`@X304`) — only un-materialised.  ⚠ R6a
-made that structural: nothing in `src/poi.loft` removes a POI or a
-`PoiMob`, and `test_r6a_a_culled_poi_is_still_exactly_where_its_rule_says`
-runs sixty culled ticks and finds the whole population still on its own
-rule.
+⚠⚠ **THE FIXTURE'S GEOMETRY HID THE FORMULA.**  `poi_reach` taking the
+largest RADIUS is exactly right on a straight out-and-back, where the
+furthest a mob gets from its place IS one leg — so no played fixture on
+that shape can tell it from the truth.  ⚠ It is a defect on a
+three-anchor round (`@X341`'s terminal leg) and on any bend, and the
+claim is therefore asserted DIRECTLY, on two discs ten apart.
 
-⚠ **Cost**: `tests/11_f8_the_tick_budget.loft` is the gate, and it is a
-RATIO.  ⚠⚠ The claim to check is that the tiers make the tick **cheaper**
-than materialising everything, and `@M029` warns that a cost gate should
-be a COUNT rather than a clock — ⚠ R6a's `PoiSurvey.asked` is that count,
-and `test_r6a_a_culled_poi_costs_one_query` already reads **0 against 6**
-for a POI 200 hexes away.
+⚠ The other two: a **corpse still on the roster** (above), and **two
+fields moving together** — `poi_state_set` writes `state` and `since` at
+once, so a gate that changed both could not say which it was reading.
+
+### What R6b did NOT build
+
+⚠ **No `.keys` vocabulary.**  `compare.loft::pois_diff` and
+`emit.loft::crop_state`'s carry are TRIPWIRES, laid before they can
+fire — nothing writes a non-empty `PoiWorld` from a script, so a captured
+scenario has no places to lose.  ⚠⚠ When it does fire the answer is a
+verb and never a looser comparison: the writer and the reader are a PAIR
+(`@D007`), and R7's scenario pair is what needs them.
 
 ## R7 — distraction: the hauler and your heap
 

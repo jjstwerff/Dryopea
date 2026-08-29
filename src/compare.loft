@@ -137,6 +137,55 @@ fn enemies_diff(a: const WaveState, b: const WaveState) -> text {
     ""
 }
 
+// Are two scenarios' places, and the mobs attached to them, the same?
+//
+// ⚠ Field by field and exactly — a `PoiMob` holds one accumulating
+// number and the rest is identity, so there is no epsilon to argue about
+// (`@X343`).
+//
+// Example: @DRY-206
+fn pois_diff(a: const PoiWorld, b: const PoiWorld) -> text {
+    if len(a.pois) != len(b.pois) {
+        return "pois: {len(a.pois)} vs {len(b.pois)} places";
+    }
+    if len(a.routes) != len(b.routes) {
+        return "pois: {len(a.routes)} vs {len(b.routes)} routes";
+    }
+    if len(a.mobs) != len(b.mobs) {
+        return "pois: {len(a.mobs)} vs {len(b.mobs)} mobs";
+    }
+    pd_i = 0;
+    while pd_i < len(a.pois) {
+        pd_x = a.pois[pd_i];
+        pd_y = b.pois[pd_i];
+        if pd_x == null || pd_y == null { return "pois[{pd_i}]: missing"; }
+        if pd_x.kind != pd_y.kind || pd_x.q != pd_y.q || pd_x.r != pd_y.r
+           || pd_x.state != pd_y.state || pd_x.since != pd_y.since {
+            return "pois[{pd_i}]: kind {pd_x.kind} at ({pd_x.q},{pd_x.r}) "
+                   + "state {pd_x.state} since {pd_x.since} vs kind "
+                   + "{pd_y.kind} at ({pd_y.q},{pd_y.r}) state {pd_y.state} "
+                   + "since {pd_y.since}";
+        }
+        pd_i += 1;
+    }
+    pd_j = 0;
+    while pd_j < len(a.mobs) {
+        pd_m = a.mobs[pd_j];
+        pd_n = b.mobs[pd_j];
+        if pd_m == null || pd_n == null { return "pois.mobs[{pd_j}]: missing"; }
+        if pd_m.route != pd_n.route || pd_m.seat != pd_n.seat
+           || pd_m.slip != pd_n.slip || pd_m.gone != pd_n.gone
+           || pd_m.live != pd_n.live {
+            return "pois.mobs[{pd_j}]: route {pd_m.route} seat {pd_m.seat} "
+                   + "slip {pd_m.slip} gone {pd_m.gone} live {pd_m.live} vs "
+                   + "route {pd_n.route} seat {pd_n.seat} slip {pd_n.slip} "
+                   + "gone {pd_n.gone} live {pd_n.live}";
+        }
+        pd_j += 1;
+    }
+    ""
+}
+
 fn crew_diff(a: const WaveState, b: const WaveState) -> text {
     if len(a.crew) != len(b.crew) {
         return "crew: {len(a.crew)} vs {len(b.crew)}";
@@ -489,6 +538,20 @@ pub fn state_diff(a: const WaveState, b: const WaveState) -> text {
     if a.now != b.now {
         return "now: {a.now} vs {b.now}";
     }
+    // ⚠⚠ **The scenario's PLACES and their populations** (`plans/30`
+    // R6b).  Two runs are not in the same state when one of them has
+    // materialised a mob the other has not, or has retired one — and
+    // **every mob's `slip` is in here**, which is the whole of what an
+    // un-materialised mob remembers (`@X343`).
+    //
+    // ⚠ **A TRIPWIRE, here before it can differ**, the same move the
+    // banked carry and the routine above record: nothing writes a
+    // non-empty `PoiWorld` today, so the line is free and cannot fire.
+    // ⚠⚠ **When it DOES fire, the answer is a `.keys` verb and never a
+    // looser comparison** — the writer and the reader are a PAIR
+    // (`@D007`), and R7's scenario pair is what needs the vocabulary.
+    sd_poi = pois_diff(a.pois, b.pois);
+    if sd_poi != "" { return sd_poi; }
     // ⚠ The core's own switch (BACKLOG C3).  Two runs are not in the
     // same state when one of them has stopped sending waves and paying
     // for salvage — and it is read through `jammer_on` rather than off

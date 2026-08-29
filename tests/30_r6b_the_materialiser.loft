@@ -1,0 +1,504 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 30 phase R6b — the materialiser in the TICK, and the `R` vs `2R`
+// pair.
+//
+// ⚠⚠ **THE EQUALITY CLAIM IS NARROWER THAN `@X299` STATES IT.**
+// *Materialising at `R` and at `2R` gives identical positions* is false
+// whenever anything can deviate a body, because the `2R` copy has been a
+// body for longer and has therefore deviated more.  What survives is:
+//
+// > ⚠⚠ **Identical where nothing can deviate a body; and where something
+// > can, they differ by EXACTLY `slip`.**
+//
+// ⚠ So the gate is a PAIR, and both halves are asserted: the clean world
+// where the two runs agree hex for hex, and the crowded one where they
+// differ — **and the differ half asserts that they DID differ**, or the
+// clean half is being proved twice.
+//
+// ⚠⚠ **AND THE BOUNDARY LEAKS, WHICH THIS FILE STATES RATHER THAN
+// ASSUMES.**  In the `2R` run the extra bodies live in the band
+// `R < d ≤ 2R`, and a mob at `d = R` can be blocked by one at `d = R+1` —
+// materialised only in the larger run.  So the two runs are not identical
+// even inside `R`: the difference is confined to a one-hex collar at the
+// smaller radius, and it is paid in `slip`.  That is `@X336` one radius
+// over, which is why the crowded half asks the DISTANCE and never the
+// hex.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text    = "examples/palette.json";
+const GRASS:   integer = 5;
+
+// One tick, in base units.  ⚠ Spelled out rather than derived from
+// `TICK_STEP_UNITS`, because a file-scope const initialised from a
+// sibling module's const PANICS the compiler ([loft#962]).
+const R6B_TICK: integer = 2000000;
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+
+fn r6b_world() -> PaintedWorld {
+    rw_pw = painted_empty();
+    for rw_r in 0..=14 {
+        for rw_q in 0..=40 { paint(rw_pw, rw_q, rw_r, as_u8(GRASS)); }
+    }
+    rw_pw
+}
+
+fn r6b_home() -> Hex { Hex { q: 1,  r: 6 } }
+fn r6b_work() -> Hex { Hex { q: 11, r: 6 } }
+
+// ⚠ FAR, so the scrambler bubble never takes a mob — the one-way door
+// would end the round and the pair would be comparing empty rosters.
+fn r6b_far_core() -> Hex { Hex { q: 300, r: 6 } }
+
+fn r6b_places(kind: u8, count: integer) -> PoiWorld {
+    rp_w = poi_world_new();
+    rp_w.pois   += [poi_at(POI_KIND_NEST, r6b_home().q, r6b_home().r)];
+    rp_w.routes += [poi_route(0, ROLE_GATHER, kind, r6b_work(),
+                              Hex { q: 0, r: 0 }, count)];
+    rp_i = 0;
+    while rp_i < count {
+        rp_w.mobs += [poi_mob(0, rp_i)];
+        rp_i += 1;
+    }
+    rp_w
+}
+
+// Which roster slot holds mob `i`'s body, or −1.
+//
+// ⚠ The test asks the ROSTER, exactly as `poi_step` does — a second idea
+// of who is materialised would be the thing this gate exists to catch.
+fn r6b_body(state: const WaveState, i: integer) -> integer {
+    rb_j = 0;
+    for rb_e in state.enemies {
+        if rb_e.route.mob == i + 1 { return rb_j; }
+        rb_j += 1;
+    }
+    0 - 1
+}
+
+// ─── ⚠⚠ THE HARNESS — a whole session, at one window size ───────
+
+// Play `ticks` ticks with the player walking `row` from west to east,
+// and record where every mob was at the end of each of them.
+//
+// Answers (every mob's hex, tick by tick and mob by mob; every mob's
+// final `slip`; bodies made; PHASE disagreements; the first one).
+//
+// ⚠ It calls `poi_step` then `wave_tick`, which is `play_one_tick`'s own
+// order and the only order that can be right: a body made now must be
+// one this tick's fields, occupancy and move order already know about.
+fn r6b_run(pw: PaintedWorld, kind: u8, count: integer, row: integer,
+           from_q: integer, window: integer,
+           ticks: integer) -> (vector<Hex>, vector<integer>,
+                                                integer, integer, text,
+                                                integer) {
+    rr_pal = load_palette(PALETTE);
+    rr_st  = wave_state_empty();
+    rr_st.pois = r6b_places(kind, count);
+    rr_reach = poi_reaches(rr_st.pois, rr_pal, pw, rr_st.heights);
+    rr_cyc   = poi_cycles(rr_st.pois, rr_pal, pw, rr_st.heights);
+    rr_c     = rr_cyc[0];
+    rr_row   = errand_role_of(ROLE_GATHER);
+    rr_rate  = bank_rate(enemy_speed(kind));
+
+    rr_path: vector<Hex> = [];
+    rr_made = 0;
+    rr_seen = 0;
+    rr_bad  = 0;
+    rr_say  = "";
+    rr_n = 0;
+    while rr_n < ticks {
+        vehicle_place(rr_st.player, from_q + rr_n, row);
+        rr_step = poi_step(rr_st, rr_pal, pw, rr_reach, window);
+        rr_made += rr_step.0;
+        rr_seen += rr_step.3;
+        wave_tick(rr_st, rr_pal, pw, marker_empty(), r6b_far_core());
+        rr_n += 1;
+        rr_i = 0;
+        while rr_i < len(rr_st.pois.mobs) {
+            rr_m = rr_st.pois.mobs[rr_i];
+            rr_slot = r6b_body(rr_st, rr_i);
+            if rr_slot >= 0 {
+                rr_e = rr_st.enemies[rr_slot];
+                if rr_e != null {
+                    rr_path += [Hex { q: rr_e.q, r: rr_e.r }];
+                    // ⚠ The PHASE, against this BODY's own clock — while
+                    // a mob has a body its lateness lives on the body and
+                    // the record has not been told yet.
+                    rr_rule = cycle_at(rr_c, rr_row, rr_rate,
+                                       rr_st.now - rr_e.route.slip);
+                    rr_job  = errand_destination(rr_e, rr_st.now);
+                    if rr_job.found {
+                        rr_f = flow_build(rr_pal, pw, rr_st.heights, kind,
+                                          Hex { q: rr_job.q, r: rr_job.r });
+                        if flow_distance(rr_f, rr_e.q, rr_e.r)
+                           != flow_distance(rr_f, rr_rule.q, rr_rule.r) {
+                            rr_bad += 1;
+                            if rr_say == "" {
+                                rr_say = " phase, tick {rr_n} mob {rr_i}: "
+                                         + "body ({rr_e.q},{rr_e.r}) is "
+                                         + "{flow_distance(rr_f, rr_e.q, rr_e.r)} "
+                                         + "from the anchor, rule "
+                                         + "({rr_rule.q},{rr_rule.r}) is "
+                                         + "{flow_distance(rr_f, rr_rule.q, rr_rule.r)}";
+                            }
+                        }
+                    }
+                }
+            }
+            else {
+                rr_h = poi_mob_hex(rr_st.pois, rr_m, rr_c, rr_rate, rr_st.now);
+                rr_path += [Hex { q: rr_h.q, r: rr_h.r }];
+            }
+            rr_i += 1;
+        }
+    }
+    rr_slips: vector<integer> = [];
+    for rr_m2 in rr_st.pois.mobs { rr_slips += [rr_m2.slip]; }
+    (rr_path, rr_slips, rr_made, rr_bad, rr_say, rr_seen)
+}
+
+fn r6b_diff(a: vector<Hex>, b: vector<Hex>) -> (integer, text) {
+    rd_bad = 0;
+    rd_say = "";
+    rd_i = 0;
+    while rd_i < len(a) && rd_i < len(b) {
+        rd_x = a[rd_i];
+        rd_y = b[rd_i];
+        if rd_x == null || rd_y == null { rd_bad += 1; }
+        else {
+            if rd_x.q != rd_y.q || rd_x.r != rd_y.r {
+                rd_bad += 1;
+                if rd_say == "" {
+                    rd_say = " first at reading {rd_i}: ({rd_x.q},{rd_x.r}) "
+                             + "against ({rd_y.q},{rd_y.r})";
+                }
+            }
+        }
+        rd_i += 1;
+    }
+    (rd_bad, rd_say)
+}
+
+// ─── ⚠⚠ THE PAIR — the clean half ───────────────────────────────
+
+// @DRY-201 — at R and at 2R, one mob walks the same round
+fn test_r6b_two_windows_agree_where_nothing_can_push_a_body() {
+    tw_kind = as_u8(ENEMY_KIND_SCOUT);
+    tw_pw   = r6b_world();
+    // ⚠ ONE mob, and the player on a row its round never touches — so
+    // nothing whatever can deviate a body, which is the half of the
+    // claim `@X299` states without a qualifier.
+    tw_r  = r6b_run(tw_pw, tw_kind, 1, 13, 0, 5, 30);
+    tw_2r = r6b_run(tw_pw, tw_kind, 1, 13, 0, 12, 30);
+
+    // ⚠⚠ **THE CONTROLS FIRST**, and there are two: the wider window has
+    // to materialise something the narrower one does not, or the two
+    // runs are the same run; and the mob has to move, or an identical
+    // trajectory is a claim about standing still.
+    assert(tw_2r.2 > tw_r.2,
+           "CONTROL — the wide window made {tw_2r.2} bodies and the narrow "
+           + "one {tw_r.2}, so the two runs do not differ in what this gate "
+           + "is about");
+    tw_a = tw_r.0[0];
+    tw_b = tw_r.0[len(tw_r.0) - 1];
+    assert(tw_a != null && tw_b != null
+           && (tw_a.q != tw_b.q || tw_a.r != tw_b.r),
+           "CONTROL — the mob never left its first hex");
+    assert(tw_r.3 == 0 && tw_2r.3 == 0,
+           "CONTROL — {tw_r.3} and {tw_2r.3} body-ticks are already off "
+           + "their own rule, so a comparison between the runs is between "
+           + "two broken ones.{tw_r.4}{tw_2r.4}");
+
+    tw_d = r6b_diff(tw_r.0, tw_2r.0);
+    assert(tw_d.0 == 0,
+           "R6b — {tw_d.0} of {len(tw_r.0)} readings differ between a run "
+           + "with a {5}-hex window and one with {12}, in a world where "
+           + "nothing can push a body.{tw_d.1}");
+    assert((tw_r.1[0] ?? 0 - 1) == (tw_2r.1[0] ?? 0 - 2),
+           "R6b — slip {tw_r.1[0] ?? 0} against {tw_2r.1[0] ?? 0}: "
+           + "materialising a mob EARLIER made it late, in a world with "
+           + "nothing to be late for");
+}
+
+// ─── ⚠⚠ THE PAIR — the crowded half ─────────────────────────────
+
+// @DRY-202 — and where something CAN push a body, they differ by slip
+fn test_r6b_two_windows_differ_by_slip_where_bodies_can_meet() {
+    tc_kind = as_u8(ENEMY_KIND_SCOUT);
+    tc_pw   = r6b_world();
+    // ⚠ FOUR mobs on one route and the player driving ALONG it, so
+    // bodies queue behind each other and behind the vehicle.
+    tc_r  = r6b_run(tc_pw, tc_kind, 4, 6, 0, 4, 30);
+    tc_2r = r6b_run(tc_pw, tc_kind, 4, 6, 0, 14, 30);
+
+    // ⚠⚠ **THE DIFFER-CONTROL, and this gate cannot do without it**: if
+    // the two runs agree here, the clean half above is simply being
+    // proved a second time and *they differ by exactly slip* is a claim
+    // about nothing.
+    tc_d = r6b_diff(tc_r.0, tc_2r.0);
+    assert(tc_d.0 > 0,
+           "R6b CONTROL — the two windows agree on all {len(tc_r.0)} "
+           + "readings even with four bodies queueing, so this half is the "
+           + "clean half again and the collar at the smaller radius cannot "
+           + "be seen at all");
+    tc_sum = 0;
+    for tc_s in tc_2r.1 { tc_sum += tc_s; }
+    assert(tc_sum > 0,
+           "R6b CONTROL — nothing was ever delayed in the wide run (slip "
+           + "sums to {tc_sum}), so slip cannot be what the difference is "
+           + "made of");
+    // ⚠⚠ **AND `slip` IS WHAT THE DIFFERENCE IS MADE OF**, in the one
+    // currency that is total (`@X336`): every body, in BOTH runs, stands
+    // exactly its own rule's distance from the anchor it is making for.
+    // Hex equality is not claimed and could not be — a body whose first
+    // choice is taken walks another route of the same length.
+    assert(tc_r.3 == 0 && tc_2r.3 == 0,
+           "R6b — {tc_r.3} and {tc_2r.3} body-ticks put a mob at a different "
+           + "distance from its anchor than its own rule at now-slip, so the "
+           + "difference between the windows is not slip.{tc_r.4}{tc_2r.4}");
+}
+
+// ─── ⚠⚠ WHAT THE TICK COSTS ─────────────────────────────────────
+
+// @DRY-203 — a distant POI costs one subtraction, in the tick
+fn test_r6b_a_distant_poi_makes_no_body_at_all() {
+    td_kind = as_u8(ENEMY_KIND_REGULAR);
+    td_pw   = r6b_world();
+    // ⚠ The player walks row 14, and the round runs along row 6 between
+    // q 1 and q 11 — so the reach plus the window never touches it.
+    td_far  = r6b_run(td_pw, td_kind, 4, 14, 60, 1, 40);
+    td_near = r6b_run(td_pw, td_kind, 4, 6, 0, 8, 40);
+    assert(td_near.2 > 0,
+           "CONTROL — a player driving along the round made {td_near.2} "
+           + "bodies, so this POI has no population to leave alone");
+    assert(td_far.2 == 0,
+           "R6b — a POI the player never came within reach of made "
+           + "{td_far.2} bodies, so the cull in the tick is not the cull "
+           + "poi_survey measures");
+    // ⚠⚠ **AND IT COSTS NOTHING, which a body count cannot see** — a
+    // culled POI and a fully surveyed one both make no bodies when every
+    // mob is out of the window, so the saving has to be read as WORK NOT
+    // DONE (`@M082`).  ⚠ A COUNT and never a clock (`@M029`).
+    assert(td_near.5 > 0,
+           "CONTROL — the near run looked at {td_near.5} mobs over 40 "
+           + "ticks, so *the far run looked at none* is a statement about "
+           + "a POI with no population");
+    assert(td_far.5 == 0,
+           "R6b — the far run looked at {td_far.5} mobs over 40 ticks, so "
+           + "the cull is not being applied and a distant POI costs its "
+           + "whole population every tick");
+    // ⚠ And it is still exactly where its rule says — *not materialised*
+    // and *culled* are different words (`@X304`), asserted here in the
+    // TICK rather than only over `poi_survey`.
+    td_bad = 0;
+    for td_s in td_far.1 { if td_s != 0 { td_bad += 1; } }
+    assert(td_bad == 0,
+           "R6b — {td_bad} of a culled population picked up slip without "
+           + "ever having a body");
+}
+
+// ─── ⚠⚠ THE ONE-WAY DOOR, AND NO RESURRECTION ───────────────────
+
+// @DRY-204 — a mob the bubble took never gets a second body
+fn test_r6b_the_bubble_takes_a_mob_and_it_does_not_come_back() {
+    tb_kind = as_u8(ENEMY_KIND_REGULAR);
+    tb_pw   = r6b_world();
+    tb_pal  = load_palette(PALETTE);
+    tb_st   = wave_state_empty();
+    tb_st.pois = r6b_places(tb_kind, 1);
+    tb_reach = poi_reaches(tb_st.pois, tb_pal, tb_pw, tb_st.heights);
+    // ⚠ A core ON the round, so the bubble covers it from the first tick.
+    tb_core = Hex { q: 6, r: 6 };
+
+    tb_made = 0;
+    tb_taken = 0;
+    tb_n = 0;
+    while tb_n < 20 {
+        vehicle_place(tb_st.player, 6, 6);
+        tb_step = poi_step(tb_st, tb_pal, tb_pw, tb_reach, 12);
+        tb_made  += tb_step.0;
+        tb_taken += tb_step.2;
+        wave_tick(tb_st, tb_pal, tb_pw, marker_empty(), tb_core);
+        tb_n += 1;
+    }
+    // ⚠⚠ **THE CONTROL FIRST**: a body has to have been MADE, or *it
+    // never came back* is a statement about a mob that never went.
+    assert(tb_made >= 1,
+           "CONTROL — no body was ever made, so the bubble had nothing to "
+           + "take and this gate is measuring an empty roster");
+    assert(tb_taken >= 1,
+           "R6b — the bubble cleared a mob's errand and its record was "
+           + "never retired ({tb_taken} retirements), so the POI still owns "
+           + "a robot that is one of the WAVE now");
+    // ⚠⚠ **AND THERE IS EXACTLY ONE OF IT.**  A record that was not
+    // retired would find no body next tick — the roster sweep asks
+    // `route.mob` — and would make a SECOND, which is a resurrection the
+    // player could stand and watch.
+    assert(tb_made == 1,
+           "R6b — {tb_made} bodies were made for ONE mob, so a robot the "
+           + "bubble took was materialised again");
+}
+
+// @DRY-200 — the reach is a DISTANCE plus a radius, never a radius
+fn test_r6b_the_reach_is_measured_from_the_place() {
+    // ⚠⚠ **A DIRECT CLAIM, because the geometry of a two-anchor round
+    // hides it.**  On a straight out-and-back the furthest a mob gets
+    // from its POI is one leg, which is also the largest disc radius —
+    // so `max(radius)` and `max(distance + radius)` agree, and no played
+    // fixture on that shape can tell them apart.  ⚠ A round whose discs
+    // are not centred on the place is what separates them, and that is
+    // every three-anchor round (`@X341`'s terminal leg) and every bend.
+    tr_b = bound_new();
+    bound_disc(tr_b, Hex { q: 0,  r: 0 }, 3);
+    bound_disc(tr_b, Hex { q: 10, r: 0 }, 4);
+    tr_at = Hex { q: 0, r: 0 };
+    // ⚠ The largest RADIUS is 4 and the largest DISTANCE PLUS radius is
+    // 14 — and 14 is the answer, because a body inside the second disc
+    // really can stand 14 hexes from the place.
+    assert(poi_reach(tr_b, tr_at) == 14,
+           "R6b — a bound whose far disc is 10 away with radius 4 reaches "
+           + "{poi_reach(tr_b, tr_at)} from the place, wanted 14: an "
+           + "UNDER-estimate culls a POI whose mob is in the window, which "
+           + "is the one direction that is a defect");
+    // ⚠ And it is tight rather than merely safe: with both discs on the
+    // place the answer is the largest radius after all.
+    tr_c = bound_new();
+    bound_disc(tr_c, Hex { q: 0, r: 0 }, 3);
+    bound_disc(tr_c, Hex { q: 0, r: 0 }, 7);
+    assert(poi_reach(tr_c, tr_at) == 7,
+           "R6b — two discs both centred on the place reach "
+           + "{poi_reach(tr_c, tr_at)}, wanted 7");
+    assert(bound_empty(bound_new()) && poi_reach(bound_new(), tr_at) == 0,
+           "R6b — a POI with no population reaches "
+           + "{poi_reach(bound_new(), tr_at)} rather than nothing");
+}
+
+// @DRY-207 — a body that is killed is not made again
+fn test_r6b_a_killed_mob_is_not_made_again() {
+    tk_kind = as_u8(ENEMY_KIND_REGULAR);
+    tk_pw   = r6b_world();
+    tk_pal  = load_palette(PALETTE);
+    tk_st   = wave_state_empty();
+    tk_st.pois = r6b_places(tk_kind, 1);
+    tk_reach = poi_reaches(tk_st.pois, tk_pal, tk_pw, tk_st.heights);
+
+    tk_made = 0;
+    tk_gone = 0;
+    tk_killed = false;
+    tk_n = 0;
+    while tk_n < 12 {
+        vehicle_place(tk_st.player, 6, 6);
+        tk_step = poi_step(tk_st, tk_pal, tk_pw, tk_reach, 12);
+        tk_made += tk_step.0;
+        tk_gone += tk_step.2;
+        // ⚠ Kill it on the fourth tick — `wave_deaths` inside the tick
+        // then takes the body off the roster, which is the state the
+        // record cannot read off the roster at all: *there is no body*
+        // means both *we never made one* and *the one we made is dead*.
+        if tk_n == 3 && !tk_killed {
+            for tk_e in tk_st.enemies {
+                if tk_e.route.mob > 0 { tk_e.alive = false; tk_killed = true; }
+            }
+        }
+        wave_tick(tk_st, tk_pal, tk_pw, marker_empty(), r6b_far_core());
+        tk_n += 1;
+    }
+    // ⚠⚠ **THE CONTROL FIRST**: a body has to have been made and then
+    // killed, or *it never came back* is a statement about nothing.
+    assert(tk_killed,
+           "CONTROL — no body was ever made, so nothing could be killed and "
+           + "this gate is measuring an empty roster");
+    assert(tk_gone >= 1,
+           "R6b — the body was killed and the record was never retired "
+           + "({tk_gone} retirements), so the POI still owns a robot the "
+           + "player watched die");
+    // ⚠⚠ **AND IT IS NOT REMADE.**  The roster sweep answers *no body
+    // with this index*, which is the same answer it gives for a mob that
+    // never had one — so without `live` the next tick would build a
+    // SECOND copy, standing where the first one would have been.
+    assert(tk_made == 1,
+           "R6b — {tk_made} bodies were made for ONE mob, so a robot that "
+           + "died was materialised again");
+}
+
+// ─── ⚠ THE WIRING, AND THE ROUND TRIP ───────────────────────────
+
+// @DRY-205 — the game's own door runs the materialiser
+fn test_r6b_the_session_materialises_without_being_asked() {
+    tp_kind = as_u8(ENEMY_KIND_REGULAR);
+    tp_ps = play_state_new();
+    // ⚠ `play_ticks` refuses a map with no core — *no core, no game* —
+    // so the fixture carries one, well away from the round.
+    tp_mw = marker_empty();
+    place_marker(tp_mw, 34, 12, MARKER_KIND_TARGET, 0 as u8? ?? 0);
+    tp_s  = editor_state_from(r6b_world(), tp_mw, camera_default(),
+                              picker_default(PALETTE));
+    tp_ps.wave.pois = r6b_places(tp_kind, 2);
+    vehicle_place(tp_ps.wave.player, r6b_work().q, r6b_work().r);
+
+    assert(len(tp_ps.reach) == 0,
+           "CONTROL — the session already knows the POI's reach before it "
+           + "has played a tick, so the cache below is not being built by "
+           + "the door under test");
+    assert(play_ticks(tp_ps, tp_s, 6) == 6,
+           "CONTROL — the session refused to play six ticks, so the door "
+           + "under test was never reached");
+    assert(len(tp_ps.reach) == 1,
+           "R6b — after six ticks the session holds {len(tp_ps.reach)} "
+           + "reaches for 1 POI, so `play_one_tick` never built the cache");
+    tp_bodies = 0;
+    for tp_e in tp_ps.wave.enemies { if tp_e.route.mob > 0 { tp_bodies += 1; } }
+    assert(tp_bodies > 0,
+           "R6b — the session played six ticks with a POI under the "
+           + "player's wheels and made {tp_bodies} bodies, so the "
+           + "materialiser is not wired into the game's own door");
+}
+
+// @DRY-206 — the diff can see a place, and the smallest thing in one
+fn test_r6b_the_diff_can_see_a_mobs_slip() {
+    tq_kind = as_u8(ENEMY_KIND_REGULAR);
+    tq_a = wave_state_empty();
+    tq_b = wave_state_empty();
+    tq_a.pois = r6b_places(tq_kind, 3);
+    tq_b.pois = r6b_places(tq_kind, 3);
+    // ⚠⚠ **THE CONTROL FIRST**: two states built the same way have to
+    // read as the same state, or the row below fires on everything and
+    // says nothing.
+    assert(state_diff(tq_a, tq_b) == "",
+           "CONTROL — two identically built worlds already differ: "
+           + "'{state_diff(tq_a, tq_b)}'");
+    // ⚠⚠ **AND IT CAN SEE THE SMALLEST DIFFERENCE THERE IS** — a row
+    // that could not fire is not a tripwire.  One mob's `slip`, moved by
+    // a single base unit, is the whole of what an un-materialised mob
+    // remembers (`@X343`).
+    tq_m = tq_b.pois.mobs[1];
+    if tq_m != null { tq_m.slip += 1; }
+    assert(state_diff(tq_a, tq_b) != "",
+           "R6b — one mob's slip differs by a single base unit and "
+           + "state_diff reads the two runs as the same state, so the row "
+           + "is a tripwire that cannot fire");
+    // ⚠ And a PLACE too, not only a mob — the two halves of `pois_diff`
+    // are independent and a gate that read only one would leave the
+    // other unmaintained decoration.
+    // ⚠⚠ **The same `since` in both**, or the row would fire on the
+    // timestamp and the STATE half would be unmaintained decoration —
+    // `poi_state_set` writes the two together, so a gate that let them
+    // move together could not tell which one it was reading.
+    tq_d = wave_state_empty();
+    tq_e = wave_state_empty();
+    tq_d.pois = r6b_places(tq_kind, 3);
+    tq_e.pois = r6b_places(tq_kind, 3);
+    tq_pd = tq_d.pois.pois[0];
+    tq_pe = tq_e.pois.pois[0];
+    if tq_pd != null { poi_state_set(tq_pd, POI_STATE_DAMAGED,   9); }
+    if tq_pe != null { poi_state_set(tq_pe, POI_STATE_COLLAPSED, 9); }
+    assert(state_diff(tq_d, tq_e) != "",
+           "R6b — a POI that has COLLAPSED reads as the same state as one "
+           + "that is merely DAMAGED, at the same moment");
+}

@@ -139,7 +139,8 @@ fn r6_trip(pw: PaintedWorld, kind: u8, count: integer, seat: integer,
             rt_has = false;
         }
         if !rt_has && rt_want {
-            rt_e   = poi_materialise(rt_w, rt_m, rt_c, rt_rate, rt_t - R6_TICK);
+            rt_e   = poi_materialise(rt_w, rt_m, rt_c, rt_rate, rt_t - R6_TICK,
+                                     seat);
             rt_has = true;
         }
         if rt_has {
@@ -580,7 +581,7 @@ fn test_r6a_a_round_ends_whether_or_not_anybody_is_watching() {
     // half worked for ever while its near half retired would put R6b's
     // whole equality out, and nobody could see it — the far half is
     // outside the window by definition.
-    td_e = poi_materialise(td_w, td_m, td_c, td_rate, 0);
+    td_e = poi_materialise(td_w, td_m, td_c, td_rate, 0, 0);
     td_fld = r6_fields(td_pw, td_kind);
     td_blk = blocker_empty();
     td_body = 0;

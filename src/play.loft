@@ -106,6 +106,7 @@ use carry;
 use vehicle;
 use fixstep;
 use spawn;
+use poi;
 use render_camera;
 
 // ─── State ──────────────────────────────────────────────────────
@@ -203,6 +204,29 @@ pub struct PlayState {
     // REMEMBER between frames, and a field nobody reads is a decision
     // validated by nothing.
     cam: CameraRig,
+
+    // How far each POI's population can get from it, one integer apiece
+    // (`plans/30` R6b, `poi.loft::poi_reaches`).
+    //
+    // ⚠⚠ **THE SORTIE-LONG CACHE, and it lives HERE rather than on
+    // `WaveState` because it is DERIVED rather than authored** — the
+    // same division `state_diff` draws: the wave state is what a
+    // scenario writes down and a comparison reads, and this is what the
+    // world happens to imply about it.
+    //
+    // ⚠⚠ **A vector of INTEGERS, and that is not incidental.**  A
+    // `vector<Cycle>` or a `vector<Bound>` in a long-lived field is
+    // [loft#974]'s shape — *a record fetched through an accessor reads
+    // its vector field as EMPTY once an unrelated struct has been
+    // allocated*, no diagnostic, and the outcome depends on allocation
+    // history rather than on the source.  ⚠ A probe of exactly that
+    // shape read correctly four times of four, and that gotcha's own
+    // warning is that **a green reading is not evidence**.
+    //
+    // ⚠ Rebuilt whenever its length stops matching the POI list, which
+    // is safe because **a POI does not move** (`@FR-E-Place-State`) and
+    // its reach does not change with its state (`@X304`).
+    reach: vector<integer>,
 }
 
 pub fn play_state_new() -> PlayState {
@@ -224,6 +248,10 @@ pub fn play_state_new() -> PlayState {
         // crew off along wherever the player first drove.
         digging:  false,
         cam:      camera_rig_new(),
+        // ⚠ Empty is a session with no places in it, which is every
+        // scenario today — and `poi_step` returns before it reads
+        // anything when the roster of mobs is empty.
+        reach:    [],
     }
 }
 
@@ -633,6 +661,24 @@ fn play_one_tick(ps: PlayState, s: EditorState, at: Hex) {
     // Where the vehicle stood before the tick moved it — the trail
     // needs both ends.
     pot_from = Hex { q: ps.wave.player.q, r: ps.wave.player.r };
+    // ⚠⚠ **THE MATERIALISER, and it runs BEFORE the tick** (`plans/30`
+    // R6b) — for exactly the reason `errand_depart` runs at the top of
+    // one: a body made now must be one this tick's fields, occupancy and
+    // move order already know about, and one taken back must be gone
+    // before anything surveys the roster.
+    //
+    // ⚠ **Here rather than inside `wave_tick`** because the cache it
+    // reads belongs to the SESSION: `wave_tick`'s signature is what
+    // thirty test call sites spell, and a sortie-long cache threaded
+    // through it would be a parameter every one of them had to carry.
+    // ⚠ This file is *the ONE caller of `wave_tick`*, so *before the
+    // tick* is a single statement here and would be a convention
+    // anywhere else.
+    if len(ps.reach) != len(ps.wave.pois.pois) {
+        ps.reach = poi_reaches(ps.wave.pois, s.picker.palette, s.pw,
+                               ps.wave.heights);
+    }
+    poi_step(ps.wave, s.picker.palette, s.pw, ps.reach, POI_WINDOW_HEXES);
     wave_tick(ps.wave, s.picker.palette, s.pw, s.mw, at);
     play_trail(ps, s, pot_from);
     ps.ticks += 1;

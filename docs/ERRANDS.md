@@ -299,11 +299,20 @@ have the delay **refunded exactly where nobody can watch it happen**.
 REMEMBER, which is what makes `@X299` affordable at the scale § The
 scenario GROWS describes.
 
+⚠⚠ **AND R6b PUT (E-Boundable) IN THE TICK** (`@X344`).  *Could this ever
+be in this window?* is now asked of the running game, once per POI, as a
+single subtraction: the bound folds to one integer about the place, and
+`lat_distance(poi, player) <= reach + window` reads no world and builds
+no round.  ⚠⚠ **And it closed `@X299`'s equality in the form that
+survives it** — materialising at `R` and at `2R` gives identical
+positions where nothing can deviate a body, and positions differing by
+exactly `slip` where something can, with the boundary's one-hex collar
+stated rather than assumed.
+
 ⚠ **What still awaits its phase**: no `.keys` scenario authors a routine
 or a POI, so every rule above is enforced and none of it runs in the
-shipped content.  ⚠ R6b puts the POI world on the wave state; R7's
-scenario pair is what needs the vocabulary, and the writer and the reader
-go in as a PAIR (`@D007`).
+shipped content.  ⚠ R7's scenario pair is what needs the vocabulary, and
+the writer and the reader go in as a PAIR (`@D007`).
 
 ## ⚠⚠ The model in ten lines
 

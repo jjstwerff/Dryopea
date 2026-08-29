@@ -1881,9 +1881,35 @@ src/
                    depends on — rebuilt every tick, a culled population
                    would cost two flow sweeps a route to discover it
                    could be skipped.
+                   ⚠⚠ AND SINCE R6b IT RUNS IN THE GAME (@X344).
+                   `WaveState.pois` carries the places (authored, so
+                   state_diff sees them); `PlayState.reach` carries ONE
+                   INTEGER per POI (derived, and integers only, because
+                   a vector<Cycle> in a long-lived field is [loft#974]'s
+                   shape and a green reading of it is not evidence).
+                   poi_reach folds a whole bound to
+                   max(lat_distance(poi, centre) + radius), so the
+                   tick's per-POI question is ONE SUBTRACTION —
+                   `lat_distance(poi, player) <= reach + window`.
+                   ⚠ poi_step is the MATERIALISER, site 10 of plans/30
+                   § Count the RE-ASSERTION SITES, and it runs in
+                   play.loft BEFORE wave_tick — errand_depart's own
+                   reason, and outside wave_tick because a sortie-long
+                   cache threaded through it would be a parameter thirty
+                   test call sites had to carry.
+                   ⚠⚠ A DEAD ROBOT IS NOT A BODY ITS POI OWNS:
+                   wave_deaths MARKS rather than removes, so a corpse
+                   stays on the roster raising rubble and poi_body_of
+                   asks `alive`.  `PoiMob.live` is what tells *we never
+                   made one* from *the one we made is dead* — getting it
+                   wrong is a RESURRECTION.
+                   ⚠ poi_step's fourth answer is MOBS LOOKED AT, and it
+                   is the only way to see the cull at all: deleting the
+                   cull changes no position and makes no extra body, so
+                   the saving is work NOT DONE (@M082).
                    ⚠ INERT: nothing builds a PoiWorld yet, POI_KIND_NONE
-                   is 0, and no .keys verb authors one — R6b puts it on
-                   WaveState and R7's scenario pair needs the vocabulary
+                   is 0, and no .keys verb authors one — R7's scenario
+                   pair is what needs the vocabulary
   skill.loft       CREW SKILLS — build, repair, scout (BACKLOG C1) —
                    SKILL_EFFECT_SPAN / _HALF, Skills { build, repair,
                    scout } on Helper, skill_factor, skill_work_units,

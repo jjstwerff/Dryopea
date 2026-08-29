@@ -368,3 +368,20 @@ and **both survivors were faults in the GATE**: a test comparing
 redundancy whose two conditions cannot both hold (`@M081`).  ⚠ Still
 INERT: nothing builds a `PoiWorld`, and the 920 gate measurements did not
 move.
+
+**`plans/30` R6b — the game materialises its own mobs, and two window
+sizes give one answer** (2026-08-29).  `WaveState.pois` carries the
+places, `PlayState.reach` one integer apiece, and `poi_step` runs in
+`play.loft` before `wave_tick`.  ⚠⚠ **A POI's whole bound folds to ONE
+integer** (`@X344`), so the tick's per-POI question is
+`lat_distance(poi, player) <= reach + window` — one subtraction, no world
+read, no round built.  ⚠⚠ **And the pair holds**: identical where nothing
+can push a body, differing by exactly `slip` where something can — which
+is `@X299`'s claim in the narrower form that survives it, with the
+boundary's one-hex collar stated rather than assumed.  ⚠ Eleven
+mutations, seven caught, and **all four survivors were things the gate
+could not see** (`@M082`) — headed by ***a saving is not a behaviour***:
+deleting the cull changed no position and made no extra body, so
+`poi_step` grew a fourth answer and the far run reads **0 against 160**.
+⚠ Still INERT: nothing builds a `PoiWorld`, and the 920 gate measurements
+did not move.

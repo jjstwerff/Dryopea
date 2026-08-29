@@ -479,13 +479,30 @@ pub struct Errand {
     alt:   Hex,        // the drop-off, or the second patrol leg
     carry: u8,         // what is in the bag — empty is 0
     slip:  integer,    // base units this mob has fallen behind (`@X302`)
+
+    // Which `PoiWorld.mobs` record this body belongs to, ONE-BASED
+    // (`plans/30` R6b).
+    //
+    // ⚠⚠ **Zero is *not a POI mob at all*, which is [loft#914]'s rule a
+    // sixth time** — every `Enemy { … }` literal in the suite omits it,
+    // and every routine a test builds by hand is a mob nobody's place
+    // owns.  ⚠ One-based so that the default can mean absence: a
+    // zero-based index would make record 0 indistinguishable from
+    // nothing.
+    //
+    // ⚠⚠ **It is a BACK-pointer and never a forward one.**  The
+    // materialiser asks *which bodies exist* by sweeping the roster for
+    // this field, so nothing has to be kept in step when `wave_deaths`
+    // compacts the roster — an index the other way round would be
+    // silently invalidated by every death.
+    mob:   integer,
 }
 
 // Factory: no routine at all, which is every robot in the game today.
 pub fn errand_new() -> Errand {
     Errand { role: ROLE_NONE, home: Hex { q: 0, r: 0 },
              work: Hex { q: 0, r: 0 }, alt: Hex { q: 0, r: 0 },
-             carry: ERRAND_BAG_EMPTY, slip: 0 }
+             carry: ERRAND_BAG_EMPTY, slip: 0, mob: 0 }
 }
 
 // A routine, spelled out.  ⚠ Build from here or from `errand_new` and
@@ -494,7 +511,7 @@ pub fn errand_new() -> Errand {
 pub fn errand_at(role: integer, home: const Hex, work: const Hex,
                  alt: const Hex) -> Errand {
     Errand { role: role, home: home, work: work, alt: alt,
-             carry: ERRAND_BAG_EMPTY, slip: 0 }
+             carry: ERRAND_BAG_EMPTY, slip: 0, mob: 0 }
 }
 
 // Are two routines the same routine?
@@ -504,6 +521,7 @@ pub fn errand_at(role: integer, home: const Hex, work: const Hex,
 // `compare.loft` once had to for a banked carry.
 pub fn errand_same(a: const Errand, b: const Errand) -> boolean {
     a.role == b.role && a.carry == b.carry && a.slip == b.slip
+        && a.mob == b.mob
         && a.home.q == b.home.q && a.home.r == b.home.r
         && a.work.q == b.work.q && a.work.r == b.work.r
         && a.alt.q  == b.alt.q  && a.alt.r  == b.alt.r

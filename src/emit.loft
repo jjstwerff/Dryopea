@@ -538,6 +538,14 @@ fn crop_state(state: const WaveState, centre: const Hex,
     // of `plans/30` § Count the RE-ASSERTION SITES, and
     // `compare.loft`'s `now` row is what would say so.
     cs_out.now      = state.now;
+    // ⚠⚠ **THE PLACES ARE RUN-WIDE AND CARRIED WHOLE** (`plans/30` R6b).
+    // A POI is a scenario-scale object, not a per-hex layer: cropping one
+    // OUT would leave its population running a round anchored on a place
+    // the cropped fixture has not got, which is `@FR-E-Poi-Owns` broken
+    // by a tool rather than by the engine.  ⚠ Site 7 of `plans/30`
+    // § Count the RE-ASSERTION SITES again, and `compare.loft`'s `pois`
+    // row is what would say so.
+    cs_out.pois     = state.pois;
     cs_out
 }
 

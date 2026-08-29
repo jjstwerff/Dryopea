@@ -346,10 +346,23 @@ pub struct PoiMob {
     seat:  integer,   // its place in the rota — 0 .. count-1
     slip:  integer,   // base units it has fallen behind (`@FR-E-Slip`)
     gone:  boolean,   // its round has ended, and it never comes back
+
+    // ⚠⚠ **DID WE GIVE THIS MOB A BODY, and it is the one MIRROR on this
+    // record** (`plans/30` R6b).  Who has a body is otherwise read off
+    // the ROSTER — sweep it for `route.mob` — which is why nothing has to
+    // be kept in step when `wave_deaths` compacts it.
+    //
+    // ⚠ **What the mirror is FOR is the tick a body VANISHES in.**  The
+    // roster says *there is no body with this index*, and that means two
+    // opposite things: *we never made one* and *the one we made has been
+    // killed, or the bubble took it*.  Only this flag tells them apart,
+    // and getting it wrong is a RESURRECTION — a POI quietly making a
+    // second copy of a robot the player watched die.
+    live:  boolean,
 }
 
 pub fn poi_mob(route: integer, seat: integer) -> PoiMob {
-    PoiMob { route: route, seat: seat, slip: 0, gone: false }
+    PoiMob { route: route, seat: seat, slip: 0, gone: false, live: false }
 }
 
 // A scenario's places, and what walks between them.
@@ -848,11 +861,13 @@ pub fn poi_mob_done(w: const PoiWorld, m: const PoiMob, c: const Cycle,
 //
 // Example: @DRY-194, @DRY-198
 pub fn poi_materialise(w: const PoiWorld, m: const PoiMob, c: const Cycle,
-                       rate: integer, now: integer) -> Enemy {
+                       rate: integer, now: integer, index: integer) -> Enemy {
     pma_rt = poi_route_of(w, m.route);
     pma_at = poi_mob_hex(w, m, c, rate, now);
     pma_er = poi_mob_errand(w, m, c, rate, now);
     pma_er.slip = m.slip - poi_seat_offset(c, rate, pma_rt.count, m.seat);
+    // ⚠ ONE-BASED, so `0` can go on meaning *not a POI mob at all*.
+    pma_er.mob  = index + 1;
     pma_e = Enemy { q: pma_at.q, r: pma_at.r, kind: pma_rt.kind, alive: true,
                     errand: true, route: pma_er };
     bank_restore(pma_e.bank,
@@ -897,6 +912,72 @@ pub fn poi_release(w: const PoiWorld, m: PoiMob, c: const Cycle,
 // could watch it happen.
 pub fn poi_retire(m: PoiMob) {
     m.gone = true;
+}
+
+// ─── ⚠⚠ THE REACH — a whole bound folded to ONE INTEGER ────────
+
+// The furthest anything this bound covers can be from `at`.
+//
+// ⚠⚠ **THE CULL TEST HAS TO COST NOTHING, AND `bound_meets` IS NOT
+// NOTHING** — it needs the bound, the bound needs the rounds, and the
+// rounds are two flow sweeps a route.  A POI that is culled every tick
+// for a whole sortie must not pay for the rounds that prove it can be.
+//
+// ⚠ So the bound is folded, ONCE, to a single radius about the POI's own
+// hex: the union of `disc(centre_i, radius_i)` lies inside
+// `disc(at, max_i(lat_distance(at, centre_i) + radius_i))`.  ⚠⚠ **A
+// superset again, and the same safe direction** `bound_holds` already
+// takes (`@X342`): over-answering costs work, under-answering is a
+// defect.
+//
+// ⚠ What it buys is that the tick's per-POI question becomes **one
+// subtraction** — `lat_distance(poi, player) <= reach + window` — with no
+// world read and no round built.
+//
+// Example: @DRY-200
+pub fn poi_reach(b: const Bound, at: const Hex) -> integer {
+    prc_max = 0;
+    prc_i = 0;
+    while prc_i < len(b.radii) {
+        prc_c = b.centres[prc_i];
+        if prc_c != null {
+            prc_d = lat_distance(Hex { q: prc_c.q, r: prc_c.r }, at)
+                    + (b.radii[prc_i] ?? 0);
+            if prc_d > prc_max { prc_max = prc_d; }
+        }
+        prc_i += 1;
+    }
+    prc_max
+}
+
+// Every POI's reach, built ONCE for the sortie.
+//
+// ⚠⚠ **A vector of INTEGERS, and that is deliberate.**  It is what a
+// caller holds across ticks, and a `vector<Cycle>` or a `vector<Bound>`
+// in a long-lived field is [loft#974]'s shape — *a record fetched
+// through an accessor reads its vector field as EMPTY once an unrelated
+// struct has been allocated*, with no diagnostic and an outcome that
+// depends on allocation history rather than on the source.  ⚠ A probe of
+// exactly that shape read correctly four times out of four, and the
+// gotcha's own warning is that **a green reading is not evidence** — so
+// the cache carries no vectors-in-structs at all.
+//
+// ⚠ It is safe to hold for the whole sortie because **a POI does not
+// move** (`@FR-E-Place-State`) and its bound does not change with its
+// state (`@X304`, gated in `tests/30_r5_the_bound.loft`).
+//
+// Example: @DRY-200, @DRY-205
+pub fn poi_reaches(w: const PoiWorld, pal: vector<GroundType>,
+                   pw: PaintedWorld, hl: const HeightLayer) -> vector<integer> {
+    prs_cyc = poi_cycles(w, pal, pw, hl);
+    prs_out: vector<integer> = [];
+    prs_i = 0;
+    while prs_i < len(w.pois) {
+        prs_out += [poi_reach(poi_bound_from(w, prs_i, prs_cyc),
+                              poi_hex(poi_of(w, prs_i)))];
+        prs_i += 1;
+    }
+    prs_out
 }
 
 // ─── ⚠⚠ THE SURVEY — what a POI costs this tick ────────────────
@@ -965,6 +1046,182 @@ pub fn poi_survey(w: const PoiWorld, poi: integer, b: const Bound,
         psv_out.seen += 1;
     }
     psv_out
+}
+
+// ─── ⚠⚠ THE STEP — the tiers, SPENT ────────────────────────────
+
+// How far from the player a mob has to be before it needs a body.
+//
+// ⚠⚠ **The scrambler bubble's own 25 hexes, and it is the same number
+// for a reason rather than by coincidence.**  The bubble is where an
+// ambient robot stops being ambient (`wave_cutoff`), so a mob that could
+// cross it must already be a body — a robot that entered the bubble
+// while still a rule would be cut off by a sweep that cannot see it.
+// ⚠ Anything LARGER is free correctness and costs work; anything smaller
+// is a defect.  Equal is the smallest safe number, which is why it is
+// the one.
+pub const POI_WINDOW_HEXES: integer = 25;
+
+// Which roster slot, if any, holds this mob's body.
+//
+// ⚠ A sweep of the roster and never an index kept the other way round:
+// the roster is rebuilt by `errand_depart` and read by everything, so a
+// forward index would be silently invalidated (`plans/30` § Count the
+// RE-ASSERTION SITES, site 6).
+//
+// ⚠⚠ **A DEAD ROBOT IS NOT A BODY THIS POI OWNS.**  `wave_deaths` MARKS
+// rather than removes — the corpse stays on the roster and raises rubble,
+// because *bodies are terrain* — so a sweep that did not ask `alive`
+// would report a body for ever and the record would never learn that the
+// player killed it.  ⚠ That is exactly the state `live` exists to name:
+// the roster's *no body here* means both *we never made one* and *the one
+// we made is dead*, and only the record tells them apart.
+//
+// Example: @DRY-207
+fn poi_body_of(state: const WaveState, index: integer) -> integer {
+    pbo_i = 0;
+    for pbo_e in state.enemies {
+        if pbo_e.route.mob == index + 1 && pbo_e.alive { return pbo_i; }
+        pbo_i += 1;
+    }
+    0 - 1
+}
+
+// ⚠⚠ **THE MATERIALISER — site 10 of `plans/30` § Count the
+// RE-ASSERTION SITES, and the one that puts a body somewhere.**
+//
+// ⚠ It runs at the TOP of the game's step, immediately before
+// `wave_tick`, for exactly the reason `errand_depart` runs at the top of
+// the tick: a body made now must be one this tick's fields, occupancy
+// and move order already know about, and one taken away now must be gone
+// before anything surveys the roster.
+//
+// ⚠⚠ **A POI IS CULLED BY ONE SUBTRACTION** — `lat_distance(poi, player)
+// against `reach + window` — so a distant POI costs no round, no
+// `cycle_at` and no roster sweep.  The rounds are built only for the
+// POIs that survive that test, which is what makes `@FR-E-Poi-Owns` a
+// saving in the TICK rather than only in `poi_survey`.
+//
+// ⚠ Answers (bodies made, bodies taken back, mobs retired, **mobs
+// LOOKED AT**).
+//
+// ⚠⚠ **The last one is the cost, and it is a COUNT and never a clock**
+// (`@M029`) — the same reading `PoiSurvey.asked` carries one function
+// over.  ⚠ It is what makes the cull OBSERVABLE: without it a culled POI
+// and a surveyed one both make no bodies, so a gate could only see the
+// saving by timing it (`@M082`).
+//
+// Example: @DRY-201, @DRY-202, @DRY-203, @DRY-204
+pub fn poi_step(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
+                reach: vector<integer>, window: integer) -> (integer,
+                                                             integer,
+                                                             integer,
+                                                             integer) {
+    pst_made = 0;
+    pst_back = 0;
+    pst_gone = 0;
+    pst_seen = 0;
+    if len(state.pois.mobs) == 0 { return (0, 0, 0, 0); }
+    pst_at = Hex { q: state.player.q, r: state.player.r };
+    pst_p  = 0;
+    while pst_p < len(state.pois.pois) {
+        pst_poi = poi_of(state.pois, pst_p);
+        pst_r   = reach[pst_p] ?? 0;
+        // ⚠⚠ **THE CULL, and it is the whole architecture in one line.**
+        if lat_distance(poi_hex(pst_poi), pst_at) > pst_r + window {
+            pst_p += 1;
+            continue;
+        }
+        // ⚠ The rounds, built only now — for a POI near enough to matter.
+        pst_cyc = poi_cycles(state.pois, pal, pw, state.heights);
+        pst_i = 0;
+        while pst_i < len(state.pois.mobs) {
+            pst_m = state.pois.mobs[pst_i];
+            if pst_m == null { pst_i += 1; continue; }
+            pst_rt = poi_route_of(state.pois, pst_m.route);
+            if pst_rt.poi != pst_p || pst_m.gone { pst_i += 1; continue; }
+            pst_c = pst_cyc[pst_m.route];
+            if pst_c == null { pst_i += 1; continue; }
+            pst_rate = bank_rate(enemy_speed(pst_rt.kind));
+            pst_slot = poi_body_of(state, pst_i);
+            pst_seen += 1;
+
+            // ⚠⚠ **A BODY THAT VANISHED, or one the BUBBLE took.**  The
+            // roster is the record of who is materialised, and the one
+            // thing it cannot say is which of *never made* and *made and
+            // lost* it means — which is what `live` is for.  ⚠ Either
+            // way the mob leaves this POI's population: it died, or it
+            // went through the one door and is one of the wave now.
+            if pst_m.live {
+                if pst_slot < 0 {
+                    poi_retire(pst_m);
+                    pst_gone += 1;
+                    pst_i += 1;
+                    continue;
+                }
+                pst_body = state.enemies[pst_slot];
+                if pst_body != null {
+                    if !pst_body.errand {
+                        poi_retire(pst_m);
+                        pst_gone += 1;
+                        pst_i += 1;
+                        continue;
+                    }
+                }
+            }
+
+            // ⚠⚠ **THE ROUND'S OWN ENDING, asked of the CLOCK** — a
+            // population whose far half worked for ever while its near
+            // half retired would break the equality this phase gates,
+            // and nobody could see it.  ⚠ `errand_depart` takes the BODY
+            // at the top of the tick; this takes the RECORD, so the two
+            // agree by asking the same function.
+            if poi_mob_done(state.pois, pst_m, pst_c, pst_rate, state.now) {
+                poi_retire(pst_m);
+                pst_gone += 1;
+                pst_i += 1;
+                continue;
+            }
+
+            pst_want = poi_tier_at(poi_mob_hex(state.pois, pst_m, pst_c,
+                                               pst_rate, state.now),
+                                   pst_at, window);
+            if pst_want == POI_TIER_MATERIALISE && pst_slot < 0 {
+                state.enemies += [poi_materialise(state.pois, pst_m, pst_c,
+                                                  pst_rate, state.now,
+                                                  pst_i)];
+                pst_m.live = true;
+                pst_made += 1;
+            }
+            if pst_want == POI_TIER_EVALUATE && pst_slot >= 0 {
+                pst_e = state.enemies[pst_slot];
+                if pst_e != null {
+                    poi_release(state.pois, pst_m, pst_c, pst_rate, pst_e);
+                }
+                poi_drop_body(state, pst_slot);
+                pst_m.live = false;
+                pst_back += 1;
+            }
+            pst_i += 1;
+        }
+        pst_p += 1;
+    }
+    (pst_made, pst_back, pst_gone, pst_seen)
+}
+
+// Take one body off the roster.
+//
+// ⚠ Rebuilt rather than spliced, which is `errand_depart`'s own shape —
+// there is no vector remove, and a copy is what the roster already pays
+// for a departure.
+fn poi_drop_body(state: WaveState, slot: integer) {
+    pdb_keep: vector<Enemy> = [];
+    pdb_i = 0;
+    for pdb_e in state.enemies {
+        if pdb_i != slot { pdb_keep += [pdb_e]; }
+        pdb_i += 1;
+    }
+    state.enemies = pdb_keep;
 }
 
 // ─── ⚠ WHAT IS REFUSED ──────────────────────────────────────────
