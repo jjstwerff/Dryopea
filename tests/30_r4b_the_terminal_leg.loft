@@ -1,0 +1,532 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 30 phase R4b — THE TERMINAL LEG: a round that ends somewhere it
+// does not pass.
+//
+// ⚠⚠ **THE CLAIM: a harvester ends its round at its REPAIR POINT, which
+// is not the place it dumps at** (`@X339`, `@X341`; owner 2026-08-29).  R4 gave a
+// round an ending and it only reached a NEST-shaped one — a round that
+// already passes home — while `SETTING.md` § There is no fossil carbon
+// makes the plant-material harvester the commonest machine in the world
+// (`@X340`) and gives it **three places**: the picking ground it works,
+// the first-pass plant it dumps at every round, and a repair point it
+// visits once in a while.
+//
+// ── ⚠⚠ The five things this file has to be able to see ──────────
+//
+// 1. ⚠ **The round grew a THIRD leg and it is a PATH**, walked once
+//    after the working legs have repeated — not a line, and not a hex
+//    the repeating part passes through.
+// 2. ⚠⚠ **The CLOSED FORM still equals the stepped body** across the
+//    turn.  The turn point is new arithmetic — `T = ceil(S / period) ×
+//    period` — and `@M074` is what a leg boundary costs when it is not
+//    exact, so it is swept rather than sampled.
+// 3. ⚠⚠ **The ending is compared in HEXES and not in TIME** (`@M077`):
+//    12 of 192 swept cases disagree, and the failure is a WHOLE ROUND.
+//    ⚠ The shipped shift cannot see it, so the gate keeps a neighbour
+//    that can.
+// 4. ⚠ **A played session really ends at the repair point**, inside a
+//    two-sided bound: at or after the shift, and at most one whole round
+//    plus one terminal leg later.
+// 5. ⚠⚠ **The control that separates it from R4** — one world, one pair
+//    of hexes, and a table row apart: `harvest` ends at the repair point
+//    and `gather` at its nest, which are different places.
+//
+// ⚠ Every reading here was checked against the version that would break
+// it — `@M078`: eight mutations, seven caught, and the survivor is a
+// redundancy with a name.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+
+// The span the sweep walks, in base units — long enough that the
+// SLOWEST swept mover finishes its terminal leg inside it, which the
+// liveness control below checks rather than assumes.
+const R4B_SPAN: integer = 400000000;
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+
+// ─── The sweep's world — ⚠ a bend, and TWO of them ──────────────
+
+// Thirteen columns by seven rows of grass, with column 6 walled off
+// except at its southern row.
+//
+// ⚠⚠ **An UNPAINTED hex is sea and sea is not walkable**
+// (`CLAUDE.md` § a walking test must paint the ground it walks on), so
+// the barrier is a hole rather than a kind — nothing about the palette
+// is under test here.
+//
+// ⚠ It is `tests/30_r2_the_cycle.loft`'s world deliberately: R4b's
+// claim is R2's equality with one more leg on it, so the fixture that
+// gates it should differ in the LEG and in nothing else.
+fn r4b_world() -> PaintedWorld {
+    rw_pw = painted_empty();
+    for rw_r in 0..=6 {
+        for rw_q in 0..=12 {
+            if rw_q == 6 && rw_r <= 5 { continue; }
+            paint(rw_pw, rw_q, rw_r, as_u8(GRASS));
+        }
+    }
+    rw_pw
+}
+
+// The drop-off the round starts and ends at, the picking ground, and
+// the repair point.
+//
+// ⚠⚠ **The repair point is on the FAR side of the barrier from the
+// drop-off**, so the terminal leg bends exactly as the working legs do
+// — a straight terminal leg would be R0 probe 1's *a leg is a line*
+// smuggled back in through the one leg nothing had gated (`@M071`).
+fn r4b_alt()  -> Hex { Hex { q: 0,  r: 3 } }
+fn r4b_work() -> Hex { Hex { q: 12, r: 3 } }
+fn r4b_shed() -> Hex { Hex { q: 12, r: 0 } }
+
+fn r4b_field(to: const Hex) -> FlowField {
+    flow_build(load_palette(PALETTE), r4b_world(), height_layer_empty(),
+               as_u8(ENEMY_KIND_REGULAR), to)
+}
+
+// A harvester on the sweep's world: out to the picking ground empty,
+// back to the plant laden, and one day off to the shed.
+fn r4b_mob() -> Errand {
+    errand_at(ROLE_HARVEST, r4b_shed(), r4b_work(), r4b_alt())
+}
+
+// The same three hexes with a shift of `shift` units — the sweep's one
+// free number, and the one `@M077` says a gate must vary.
+fn r4b_row(shift: integer) -> Role {
+    errand_row("swept", ANCHOR_WORK, ANCHOR_ALT, 0, shift)
+}
+
+fn r4b_cycle(row: const Role) -> Cycle {
+    cycle_build(r4b_mob(), row, load_palette(PALETTE), r4b_world(),
+                height_layer_empty(), as_u8(ENEMY_KIND_REGULAR))
+}
+
+// ─── ⚠ The harness — a body, STEPPED across the turn ────────────
+
+// Walk a body for `chunk`-sized chunks of the span and check the closed
+// form against it at the end of every one.  Answers (positions that
+// disagree, LEGS that disagree, moments looked at, did it finish, the
+// first disagreement).
+//
+// ⚠⚠ **It is `r2_check` with a third field**, and the third is the
+// whole phase: a mob that has latched its bag is making for a hex
+// neither working leg ever names, so a harness holding two fields would
+// walk it nowhere and read the disagreement as the closed form's.
+//
+// ⚠ **The destination is resolved at the chunk's START** and the
+// arrival is asked AFTER the step, exactly as `errand_hex` does both —
+// a harness that swapped either would be measuring itself.
+//
+// ⚠⚠ **`rck_walk` is the currency the ENDING is compared in** — the
+// hexes this body has actually walked, which is what `errand_step`
+// tracks alongside `slip` and what makes the latch land on the same
+// arrival the closed form names.
+fn r4b_check(c: const Cycle, er: Errand, row: const Role,
+             f_work: const FlowField, f_alt: const FlowField,
+             f_shed: const FlowField, rate: integer,
+             chunk: integer) -> (integer, integer, integer, boolean, text) {
+    rck_b    = bank_new();
+    rck_at   = Hex { q: r4b_alt().q, r: r4b_alt().r };
+    rck_bad  = 0;
+    rck_leg  = 0;
+    rck_walk = 0;
+    rck_n    = (R4B_SPAN / chunk) ?? 1;
+    rck_say  = "";
+    rck_i    = 0;
+    while rck_i < rck_n {
+        rck_now  = rck_i * chunk;
+        rck_left = bank_gain(rck_b, rate, chunk, BANK_WHOLE);
+        while rck_left > 0 {
+            rck_job = errand_destination_of(row, er, rck_now);
+            if !rck_job.found { break; }
+            // ⚠ A mob standing ON its destination has arrived and spends
+            // the hex without moving — the terminal leg's own ending,
+            // and `cycle_phase` clamps the rule there for the same
+            // reason.  ⚠⚠ It must NOT count as a walked hex, or the
+            // latch's currency drifts away from the rule's.
+            if rck_job.q == rck_at.q && rck_job.r == rck_at.r {
+                rck_left -= 1;
+                continue;
+            }
+            rck_next = Hex { q: rck_at.q, r: rck_at.r };
+            if rck_job.q == er.work.q && rck_job.r == er.work.r {
+                rck_next = flow_step(f_work, rck_at.q, rck_at.r);
+            } else if rck_job.q == er.alt.q && rck_job.r == er.alt.r {
+                rck_next = flow_step(f_alt, rck_at.q, rck_at.r);
+            } else {
+                rck_next = flow_step(f_shed, rck_at.q, rck_at.r);
+            }
+            rck_at    = Hex { q: rck_next.q, r: rck_next.r };
+            rck_walk += 1;
+            errand_arrive(er, row, rck_at, rck_now,
+                          errand_shift_over(row, rate, rck_walk));
+            rck_left -= 1;
+        }
+        rck_i += 1;
+        rck_t    = rck_i * chunk;
+        rck_ph   = cycle_phase(c, row, rate, rck_t);
+        rck_want = cycle_at(c, row, rate, rck_t);
+        rck_ra   = c.anchors[rck_ph.0] ?? ANCHOR_NONE;
+        rck_ea   = errand_leg(row, er, rck_t);
+        if rck_want.q != rck_at.q || rck_want.r != rck_at.r {
+            rck_bad += 1;
+            if rck_say == "" {
+                rck_say = " first at chunk {rck_i}: stepped "
+                          + "({rck_at.q},{rck_at.r}), rule "
+                          + "({rck_want.q},{rck_want.r})";
+            }
+        }
+        if rck_ra != rck_ea {
+            rck_leg += 1;
+            if rck_say == "" {
+                rck_say = " first at chunk {rck_i}: the rule is on the leg "
+                          + "ending at anchor {rck_ra}, the steering names "
+                          + "{rck_ea}";
+            }
+        }
+    }
+    // ⚠ LIVENESS, and § Rc is why it is a separate reading: an equality
+    // between two things that both stopped is green (`@X337`), so the
+    // sweep also has to say the body actually GOT somewhere — here, all
+    // the way to the shed.
+    (rck_bad, rck_leg, rck_i,
+     rck_at.q == r4b_shed().q && rck_at.r == r4b_shed().r, rck_say)
+}
+
+// ─── ⚠ The played world — a road with a shed at the end ─────────
+
+// ⚠ The core is 40 hexes off in the sea, because the scrambler bubble
+// is 25 hexes and a core any nearer takes the mob's errand — the same
+// reason `tests/30_r4_home.loft` puts it there.
+fn r4b_road() -> EditorState {
+    s = editor_state_new(PALETTE);
+    for rr_q in 30..=58 {
+        for rr_r in 2..=6 { paint(s.pw, rr_q, rr_r, as_u8(GRASS)); }
+    }
+    place_marker(s.mw, 0, 0, MARKER_KIND_TARGET, as_u8(0));
+    s
+}
+
+// ⚠⚠ **THE LEG IS NINE AND THE NUMBER IS CHOSEN** — `CLAUDE.md` § a
+// gate aimed at a hazard somebody NAMED can still miss it, because the
+// fixture may make the wrong version behave identically (`@M075`,
+// `@M076`).
+//
+// ⚠ The hazard here is the mover's HEX COUNT: `errand_step` latches the
+// bag at `walked(now − slip) + hexes released so far this tick`, and a
+// version that read only the first term is short by up to the whole
+// bank.  A regular robot releases one hex a tick and can never see it.
+//
+// ⚠⚠ At nine hexes a round is **18**, and the shipped shift is
+// **exactly 15 rounds at 1.5 hex/s and exactly 25 at 2.5** — so the turn
+// lands ON an arrival rather than a whole round away from one, and the
+// scout's turning hex is the SECOND of its tick.  A count short by one
+// then reads *not yet* and the mob takes another whole round, which the
+// two-sided bound below refuses.  ⚠ At most leg lengths it does not.
+const R4B_LEG: integer = 9;
+
+fn r4b_plant() -> Hex { Hex { q: 40, r: 4 } }
+fn r4b_face()  -> Hex { Hex { q: 40 + R4B_LEG, r: 4 } }
+fn r4b_depot() -> Hex { Hex { q: 34, r: 4 } }
+
+// The harvester: it dumps at the plant every round and goes to the
+// depot when its shift is out.  ⚠ The depot is SIX hexes the other side
+// of the plant, so the round never passes it.
+fn r4b_harvester() -> Errand {
+    errand_at(ROLE_HARVEST, r4b_depot(), r4b_face(), r4b_plant())
+}
+
+// ⚠⚠ **THE CONTROL, ONE ROW AWAY** — the same road, the same walker and
+// the same two working hexes, run by the role whose drop-off IS its
+// home.  `gather` is R4's shape and must end where R4 ends it, which is
+// a DIFFERENT hex from the harvester's depot.
+fn r4b_nester() -> Errand {
+    errand_at(ROLE_GATHER, r4b_plant(), r4b_face(), Hex { q: 0, r: 0 })
+}
+
+// Play one mob and answer (the tick it left on, the hex it left FROM).
+//
+// ⚠ The departure is at the TOP of a tick, so the hex it left from is
+// observable at all: the mob finished during the tick before and is
+// still standing there when this loop looks (`@X338`).
+fn r4b_play(er: const Errand, kind: u8, ticks: integer, from: const Hex,
+            opened: integer) -> (integer, Hex, integer) {
+    rp_s  = r4b_road();
+    rp_ps = play_state_new();
+    play_set_mode(rp_ps, rp_s, true);
+    traffic_set(rp_ps.wave.traffic, 0.0);
+    // ⚠ A session that did not start at zero — which is what a cropped
+    // `.keys` fixture is (`@X335`), and the one state in which *standing
+    // on home* and *finished* come apart.
+    rp_ps.wave.now = opened;
+    rp_ps.wave.enemies += [Enemy { q: from.q, r: from.r, kind: kind,
+                                   alive: true, errand: true, route: er,
+                                   stand: timer_armed(0) }];
+    rp_gone = 0;
+    rp_last = Hex { q: from.q, r: from.r };
+    rp_far  = 0;
+    rp_t    = 0;
+    while rp_t < ticks {
+        play_ticks(rp_ps, rp_s, 1);
+        rp_t += 1;
+        if len(rp_ps.wave.enemies) == 0 {
+            if rp_gone == 0 { rp_gone = rp_t; }
+            break;
+        }
+        for rp_e in rp_ps.wave.enemies {
+            rp_last = Hex { q: rp_e.q, r: rp_e.r };
+            rp_d = lat_distance(Hex { q: rp_e.q, r: rp_e.r }, from);
+            if rp_d > rp_far { rp_far = rp_d; }
+        }
+    }
+    (rp_gone, rp_last, rp_far)
+}
+
+// The moment the departure on tick `n` was DECIDED — the moment that
+// tick began, because `errand_depart` is the top of `wave_tick` and the
+// clock is its last line.
+fn r4b_moment(tick: integer) -> integer { (tick - 1) * TICK_STEP_UNITS }
+
+// The round this class walks on the road, and the walk home after it.
+fn r4b_played_cycle(er: const Errand, kind: u8) -> Cycle {
+    rpc_s = r4b_road();
+    cycle_build(er, errand_role_of(er.role), load_palette(PALETTE),
+                rpc_s.pw, height_layer_empty(), kind)
+}
+
+// ─── ⚠⚠ THE SHAPE — a third leg, and what refuses one ───────────
+
+// @DRY-178 — the round grows a leg it walks once, to a hex it never passes
+fn test_a_round_can_end_where_it_does_not_pass() {
+    tre_row = errand_role_of(ROLE_HARVEST);
+    tre_c   = r4b_cycle(tre_row);
+    tre_gat = errand_role_of(ROLE_GATHER);
+    // ⚠ The hexes the REPEATING part passes through, so *the round does
+    // not pass its home* is a reading rather than a description.
+    tre_on = false;
+    tre_i  = 0;
+    for tre_h in tre_c.path {
+        if tre_i < tre_c.period && tre_h.q == r4b_shed().q
+            && tre_h.r == r4b_shed().r { tre_on = true; }
+        tre_i += 1;
+    }
+    // ⚠⚠ **The BEND control, on the leg nothing had gated**: a terminal
+    // leg longer than the straight line to it is a PATH (`@M071`), and
+    // one equal to it would be a fixture that could not tell the two
+    // apart.
+    assert(tre_c.terminal > 0 && !tre_on
+           && errand_terminal(tre_row) && !errand_terminal(tre_gat)
+           && tre_c.terminal > lat_distance(r4b_alt(), r4b_shed())
+           && tre_c.period > 2 * lat_distance(r4b_alt(), r4b_work())
+           && len(tre_c.path) == tre_c.period + tre_c.terminal
+           && len(tre_c.lengths) == 3
+           && (tre_c.anchors[2] ?? ANCHOR_NONE) == ANCHOR_HOME
+           && cycle_fault(tre_c, tre_row, bank_rate(1.5)) == "",
+           "a terminal leg is a path to a hex the round never passes: "
+           + "period {tre_c.period} (straight there and back "
+           + "{2 * lat_distance(r4b_alt(), r4b_work())}), terminal "
+           + "{tre_c.terminal} (straight "
+           + "{lat_distance(r4b_alt(), r4b_shed())}), {len(tre_c.path)} "
+           + "hexes over {len(tre_c.lengths)} legs, home on the round "
+           + "{tre_on}, fault '{cycle_fault(tre_c, tre_row, bank_rate(1.5))}'");
+}
+
+// @DRY-182 — the ending is a distance, and a shift that is not one is refused
+fn test_a_shift_is_refused_unless_it_is_whole_hexes() {
+    // ⚠⚠ **`@M077`'S OWN READING, IN THE SUITE.**  361 111 111 units is
+    // 180 whole hexes at 1.5 hex/s plus a remainder, so the arrival at
+    // hex 180 falls a hair BEFORE the shift: a boundary in TIME answers
+    // *not yet* and the mob walks another whole round, while a boundary
+    // in DISTANCE answers *now* and the closed form agrees.
+    tsr_rate = bank_rate(1.5);
+    tsr_odd  = r4b_row(361111111);
+    tsr_at   = 360000000;
+    tsr_c    = r4b_cycle(tsr_odd);
+    // ⚠ The shipped row is the neighbour that CANNOT see it — 540 000 000
+    // units is 270 whole hexes at this rate — so it is here as the
+    // control rather than as the reading (`@M014`'s class).
+    tsr_ship = errand_role_of(ROLE_HARVEST);
+    assert(errand_shift_over(tsr_odd, tsr_rate, 180)
+           && !(tsr_at >= tsr_odd.shift)
+           && cycle_fault(tsr_c, tsr_odd, tsr_rate) != ""
+           && cycle_fault(r4b_cycle(tsr_ship), tsr_ship, tsr_rate) == ""
+           && ((tsr_ship.shift % cycle_hex_units(tsr_rate)) ?? 1) == 0
+           && cycle_fault(r4b_cycle(tsr_ship), errand_role_of(ROLE_GATHER),
+                          tsr_rate) != "",
+           "a shift is a distance: the hex form says over at 180 hexes "
+           + "({errand_shift_over(tsr_odd, tsr_rate, 180)}) while the "
+           + "time form at {tsr_at} against {tsr_odd.shift} says "
+           + "{tsr_at >= tsr_odd.shift}; the odd shift must be refused "
+           + "('{cycle_fault(tsr_c, tsr_odd, tsr_rate)}') and the "
+           + "shipped one must not "
+           + "('{cycle_fault(r4b_cycle(tsr_ship), tsr_ship, tsr_rate)}')");
+}
+
+// ─── ⚠⚠ THE EQUALITY — the rule IS the stepped body, past the turn ──
+
+// @DRY-179 — the closed form equals the stepped body across the turn
+fn test_the_closed_form_equals_the_stepped_body_past_the_turn() {
+    tcf_wf = r4b_field(r4b_work());
+    tcf_af = r4b_field(r4b_alt());
+    tcf_sf = r4b_field(r4b_shed());
+    tcf_bad  = 0;
+    tcf_leg  = 0;
+    tcf_seen = 0;
+    tcf_home = 0;
+    tcf_runs = 0;
+    tcf_odd  = 0;
+    tcf_say  = "";
+    tcf_per  = 0;
+    for tcf_sp in [1.0, 1.5, 2.5, 0.7] {
+        tcf_rate = bank_rate(tcf_sp);
+        // ⚠⚠ **THE SHIFT IS SWEPT AND THAT IS THE POINT** — one of the
+        // three is not a whole number of hexes at any of these rates, so
+        // the sweep contains the case a TIME boundary gets wrong.
+        for tcf_sh in [30000000, 61111111, 137113000] {
+            tcf_row = r4b_row(tcf_sh);
+            tcf_c   = r4b_cycle(tcf_row);
+            tcf_per = tcf_c.period;
+            if ((tcf_sh % cycle_hex_units(tcf_rate)) ?? 1) != 0 { tcf_odd += 1; }
+            // ⚠ Two step lengths, one of which divides neither the tick
+            // nor a second — `CLAUDE.md` § THE INSTRUMENT IS A
+            // CROSS-PRODUCT.
+            for tcf_ch in [2000000, 137113] {
+                tcf_got = r4b_check(tcf_c, r4b_mob(), tcf_row, tcf_wf,
+                                    tcf_af, tcf_sf, tcf_rate, tcf_ch);
+                tcf_bad  += tcf_got.0;
+                tcf_leg  += tcf_got.1;
+                tcf_seen += tcf_got.2;
+                tcf_runs += 1;
+                if tcf_got.3 { tcf_home += 1; }
+                if tcf_say == "" && tcf_got.4 != "" {
+                    tcf_say = " {tcf_sp} hex/s, shift {tcf_sh}, {tcf_ch}-unit"
+                              + " chunks:" + tcf_got.4;
+                }
+            }
+        }
+    }
+    // ⚠⚠ **Four vacuity controls, and the middle two are the ones this
+    // phase needed**: the sweep must have looked at thousands of
+    // moments; EVERY run must have reached the shed, or the terminal leg
+    // is a branch nothing entered; at least one swept shift must be a
+    // number a TIME comparison would get wrong; and the turn must be a
+    // whole round or more away, so *ceil* is doing something.
+    assert(tcf_bad == 0 && tcf_leg == 0 && tcf_seen > 2000
+           && tcf_home == tcf_runs && tcf_runs == 24 && tcf_odd > 0
+           && cycle_turn(r4b_cycle(r4b_row(61111111)), r4b_row(61111111),
+                         bank_rate(1.5)) >= tcf_per,
+           "the rule must BE the stepped body past the turn: {tcf_bad} "
+           + "hexes and {tcf_leg} legs of {tcf_seen} swept moments "
+           + "disagree;{tcf_say} ({tcf_home} of {tcf_runs} runs reached "
+           + "the shed, {tcf_odd} swept shifts are not whole hexes, "
+           + "period {tcf_per}, turn "
+           + "{cycle_turn(r4b_cycle(r4b_row(61111111)), r4b_row(61111111), bank_rate(1.5))})");
+}
+
+// ─── ⚠⚠ THE SCENARIO — a harvester, played to its ending ────────
+
+// @DRY-180 — a harvester ends at its repair point, and on time
+fn test_a_harvester_ends_at_its_repair_point() {
+    // ⚠⚠ **TWO CLASSES, and the SCOUT is the reading.**  A regular robot
+    // releases one hex a tick, so the hex that ends its shift is always
+    // the first of its tick and a mover that counted only from the
+    // tick's start would be right by accident.  A scout releases two and
+    // three, and at this leg its turning hex is the second.
+    thr_reg = r4b_play(r4b_harvester(), as_u8(ENEMY_KIND_REGULAR), 320,
+                       r4b_plant(), 0);
+    thr_sct = r4b_play(r4b_harvester(), as_u8(ENEMY_KIND_SCOUT), 320,
+                       r4b_plant(), 0);
+    thr_cr  = r4b_played_cycle(r4b_harvester(), as_u8(ENEMY_KIND_REGULAR));
+    thr_cs  = r4b_played_cycle(r4b_harvester(), as_u8(ENEMY_KIND_SCOUT));
+    thr_hr  = cycle_hex_units(bank_rate(enemy_speed(as_u8(ENEMY_KIND_REGULAR))));
+    thr_hs  = cycle_hex_units(bank_rate(enemy_speed(as_u8(ENEMY_KIND_SCOUT))));
+    thr_rm  = r4b_moment(thr_reg.0);
+    thr_sm  = r4b_moment(thr_sct.0);
+    // ⚠⚠ **THE TWO-SIDED BOUND, and the upper half is the reading.**  A
+    // mob turns for home at the first arrival at the plant at or after
+    // the shift, so it leaves at most `period − 1 + terminal` hexes
+    // after it — and a version that missed the turn takes another WHOLE
+    // round, which is one hex past that bound.  ⚠ A one-sided *at or
+    // after the shift* is satisfied by a mob that leaves on the run's
+    // last tick.
+    thr_lo_r = HARVEST_SHIFT_UNITS + thr_cr.terminal * thr_hr;
+    thr_hi_r = HARVEST_SHIFT_UNITS
+               + (thr_cr.period - 1 + thr_cr.terminal) * thr_hr;
+    thr_lo_s = HARVEST_SHIFT_UNITS + thr_cs.terminal * thr_hs;
+    thr_hi_s = HARVEST_SHIFT_UNITS
+               + (thr_cs.period - 1 + thr_cs.terminal) * thr_hs;
+    assert(thr_reg.0 > 0 && thr_sct.0 > 0
+           && thr_reg.1.q == r4b_depot().q && thr_reg.1.r == r4b_depot().r
+           && thr_sct.1.q == r4b_depot().q && thr_sct.1.r == r4b_depot().r
+           && thr_rm >= thr_lo_r && thr_rm <= thr_hi_r
+           && thr_sm >= thr_lo_s && thr_sm <= thr_hi_s,
+           "a harvester ends at its depot: the robot went on tick "
+           + "{thr_reg.0} from ({thr_reg.1.q},{thr_reg.1.r}) at moment "
+           + "{thr_rm} (want {thr_lo_r}..{thr_hi_r}), the scout on tick "
+           + "{thr_sct.0} from ({thr_sct.1.q},{thr_sct.1.r}) at {thr_sm} "
+           + "(want {thr_lo_s}..{thr_hi_s}) — the depot is "
+           + "({r4b_depot().q},{r4b_depot().r}), the round "
+           + "{thr_cr.period} + {thr_cr.terminal}");
+}
+
+// @DRY-181 — one world, two shapes, one row apart
+fn test_one_world_two_shapes_one_row_apart() {
+    // ⚠⚠ **THE CONTROL R4b OWES R4.**  The same road, the same walker
+    // and the same picking ground: `harvest` dumps at the plant and goes
+    // to a depot the round never passes, `gather` carries its load home
+    // and ends there.  ⚠ Two endings at two hexes, and the only
+    // difference between the runs is which row the mob is on — so *home
+    // is a place* is a reading rather than a sentence.
+    tow_h = r4b_play(r4b_harvester(), as_u8(ENEMY_KIND_REGULAR), 320,
+                     r4b_plant(), 0);
+    // ⚠ A `gather` round starts at its NEST, because a round begins
+    // where the last one dropped — `errand_leg`'s *laden* anchor, which
+    // is `home` for that row and the plant for the harvester's.
+    tow_g = r4b_play(r4b_nester(),    as_u8(ENEMY_KIND_REGULAR), 320,
+                     r4b_plant(), 0);
+    assert(tow_h.0 > 0 && tow_g.0 > 0
+           && tow_h.1.q == r4b_depot().q && tow_h.1.r == r4b_depot().r
+           && tow_g.1.q == r4b_plant().q && tow_g.1.r == r4b_plant().r
+           && !(tow_h.1.q == tow_g.1.q && tow_h.1.r == tow_g.1.r),
+           "two shapes, two places: the harvester went on tick {tow_h.0} "
+           + "from ({tow_h.1.q},{tow_h.1.r}) and the nester on tick "
+           + "{tow_g.0} from ({tow_g.1.q},{tow_g.1.r}) — the depot is "
+           + "({r4b_depot().q},{r4b_depot().r}) and the plant "
+           + "({r4b_plant().q},{r4b_plant().r})");
+}
+
+// @DRY-183 — a mob standing on its home is not a mob that has finished
+fn test_a_harvester_opened_at_its_depot_does_a_round_first() {
+    // ⚠⚠ **THE ONE STATE IN WHICH *standing on home* AND *finished*
+    // COME APART**, and it is why the terminal shape reads a LATCH
+    // rather than a clock.  A session that did not start at zero is what
+    // a cropped `.keys` fixture is (`@X335`), so a harvester can be
+    // standing at its depot with the run's clock already past the shift
+    // — and it has not finished anything: its round has not begun.
+    //
+    // ⚠ R4 answered this for the nest with its third question (*the mob
+    // is on the home anchor*), and the nest's answer does not carry: a
+    // nest round PASSES home every trip, so the position is a
+    // discriminator there and the opening hex is the only place it is
+    // not.  A harvester's depot is off the round, so a mob standing on
+    // it is either finished or freshly landed, and only the latch knows
+    // which.
+    tho = r4b_play(r4b_harvester(), as_u8(ENEMY_KIND_REGULAR), 90,
+                   r4b_depot(), HARVEST_SHIFT_UNITS + TICK_STEP_UNITS);
+    // ⚠ The reading is TWO facts: it did not go on the first tick, and
+    // it went from the depot after actually working — a mob that left
+    // late for any other reason would not have reached the face.
+    assert(tho.0 > 1 && tho.2 >= lat_distance(r4b_depot(), r4b_face())
+           && tho.1.q == r4b_depot().q && tho.1.r == r4b_depot().r,
+           "a mob opened on its own depot has not finished: it went on "
+           + "tick {tho.0} from ({tho.1.q},{tho.1.r}) having reached "
+           + "{tho.2} hexes out, and the face is "
+           + "{lat_distance(r4b_depot(), r4b_face())} away");
+}

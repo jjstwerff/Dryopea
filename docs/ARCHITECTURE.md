@@ -1756,11 +1756,39 @@ src/
                    ⚠ A SHIFT IS A SPAN, NOT A COUNT OF ROUNDS: a count
                    needs the cycle, now − slip is already there, and a
                    shift chooses no ANCHOR so it cannot reproduce @M073.
-                   ⚠⚠ A ROW WITH A SHIFT MUST HAVE HOME AS AN ANCHOR and
-                   errand_row_fault refuses one that has not — which is
-                   why `haul` and `guard` have no shift: their rounds
-                   run work ↔ alt and R5's POI is where one gains a home
-                   leg.
+                   ⚠ A SHIFT NEEDS A BAG-STEERED ROW and
+                   errand_row_fault refuses a clock-steered one: its
+                   phase is a time where a turn point is a distance.
+                   ⚠⚠ AND SINCE plans/30 R4b A ROUND MAY END SOMEWHERE
+                   IT DOES NOT PASS (@X341) — Cycle.terminal,
+                   cycle_turn, errand_terminal, errand_shift_over,
+                   ROLE_HARVEST + HARVEST_SHIFT_UNITS.  A round whose
+                   home is off it repeats until the shift and then walks
+                   ONE terminal leg to the repair point: `anchors`,
+                   `lengths` and `path` describe the whole walk and
+                   `period` is the repeating PREFIX alone.
+                   ⚠⚠ THE TURN IS A THIRD VALUE OF THE BAG
+                   (ERRAND_BAG_HOMEWARD), and that is the decision.  The
+                   closed form turns at T = ceil(S / period) × period,
+                   but the MOVER has no cycle and cannot know `period` —
+                   what it can see is the moment its bag empties at the
+                   drop-off, and the first empty leg after the shift IS
+                   T.  A separate `am I finished` field would be a clock
+                   in all but name.
+                   ⚠⚠ THE ENDING IS COMPARED IN HEXES AND NEVER IN TIME
+                   (@M077): 12 of 192 swept cases disagree and the
+                   failure is a WHOLE ROUND.  cycle_fault refuses a
+                   shift that is not a whole number of hexes at the
+                   mover's rate — @M074's family, a third subject.
+                   ⚠⚠ THE MOVER COUNTS ITS OWN HEXES: the latch reads
+                   walked(now − slip) PLUS the hexes released so far
+                   this tick, and a version reading only the first is
+                   short by up to the whole bank.  A regular robot
+                   releases one hex a tick and cannot see it; a scout
+                   can (@M078).
+                   ⚠ `harvest` is a CATALOGUE ROW beside `haul` and not
+                   a change to it (@X322): one mechanism, two rows of
+                   data, and `haul` stays the route that does not end.
                    ⚠⚠ THE DEPARTURE IS AT THE TOP OF THE TICK, and that
                    is the claim rather than a tidy-up: at the consequence
                    stage a robot arrives at its nest and is removed in
@@ -1773,7 +1801,8 @@ src/
                    never slipped — it arrived, it was not held up.
                    ⚠ INERT: no scenario has a routine, so errand_fields
                    builds nothing and the fork in wave_tick is never
-                   taken — 920 gate measurements unmoved
+                   taken — 920 gate measurements unmoved, through R4b
+                   as well
   skill.loft       CREW SKILLS — build, repair, scout (BACKLOG C1) —
                    SKILL_EFFECT_SPAN / _HALF, Skills { build, repair,
                    scout } on Helper, skill_factor, skill_work_units,

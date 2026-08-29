@@ -48,7 +48,7 @@ useful if it decides cases:
 | a hauler carrying something **visible**, and putting it down | ✅ **believability** — the cargo is `@X053`'s harvester body, already drawn |
 | moods, needs, memory, an affinity bar | ❌ simulation, and `@X131` already refuses the bar one system over |
 | a robot walking **round** a rock instead of into it | ✅ — and `crawler` measured the ugly version: greedy *"walked into the first concave obstacle and stopped there — permanently"* |
-| a robot going **home** at the end of its round | ✅ — and it replaces a deletion (§ Home is a PLACE) |
+| a robot going **home** at the end of its round | ✅ — and it replaces a deletion (§ Home is a PLACE); ⚠ a round that does not PASS its home gets a terminal leg (`@X341`) |
 | a full economy tick per scenario | ❌ — and `@X298` puts it on the server, which is where it buys something |
 
 ### ⚠⚠ BELIEVABILITY is owed where it can be OBSERVED; CONSISTENCY is owed everywhere
@@ -244,12 +244,16 @@ mob is on its cycle, its lateness is in `slip`, or it left through the
 bubble, **three states and ONE exit**, and a mob breaking off to walk
 somewhere the round never goes is a fourth state and a second exit.
 ⚠⚠ **So home is not somewhere a finished mob GOES — it is a hex the
-round already passes through, and the mob leaves the roster the tick its
-own cycle brings it there.**  ⚠ A `shift` column says how long a role
-keeps taking rounds, `errand_home_done` is the one question, and a row
-naming a shift its round cannot reach is REFUSED at construction — which
-is why `haul` and `guard` have none: their rounds run `work ↔ alt`, and
-§ Points of interest is where a hauler's round gains a home leg.
+CYCLE brings it to, and the mob leaves the roster the tick that happens.**
+⚠ At R4 that meant *a hex the round already passes through*; R4b keeps
+the same sentence by extending the CYCLE instead of the mob's states —
+a **terminal leg** is still a leg, so *three states and ONE exit* is
+untouched (`@X341`).  ⚠ A `shift` column says how long a role
+keeps taking rounds and `errand_home_done` is the one question.  ⚠⚠ At
+R4 a row naming a shift its round could not reach was REFUSED at
+construction, which is why `haul` and `guard` had none; **R4b's terminal
+leg is what lifted that** (`@X341`), so what is refused now is a
+CLOCK-steered row with a shift and the reachability moved to the CYCLE.
 ⚠⚠ **And the departure had to move to the TOP of the tick**: removed at
 the consequence stage, a robot arrives at its nest and is gone inside one
 tick, so the last frame that ever holds it has it **one hex short** —
@@ -1187,17 +1191,33 @@ both takes the load and services the carrier.  ⚠ The harvester is
 wanted is the SAME shape again, differing only in how far apart its
 anchors sit.  *One AI, per-class DATA* survives the whole chain.
 
-⚠⚠ **The consequence for the ending is exact and it is a gap**: R4's
-mechanism ends a round at `home`, and `home` has to be **on the round**
-for the closed form to describe the mob right up to the tick it leaves
-(§ Home is a PLACE above, `@X338`).  A nest round touches home; a
-harvester round does not.  ⚠ So *the ending does not reach the commonest
-robot in the world yet*, and what it needs is a **terminal leg** — two
-working legs repeating until the shift, then one walk to `home` and off
-the roster — which is a change to `cycle_build` / `cycle_phase` rather
-than to the departure.  `errand_row_fault` refuses a shift on a round
-that cannot reach home, so the gap is NAMED at construction rather than
-discovered as a robot that works for ever.
+⚠⚠ **The consequence for the ending was exact and it was a gap, and
+R4b CLOSED IT** (`@X341`).  R4's mechanism ends a round at `home`, and
+`home` has to be **on the round** for the closed form to describe the
+mob right up to the tick it leaves (§ Home is a PLACE above, `@X338`).
+A nest round touches home; a harvester round does not.  ⚠ What that
+needed is a **terminal leg** — the working legs repeating until the
+shift, then one walk to `home` and off the roster — which is a change to
+`cycle_build` / `cycle_phase` rather than to the departure, and it stays
+closed-form because the turn point is arithmetic: `T = ceil(S / period)
+× period`.
+
+⚠⚠ **AND THE DECISION IS HOW THE BODY REACHES `T` WITHOUT KNOWING WHAT
+IT IS.**  The mover has no cycle, and building one to find out is two
+flow sweeps per mob per tick — the cost `@FR-E-Closed-Form` exists to
+avoid.  What the body CAN see is the moment its bag empties at the
+drop-off, and **the first empty leg after the shift is exactly `T`**, so
+the turn is a **third value of the bag** and `errand_leg` reads one
+number for all three legs.  ⚠ A separate *am I finished* field would be
+a clock in all but name, and this document's own rule is that **the bag
+steers**.
+
+⚠⚠ **And an ending is compared in HEXES, never in time** (`@M077`):
+12 of 192 swept cases disagree and the failure is a WHOLE ROUND, because
+an arrival is a distance and a boundary in time lands wherever the
+timestep puts it.  ⚠ The shipped row is `harvest`, beside `haul` rather
+than instead of it — one mechanism, two rows of DATA, which is what a
+catalogue is for.
 
 ## ⚠⚠ And this is LIBRARY work too  `@X322`
 

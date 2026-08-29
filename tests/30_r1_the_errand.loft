@@ -84,7 +84,10 @@ fn r1_run(row: const Role, er: Errand, start: const Hex,
         // ⚠ Arrival is asked AFTER the step, so a mob that reaches its
         // destination this tick turns the bag over in the same tick —
         // which is what makes a round trip exactly twice the leg.
-        if errand_arrive(er, row, rr_at, rr_now) {
+        // ⚠ `false`: this walker's roles have no shift, so no arrival
+        // it makes can be the one that ends a round (R4b).  A row that
+        // HAS one is gated in `tests/30_r4b_the_terminal_leg.loft`.
+        if errand_arrive(er, row, rr_at, rr_now, false) {
             if er.carry == ERRAND_BAG_EMPTY { rr_done += 1; }
         }
         rr_t += 1;

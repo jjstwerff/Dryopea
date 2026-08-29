@@ -257,6 +257,22 @@ to `slip` with **every conformance count green** — ***`slip` is a
 currency that can pay for a defect***.  ⚠ Still INERT: **920
 measurements unmoved**.
 
+⚠⚠ **AND A ROUND CAN END SOMEWHERE IT DOES NOT PASS**
+([`plans/30`](../plans/30-the-mob-routine/README.md) R4b, 2026-08-29,
+`@X341`) — the world's commonest robot dumps its load in one place and
+is serviced in another (`@X339`, `@X340`), so its round never touches
+home and R4's ending could not reach it.  A **terminal leg** closes it:
+the working legs repeat until the shift, then ONE walk to the repair
+point and off the roster.  ⚠⚠ **The turn stays closed-form** —
+`T = ceil(S / period) × period` — **and the BODY reaches it without
+knowing what `T` is**: the mover has no cycle, but the moment its bag
+empties at the drop-off IS the turn, so the ending is a third value of
+the bag (`ERRAND_BAG_HOMEWARD`) rather than a second clock.  ⚠⚠ **And
+it is compared in HEXES, never in time** (`@M077`): 12 of 192 swept
+cases disagree and the failure is a whole round.  ⚠ Eight mutations,
+seven caught, and the fixture's LEG is what catches the mover
+(`@M078`).  ⚠ Still INERT: **920 measurements unmoved**.
+
 ## Two rules the table above rests on
 
 ⚠ **A robot climbs 2.0 m** (`CLIMB_REGULAR`, plan 12 B1), and the number

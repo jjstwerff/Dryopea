@@ -303,30 +303,41 @@ fn test_a_mob_that_stood_leaves_exactly_that_much_later() {
            + "({tms_held.1.q},{tms_held.1.r})");
 }
 
-// @DRY-177 — a shift is a promise the round has to be able to keep
+// @DRY-177 — a shift is a promise, and R4b moved where it is kept
 fn test_a_shift_a_round_cannot_reach_is_refused() {
-    // ⚠⚠ **The authoring error this column invites**, refused at
-    // construction rather than measured later as a mob that works for
-    // ever: a mob leaves at its HOME anchor and nowhere else, so a row
-    // naming a shift while its round runs `work ↔ alt` has named an
-    // ending its cycle can never reach.  ⚠ From outside, *never ends*
-    // and *cannot reach its ending* are the same picture.
+    // ⚠⚠ **R4 REFUSED A SHIFT ON A ROUND THAT DOES NOT TOUCH HOME, AND
+    // R4b GRANTS IT ONE** (`@X339`): a round that runs `work ↔ alt`
+    // grows a TERMINAL leg to its repair point, so the row is legal and
+    // the reachability became the CYCLE's question — `cycle_build`
+    // refuses the whole cycle when the walk home does not connect.
+    // ⚠ That is this file's claim moving rather than weakening, and the
+    // row below is the shipped `harvest` row's shape.
     tsr_far  = errand_row("far",  ANCHOR_WORK, ANCHOR_ALT, 0,
                           GATHER_SHIFT_UNITS);
     tsr_neg  = errand_row("neg",  ANCHOR_WORK, ANCHOR_HOME, 0, 0 - 1);
+    // ⚠⚠ **WHAT IS STILL REFUSED IS THE SHAPE NO ENDING CAN BE BUILT
+    // FOR**: a CLOCK-steered round never turns its bag over, so there is
+    // no arrival for a shift measured in HEXES to land on (`@M077`), and
+    // its phase is a span of time where the turn point is a distance.
+    tsr_clk  = errand_row("clk",  ANCHOR_WORK, ANCHOR_ALT, GUARD_LEG_UNITS,
+                          GATHER_SHIFT_UNITS);
     // ⚠ The control, and it is the generic one: a refusal that refuses
     // everything is not a refusal.  Both of these are legal rows — one
-    // with a shift it can reach, one with none at all.
+    // with a shift its round passes, one with none at all.
     tsr_good = errand_row("good", ANCHOR_WORK, ANCHOR_HOME, 0,
                           GATHER_SHIFT_UNITS);
     tsr_bare = errand_row("bare", ANCHOR_WORK, ANCHOR_ALT, 0, 0);
-    assert(errand_row_fault(tsr_far) != "" && errand_row_fault(tsr_neg) != ""
+    assert(errand_row_fault(tsr_neg) != "" && errand_row_fault(tsr_clk) != ""
+           && errand_row_fault(tsr_far) == ""
            && errand_row_fault(tsr_good) == ""
            && errand_row_fault(tsr_bare) == ""
+           && errand_terminal(tsr_far) && !errand_terminal(tsr_good)
            && errand_table_fault() == "",
-           "a shift must be reachable: far='{errand_row_fault(tsr_far)}' "
-           + "neg='{errand_row_fault(tsr_neg)}' "
-           + "good='{errand_row_fault(tsr_good)}' "
+           "a shift must be one a round can END: neg='{errand_row_fault(tsr_neg)}' "
+           + "clk='{errand_row_fault(tsr_clk)}' "
+           + "far='{errand_row_fault(tsr_far)}' (terminal "
+           + "{errand_terminal(tsr_far)}) good='{errand_row_fault(tsr_good)}' "
+           + "(terminal {errand_terminal(tsr_good)}) "
            + "bare='{errand_row_fault(tsr_bare)}' "
            + "table='{errand_table_fault()}'");
 }

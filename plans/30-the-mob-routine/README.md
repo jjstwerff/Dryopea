@@ -9,15 +9,51 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
+**R4b COMPLETE 2026-08-29 — a round can end somewhere it does not
+pass, and the commonest robot in the world now has an ending.**
+R5 is startable.  ⚠ Gates: **1737 green over 138 files** (+6, all this
+phase's), `validate.sh` **50 scripts / 920 measurements** and
+`validate_gl.sh` **3 fixtures / 55 measurements**, both **UNCHANGED** —
+the inertness measured rather than asserted.
+
+⚠⚠ **`@X341` — THE TURN IS A THIRD VALUE OF THE BAG, AND THAT IS THE
+DECISION RATHER THAN THE ARITHMETIC.**  The closed form was never in
+doubt: with `S = cycle_walked(rate, shift)` the mob turns for home at
+`T = ceil(S / period) × period`, so `cycle_phase` is *one modulo below
+`T`, one subtraction above it* and `@FR-E-Closed-Form` is untouched.
+⚠ What had to be decided is how the BODY reaches the same moment — it
+has no cycle and cannot know `period`, so *have I reached T* is
+unanswerable in the tick.  ⚠⚠ **What it CAN see is the moment its bag
+empties at the drop-off, and the first empty leg after the shift is
+exactly `T`** — so the turn is latched into `carry` as
+`ERRAND_BAG_HOMEWARD` and `errand_leg` reads ONE number for all three
+legs.  A second field saying *am I finished* would be a clock in all but
+name; **the bag is where an ending belongs because the bag steers.**
+
+⚠⚠ **`@M078` — eight mutations, seven caught, and the fixture's LEG is
+what catches the mover.**  A round of 18 makes the shipped 180 s shift
+**exactly 15 rounds at 1.5 hex/s and exactly 25 at 2.5**, so the turn
+lands ON an arrival and the scout's turning hex is the SECOND of its
+tick: a mover reading only the tick's opening hex count is then one hex
+short, answers *not yet*, and takes another whole round.  ⚠ A regular
+robot releases one hex a tick and cannot see it at any leg length —
+`@M014`'s class, a fifth instance, and `@M076`'s method reused.
+⚠⚠ **And the gate needed a state the corpus had not got**: a harvester
+standing on its depot in a session whose clock is already past the shift
+— what a cropped `.keys` fixture is (`@X335`) — is the one state in
+which *standing on home* and *finished* come apart.  ⚠ The one survivor
+is inert across all six plan-30 files and its reason is nameable, which
+is why it is a redundancy rather than a gap.
+
 **R4 COMPLETE 2026-08-28 — a round has an ENDING, and it is a PLACE.**
 ⚠⚠ **AND ITS REACH WAS CORRECTED THE NEXT DAY** (`@X339`): a
 plant-material harvester's **dump** and its **repair point** are
 different places, so `haul` is that robot's shape and `gather` is the
 NEST's — and R4's ending, which needs `home` ON the round, reaches the
-nest and not the harvester.  ⚠ **R4b** is the terminal leg that closes
+nest and not the harvester.  ⚠ **R4b** is the terminal leg that closed
 it, and it matters because carbon is one of the planet's two bottlenecks
 (`@X340`), which makes the harvester the commonest errand in the world.
-R4b and R5 are startable.  ⚠ Gates: **1731 green over 137 files** (+6, all this
+⚠ Gates at R4: **1731 green over 137 files** (+6, all that
 phase's), `validate.sh` **50 scripts / 920 measurements** and
 `validate_gl.sh` **3 fixtures / 55 measurements**, both **UNCHANGED**.
 
@@ -26,9 +62,9 @@ walks to**, and the plan's own one-sentence invariant is what decided
 it: *three states and ONE exit* leaves no room for a mob that breaks off
 its cycle to walk somewhere the round never goes.  ⚠ So the mob is
 exactly where its rule says right up to the tick it is gone, the mover
-and the cycle are untouched — and the bill is that **two of the three
-shipped roles cannot END yet**, which `errand_row_fault` NAMES rather
-than leaving open.  ⚠⚠ **And the departure moved from the consequence
+and the cycle are untouched — and the bill was that **two of the three
+shipped roles could not END**, which `errand_row_fault` NAMED rather
+than leaving open.  ⚠ **R4b paid it** (`@X341`).  ⚠⚠ **And the departure moved from the consequence
 stage to the TOP of the next tick**: taken where it was, a robot arrives
 at its nest and is removed inside one tick, so the last frame that ever
 holds it has it **one hex short** — *deleted where it happened to stop*
@@ -259,8 +295,8 @@ behaviour and clocks, gated by scenarios and counts.
 | **R2** — the cycle is CLOSED-FORM | S | `tests/30_r2_the_cycle.loft` (8) — ⚠ the equality gate above | ✅ **COMPLETE 2026-08-28** — `@M074`, `@X335` |
 | **R3** — deviation, and `slip` | M | `tests/30_r3_the_deviation.loft` (5) | ✅ **COMPLETE 2026-08-28** — `@M075`, `@X336`, `@X337` |
 | **R4** — home is a PLACE | S | `tests/30_r4_home.loft` (6) — a played session | ✅ **COMPLETE 2026-08-28** — `@X338`, `@M076`, `@D008` |
-| **R4b** — the TERMINAL leg: a round that ends somewhere it does not pass | M | a scenario: a HARVESTER ends at its repair point — ⚠ plus R2's sweep extended to a cycle with a terminal leg | **STARTABLE** — ⚠⚠ **and it is the phase that makes R4 reach the commonest robot in the world** (`@X339`) |
-| **R5** — the POI, its population, its BOUND | M | ⚠ the containment gate above | **STARTABLE** — ⚠ **R0 probe 3 is ANSWERED and the bound is named** |
+| **R4b** — the TERMINAL leg: a round that ends somewhere it does not pass | M | `tests/30_r4b_the_terminal_leg.loft` (6) — a played HARVESTER, plus R2's sweep extended | ✅ **COMPLETE 2026-08-29** — `@X341`, `@M078` |
+| **R5** — the POI, its population, its BOUND | M | ⚠ the containment gate above | **STARTABLE** — ⚠ **R0 probe 3 is ANSWERED and the bound is named**.  ⚠⚠ And R4b's terminal leg is now part of what the bound must contain |
 | **R6** — CULL / EVALUATE / MATERIALISE | M | ⚠ the `R` vs `2R` gate **and its differ-control** | Blocked on R5 |
 | **Rc** — the CONFORMANCE gate | S | `tests/30_rc_the_conformance.loft` (6) | ✅ **COMPLETE 2026-08-28** — ⚠ and it needed a LIVENESS gate beside it (`@X337`) |
 | **R7** — distraction: the hauler and your heap | M | a scenario pair + the *merely seen* negative control | Blocked on R5 |
@@ -792,11 +828,11 @@ answer for it at all.
 ⚠ The mover, the cycle and § Rc are untouched by that, which is the
 whole benefit.  ⚠⚠ **The bill is real and it is NAMED**: `haul` runs
 `work ↔ alt` and `guard` runs its post, so **neither round touches home
-and neither can end yet** — and `errand_row_fault` refuses a shift on a
-row like that, so the column cannot promise behaviour the cycle has not
-got (`@X112` from the other end).  ⚠ **R5 inherits it**: a hauler's
-round gains a home leg where a mob's anchors stop being authored one at
-a time.
+and neither could end at R4** — and `errand_row_fault` refused a shift
+on a row like that, so the column could not promise behaviour the cycle
+had not got (`@X112` from the other end).  ⚠⚠ **R4b is what changed
+that** (`@X341`): a round whose home is off it grows a TERMINAL leg, so
+the refusal moved to the CYCLE and `harvest` is the row that ends.
 
 ⚠⚠ **2. WHAT ENDS A ROUND IS A SPAN, NOT A COUNT OF ROUNDS.**  A count
 needs to ask the CYCLE how long a round is — two flow sweeps per mob per
@@ -968,10 +1004,101 @@ point, plus:
   with `alt` ON the home hex is a nest round, which must end the way R4
   already ends it — one fixture, two shapes, one column apart.
 
-⚠ **`errand_row_fault` is what holds the gap shut in the meantime**: a
-shift on a round that cannot reach home is refused at construction, so
-the missing ending is NAMED rather than discovered as a robot that works
-for ever.
+⚠ **`errand_row_fault` held the gap shut in the meantime**: a shift on a
+round that cannot reach home was refused at construction, so the missing
+ending was NAMED rather than discovered as a robot that works for ever.
+
+### What was built, and the three things the phase decided
+
+✅ **COMPLETE 2026-08-29** — `src/errand.loft`
+(`ERRAND_BAG_HOMEWARD`, `ROLE_HARVEST` + `HARVEST_SHIFT_UNITS`,
+`errand_terminal`, `errand_shift_over`, `cycle_turn`, `Cycle.terminal`
+and the terminal branches of `cycle_build` / `cycle_phase` / `cycle_at`
+/ `cycle_fault`, the mover's hex COUNT, and `errand_fields`' third
+anchor), `tests/30_r4b_the_terminal_leg.loft` (6),
+`tests/30_r4_home.loft` § `@DRY-177` restated, `@X341`, `@M078`.
+
+⚠⚠ **1. THE BODY REACHES `T` WITHOUT KNOWING WHAT `T` IS, AND THAT IS
+THE PHASE.**  `cycle_turn` is arithmetic — `ceil(S / period) × period`
+— but the MOVER has no cycle: nothing in the tick knows `period`, and
+building one to find out is two flow sweeps per mob per tick, which is
+exactly the cost `@FR-E-Closed-Form` exists to avoid.
+
+> ⚠⚠ **What the body CAN see is the moment its bag empties at the
+> drop-off, and *the first empty leg after the shift* is exactly `T`.**
+
+⚠ So the turn is a **third value of the bag**, latched at an ARRIVAL and
+never at a moment — which is also why the comparison had to move to
+hexes (`@M077`): an arrival is a distance, and a boundary in TIME lands
+wherever the timestep puts it.  ⚠ A separate *am I finished* field would
+be a clock in all but name and would give `errand_leg` two things to
+read; **the bag is where an ending belongs because the bag steers.**
+
+⚠⚠ **2. THE REFUSAL MOVED FROM THE ROW TO THE CYCLE, AND THAT IS A
+WEAKENING WORTH NAMING.**  `errand_row_fault` can no longer ask for
+`home` on the round — that is the harvester's whole shape — so what it
+refuses now is only a CLOCK-steered row with a shift, whose phase is a
+time where a turn point is a distance.  ⚠ Reachability became
+`cycle_build`'s question: a walk home that does not connect refuses the
+WHOLE cycle, exactly as a working leg that does not already did, and
+`cycle_fault` names it.  ⚠ A row can therefore promise an ending its
+GEOMETRY cannot keep, and only building the cycle finds out — which is
+the honest place for it, because a row does not know where its anchors
+are.
+
+⚠⚠ **3. `harvest` IS A NEW CATALOGUE ROW BESIDE `haul`, NOT A CHANGE TO
+IT.**  Same two working legs, same walker; the difference is a column.
+⚠ `@X329` asks whether two sites enforcing one rule may stay apart, and
+the answer here is that they are not two sites — they are **one
+mechanism and two rows of DATA**, which is what a catalogue is for
+(`@X322`).  ⚠ It also keeps R4's *one column away* control intact: the
+role that never ends is still in the table, still shiftless, and still
+walks the same two hexes.
+
+### ⚠⚠ Eight mutations, and the fixture's LEG is what caught the mover
+
+⚠ The file was green on its first run, which `CLAUDE.md` says to
+distrust.
+
+| mutation | caught? |
+|---|---|
+| the turn compared in TIME instead of hexes (`@M077`'s own hazard) | ✅ |
+| `cycle_turn` flooring instead of ceiling | ✅ |
+| `cycle_at` indexing the terminal path one off | ✅ |
+| the arrival asked at `walked` instead of `walked + 1` | ✅ |
+| `errand_fields` omitting the third anchor (`@D008`'s shape, new leg) | ✅ (2 of 6) |
+| `cycle_phase` losing its clamp at the terminal leg's end | ✅ |
+| **the mover reading only the tick's OPENING hex count** | ✅ |
+| `errand_arrive` latching without asking whether the round is terminal | ❌ |
+
+⚠⚠ **The leg is NINE and the number is chosen.**  A round of 18 makes
+the shipped 180 s shift **exactly 15 rounds at 1.5 hex/s and exactly 25
+at 2.5**, so the turn lands ON an arrival rather than a whole round away
+from one — and the scout's turning hex is then the SECOND of its tick.
+A count read only at the tick's start is one hex short there, answers
+*not yet*, and the mob takes another whole round, which the two-sided
+bound refuses.  ⚠ At most leg lengths it does not, and a REGULAR robot
+releases one hex a tick and cannot see it at any of them.  That is
+`@M014`'s class a fifth time and `@M076`'s method — **sweep the
+fixture's one free number** — reused rather than rediscovered.
+
+⚠⚠ **AND THE SURVIVOR IS A REDUNDANCY WITH A NAME, not a gap.**  A
+NEST-shaped round's only latching arrival is at home, where
+`errand_home_done` removes the mob in the same tick — so latching there
+changes nothing, across all six plan-30 files.  The guard stays because
+`errand_terminal` is the ONE place the round's shape is decided and four
+sites read it; claiming a gate for it would be `@M025`'s *the right code
+with the wrong justification*.
+
+⚠⚠ **The state the corpus had not got, and it is what makes the latch
+load-bearing**: a harvester standing on its DEPOT in a session whose
+clock is already past the shift — which is what a cropped `.keys`
+fixture is (`@X335`) — is the one state in which *standing on home* and
+*finished* come apart.  R4 answered it for the nest with *the mob is on
+the home anchor*, and that answer does not carry: a nest round passes
+home every trip, so the position discriminates there.  A harvester's
+depot is off the round, so a mob standing on it is either finished or
+freshly landed, and **only the latch knows which**.
 
 ## R5 — the POI, its population, its BOUND
 

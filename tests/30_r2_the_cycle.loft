@@ -115,8 +115,12 @@ fn r2_check(c: const Cycle, er: Errand, row: const Role,
             chunk: integer) -> (integer, integer, integer, text) {
     rck_b   = bank_new();
     rck_at  = Hex { q: start.q, r: start.r };
-    rck_bad = 0;
-    rck_leg = 0;
+    rck_bad  = 0;
+    rck_leg  = 0;
+    // ⚠ The hexes this body has actually walked — the currency R4b
+    // compares an ENDING in (`@M077`), tracked here so the harness asks
+    // `errand_arrive` the same question the mover asks it.
+    rck_walk = 0;
     rck_n   = (R2_SPAN / chunk) ?? 1;
     rck_say = "";
     rck_i   = 0;
@@ -133,10 +137,12 @@ fn r2_check(c: const Cycle, er: Errand, row: const Role,
                 rck_next = flow_step(f_home, rck_at.q, rck_at.r);
             }
             rck_at = Hex { q: rck_next.q, r: rck_next.r };
+            rck_walk += 1;
             // ⚠⚠ Arrival is asked AFTER the step and whatever is left of
             // the bank carries on down the NEXT leg — `src/errand.loft`
             // § THE BANK DOES NOT RESTART AT A LEG BOUNDARY.
-            rck_hit = errand_arrive(er, row, rck_at, rck_now);
+            rck_hit = errand_arrive(er, row, rck_at, rck_now,
+                                    errand_shift_over(row, rate, rck_walk));
             if rck_hit { rck_left = rck_left; }
             rck_left -= 1;
         }
