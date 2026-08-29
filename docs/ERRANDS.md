@@ -286,10 +286,24 @@ costs work and under-answering is a defect.  ⚠ The rule's own words are
 unchanged; what changed is that a gate now asks the member and not the
 quantifier.
 
+⚠⚠ **AND R6a ANSWERED WHAT (E-Rule-Not-State) COSTS A MOB NOBODY CAN
+SEE: one integer** (`@X343`).  *A mob's position is a FUNCTION, not a
+memory* was written as a claim about POSITION; R6a asked it of everything
+else a mob has, and almost all of it fell out as a function too — the
+round is an index, the phase is a **SEAT** whose offset is derived, the
+bag comes from the leg and the bank from the clock.  ⚠⚠ **What is left is
+`slip`, and (E-Slip) is why**: a deviation costs TIME, only a BODY can be
+deviated, and a mob that forgot its lateness when its body went would
+have the delay **refunded exactly where nobody can watch it happen**.
+⚠ So an un-tracked mob is not merely cheap to compute; it is cheap to
+REMEMBER, which is what makes `@X299` affordable at the scale § The
+scenario GROWS describes.
+
 ⚠ **What still awaits its phase**: no `.keys` scenario authors a routine
 or a POI, so every rule above is enforced and none of it runs in the
-shipped content.  ⚠ R7's scenario pair is what needs the vocabulary, and
-the writer and the reader go in as a PAIR (`@D007`).
+shipped content.  ⚠ R6b puts the POI world on the wave state; R7's
+scenario pair is what needs the vocabulary, and the writer and the reader
+go in as a PAIR (`@D007`).
 
 ## ⚠⚠ The model in ten lines
 

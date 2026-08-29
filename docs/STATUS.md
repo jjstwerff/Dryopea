@@ -351,3 +351,20 @@ patch has legs as long as the patch — so it is not a filter for the POIs
 a base lands among, and what it excludes is the world OFF the patch,
 which dryopea has not got (`@M079`).  ⚠ Still INERT: nothing builds a
 `PoiWorld`, and the 920 gate measurements did not move.
+
+**`plans/30` R6a — a mob nobody can see costs one integer, and giving it
+a body back changes nothing** (2026-08-29).  `src/poi.loft`:
+`PoiMob { route, seat, slip, gone }` and the three tiers.  ⚠⚠ **Only
+`slip` accumulates** (`@X343`) — the round is an index, the phase a
+derived SEAT, the hex `cycle_at`, and the BAG and the BANK are derived,
+because only a BODY can be pushed.  ⚠⚠ **The bank is the one nobody would
+think of**: a fresh body carries nothing where the rule is part-way
+through a hex, so it releases its next hex late by exactly `cycle_carry`
+— and at 1.5 hex/s that is always ZERO, so the shipped robot cannot see
+it (`@M014`'s class, a fifth instance).  ⚠ Ten mutations, nine caught,
+and **both survivors were faults in the GATE**: a test comparing
+`poi_bound_from` with `poi_bound`, which *is* `poi_bound_from` over
+`poi_cycles` — ***a wrapper is a golden of its own delegate*** — and a
+redundancy whose two conditions cannot both hold (`@M081`).  ⚠ Still
+INERT: nothing builds a `PoiWorld`, and the 920 gate measurements did not
+move.

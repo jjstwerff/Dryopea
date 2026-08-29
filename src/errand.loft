@@ -566,6 +566,42 @@ pub fn errand_leg(row: const Role, er: const Errand, now: integer) -> integer {
     row.empty
 }
 
+// The bag a mob making for `anchor` must be carrying — `errand_leg`'s
+// own map, read backwards.
+//
+// ⚠⚠ **IT EXISTS BECAUSE MATERIALISING A MOB HAS TO SET ONE** (`plans/30`
+// R6a).  An un-materialised mob has no bag to read: its position is
+// `cycle_at`, which asks the CLOCK and the CYCLE and never the bag.  So
+// the moment it is given a body, something has to say what is in its
+// hands, and the only true answer is *whatever agrees with the leg its
+// own rule has it on* — a body handed the wrong bag steers to the wrong
+// anchor on its very first step.
+//
+// ⚠ It is the INVERSE of one table and not a second reading of it: the
+// difference between the two is the direction, which is nameable
+// (`@FR-F-Nameable-Difference`), and `tests/30_r6a_the_tiers.loft` gates
+// the round trip so they cannot drift apart.
+//
+// ⚠ **`row.laden` is asked before the terminal leg, and the order is
+// REDUNDANT rather than load-bearing** — measured, not assumed
+// (`@M081`).  A gatherer's laden anchor IS `home` (`@X338`) and would
+// want LOAD there rather than the R4b latch, but `errand_terminal`
+// already refuses a row whose `laden` is `ANCHOR_HOME`, so the two
+// conditions can never both hold and swapping them changes nothing.
+// ⚠ It is kept in this order because that is the order a reader checks
+// them in, and because the redundancy is with `errand_terminal`'s own
+// shape test rather than with a branch nobody reaches.
+//
+// Example: @DRY-191
+pub fn errand_bag_for(row: const Role, anchor: integer) -> u8 {
+    if anchor == row.empty { return ERRAND_BAG_EMPTY; }
+    if anchor == row.laden { return ERRAND_BAG_LOAD; }
+    if errand_terminal(row) && anchor == ANCHOR_HOME {
+        return ERRAND_BAG_HOMEWARD;
+    }
+    ERRAND_BAG_EMPTY
+}
+
 // The hex this routine is making for, as a `Job`.
 //
 // ⚠⚠ **`Job` is `task.loft`'s and that is `@X332` cashed in**: a leg's
@@ -776,6 +812,36 @@ pub fn cycle_walked(rate: integer, t: integer) -> integer {
     cw_r = (rate / cw_g) ?? 1;
     cw_w = (BANK_WHOLE / cw_g) ?? 1;
     ((cw_r * t) / cw_w) ?? 0
+}
+
+// What a mover banking at `rate` is carrying toward its NEXT hex at `t`
+// — `cycle_walked`'s remainder, in raw bank progress.
+//
+// ⚠⚠ **IT EXISTS BECAUSE A FRESH BODY HAS AN EMPTY BANK** (`plans/30`
+// R6a).  `cycle_walked` is the whole hexes a rule has released; the rest
+// of the division is real and a mover owns it.  A mob given a body
+// mid-round with `bank_new()` starts its next hex from nothing, so it
+// releases that hex LATE by exactly this much — and the loss is silent,
+// because the body is on the right hex the moment it appears and only
+// drifts afterwards.
+//
+// ⚠⚠ **AND THE SHIPPED ROBOT CANNOT SEE IT** (`@M014`'s class): at
+// 1.5 hex/s a hex is exactly one tick, so a body materialised on a tick
+// boundary carries exactly ZERO and an implementation that dropped the
+// carry would be indistinguishable.  A SCOUT at 2.5 hex/s carries
+// 0.8e6, 0.4e6, 0.0 … in turn, which is what `tests/30_r6a_the_tiers.loft`
+// is built on.
+//
+// ⚠ The same `gcd` reduction `cycle_walked` makes, for the same reason:
+// it keeps the product small enough to stay exact.
+//
+// Example: @DRY-198
+pub fn cycle_carry(rate: integer, t: integer) -> integer {
+    if rate <= 0 || t <= 0 { return 0; }
+    cc_g = cycle_gcd(rate, BANK_WHOLE);
+    cc_r = (rate / cc_g) ?? 1;
+    cc_w = (BANK_WHOLE / cc_g) ?? 1;
+    cc_g * (((cc_r * t) % cc_w) ?? 0)
 }
 
 // Has this mob walked out its shift by the time it had come `walked`

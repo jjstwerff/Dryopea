@@ -9,6 +9,44 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
+**R6a COMPLETE 2026-08-29 — a mob nobody can see costs one integer, and
+giving it a body back changes nothing.**  R6b is startable.
+⚠ Gates: **1753 green over 140 files** (+8, all this phase's),
+`validate.sh` **50 scripts / 920 measurements** and `validate_gl.sh`
+**3 fixtures / 55 measurements**, both **UNCHANGED**.
+
+⚠⚠ **R6 WAS SPLIT** — the phase as written needs a `WaveState` field and
+a materialiser inside `wave_tick`, which is the first change in this plan
+that is **not inert by construction**.  R6a is the mechanism and its
+claim; R6b is the wiring and the `R` vs `2R` pair.
+
+⚠⚠ **`@X343` — AN UN-MATERIALISED MOB IS A `slip` AND NOTHING ELSE.**
+Everything about it that CAN be a function of `t` is one: which round it
+walks is an index, where on it it started is a **SEAT** whose offset is
+derived, which hex it is on is `cycle_at`, **what is in its bag is
+derived from the leg** (`errand_bag_for`) and **what it carries toward
+its next hex is derived too** (`cycle_carry`).  ⚠ Only a BODY can be
+pushed, so only `slip` accumulates — and a mob that has had one must keep
+its lateness or `@FR-E-Slip` is refunded exactly where nobody can watch.
+
+⚠⚠ **AND THE BANK IS THE ONE NOBODY WOULD THINK OF** (`@M081`): a fresh
+body arrives with `bank_new()` while the rule is generally part-way
+through a hex, so a materialised mob releases its next hex **late by
+exactly `cycle_carry`** — perfect at the moment it appears, drifting from
+the tick after.  ⚠ At 1.5 hex/s a hex is one tick and the carry is ZERO
+on 24 of 24 ticks, so the shipped robot cannot see it at all (`@M014`'s
+class, a fifth instance); the fixture walks a SCOUT and says so.
+
+⚠⚠ **`@M081` — ten mutations, nine caught, and BOTH survivors were
+faults in the GATE.**  The round cache indexed by POI instead of by route
+read green because the test compared `poi_bound_from` against
+`poi_bound` — and `poi_bound` **is** `poi_bound_from` over `poi_cycles`.
+***A wrapper is a golden of its own delegate***, which is `plans/09`'s
+rule with a new subject, and the fix is the same one: an independent
+ORACLE in the test.  ⚠ The second survivor is a redundancy with a name —
+`errand_bag_for`'s two conditions cannot both hold, because
+`errand_terminal` already refuses a row whose `laden` is home.
+
 **R5 COMPLETE 2026-08-29 — a PLACE owns its mobs, and its reach is a
 region you can ask about before anything moves.**  R6 is startable.
 ⚠ Gates: **1745 green over 139 files** (+8, all this phase's),
@@ -333,7 +371,8 @@ behaviour and clocks, gated by scenarios and counts.
 | **R4** — home is a PLACE | S | `tests/30_r4_home.loft` (6) — a played session | ✅ **COMPLETE 2026-08-28** — `@X338`, `@M076`, `@D008` |
 | **R4b** — the TERMINAL leg: a round that ends somewhere it does not pass | M | `tests/30_r4b_the_terminal_leg.loft` (6) — a played HARVESTER, plus R2's sweep extended | ✅ **COMPLETE 2026-08-29** — `@X341`, `@M078` |
 | **R5** — the POI, its population, its BOUND | M | `tests/30_r5_the_bound.loft` (8) — ⚠ the containment gate above, asked PER LEG | ✅ **COMPLETE 2026-08-29** — `@X342`, `@M079`, `@M080` |
-| **R6** — CULL / EVALUATE / MATERIALISE | M | ⚠ the `R` vs `2R` gate **and its differ-control** | Blocked on R5 |
+| **R6a** — the three tiers, and what an un-materialised mob IS | M | `tests/30_r6a_the_tiers.loft` (8) — the round trip, and its blocked pair | ✅ **COMPLETE 2026-08-29** — `@X343`, `@M081` |
+| **R6b** — the materialiser in the TICK, and the `R` vs `2R` pair | M | ⚠ the `R` vs `2R` gate **and its differ-control** | **STARTABLE** — ⚠ needs `WaveState.pois` and the three round-trip sites |
 | **Rc** — the CONFORMANCE gate | S | `tests/30_rc_the_conformance.loft` (6) | ✅ **COMPLETE 2026-08-28** — ⚠ and it needed a LIVENESS gate beside it (`@X337`) |
 | **R7** — distraction: the hauler and your heap | M | a scenario pair + the *merely seen* negative control | Blocked on R5 |
 | **R8** — what a routine is WORTH | S | a scenario pair, one token apart | Blocked on R7 |
@@ -1251,9 +1290,89 @@ arrival is a leg selected by the POI's state* is R5a/R6's work, and the
 one claim R5 owed about state — that the bound does not move under it —
 is gated.
 
-## R6 — CULL / EVALUATE / MATERIALISE
+## R6a — the three tiers, and what an un-materialised mob IS
 
-⚠ The three tiers, and the equality gate that makes them safe.
+✅ **COMPLETE 2026-08-29** — `src/poi.loft` § WHAT AN UN-MATERIALISED MOB
+IS + § THE THREE TIERS + § MATERIALISE, AND RELEASE,
+`tests/30_r6a_the_tiers.loft` (8).
+
+⚠⚠ **R6 WAS SPLIT, AND THE SPLIT IS WHERE THE TICK BEGINS.**  The phase
+as written needs a `WaveState` field, a materialiser inside `wave_tick`
+and three round-trip sites — a bigger, more invasive change than any
+phase of this plan so far, and **the first that is not inert by
+construction**.  ⚠ So R6a is the mechanism and its claim, gated as
+functions the way R1-R5 were; R6b is the wiring and the `R` vs `2R` pair.
+Same move R4b was added by, and for the same reason: *each row is one
+thing, lands green, and does not require the next.*
+
+### What was built, and the three things the phase decided
+
+**1. ⚠⚠ AN UN-MATERIALISED MOB IS A `slip` AND NOTHING ELSE** (`@X343`).
+⚠ The question R6a had to answer is what a mob nobody can see must
+REMEMBER, and the answer is **one field**:
+
+| | where it comes from |
+|---|---|
+| which round it walks | an index, fixed for the sortie |
+| where on that round it started | its **SEAT**, and the offset is DERIVED — a rota of forty needs no forty authored phases |
+| which hex it is on | `cycle_at`, at its own clock |
+| what is in its bag | ⚠⚠ **derived from the leg** — `errand_bag_for`, `errand_leg`'s own map read backwards |
+| what it carries toward its next hex | ⚠⚠ **derived too** — `cycle_carry` |
+| how late it is | ⚠ **`slip`, and this is the only thing that accumulates** |
+
+⚠ Only a BODY can be pushed, so a mob nobody has ever looked at needs no
+memory whatever — and one that HAS had a body must keep its lateness, or
+`@FR-E-Slip` is refunded exactly where nobody can watch it happen.
+
+**2. ⚠⚠ THE BANK IS THE ONE NOBODY WOULD THINK OF** (`@M081`).  A fresh
+body arrives with `bank_new()` while the rule is generally part-way
+through a hex, so a materialised mob **releases its next hex late by
+exactly `cycle_carry`** — and it looks perfect at the moment it appears,
+drifting only from the tick after.  ⚠⚠ **At the shipped robot's 1.5 hex/s
+a hex is exactly one tick, so the carry is ZERO on 24 of 24 ticks and the
+whole defect is invisible** (`@M014`'s class, a fifth instance in this
+plan).  A SCOUT is what can see it, which is why the fixture walks one —
+and `test_r6a_only_a_fast_mover_can_see_the_carry` asserts that rather
+than leaving it to the next reader to notice.
+
+**3. ⚠ THE THREE TIERS ARE SHAPED BY WHERE THE QUESTION IS ASKED.**
+CULL is **per POI** — one `bound_meets` for a whole population, which is
+`@FR-E-Poi-Owns` finally cashed in — and EVALUATE and MATERIALISE are per
+mob.  ⚠ `poi_survey`'s shape IS the architecture: the cull test is
+outside the loop, and it is all a distant POI ever costs.  ⚠⚠ **And a
+round ENDS on the mob's own clock, body or no body** — a population whose
+far half worked for ever while its near half retired would break R6b's
+equality outright, and nobody could see it, because the far half is
+outside the window by definition.
+
+### ⚠⚠ Ten mutations, and BOTH survivors were faults in the GATE  `@M081`
+
+⚠⚠ **SURVIVOR 1 WAS A GATE COMPARING A FUNCTION WITH ITSELF.**  The round
+cache indexed by POI instead of by route read GREEN, because the test
+compared `poi_bound_from` against `poi_bound` — and `poi_bound` **is**
+`poi_bound_from` over `poi_cycles`.
+
+> ⚠⚠ **A wrapper is a golden of its own delegate.**
+
+⚠ That is `plans/09`'s rule with a new subject — *a golden that was
+rebaselined during the change under test has verified nothing* — and the
+fix is the same one plan 09 used: an independent **ORACLE** in the test,
+which builds its own rounds and never touches the cache.
+
+⚠ **SURVIVOR 2 is a redundancy with a name**, R4b's shape again:
+`errand_bag_for` asks `row.laden` before the terminal leg, and swapping
+them changes nothing, because `errand_terminal` already refuses a row
+whose `laden` is `ANCHOR_HOME` — the two conditions cannot both hold.
+⚠ The comment claiming the order was load-bearing was corrected by the
+sweep.
+
+## R6b — the materialiser in the TICK, and the `R` vs `2R` pair
+
+⚠ What R6a left: `WaveState.pois`, the materialiser at the TOP of
+`wave_tick` (beside `errand_depart`, and for the same reason — a body
+made this tick must be one this tick's fields, occupancy and move order
+already know about), and the round-trip sites `compare.loft::state_diff`
+and `emit.loft::crop_state`.
 
 ⚠⚠ **THE EQUALITY CLAIM IS NARROWER THAN `@X299` STATES IT, and this
 plan's first version stated it wrongly.**  *Materialising at `R` and at
@@ -1266,26 +1385,38 @@ therefore deviated more.  ⚠ The claim that survives is:
 
 ⚠ Which recovers `@X299` rather than weakening it, because **two
 un-materialised mobs cannot block each other** — neither has a body — so
-deviation only ever happens where bodies are, which is inside the radius
-by construction.  ⚠⚠ **Except for terrain, which is everywhere** — and
-that is R0 probe 1's real stake: *if the cycle is not terrain-aware, the
-equality fails everywhere.*
+deviation only ever happens where bodies are.  ⚠⚠ **R6a has already
+gated that half on one mob** (`test_r6a_a_blocked_mob_differs_by_exactly
+_its_slip`): a mob released across the stretch that would have delayed it
+comes out **less late**, and both runs stay exactly on their own rule in
+the one currency that is total — the DISTANCE to the anchor, never the
+hex (`@X336`).
+
+⚠⚠ **AND THE BOUNDARY LEAKS, WHICH R6b MUST STATE RATHER THAN ASSUME.**
+In the `2R` run the extra bodies live in the band `R < d ≤ 2R`, and a mob
+at `d = R` can be blocked by one at `d = R+1` — materialised only in the
+larger run.  So the two runs are **not identical even inside `R`**: the
+difference is confined to a one-hex collar at the smaller radius, and it
+is paid in `slip`.  ⚠ That is `@X336` one radius over, which the plan
+already predicted — *R6's own correction arriving three phases early*.
 
 ⚠ So the gate is **a pair**: the clean world where they agree, and the
 blocked world where they differ and `slip` explains the difference
 exactly.  A single-sided gate here would be `CLAUDE.md` § a gate that
 reads PERFECT is as suspect as one that reads wrong.
 
-⚠⚠ **A POI is never CULLED** (`@X304`) — only un-materialised.  The
-phase must make that distinction impossible to get wrong: there is no
-verb that removes a POI, and `@X304`'s *the workers still come and find
-out* is R5a's job rather than this one's.
+⚠⚠ **A POI is never CULLED** (`@X304`) — only un-materialised.  ⚠ R6a
+made that structural: nothing in `src/poi.loft` removes a POI or a
+`PoiMob`, and `test_r6a_a_culled_poi_is_still_exactly_where_its_rule_says`
+runs sixty culled ticks and finds the whole population still on its own
+rule.
 
 ⚠ **Cost**: `tests/11_f8_the_tick_budget.loft` is the gate, and it is a
 RATIO.  ⚠⚠ The claim to check is that the tiers make the tick **cheaper**
 than materialising everything, and `@M029` warns that a cost gate should
-be a COUNT rather than a clock — so count `cycle_at` calls, not
-milliseconds.
+be a COUNT rather than a clock — ⚠ R6a's `PoiSurvey.asked` is that count,
+and `test_r6a_a_culled_poi_costs_one_query` already reads **0 against 6**
+for a POI 200 hexes away.
 
 ## R7 — distraction: the hauler and your heap
 

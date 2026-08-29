@@ -136,6 +136,8 @@ use palette;
 use passable;
 use height;
 use errand;
+use spawn;
+use fixstep;
 
 // ─── ⚠ WHAT KIND OF PLACE ───────────────────────────────────────
 
@@ -306,6 +308,50 @@ pub fn poi_route(poi: integer, role: integer, kind: u8,
                count: count }
 }
 
+// ─── ⚠⚠ WHAT AN UN-MATERIALISED MOB IS ─────────────────────────
+
+// One mob of a POI's population — materialised or not.
+//
+// ⚠⚠ **FOUR FIELDS, AND ONLY ONE OF THEM ACCUMULATES.**  `@X299` needs
+// an un-tracked mob to be **COMPUTED and not simulated coarsely**, so
+// everything about it that CAN be a function of `t` is one:
+//
+// | | where it comes from |
+// |---|---|
+// | which round it walks | `route` — an index, fixed for the sortie |
+// | where on that round it started | `seat` — its place in the rota, and the offset is DERIVED from it (`poi_seat_offset`) |
+// | which hex it is on now | `cycle_at`, at its own clock |
+// | what is in its bag | ⚠⚠ **derived from the leg** — `errand_bag_for`, never stored |
+// | how late it is | `slip`, and this is the ONLY thing a body can add |
+// | whether its round has ended | `gone` |
+//
+// ⚠⚠ **`slip` IS WHY THE RECORD EXISTS AT ALL.**  Everything else could
+// be recomputed from the route and the seat, so a mob nobody has ever
+// looked at needs no memory whatever.  A mob that HAS had a body may
+// have been pushed, and `@FR-E-Slip` says a deviation costs TIME and
+// never DESTINATION — so throwing `slip` away when the body goes would
+// **refund the delay**, and the mob would arrive as though nothing had
+// been in its way.  ⚠ That is invisible from outside the window by
+// construction, which is exactly why it has to be written down rather
+// than argued about.
+//
+// ⚠ `gone` is the R4 ending reaching a mob with no body
+// (`@FR-E-Home-Is-A-Place`).  A round ends on the CLOCK, not on being
+// watched: a population whose far half worked for ever while its near
+// half retired would break the equality R6b gates, and the ending is
+// computable — `errand_home_done` asks the row, the routine, the rate
+// and a hex, and never a roster.
+pub struct PoiMob {
+    route: integer,   // index into `PoiWorld.routes`
+    seat:  integer,   // its place in the rota — 0 .. count-1
+    slip:  integer,   // base units it has fallen behind (`@FR-E-Slip`)
+    gone:  boolean,   // its round has ended, and it never comes back
+}
+
+pub fn poi_mob(route: integer, seat: integer) -> PoiMob {
+    PoiMob { route: route, seat: seat, slip: 0, gone: false }
+}
+
 // A scenario's places, and what walks between them.
 //
 // ⚠⚠ **FLAT, and the flatness is load-bearing** ([loft#974]): a
@@ -316,11 +362,27 @@ pub fn poi_route(poi: integer, role: integer, kind: u8,
 pub struct PoiWorld {
     pois:   vector<Poi>,
     routes: vector<PoiRoute>,
+    mobs:   vector<PoiMob>,
 }
 
 // No places at all — which is every scenario today.
 pub fn poi_world_new() -> PoiWorld {
-    PoiWorld { pois: [], routes: [] }
+    PoiWorld { pois: [], routes: [], mobs: [] }
+}
+
+// The route at `i`, or a route that runs nothing.  ⚠ The ONE lookup.
+pub fn poi_route_of(w: const PoiWorld, i: integer) -> PoiRoute {
+    if i < 0 || i >= len(w.routes) {
+        return poi_route(0, ROLE_NONE, 0 as u8? ?? 0, Hex { q: 0, r: 0 },
+                         Hex { q: 0, r: 0 }, 0);
+    }
+    prf_r = w.routes[i];
+    if prf_r == null {
+        return poi_route(0, ROLE_NONE, 0 as u8? ?? 0, Hex { q: 0, r: 0 },
+                         Hex { q: 0, r: 0 }, 0);
+    }
+    poi_route(prf_r.poi, prf_r.role, prf_r.kind, prf_r.a, prf_r.b,
+              prf_r.count)
 }
 
 // The place at `i`, or a place that is not one.  ⚠ The ONE lookup.
@@ -556,9 +618,45 @@ pub fn bound_meets(b: const Bound, centre: const Hex, radius: integer) -> boolea
 // point of the file: one region for a whole population, computed once
 // before anything moves.
 //
-// ⚠ It builds a cycle per route, which is two or three flow sweeps
-// (`@M072`: ~500 cells each).  **Not in the tick** — a POI does not move
-// and neither do its anchors, so this is a sortie-long constant.
+// ⚠ The convenience form: it builds every route's round first, which is
+// two or three flow sweeps each (`@M072`: ~500 cells).  **Never in the
+// tick** — a caller that runs every tick holds the rounds itself and
+// asks `poi_bound_from`.
+//
+// Example: @DRY-186
+pub fn poi_bound(w: const PoiWorld, poi: integer, pal: vector<GroundType>,
+                 pw: PaintedWorld, hl: const HeightLayer) -> Bound {
+    poi_bound_from(w, poi, poi_cycles(w, pal, pw, hl))
+}
+
+// Every route's round, built ONCE.
+//
+// ⚠⚠ **THIS IS THE SORTIE-LONG CONSTANT, AND THE CULL TIER DEPENDS ON
+// IT BEING ONE** (`plans/30` R6a).  A POI does not move and neither do
+// its anchors, so a cycle is built when the sortie starts and never
+// again — and if it were rebuilt each tick, a CULLED population would
+// cost two flow sweeps a route and the whole saving would be spent
+// working out that it could be skipped.
+//
+// ⚠ A vector of `Cycle` is returned rather than held in a struct
+// alongside the bounds: a `vector<Struct>` whose elements carry vectors
+// is [loft#974]'s shape the moment it becomes a FIELD, and a plain local
+// vector is what `errand_fields` already returns for the same reason.
+//
+// Example: @DRY-195
+pub fn poi_cycles(w: const PoiWorld, pal: vector<GroundType>,
+                  pw: PaintedWorld, hl: const HeightLayer) -> vector<Cycle> {
+    pcy_out: vector<Cycle> = [];
+    for pcy_rt in w.routes {
+        pcy_p = poi_of(w, pcy_rt.poi);
+        pcy_out += [cycle_build(poi_errand(pcy_p, pcy_rt),
+                                errand_role_of(pcy_rt.role), pal, pw, hl,
+                                pcy_rt.kind)];
+    }
+    pcy_out
+}
+
+// A POI's bound, over rounds that are already built.
 //
 // ⚠⚠ **THE RESULT IS FOR THE QUERY AND NEVER FOR THE CLAIM.**  A POI
 // with two routes concatenates two rounds' discs, so disc `i` is no
@@ -574,20 +672,299 @@ pub fn bound_meets(b: const Bound, centre: const Hex, radius: integer) -> boolea
 // a population of any size — which is what makes it one query and not N.
 //
 // Example: @DRY-186
-pub fn poi_bound(w: const PoiWorld, poi: integer, pal: vector<GroundType>,
-                 pw: PaintedWorld, hl: const HeightLayer) -> Bound {
-    pb_b = bound_new();
-    pb_p = poi_of(w, poi);
-    if !poi_real(pb_p) { return pb_b; }
-    for pb_rt in w.routes {
-        if pb_rt.poi != poi { continue; }
-        pb_row = errand_role_of(pb_rt.role);
-        pb_er  = poi_errand(pb_p, pb_rt);
-        pb_c   = cycle_build(pb_er, pb_row, pal, pw, hl, pb_rt.kind);
-        pb_one = bound_of(pb_er, pb_c);
-        bound_join(pb_b, pb_one);
+pub fn poi_bound_from(w: const PoiWorld, poi: integer,
+                      cycles: vector<Cycle>) -> Bound {
+    pbf_b = bound_new();
+    pbf_p = poi_of(w, poi);
+    if !poi_real(pbf_p) { return pbf_b; }
+    pbf_i = 0;
+    for pbf_rt in w.routes {
+        if pbf_rt.poi == poi {
+            pbf_c = cycles[pbf_i];
+            if pbf_c != null {
+                bound_join(pbf_b, bound_of(poi_errand(pbf_p, pbf_rt), pbf_c));
+            }
+        }
+        pbf_i += 1;
     }
-    pb_b
+    pbf_b
+}
+
+// ─── ⚠⚠ THE THREE TIERS ────────────────────────────────────────
+//
+// `plans/30` R6a, `@X299`.  ⚠ Three answers to *what does this mob cost
+// me this tick*, and the whole architecture is that the first one is
+// asked **per POI** and the other two **per mob**:
+//
+//   * **CULL** — this POI's bound does not meet the window, so no mob of
+//     its population can be inside it.  ⚠⚠ One `bound_meets` answers for
+//     the WHOLE population, which is `@FR-E-Poi-Owns` cashed in: not one
+//     `cycle_at`, not one cycle built, nothing.
+//   * **EVALUATE** — inside the bound but outside the window: the mob's
+//     hex is `cycle_at` at its own clock, and there is no body.
+//   * **MATERIALISE** — inside the window: it needs a body, and from
+//     then on `errand_step` is what moves it (`@FR-E-One-Door`).
+//
+// ⚠⚠ **CULL HERE MEANS *NOT MATERIALISED* AND NEVER *REMOVED***
+// (`@FR-E-Poi-Persists`, `@X304`).  Nothing in this file deletes a POI
+// or a `PoiMob`; a culled population is one nobody asked about this
+// tick, and it is exactly where its rule says the moment anybody does.
+
+pub const POI_TIER_CULL:        integer = 0;
+pub const POI_TIER_EVALUATE:    integer = 1;
+pub const POI_TIER_MATERIALISE: integer = 2;
+
+// Can anything this bound covers be inside the window?  ⚠ The per-POI
+// question, and the one that makes the rest cheap.
+pub fn poi_culled(b: const Bound, player: const Hex,
+                  radius: integer) -> boolean {
+    !bound_meets(b, player, radius)
+}
+
+// Does this mob need a body?  ⚠ The per-MOB question, asked only of a
+// POI that was not culled.
+pub fn poi_tier_at(at: const Hex, player: const Hex,
+                   radius: integer) -> integer {
+    if lat_distance(at, player) <= radius { return POI_TIER_MATERIALISE; }
+    POI_TIER_EVALUATE
+}
+
+// ─── ⚠⚠ A MOB'S OWN CLOCK ──────────────────────────────────────
+
+// How far along the round this mob's seat puts it.
+//
+// ⚠⚠ **A POPULATION IS A ROTA AND THE SPACING IS DERIVED** — seat `k` of
+// `count` starts `k / count` of a round further on, so forty haulers on
+// one route stand forty places apart without forty authored offsets.
+// ⚠ That is `@FR-E-Rule-Not-State` applied to the population: the seat
+// is identity, the offset is a function of it, and nothing accumulates.
+//
+// ⚠ The division has a remainder and that is harmless — it decides where
+// mobs stand, never whether a mob and its rule agree.  Each one's own
+// clock stays exact, which is what `@M074`'s family is about.
+pub fn poi_seat_offset(c: const Cycle, rate: integer, count: integer,
+                       seat: integer) -> integer {
+    if count <= 1 || !cycle_running(c) { return 0; }
+    pso_hex = cycle_hex_units(rate);
+    if pso_hex <= 0 { return 0; }
+    ((seat * c.period * pso_hex) / count) ?? 0
+}
+
+// This mob's own clock at `now` — the one argument every rule about it
+// takes.
+//
+// ⚠ `+ offset` and never `− offset`, so a rota's later seats are FURTHER
+// ROUND rather than earlier in time.  ⚠⚠ `− slip` is the same
+// subtraction `cycle_where` and `errand_leg` make and it means the same
+// thing (`@FR-E-Slip`): a mob held up is genuinely later, so its clock
+// reads earlier and its destination never changes.
+pub fn poi_mob_clock(m: const PoiMob, c: const Cycle, rate: integer,
+                     count: integer, now: integer) -> integer {
+    now - m.slip + poi_seat_offset(c, rate, count, m.seat)
+}
+
+// The routine this mob runs — its anchors, its bag and its `slip`.
+//
+// ⚠⚠ **THE BAG IS DERIVED FROM THE LEG AND NEVER STORED** — an
+// un-materialised mob's position comes from `cycle_at`, which asks the
+// clock and the cycle, so a stored bag would be a second answer to
+// *which anchor am I making for* with nothing keeping it honest.
+// `errand_bag_for` is `errand_leg`'s own map read backwards.
+pub fn poi_mob_errand(w: const PoiWorld, m: const PoiMob, c: const Cycle,
+                      rate: integer, now: integer) -> Errand {
+    pme_rt  = poi_route_of(w, m.route);
+    pme_p   = poi_of(w, pme_rt.poi);
+    pme_er  = poi_errand(pme_p, pme_rt);
+    pme_row = errand_role_of(pme_rt.role);
+    pme_t   = poi_mob_clock(m, c, rate, pme_rt.count, now);
+    pme_ph  = cycle_phase(c, pme_row, rate, pme_t);
+    pme_er.carry = errand_bag_for(pme_row, c.anchors[pme_ph.0] ?? ANCHOR_NONE);
+    pme_er.slip  = m.slip;
+    pme_er
+}
+
+// The hex this mob is standing on at `now`, body or no body.
+//
+// ⚠⚠ **THIS IS THE EVALUATE TIER, AND IT IS ONE `cycle_at`** — which is
+// what `@X299`'s *computed, not approximated* costs, and why
+// `plans/22`'s refusal of simulation LOD needs no exception.
+//
+// Example: @DRY-192
+pub fn poi_mob_hex(w: const PoiWorld, m: const PoiMob, c: const Cycle,
+                   rate: integer, now: integer) -> Hex {
+    pmh_rt = poi_route_of(w, m.route);
+    if m.gone || !cycle_running(c) { return Hex { q: 0, r: 0 }; }
+    cycle_at(c, errand_role_of(pmh_rt.role), rate,
+             poi_mob_clock(m, c, rate, pmh_rt.count, now))
+}
+
+// Has this mob's round ended, at `now`?
+//
+// ⚠⚠ **ASKED OF THE CLOCK AND NEVER OF A BODY** (`@FR-E-Home-Is-A-Place`).
+// A population whose far half worked for ever while its near half retired
+// would put the whole of R6b's equality out, and it would do it silently
+// — the far half is outside the window, so nobody can see it.
+// `errand_home_done` already takes a row, a routine, a rate and a hex,
+// and never a roster, which is what makes this one line.
+//
+// Example: @DRY-193
+pub fn poi_mob_done(w: const PoiWorld, m: const PoiMob, c: const Cycle,
+                    rate: integer, now: integer) -> boolean {
+    if m.gone { return true; }
+    if !cycle_running(c) { return false; }
+    pmd_rt = poi_route_of(w, m.route);
+    errand_home_done(errand_role_of(pmd_rt.role),
+                     poi_mob_errand(w, m, c, rate, now), rate,
+                     poi_mob_hex(w, m, c, rate, now),
+                     poi_mob_clock(m, c, rate, pmd_rt.count, now))
+}
+
+// ─── ⚠⚠ MATERIALISE, AND RELEASE ───────────────────────────────
+
+// Give this mob a body, standing exactly where its rule says.
+//
+// ⚠⚠ **THE BODY STARTS ON THE RULE'S HEX WITH THE LEG'S BAG AND THE
+// RECORD'S `slip`, and all three are needed.**  A body placed on the
+// right hex with the wrong bag steers to the wrong anchor on its first
+// step; one placed with `slip` of 0 has had its delay refunded; and one
+// placed anywhere but `cycle_at` is `plans/30`'s invariant broken at
+// site 10, which is the materialiser.
+//
+// ⚠ The clock the body then runs on is the RUN's `now`, and the seat
+// offset is folded into `route.slip` as a NEGATIVE lateness — because
+// `errand_step` and `cycle_where` read `now − slip` and there is no
+// second place to put a per-mob phase.  ⚠⚠ That is the one liberty this
+// function takes with `slip`'s meaning, and it is why `poi_release`
+// takes the offset back out again rather than storing what it reads.
+//
+// ⚠⚠ **AND IT IS GIVEN THE RULE'S BANK, WHICH IS THE FOURTH THING AND
+// THE ONE NOBODY WOULD THINK OF.**  `bank_new()` is a mover part-way
+// through no hex at all, while the rule is generally part-way through
+// one — so a body handed an empty bank releases its next hex LATE by
+// exactly `cycle_carry`, every time it is materialised, and it looks
+// perfect at the moment it appears.  ⚠ At the shipped robot's 1.5 hex/s
+// a hex is one tick and the carry is always zero, so the whole defect is
+// invisible to a regular (`@M014`'s class); a scout is what can see it.
+//
+// Example: @DRY-194, @DRY-198
+pub fn poi_materialise(w: const PoiWorld, m: const PoiMob, c: const Cycle,
+                       rate: integer, now: integer) -> Enemy {
+    pma_rt = poi_route_of(w, m.route);
+    pma_at = poi_mob_hex(w, m, c, rate, now);
+    pma_er = poi_mob_errand(w, m, c, rate, now);
+    pma_er.slip = m.slip - poi_seat_offset(c, rate, pma_rt.count, m.seat);
+    pma_e = Enemy { q: pma_at.q, r: pma_at.r, kind: pma_rt.kind, alive: true,
+                    errand: true, route: pma_er };
+    bank_restore(pma_e.bank,
+                 cycle_carry(rate, poi_mob_clock(m, c, rate, pma_rt.count,
+                                                 now)),
+                 BANK_WHOLE);
+    pma_e
+}
+
+// Take this mob's body away, keeping what the body learned.
+//
+// ⚠⚠ **`slip` IS THE ONLY THING THAT COMES BACK, and it is the whole
+// point of releasing rather than forgetting** (`@FR-E-Slip`).  The seat
+// offset that `poi_materialise` folded in is taken back out, so the
+// record holds a lateness and never a phase.
+//
+// ⚠ `m` is a PARAMETER and therefore aliases — a `PoiMob` read out of a
+// vector into a local aliases too, but one RETURNED from a function is a
+// copy and the write would be a silent no-op ([loft#894]).
+//
+// ⚠⚠ **AND THE BANK NEEDS NO FIELD, WHICH IS THE OTHER HALF OF THE SAME
+// ARGUMENT.**  A body's carry at `t` is `cycle_carry(rate, t − slip)` —
+// the rule's own remainder at the mob's own clock — because that is what
+// `poi_materialise` gave it and `errand_step` only ever adds
+// `rate × elapsed` to it.  So the carry is DERIVED at the next
+// materialisation exactly as the bag is, and a `bank` on this record
+// would be a second answer with nothing keeping it honest.
+//
+// Example: @DRY-194, @DRY-199
+pub fn poi_release(w: const PoiWorld, m: PoiMob, c: const Cycle,
+                   rate: integer, e: const Enemy) {
+    prl_rt = poi_route_of(w, m.route);
+    m.slip = e.route.slip + poi_seat_offset(c, rate, prl_rt.count, m.seat);
+}
+
+// This mob's round is over, and it never comes back.
+//
+// ⚠ A door of its own rather than a field somebody sets, for the reason
+// `poi_state_set` is one: `gone` is what stops a retired mob being
+// materialised again, and a population that quietly resurrected its
+// finished half would be `@FR-E-Home-Is-A-Place` undone where nobody
+// could watch it happen.
+pub fn poi_retire(m: PoiMob) {
+    m.gone = true;
+}
+
+// ─── ⚠⚠ THE SURVEY — what a POI costs this tick ────────────────
+
+// What one POI cost, and what it produced.
+//
+// ⚠⚠ **`asked` IS THE COST GATE, AND IT IS A COUNT AND NEVER A CLOCK**
+// (`@M029`: two identical calls differed 5.4x).  One mob asked is one
+// closed-form evaluation — O(legs), a modulo and an index
+// (`@FR-E-Closed-Form`) — so counting mobs counts the work exactly, and
+// counting milliseconds would only measure the box.
+//
+// ⚠ Every field is an integer, so this struct is safe to hold and to
+// return; nothing here carries a vector ([loft#974]).
+pub struct PoiSurvey {
+    tier:  integer,   // the POI's own tier — CULL, or the best of its mobs
+    live:  integer,   // mobs that need a body
+    seen:  integer,   // mobs computed, and not drawn
+    done:  integer,   // mobs whose round has ended
+    asked: integer,   // ⚠ mobs evaluated — THE COST
+}
+
+pub fn poi_survey_new() -> PoiSurvey {
+    PoiSurvey { tier: POI_TIER_CULL, live: 0, seen: 0, done: 0, asked: 0 }
+}
+
+// ⚠⚠ **THE THREE TIERS, APPLIED — and the shape of this function IS the
+// architecture.**  The cull test is asked ONCE, before the loop, and it
+// is the only thing a distant POI ever costs: `bound_meets` over `legs`
+// discs, no world read, no mob touched.  Everything after it is per mob.
+//
+// ⚠ It answers rather than acts — no body is made here and nothing is
+// removed — so `plans/30` § Count the RE-ASSERTION SITES gains no site
+// from it.  R6b is where the answer is spent.
+//
+// ⚠⚠ **A mob whose round has ENDED is counted and never evaluated
+// again** — the ending is on its own clock (`poi_mob_done`), so a
+// population's far half retires exactly when its near half would have,
+// which is what R6b's equality needs and what nobody could see if it
+// were wrong.
+//
+// Example: @DRY-196
+pub fn poi_survey(w: const PoiWorld, poi: integer, b: const Bound,
+                  cycles: vector<Cycle>, player: const Hex,
+                  radius: integer, now: integer) -> PoiSurvey {
+    psv_out = poi_survey_new();
+    if poi_culled(b, player, radius) { return psv_out; }
+    psv_out.tier = POI_TIER_EVALUATE;
+    for psv_m in w.mobs {
+        psv_rt = poi_route_of(w, psv_m.route);
+        if psv_rt.poi != poi { continue; }
+        psv_c = cycles[psv_m.route];
+        if psv_c == null { continue; }
+        psv_rate = bank_rate(enemy_speed(psv_rt.kind));
+        psv_out.asked += 1;
+        if poi_mob_done(w, psv_m, psv_c, psv_rate, now) {
+            psv_out.done += 1;
+            continue;
+        }
+        if poi_tier_at(poi_mob_hex(w, psv_m, psv_c, psv_rate, now), player,
+                       radius) == POI_TIER_MATERIALISE {
+            psv_out.live += 1;
+            psv_out.tier  = POI_TIER_MATERIALISE;
+            continue;
+        }
+        psv_out.seen += 1;
+    }
+    psv_out
 }
 
 // ─── ⚠ WHAT IS REFUSED ──────────────────────────────────────────

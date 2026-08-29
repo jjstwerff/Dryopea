@@ -102,8 +102,17 @@ radius one hex short, a terminal leg with no disc, an off-by-one rim and
 of nine mutations, and the four that matter.  ⚠⚠ **And the probe chose
 the fixture**: on an authored map the bound covers **1466 of 1467**
 standable hexes, because a round that crosses its patch has legs as long
-as the patch.  ⚠ R6 (the three tiers) and R7 (distraction) are what is
-left.
+as the patch.
+⚠⚠ **AND SINCE R6a A MOB NOBODY CAN SEE COSTS ONE INTEGER** (`@X343`,
+`@M081`) — everything about it that CAN be a function of `t` is one, and
+**only `slip` accumulates, because only a BODY can be pushed**.  ⚠ The
+three tiers: CULL is per POI and is one `bound_meets` for a whole
+population; EVALUATE and MATERIALISE are per mob.  ⚠⚠ **And the BANK is
+the one nobody would think of** — a fresh body carries nothing where the
+rule is part-way through a hex, so it releases its next hex late by
+exactly `cycle_carry`, and at 1.5 hex/s that is always ZERO (`@M014`'s
+class, a fifth instance).  ⚠ R6b (the materialiser in the TICK, and the
+`R` vs `2R` pair) and R7 (distraction) are what is left.
 
 ⚠⚠ **AND THE CREW WORK ON THEIR OWN** ([`plans/29`](plans/29-the-crews-own-work/README.md),
 complete 2026-08-28) — a crew member nobody has told anything takes the
@@ -129,11 +138,11 @@ critical path is **4, the SCRAMBLE**.
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1745 green**, ~320 s on a busy box (592 s beside another suite, 753 s and 1252 s on 2026-08-29 — the second was a `graphics` cdylib rebuild), 139 files |
+| tests | `scripts/test.sh` | **1753 green**, ~320 s on a busy box (592 s beside another suite, 753 s and 1252 s on 2026-08-29 — the second was a `graphics` cdylib rebuild), 140 files |
 | scenarios | `scripts/validate.sh` | **50 scripts, 920 measurements**, ~20 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
-| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **422 defined, 418 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
-| ⚠⚠ formal rules | `scripts/rules.sh` — inside `test.sh` | **44 defined, 18 ENFORCED in 73 code sites** (`@X327`).  ⚠ It moved at `plans/30` R5 because `src/poi.loft` gave `@FR-E-Poi-Owns` and `@FR-E-Place-State` their first code at all — never because citations were sprinkled (`@X328`).  ⚠ Resolution GATES; coverage only REPORTS.  ⚠⚠ A doc reference is **not** an enforcing site (`@X330`) |
+| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **424 defined, 420 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
+| ⚠⚠ formal rules | `scripts/rules.sh` — inside `test.sh` | **44 defined, 18 ENFORCED in 89 code sites** (`@X327`).  ⚠ It moved at `plans/30` R5 because `src/poi.loft` gave `@FR-E-Poi-Owns` and `@FR-E-Place-State` their first code at all — never because citations were sprinkled (`@X328`).  ⚠ Resolution GATES; coverage only REPORTS.  ⚠⚠ A doc reference is **not** an enforcing site (`@X330`) |
 
 ⚠ `scripts/test.sh` is the canonical runner — **never `loft test` directly**
 (§ Key commands says what it does that you would otherwise skip).
@@ -597,7 +606,7 @@ source of truth and the listing is a navigational summary of it.
 | `build.loft` | **THE BUILD ORDER** — the only way a structure comes into existence during a run.  ⚠ Work is stored as SPENT, in INTEGER units |
 | `persist.loft` | **A PLANET — a place that REMEMBERS**.  `dryopea_planets/<planet>/<player>/world.json`; the GROUND and the MARKERS, not a run |
 | `errand.loft` | **A ROBOT GOING ABOUT ITS BUSINESS** — `Traffic`, `errand_done` / `errand_depart`, `plans/30` R1's **ROUTINE** (`Errand`'s five anchors, the role TABLE, `errand_destination`), R2's **CYCLE** (`cycle_at` / `cycle_build` / `cycle_fault`) R3's **MOVER** (`errand_step`, `errand_fields`, `errand_cycling`), R4's **ENDING** (`Role.shift`, `errand_home_done`) and R4b's **TERMINAL LEG** (`Cycle.terminal`, `cycle_turn`, `errand_terminal`, `errand_shift_over`, `ERRAND_BAG_HOMEWARD`).  ⚠ The bubble takes the errand, ONE WAY.  ⚠⚠ **The BAG steers and never a clock**, and the table is INDEXED — never a `role ==`.  ⚠⚠ **The bank does not RESTART at a leg boundary** (`@X335`).  ⚠⚠ **`errand_step` is the ONE DOOR that moves a mob on a cycle and it owns `slip`** (`@FR-E-One-Door`); the position is exact in its PHASE and only conditionally in its HEX (`@X336`), and **a DWELL is not a BLOCK** (`@X337`).  ⚠⚠ **HOME is a LEG of the round** and a mob leaves the roster the tick its cycle brings it there (`@X338`); ⚠ `errand_fields` builds one field per ANCHOR and never per DESTINATION (`@D008`).  ⚠⚠ **A round whose home is OFF it grows a TERMINAL leg** (`@X341`), and **the turn is a third value of the BAG, compared in HEXES** (`@M077`) |
-| `poi.loft` | **A PLACE THAT OWNS MOBS — and the BOUND that is the point of one** (`plans/30` R5).  `Poi`, the KIND table, the five states, `PoiRoute` / `PoiWorld`, `poi_errand`, `poi_bound`, and `Bound` + `bound_disc_holds` / `bound_holds` / `bound_meets`.  ⚠⚠ **The record is scaffolding; the BOUND is the phase** — `@FR-E-Poi-Owns` collapses *could this ever be in this window?* from `N` queries to ONE.  ⚠⚠ **The population is a set of ROUTES and never a list of BODIES**, so forty haulers on one route have the bound of one.  ⚠⚠ **The CLAIM is per-LEG and the UNION is only the QUERY** (`@X342`) — a union is SLACK, and against it four of nine mutations survived including the sidestep that breaks `@FR-E-Non-Increasing`.  ⚠ Read in LATTICE distance on purpose: a superset is the safe direction and it costs ONE hex across three maps (`@M079`).  ⚠ A POI is never CULLED, so there is no verb here that removes one |
+| `poi.loft` | **A PLACE THAT OWNS MOBS — and the BOUND that is the point of one** (`plans/30` R5).  `Poi`, the KIND table, the five states, `PoiRoute` / `PoiWorld`, `poi_errand`, `poi_bound`, and `Bound` + `bound_disc_holds` / `bound_holds` / `bound_meets`.  ⚠⚠ **The record is scaffolding; the BOUND is the phase** — `@FR-E-Poi-Owns` collapses *could this ever be in this window?* from `N` queries to ONE.  ⚠⚠ **The population is a set of ROUTES and never a list of BODIES**, so forty haulers on one route have the bound of one.  ⚠⚠ **The CLAIM is per-LEG and the UNION is only the QUERY** (`@X342`) — a union is SLACK, and against it four of nine mutations survived including the sidestep that breaks `@FR-E-Non-Increasing`.  ⚠ Read in LATTICE distance on purpose: a superset is the safe direction and it costs ONE hex across three maps (`@M079`).  ⚠ A POI is never CULLED, so there is no verb here that removes one.  ⚠⚠ **AND SINCE R6a IT KNOWS WHAT AN UN-MATERIALISED MOB IS** (`@X343`): `PoiMob { route, seat, slip, gone }`, where the round is an index, the phase a derived SEAT, the hex `cycle_at`, and the BAG and the BANK derived — **only `slip` accumulates, because only a body can be pushed**.  ⚠ The three tiers: `poi_culled` is per POI and is one `bound_meets` for a whole population; `poi_survey.asked` is the COST GATE and it is a COUNT |
 | `skill.loft` | **CREW SKILLS — build, repair, scout**.  `Skills` on `Helper`, `skill_factor`, and the DETECTION rule |
 | `endure.loft` | **ENDURANCE — work spends it, rest restores it**.  ⚠ A tired person works LESS and never stops |
 | `jammer.loft` | **THE JAMMER SWITCH — turning your own core off**.  ⚠ It stops the SUPPLY and never the SIEGE |
@@ -1166,6 +1175,9 @@ names; most of them exist because somebody did it without reading.
 | Ask what a blocked enemy attacks | `src/spawn.loft::enemy_target` over `flow.loft::flow_desire` |
 | Hurt or kill an enemy | `src/spawn.loft::enemy_hurt`; `wave_deaths` is the ONE death path |
 | Judge what a wave's COMPOSITION is worth | [`plans/24`](plans/24-the-siege-front/README.md) § W2 — ⚠⚠ **the siege front is the wall's WIDTH** |
+| Ask what a mob nobody can see COSTS, or propose remembering more about one | `src/poi.loft` § WHAT AN UN-MATERIALISED MOB IS + `@X343` — ⚠⚠ **one integer.**  The round is an index, the phase a derived SEAT, the hex `cycle_at`, and the BAG and the BANK are DERIVED (`errand_bag_for`, `cycle_carry`).  ⚠ Only `slip` accumulates, because **only a BODY can be pushed** — and a mob that HAS had one must keep its lateness or `@FR-E-Slip` is refunded where nobody can watch |
+| Give a mob a body, or take one away | `src/poi.loft::poi_materialise` / `poi_release` — ⚠⚠ **four things go in and the fourth is the one nobody would think of**: the hex, the bag, the `slip`, and **the rule's BANK**.  A fresh body carries nothing where the rule is part-way through a hex, so it releases its next hex late by exactly `cycle_carry` — perfect when it appears, drifting from the tick after.  ⚠ At 1.5 hex/s the carry is always ZERO, so only a SCOUT can see it (`@M014`'s class, `@M081`) |
+| Cull, evaluate or materialise a population | `src/poi.loft::poi_survey` — ⚠⚠ **the shape of that function IS the architecture**: the cull test is per POI and outside the loop, and it is all a distant POI ever costs.  ⚠ `PoiSurvey.asked` is the cost gate and it is a COUNT and never a clock (`@M029`) — 0 against 6 for a POI 200 hexes away |
 | Bound a POI's population, or ask *could this ever be in this window?* | `src/poi.loft` + `@X342` — ⚠⚠ **the CLAIM is `bound_disc_holds(b, leg, h)` and the UNION is only the QUERY**: a union is SLACK, and against it a radius one hex short, a terminal leg with no disc, an off-by-one rim and a sidestep that breaks `@FR-E-Non-Increasing` ALL read green (`@M080`).  ⚠ Two doors, one implementation — the claim asks a body about its own leg, the query wants the slack |
 | Add a POI, attach a population, or ask what a POI IS to its mobs | `src/poi.loft` § ANCHORS DERIVE FROM THE POI — ⚠⚠ **a KIND is a ROW and the table is INDEXED** (`@X333`'s rule, places as its second subject): the one column that matters is *which anchor this POI is standing on*.  ⚠ A route whose round never visits its place is REFUSED (`poi_route_fault`), which is R4b's lesson with a new subject |
 | Ask how many mobs a bound costs, or propose a bound per mob | ⚠⚠ **The population is a set of ROUTES and never a list of BODIES** — `poi_bound` cannot see a body, so forty haulers on one route have the bound of one.  That IS `@X301`'s *one query instead of N*, and a bound that counted bodies would be a change of index rather than a collapse |

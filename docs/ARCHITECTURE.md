@@ -1799,9 +1799,16 @@ src/
                    one releasing more than a hex a tick would step over
                    its own ending; the remaining hexes are DROPPED and
                    never slipped — it arrived, it was not held up.
+                   ⚠ errand_bag_for is errand_leg's map read BACKWARDS
+                   (plans/30 R6a): materialising a mob has to put
+                   something in its hands, and the only true answer is
+                   whatever agrees with the leg its own rule has it on.
+                   ⚠ cycle_carry is cycle_walked's REMAINDER — what a
+                   mover is carrying toward its next hex — and it is
+                   what stops a fresh body releasing that hex late.
                    ⚠ INERT: no scenario has a routine, so errand_fields
                    builds nothing and the fork in wave_tick is never
-                   taken — 920 gate measurements unmoved, through R5
+                   taken — 920 gate measurements unmoved, through R6a
                    as well
   poi.loft         A PLACE THAT OWNS MOBS — and the BOUND that is the
                    point of one (plans/30 R5, @X301, @FR-E-Poi-Owns).
@@ -1844,9 +1851,39 @@ src/
                    ⚠⚠ A POI IS NEVER CULLED (@X304) — there is no verb
                    here that removes one.  *Not materialised* and
                    *culled* are different words.
+                   ⚠⚠ AND SINCE R6a IT KNOWS WHAT AN UN-MATERIALISED MOB
+                   IS: PoiMob { route, seat, slip, gone }, and only
+                   `slip` accumulates (@X343).  The round is an index,
+                   the phase is a SEAT whose offset is derived
+                   (poi_seat_offset), the hex is `cycle_at`, the BAG is
+                   derived from the leg (errand_bag_for) and the BANK
+                   from the clock (cycle_carry) — because only a BODY
+                   can be pushed, so a mob nobody has looked at needs no
+                   memory at all.
+                   ⚠⚠ THE THREE TIERS are shaped by where the question
+                   is asked: poi_culled is per POI and is one
+                   bound_meets for a whole population, poi_tier_at is
+                   per mob.  poi_survey's shape IS the architecture —
+                   the cull test is outside the loop and is all a
+                   distant POI ever costs.  `PoiSurvey.asked` is the
+                   COST GATE and it is a COUNT (@M029): 0 against 6 for
+                   a POI 200 hexes away.
+                   ⚠⚠ poi_materialise HANDS THE BODY FOUR THINGS and the
+                   fourth is the one nobody would think of — the hex,
+                   the bag, the `slip`, and THE RULE'S BANK.  A fresh
+                   body carries nothing where the rule is part-way
+                   through a hex, so it releases its next hex late by
+                   exactly cycle_carry, and at 1.5 hex/s that is always
+                   ZERO (@M014's class, @M081).
+                   ⚠ poi_release takes back `slip` and NOTHING else; the
+                   bank is re-derived, exactly as the bag is.
+                   ⚠ poi_cycles is the SORTIE-LONG cache the cull tier
+                   depends on — rebuilt every tick, a culled population
+                   would cost two flow sweeps a route to discover it
+                   could be skipped.
                    ⚠ INERT: nothing builds a PoiWorld yet, POI_KIND_NONE
-                   is 0, and no .keys verb authors one — R7's scenario
-                   pair is what needs the vocabulary
+                   is 0, and no .keys verb authors one — R6b puts it on
+                   WaveState and R7's scenario pair needs the vocabulary
   skill.loft       CREW SKILLS — build, repair, scout (BACKLOG C1) —
                    SKILL_EFFECT_SPAN / _HALF, Skills { build, repair,
                    scout } on Helper, skill_factor, skill_work_units,

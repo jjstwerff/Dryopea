@@ -1,0 +1,602 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 30 phase R6a — the three tiers, and what an un-materialised mob IS.
+//
+// ⚠⚠ **THE PHASE'S CLAIM IS A ROUND TRIP**: giving a mob a body, taking
+// it away again, and giving it another one leaves it exactly where never
+// having taken it away would have.  That is `@X299`'s *materialising it
+// later must not change where it is* narrowed to one mob, and it is what
+// R6b's radius pair rests on — two runs at `R` and `2R` differ only in
+// WHEN each mob was materialised.
+//
+// ⚠ In a CLEAN world the two trajectories are identical hex for hex; in
+// a BLOCKED one they differ, because only a body can be pushed, and the
+// difference is `slip` and nothing else (`@FR-E-Slip`).  ⚠⚠ **Both halves
+// are asserted, and the blocked half asserts that they DID differ** —
+// a single-sided gate here would be `CLAUDE.md` § a gate that reads
+// PERFECT is as suspect as one that reads wrong.
+//
+// ── ⚠⚠ Why the mover in this file is a SCOUT ────────────────────
+//
+// A body arrives with `bank_new()` and the rule is generally part-way
+// through a hex, so a materialised mob releases its next hex LATE by
+// exactly `cycle_carry` unless it is handed the rule's carry.  ⚠⚠ **At
+// the shipped robot's 1.5 hex/s a hex is exactly one tick, so the carry
+// is always ZERO and the whole defect is invisible** — `@M014`'s class,
+// and the fifth time this plan has met it.  A scout at 2.5 hex/s carries
+// 0.8e6, 0.4e6, 0.0 … in turn.  ⚠ The regular is kept beside it as the
+// control that says so out loud.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text    = "examples/palette.json";
+const GRASS:   integer = 5;
+
+// One tick, in base units.  ⚠ Spelled out rather than derived from
+// `TICK_STEP_UNITS`, because a file-scope const initialised from a
+// sibling module's const PANICS the compiler ([loft#962]).
+const R6_TICK: integer = 2000000;
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+
+// ─── The world, open and bent ───────────────────────────────────
+
+fn r6_world(bend: boolean) -> PaintedWorld {
+    rw_pw = painted_empty();
+    for rw_r in 0..=12 {
+        for rw_q in 0..=40 {
+            // ⚠ An unpainted hex IS sea, so a gap in the paint is a wall
+            // a robot has to go round.
+            if bend && rw_q == 6 && rw_r <= 10 { continue; }
+            paint(rw_pw, rw_q, rw_r, as_u8(GRASS));
+        }
+    }
+    rw_pw
+}
+
+fn r6_home() -> Hex { Hex { q: 1,  r: 6 } }
+fn r6_work() -> Hex { Hex { q: 11, r: 6 } }
+fn r6_nowhere() -> Hex { Hex { q: 0 - 1, r: 0 - 1 } }
+
+// A nest with `count` gatherers on one route out to the face.
+fn r6_places(kind: u8, count: integer) -> PoiWorld {
+    rp_w = poi_world_new();
+    rp_w.pois   += [poi_at(POI_KIND_NEST, r6_home().q, r6_home().r)];
+    rp_w.routes += [poi_route(0, ROLE_GATHER, kind, r6_work(),
+                              Hex { q: 0, r: 0 }, count)];
+    rp_i = 0;
+    while rp_i < count {
+        rp_w.mobs += [poi_mob(0, rp_i)];
+        rp_i += 1;
+    }
+    rp_w
+}
+
+// Both anchors' fields, as the tick builds them.
+fn r6_fields(pw: PaintedWorld, kind: u8) -> vector<ErrandField> {
+    rf_pal = load_palette(PALETTE);
+    rf_out: vector<ErrandField> = [];
+    for rf_h in [r6_work(), r6_home()] {
+        rf_out += [ErrandField {
+            q: rf_h.q, r: rf_h.r, climb: climb_limit(kind),
+            field: flow_build(rf_pal, pw, height_layer_empty(), kind, rf_h),
+        }];
+    }
+    rf_out
+}
+
+// ─── ⚠⚠ THE HARNESS — one mob, released and taken back ──────────
+
+// Walk mob `seat` for `ticks` ticks, with no body between `off` and `on`.
+//
+// Answers (the trajectory, the record's final `slip`, ticks it had a
+// body, the bank it was carrying at the end, PHASE disagreements, the
+// first one).
+//
+// ⚠⚠ **The PHASE check is `tests/30_rc_the_conformance.loft`'s, asked of
+// a mob materialised MID-ROUND** — which is the state R6a invents and no
+// gate in the tree had: every mob § Rc ever built was created at `t = 0`
+// with an empty bank and a clock of zero, where a materialiser that
+// dropped the bag, the bank or the `slip` would look perfect.
+// ⚠ It is the DISTANCE and not the hex, because only the distance is
+// total (`@X336`): a body whose first choice is taken walks another
+// route of the same length and has lost no time at all.
+//
+// ⚠ `off >= on` is *never released*, which is the control run.
+fn r6_trip(pw: PaintedWorld, kind: u8, count: integer, seat: integer,
+           off: integer, on: integer, block: const Hex,
+           ticks: integer) -> (vector<Hex>, integer, integer, integer,
+                               integer, text) {
+    rt_pal = load_palette(PALETTE);
+    rt_w   = r6_places(kind, count);
+    rt_cyc = poi_cycles(rt_w, rt_pal, pw, height_layer_empty());
+    rt_m   = rt_w.mobs[seat];
+    rt_c   = rt_cyc[0];
+    rt_rate = bank_rate(enemy_speed(kind));
+    rt_fld  = r6_fields(pw, kind);
+    rt_blk  = blocker_empty();
+    if block.q >= 0 { blocker_set(rt_blk, block.q, block.r, BLOCKER_PLAYER); }
+
+    rt_row  = errand_role_of(ROLE_GATHER);
+    rt_path: vector<Hex> = [];
+    rt_live = 0;
+    rt_bank = 0;
+    rt_bad  = 0;
+    rt_say  = "";
+    rt_has  = false;
+    rt_e    = Enemy {};
+    rt_n    = 0;
+    while rt_n < ticks {
+        rt_n += 1;
+        rt_t  = rt_n * R6_TICK;
+        rt_want = rt_n < off || rt_n >= on;
+        if rt_has && !rt_want {
+            // ⚠ RELEASE — and `slip` is the only thing that comes back.
+            poi_release(rt_w, rt_m, rt_c, rt_rate, rt_e);
+            rt_has = false;
+        }
+        if !rt_has && rt_want {
+            rt_e   = poi_materialise(rt_w, rt_m, rt_c, rt_rate, rt_t - R6_TICK);
+            rt_has = true;
+        }
+        if rt_has {
+            rt_occ = occupancy_empty();
+            occupancy_enter(rt_occ, rt_e.q, rt_e.r);
+            errand_step(rt_e, rt_fld, rt_occ, rt_blk, rt_t, R6_TICK);
+            rt_path += [Hex { q: rt_e.q, r: rt_e.r }];
+            rt_live += 1;
+            rt_bank  = bank_progress(rt_e.bank);
+            // ⚠ The rule, at this BODY's own clock — while a mob has a
+            // body its lateness lives on the body and the record has not
+            // been told yet.
+            rt_rule = cycle_at(rt_c, rt_row, rt_rate, rt_t - rt_e.route.slip);
+            rt_job  = errand_destination(rt_e, rt_t);
+            for rt_f in rt_fld {
+                if rt_f.q == rt_job.q && rt_f.r == rt_job.r {
+                    if flow_distance(rt_f.field, rt_e.q, rt_e.r)
+                       != flow_distance(rt_f.field, rt_rule.q, rt_rule.r) {
+                        rt_bad += 1;
+                        if rt_say == "" {
+                            rt_say = " phase, tick {rt_n}: body "
+                                     + "({rt_e.q},{rt_e.r}) is "
+                                     + "{flow_distance(rt_f.field, rt_e.q, rt_e.r)} "
+                                     + "from the anchor, rule "
+                                     + "({rt_rule.q},{rt_rule.r}) is "
+                                     + "{flow_distance(rt_f.field, rt_rule.q, rt_rule.r)}";
+                        }
+                    }
+                }
+            }
+        }
+        else {
+            rt_h = poi_mob_hex(rt_w, rt_m, rt_c, rt_rate, rt_t);
+            rt_path += [Hex { q: rt_h.q, r: rt_h.r }];
+            rt_bank  = cycle_carry(rt_rate,
+                                   poi_mob_clock(rt_m, rt_c, rt_rate, count,
+                                                 rt_t));
+        }
+    }
+    // ⚠ Fold the body's own slip back in, so the answer is the RECORD's
+    // whichever tier the run ended in.
+    if rt_has { poi_release(rt_w, rt_m, rt_c, rt_rate, rt_e); }
+    (rt_path, rt_m.slip, rt_live, rt_bank, rt_bad, rt_say)
+}
+
+// How many entries of two trajectories disagree, and the first one.
+fn r6_diff(a: vector<Hex>, b: vector<Hex>) -> (integer, text) {
+    rd_bad = 0;
+    rd_say = "";
+    rd_i = 0;
+    while rd_i < len(a) && rd_i < len(b) {
+        rd_x = a[rd_i];
+        rd_y = b[rd_i];
+        if rd_x == null || rd_y == null { rd_bad += 1; }
+        else {
+            if rd_x.q != rd_y.q || rd_x.r != rd_y.r {
+                rd_bad += 1;
+                if rd_say == "" {
+                    rd_say = " first at tick {rd_i + 1}: ({rd_x.q},{rd_x.r}) "
+                             + "against ({rd_y.q},{rd_y.r})";
+                }
+            }
+        }
+        rd_i += 1;
+    }
+    (rd_bad, rd_say)
+}
+
+// ─── ⚠⚠ THE HEADLINE — the round trip ───────────────────────────
+
+// @DRY-194 — taking a mob's body away and giving it back changes nothing
+fn test_r6a_a_released_mob_comes_back_where_it_would_have_been() {
+    tr_kind = as_u8(ENEMY_KIND_SCOUT);
+    tr_pw   = r6_world(false);
+    // ⚠ Never released — the control run.
+    tr_all  = r6_trip(tr_pw, tr_kind, 3, 1, 99, 0, r6_nowhere(), 24);
+    // ⚠ Released for six ticks in the middle, and taken back.
+    tr_gap  = r6_trip(tr_pw, tr_kind, 3, 1, 8, 14, r6_nowhere(), 24);
+
+    // ⚠⚠ **THE CONTROLS FIRST**: the mob actually walked, and the run
+    // with a gap actually had one.  A mob that never moved would satisfy
+    // every equality below, and so would two runs that were both fully
+    // materialised.
+    assert(len(tr_all.0) == 24 && tr_all.2 == 24 && tr_gap.2 == 18,
+           "CONTROL — {tr_all.2} and {tr_gap.2} body-ticks of 24, so the "
+           + "two runs were not the two runs this gate needs");
+    tr_first = tr_all.0[0];
+    tr_last  = tr_all.0[23];
+    assert(tr_first != null && tr_last != null
+           && (tr_first.q != tr_last.q || tr_first.r != tr_last.r),
+           "CONTROL — the mob never left its first hex, so an identical "
+           + "trajectory is a claim about standing still");
+
+    tr_d = r6_diff(tr_all.0, tr_gap.0);
+    assert(tr_d.0 == 0,
+           "R6a — {tr_d.0} of 24 ticks disagree between a mob that kept its "
+           + "body and one released for six ticks in the middle.{tr_d.1}");
+    // ⚠⚠ **And the BANK came back too** — a body handed `bank_new()`
+    // would be carrying nothing here where the rule carries a fraction,
+    // and every hex of the trajectory could still agree while the next
+    // one arrived late.
+    assert(tr_all.3 == tr_gap.3,
+           "R6a — the released mob comes back carrying {tr_gap.3} where the "
+           + "one that kept its body carries {tr_all.3}, so materialising "
+           + "loses the fraction of a hex the rule is part-way through");
+    assert(tr_all.1 == tr_gap.1,
+           "R6a — slip {tr_all.1} against {tr_gap.1}: releasing a mob that "
+           + "nothing pushed cost it time");
+    // ⚠⚠ **AND A MOB MATERIALISED MID-ROUND CONFORMS**, which is the
+    // state R6a invents: every mob § Rc ever built started at `t = 0`
+    // with an empty bank and a clock of zero, where a materialiser that
+    // dropped the bag, the bank or the `slip` would look perfect.
+    assert(tr_all.4 == 0 && tr_gap.4 == 0,
+           "R6a — {tr_all.4} and {tr_gap.4} body-ticks stand at a different "
+           + "distance from the anchor than the rule does.{tr_all.5}"
+           + "{tr_gap.5}");
+}
+
+// @DRY-198 — and the shipped robot could not see the bank at all
+fn test_r6a_only_a_fast_mover_can_see_the_carry() {
+    tc_rate_reg = bank_rate(enemy_speed(as_u8(ENEMY_KIND_REGULAR)));
+    tc_rate_sct = bank_rate(enemy_speed(as_u8(ENEMY_KIND_SCOUT)));
+    tc_reg = 0;
+    tc_sct = 0;
+    tc_n = 1;
+    while tc_n <= 24 {
+        if cycle_carry(tc_rate_reg, tc_n * R6_TICK) != 0 { tc_reg += 1; }
+        if cycle_carry(tc_rate_sct, tc_n * R6_TICK) != 0 { tc_sct += 1; }
+        tc_n += 1;
+    }
+    // ⚠⚠ **The fixture's choice, asserted rather than assumed** — this is
+    // why the round trip above walks a SCOUT.  A regular's hex is exactly
+    // one tick, so on a tick boundary it carries nothing, ever, and an
+    // implementation that threw the carry away would be green for it at
+    // every leg length and every speed of release.
+    assert(tc_reg == 0 && tc_sct > 0,
+           "R6a — the regular carries something on {tc_reg} of 24 ticks and "
+           + "the scout on {tc_sct}: the fixture's mover no longer decides "
+           + "whether the carry is visible, so @M014's class has moved");
+}
+
+// @DRY-199 — and where something CAN push it, the difference is slip
+fn test_r6a_a_blocked_mob_differs_by_exactly_its_slip() {
+    tb_kind = as_u8(ENEMY_KIND_SCOUT);
+    tb_pw   = r6_world(false);
+    // ⚠ The player parked on the mob's route, on the hex axis — where
+    // the field offers ONE strictly closer neighbour, so a blocker in
+    // front leaves no closer step at all (`CLAUDE.md` § A corridor cannot
+    // see F5c either).
+    tb_at   = Hex { q: 5, r: 6 };
+    tb_all  = r6_trip(tb_pw, tb_kind, 1, 0, 99, 0, tb_at, 24);
+    // ⚠ Released across the ticks it would first have met the blocker,
+    // so it walks that stretch of its round with no body to push.
+    tb_gap  = r6_trip(tb_pw, tb_kind, 1, 0, 1, 8, tb_at, 24);
+
+    // ⚠⚠ **THE CONTROL FIRST, and it is the one this gate cannot do
+    // without**: the blocked run must actually have been held up, or
+    // *they differ by exactly slip* is a claim about two zeroes.
+    assert(tb_all.1 > 0,
+           "CONTROL — the mob that kept its body was never delayed (slip "
+           + "{tb_all.1}), so a blocker at ({tb_at.q},{tb_at.r}) is not in "
+           + "its way and this gate is measuring a clear world");
+    // ⚠⚠ **ONLY A BODY CAN BE PUSHED**, which is the half of `@X299` that
+    // makes the whole architecture safe: two un-materialised mobs have
+    // nothing to collide with, so a mob released across the stretch that
+    // would have delayed it comes out LESS late — not differently late.
+    assert(tb_gap.1 < tb_all.1,
+           "R6a — the released mob picked up slip {tb_gap.1} against "
+           + "{tb_all.1} for the one that kept its body, so something "
+           + "pushed a mob that had no body to push");
+    tb_d = r6_diff(tb_all.0, tb_gap.0);
+    assert(tb_d.0 > 0,
+           "R6a — the two runs agree everywhere despite {tb_all.1} units of "
+           + "slip between them, so the trajectory cannot see a delay at "
+           + "all");
+    // ⚠⚠ **AND `slip` EXPLAINS THE DIFFERENCE, IN THE ONE CURRENCY THAT
+    // IS TOTAL.**  Hex equality is not it (`@X336`) — a body whose first
+    // choice is taken walks another route of the same length — so what
+    // must hold, of both runs and at every tick they had a body, is that
+    // the body's DISTANCE to the anchor it is making for equals the
+    // rule's at `now − slip`.
+    assert(tb_all.4 == 0 && tb_gap.4 == 0,
+           "R6a — {tb_all.4} and {tb_gap.4} body-ticks put a mob at a "
+           + "different distance from its anchor than its own rule at "
+           + "now-slip, so slip does not account for the delay."
+           + "{tb_all.5}{tb_gap.5}");
+}
+
+// ─── ⚠⚠ THE TIERS, AND WHAT A CULL COSTS ────────────────────────
+
+// @DRY-196 — a culled POI costs one query and nothing else
+fn test_r6a_a_culled_poi_costs_one_query() {
+    tk_kind = as_u8(ENEMY_KIND_REGULAR);
+    tk_pw   = r6_world(false);
+    tk_w    = r6_places(tk_kind, 6);
+    tk_cyc  = poi_cycles(tk_w, load_palette(PALETTE), tk_pw,
+                         height_layer_empty());
+    tk_b    = poi_bound_from(tk_w, 0, tk_cyc);
+    tk_far  = poi_survey(tk_w, 0, tk_b, tk_cyc, Hex { q: 200, r: 200 }, 6,
+                         12 * R6_TICK);
+    tk_near = poi_survey(tk_w, 0, tk_b, tk_cyc, r6_work(), 6, 12 * R6_TICK);
+
+    // ⚠⚠ **THE CONTROL FIRST**: the near reading has to cost the whole
+    // population, or *the far one costs nothing* is a statement about a
+    // POI with nobody on it.
+    assert(tk_near.asked == 6 && tk_near.tier == POI_TIER_MATERIALISE,
+           "CONTROL — a player standing on the face asked about "
+           + "{tk_near.asked} of 6 mobs at tier {tk_near.tier}, so this POI "
+           + "has no population to cull");
+    assert(tk_far.asked == 0 && tk_far.tier == POI_TIER_CULL,
+           "R6a — a POI 200 hexes away cost {tk_far.asked} closed-form "
+           + "evaluations at tier {tk_far.tier}, so the cull tier saves "
+           + "nothing and @FR-E-Poi-Owns is not cashed in");
+    // ⚠ And the middle tier exists — a population inside the bound but
+    // outside the window is EVALUATED, which is the answer that makes
+    // `@X299`'s *computed, not approximated* true.
+    tk_mid = poi_survey(tk_w, 0, tk_b, tk_cyc, r6_work(), 1, 12 * R6_TICK);
+    assert(tk_mid.seen > 0 && tk_mid.asked == 6,
+           "R6a — with a one-hex window {tk_mid.seen} of {tk_mid.asked} mobs "
+           + "were merely evaluated, so there is no middle tier and every "
+           + "mob inside a POI's bound would need a body");
+}
+
+// @DRY-192 — a POI is never culled, only un-materialised
+fn test_r6a_a_culled_poi_is_still_exactly_where_its_rule_says() {
+    tu_kind = as_u8(ENEMY_KIND_SCOUT);
+    tu_pw   = r6_world(true);
+    tu_w    = r6_places(tu_kind, 4);
+    tu_cyc  = poi_cycles(tu_w, load_palette(PALETTE), tu_pw,
+                         height_layer_empty());
+    tu_b    = poi_bound_from(tu_w, 0, tu_cyc);
+    tu_c    = tu_cyc[0];
+    tu_rate = bank_rate(enemy_speed(tu_kind));
+    tu_row  = errand_role_of(ROLE_GATHER);
+
+    // ⚠ Sixty ticks with the player on the far side of the map: every
+    // survey culls, and nothing is ever asked.
+    tu_asked = 0;
+    tu_n = 1;
+    while tu_n <= 60 {
+        tu_s = poi_survey(tu_w, 0, tu_b, tu_cyc, Hex { q: 300, r: 300 }, 8,
+                          tu_n * R6_TICK);
+        tu_asked += tu_s.asked;
+        tu_n += 1;
+    }
+    assert(tu_asked == 0,
+           "CONTROL — {tu_asked} mobs were asked about over 60 culled ticks, "
+           + "so the run below is not measuring a POI nobody looked at");
+
+    // ⚠⚠ **AND IT IS STILL ALL THERE, EXACTLY WHERE ITS RULE SAYS.**
+    // *Not materialised* and *culled* are different words (`@X304`), and
+    // this is the difference asserted rather than described: the roster
+    // still holds four mobs, none has moved off its own rule, and their
+    // seats still spread them round the loop.
+    assert(len(tu_w.mobs) == 4,
+           "R6a — {len(tu_w.mobs)} mobs left of 4 after 60 culled ticks, so "
+           + "something REMOVED a population that was merely out of sight");
+    tu_bad = 0;
+    tu_spread = 0;
+    tu_seen: vector<integer> = [];
+    for tu_m in tu_w.mobs {
+        if tu_m.slip != 0 { tu_bad += 1; }
+        tu_h = poi_mob_hex(tu_w, tu_m, tu_c, tu_rate, 60 * R6_TICK);
+        tu_r = cycle_at(tu_c, tu_row, tu_rate,
+                        poi_mob_clock(tu_m, tu_c, tu_rate, 4, 60 * R6_TICK));
+        if tu_h.q != tu_r.q || tu_h.r != tu_r.r { tu_bad += 1; }
+        tu_key = tu_h.q * 1000 + tu_h.r;
+        tu_new = true;
+        for tu_k in tu_seen { if tu_k == tu_key { tu_new = false; } }
+        if tu_new { tu_seen += [tu_key]; tu_spread += 1; }
+    }
+    // ⚠ The spread is the control on the SEAT: four mobs all standing on
+    // one hex would satisfy the equality above four times over.
+    assert(tu_spread > 1,
+           "R6a — all four mobs stand on one hex, so a seat spreads nothing "
+           + "and the population is one mob counted four times");
+    assert(tu_bad == 0,
+           "R6a — {tu_bad} readings of a culled population are not where "
+           + "their own rule says, so a cull is not free after all");
+}
+
+// ─── ⚠ THE PIECES THE TIERS ARE MADE OF ─────────────────────────
+
+// @DRY-191 — the bag a leg needs is the leg the bag names
+fn test_r6a_the_bag_and_the_leg_are_one_table() {
+    tg_bad = 0;
+    tg_say = "";
+    tg_seen = 0;
+    tg_role = 0;
+    while tg_role < ROLE_KIND_COUNT {
+        tg_row = errand_role_of(tg_role);
+        if tg_row.empty == ANCHOR_NONE { tg_role += 1; continue; }
+        // ⚠ A CLOCK-steered row has no bag to round-trip — `errand_leg`
+        // never reads one — so it is skipped and said so, rather than
+        // being asserted about vacuously.
+        if tg_row.period > 0 { tg_role += 1; continue; }
+        for tg_a in [ANCHOR_HOME, ANCHOR_WORK, ANCHOR_ALT] {
+            if !poi_role_uses(tg_row, tg_a) { continue; }
+            tg_seen += 1;
+            tg_er = errand_new();
+            tg_er.role  = tg_role;
+            tg_er.carry = errand_bag_for(tg_row, tg_a);
+            tg_back = errand_leg(tg_row, tg_er, 0);
+            if tg_back != tg_a {
+                tg_bad += 1;
+                if tg_say == "" {
+                    tg_say = " '{tg_row.name}' anchor {tg_a} asks for bag "
+                             + "{tg_er.carry}, which steers to {tg_back}";
+                }
+            }
+        }
+        tg_role += 1;
+    }
+    assert(tg_seen >= 6,
+           "CONTROL — only {tg_seen} anchor/role pairs were round-tripped, "
+           + "so the table this gate sweeps is nearly empty");
+    assert(tg_bad == 0,
+           "R6a — {tg_bad} of {tg_seen} anchors do not come back from the "
+           + "bag they ask for, so `errand_bag_for` and `errand_leg` are "
+           + "two tables rather than one read both ways.{tg_say}");
+}
+
+// The bound a POI's routes add up to, built WITHOUT the cache.
+//
+// ⚠⚠ **AN INDEPENDENT ORACLE, AND IT HAD TO BE ONE.**  The first version
+// of this gate compared `poi_bound_from` against `poi_bound` — and
+// `poi_bound` is *`poi_bound_from` over `poi_cycles`*, so the comparison
+// was a function against itself and read green with the cache indexed by
+// the POI instead of by the route.  ⚠ That is `plans/09`'s rule with a
+// new subject: **a golden that was rebaselined during the change under
+// test has verified nothing**, and a wrapper is a golden of its own
+// delegate.
+fn r6_oracle(w: const PoiWorld, poi: integer, pw: PaintedWorld) -> Bound {
+    ro_pal = load_palette(PALETTE);
+    ro_hl  = height_layer_empty();
+    ro_p   = poi_of(w, poi);
+    ro_b   = bound_new();
+    for ro_rt in w.routes {
+        if ro_rt.poi != poi { continue; }
+        ro_er = poi_errand(ro_p, ro_rt);
+        bound_join(ro_b, bound_of(ro_er,
+                                  cycle_build(ro_er,
+                                              errand_role_of(ro_rt.role),
+                                              ro_pal, pw, ro_hl,
+                                              ro_rt.kind)));
+    }
+    ro_b
+}
+
+// @DRY-195 — the cached rounds are the rounds
+fn test_r6a_the_cached_rounds_are_the_rounds() {
+    tn_kind = as_u8(ENEMY_KIND_REGULAR);
+    tn_pw   = r6_world(true);
+    tn_hl   = height_layer_empty();
+    tn_pal  = load_palette(PALETTE);
+    // ⚠ Two POIs and three routes, and the POI with TWO of them is the
+    // one that discriminates: a cache indexed by anything but the route
+    // gives its second route the first one's round, and one route per
+    // POI would come out right under almost any indexing mistake.
+    tn_w = poi_world_new();
+    tn_w.pois   += [poi_at(POI_KIND_NEST, r6_home().q, r6_home().r)];
+    tn_w.pois   += [poi_at(POI_KIND_FACE, r6_work().q, r6_work().r)];
+    tn_w.routes += [poi_route(0, ROLE_GATHER, tn_kind, r6_work(),
+                              Hex { q: 0, r: 0 }, 2)];
+    tn_w.routes += [poi_route(1, ROLE_HAUL, tn_kind, Hex { q: 30, r: 3 },
+                              Hex { q: 0, r: 0 }, 2)];
+    tn_w.routes += [poi_route(0, ROLE_GATHER, tn_kind, Hex { q: 20, r: 10 },
+                              Hex { q: 0, r: 0 }, 2)];
+    assert(poi_world_fault(tn_w) == "",
+           "the fixture is not a world: {poi_world_fault(tn_w)}");
+
+    tn_cyc = poi_cycles(tn_w, tn_pal, tn_pw, tn_hl);
+    assert(len(tn_cyc) == 3,
+           "R6a — {len(tn_cyc)} rounds cached for 3 routes, so the cache is "
+           + "not one entry per route and every index into it is a guess");
+    tn_bad = 0;
+    tn_legs = 0;
+    for tn_i in 0..=1 {
+        tn_a = poi_bound_from(tn_w, tn_i, tn_cyc);
+        // ⚠ The ORACLE, which builds its own rounds and never touches
+        // the cache — never `poi_bound`, which delegates to the very
+        // function under test.
+        tn_b = r6_oracle(tn_w, tn_i, tn_pw);
+        tn_legs += bound_legs(tn_a);
+        if bound_legs(tn_a) != bound_legs(tn_b) { tn_bad += 1; }
+        tn_j = 0;
+        while tn_j < bound_legs(tn_a) && tn_j < bound_legs(tn_b) {
+            tn_ca = tn_a.centres[tn_j];
+            tn_cb = tn_b.centres[tn_j];
+            if tn_ca == null || tn_cb == null { tn_bad += 1; }
+            else {
+                if tn_ca.q != tn_cb.q || tn_ca.r != tn_cb.r { tn_bad += 1; }
+            }
+            if (tn_a.radii[tn_j] ?? 0) != (tn_b.radii[tn_j] ?? 0) {
+                tn_bad += 1;
+            }
+            tn_j += 1;
+        }
+    }
+    assert(tn_legs > 0,
+           "CONTROL — the two POIs bound {tn_legs} discs between them, so "
+           + "the comparison below is between two empty regions");
+    assert(tn_bad == 0,
+           "R6a — {tn_bad} discs differ between a bound built from the cache "
+           + "and one that built its own rounds, so the cache is indexed "
+           + "wrongly and a POI is bounded by somebody else's route");
+}
+
+// @DRY-193 — a round ends on the mob's own clock, body or no body
+fn test_r6a_a_round_ends_whether_or_not_anybody_is_watching() {
+    td_kind = as_u8(ENEMY_KIND_REGULAR);
+    td_pw   = r6_world(false);
+    td_w    = r6_places(td_kind, 1);
+    td_cyc  = poi_cycles(td_w, load_palette(PALETTE), td_pw,
+                         height_layer_empty());
+    td_c    = td_cyc[0];
+    td_rate = bank_rate(enemy_speed(td_kind));
+    td_m    = td_w.mobs[0];
+
+    // ⚠ A gatherer's shift is 120 s — 180 ticks at 2/3 s — and its round
+    // is short, so it ends at the first arrival home after that.
+    td_end = 0;
+    td_n = 1;
+    while td_n <= 260 && td_end == 0 {
+        if poi_mob_done(td_w, td_m, td_c, td_rate, td_n * R6_TICK) {
+            td_end = td_n;
+        }
+        td_n += 1;
+    }
+    // ⚠⚠ **THE CONTROL FIRST**: it has to end at all, and it has to end
+    // AFTER the shift.  A mob that answered *done* on its first tick
+    // would satisfy any bound below.
+    assert(td_end >= 180 && td_end <= 260,
+           "R6a — a computed gatherer's round ended at tick {td_end}, and a "
+           + "120 s shift is 180 ticks, so the ending is not on the mob's "
+           + "own clock at all");
+    // ⚠⚠ **AND A BODY ENDS AT THE SAME TICK.**  A population whose far
+    // half worked for ever while its near half retired would put R6b's
+    // whole equality out, and nobody could see it — the far half is
+    // outside the window by definition.
+    td_e = poi_materialise(td_w, td_m, td_c, td_rate, 0);
+    td_fld = r6_fields(td_pw, td_kind);
+    td_blk = blocker_empty();
+    td_body = 0;
+    td_n2 = 1;
+    while td_n2 <= 260 && td_body == 0 {
+        td_occ = occupancy_empty();
+        occupancy_enter(td_occ, td_e.q, td_e.r);
+        errand_step(td_e, td_fld, td_occ, td_blk, td_n2 * R6_TICK, R6_TICK);
+        if errand_done(td_e, load_palette(PALETTE), td_pw,
+                       height_layer_empty(), td_n2 * R6_TICK) {
+            td_body = td_n2;
+        }
+        td_n2 += 1;
+    }
+    assert(td_body == td_end,
+           "R6a — a body's round ends at tick {td_body} and the same mob's "
+           + "computed round at {td_end}: a mob nobody is watching retires "
+           + "at a different moment from one that is");
+}
