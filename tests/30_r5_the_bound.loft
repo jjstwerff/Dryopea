@@ -1,0 +1,696 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 30 phase R5 — the POI, its population, and its BOUND.
+//
+// ⚠⚠ **THE CLAIM IS CONTAINMENT AND IT IS A COROLLARY, NOT A
+// HYPOTHESIS** (`src/poi.loft` § THE BOUND): a mob's distance to its
+// current anchor never increases (`@FR-E-Non-Increasing`) and equals the
+// rule's under every deviation (`@X336`), so a body walking a leg of
+// length `L` toward anchor `A` is inside `disc(A, L)` for every moment of
+// it.  The gate exists to catch the day one of those two stops being
+// true — `plans/30` § Count the RE-ASSERTION SITES, with the sidestep at
+// number 3.
+//
+// ⚠⚠ **AND IT IS ASKED OF THE LEG AND NEVER OF THE UNION** (`@X342`).
+// The first version of this file asked `bound_holds` — *is this hex
+// inside the region at all* — which is the sentence `@FR-E-Poi-Owns`
+// uses, and **four of nine mutations survived it** (`@M080`): a radius
+// one hex short, a terminal leg given no disc, a rim excluded by an
+// off-by-one, and a sidestep that could INCREASE the distance.  ⚠ The
+// reason is geometry rather than a weak fixture — consecutive discs sit
+// a leg apart with that leg's length as their radius, so a hex outside
+// its own leg's disc is inside its neighbour's.  ⚠⚠ **The two facts
+// above are about ONE LEG AT A TIME**, so `bound_disc_holds(b, leg, h)`
+// is the claim and the union is a strictly larger promise nobody made.
+// Asking the leg takes the sweep to **9 of 9**.
+//
+// ⚠⚠ **AND THE CONTROL COMES FIRST IN EVERY FUNCTION THAT MAKES THE
+// CLAIM.**  A bound that held every hex of its fixture would satisfy
+// every containment assertion here, so *how much ground it LEAVES OUT*
+// is asserted **before** *every hex of the round is inside it* — ranked
+// that way on purpose, because loft abandons at the first failure and a
+// control that runs second is a control that never runs (`CLAUDE.md`
+// § a gate that reads PERFECT is as suspect as one that reads wrong).
+//
+// ⚠ Two worlds, and the BENT one is the interesting one: a leg that
+// bends round an obstruction has a field distance longer than its
+// lattice distance, which is exactly where reading the bound in lattice
+// distance is loosest.  ⚠ Two roles, and the HARVESTER's is the
+// interesting one: its round grows R4b's terminal leg, which a
+// gatherer's could not ask the bound about at all.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text    = "examples/palette.json";
+const GRASS:   integer = 5;
+const MAPS:    text    = "maps";
+
+// One tick, in base units.  ⚠ Spelled out rather than derived from
+// `TICK_STEP_UNITS`, because a file-scope const initialised from a
+// sibling module's const PANICS the compiler ([loft#962]).
+const R5_TICK: integer = 2000000;
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+
+// ─── The world, open and bent ───────────────────────────────────
+
+// ⚠⚠ **THE WORLD IS MUCH WIDER THAN THE ROUND, AND THAT IS THE WHOLE
+// FIXTURE.**  The probe below reads **1466 of 1467** standable hexes
+// inside the bound on the three authored maps — a round that crosses its
+// patch has legs as long as the patch, so the bound covers it and a
+// containment gate over one of those maps would be satisfied by a region
+// that excluded nothing.  ⚠ So the round here is short and the ground
+// around it is long: `r5_outside` counts what the bound leaves out, and
+// that count is asserted BEFORE containment is.
+fn r5_world(bend: boolean) -> PaintedWorld {
+    rw_pw = painted_empty();
+    for rw_r in 0..=12 {
+        for rw_q in 0..=40 {
+            // ⚠ An unpainted hex IS sea (`CLAUDE.md` § A walking test
+            // must paint the ground it walks on), so a gap in the paint
+            // is a wall a regular robot has to go round.
+            if bend && rw_q == 6 && rw_r <= 10 { continue; }
+            paint(rw_pw, rw_q, rw_r, as_u8(GRASS));
+        }
+    }
+    rw_pw
+}
+
+fn r5_home() -> Hex { Hex { q: 1,  r: 6 } }
+fn r5_work() -> Hex { Hex { q: 11, r: 6 } }
+fn r5_alt()  -> Hex { Hex { q: 11, r: 2 } }
+
+// How many standable hexes of a fixture the bound LEAVES OUT.
+//
+// ⚠⚠ **The vacuity control, as a count of real ground rather than of
+// hexes somebody invented off the edge of the world.**  A bound that
+// excluded nothing would satisfy every containment assertion in this file
+// and would be worth nothing at all.
+fn r5_outside(pw: PaintedWorld, b: const Bound) -> (integer, integer) {
+    ro_pal  = load_palette(PALETTE);
+    ro_hl   = height_layer_empty();
+    ro_out  = 0;
+    ro_all  = 0;
+    for ro_h in pw.painted {
+        if !can_stand(ro_pal, pw, ro_hl, as_u8(ENEMY_KIND_REGULAR),
+                      ro_h.q, ro_h.r) { continue; }
+        ro_all += 1;
+        if !bound_holds(b, Hex { q: ro_h.q, r: ro_h.r }) { ro_out += 1; }
+    }
+    (ro_out, ro_all)
+}
+
+// ⚠ FAR, so the scrambler bubble never takes an errand — the one-way
+// door would end the round and the gate would be measuring an empty
+// roster (`tests/30_rc_the_conformance.loft` parks it the same way).
+fn r5_far_core() -> Hex { Hex { q: 200, r: 6 } }
+
+fn r5_gatherer() -> Errand {
+    errand_at(ROLE_GATHER, r5_home(), r5_work(), Hex { q: 0, r: 0 })
+}
+
+// ⚠⚠ **A HARVESTER, because its round has R4b's TERMINAL leg** — the
+// bound has to contain a walk the repeating part never makes, and a
+// gatherer's round could not ask that question at all.
+fn r5_harvester() -> Errand {
+    errand_at(ROLE_HARVEST, r5_home(), r5_work(), r5_alt())
+}
+
+fn r5_cycle(pw: PaintedWorld, er: const Errand, role: integer,
+            kind: u8) -> Cycle {
+    cycle_build(er, errand_role_of(role), load_palette(PALETTE), pw,
+                height_layer_empty(), kind)
+}
+
+fn r5_nowhere() -> Hex { Hex { q: 0 - 1, r: 0 - 1 } }
+
+// ─── ⚠⚠ THE INVARIANT GATE — the RULE's whole round ─────────────
+
+// @DRY-184 — every hex the closed form can produce is inside the bound
+fn test_r5_the_bound_contains_every_hex_of_the_round() {
+    tb_say  = "";
+    tb_out  = 0;
+    tb_seen = 0;
+    tb_ctl  = 0;
+    tb_term = 0;
+    tb_kind = as_u8(ENEMY_KIND_REGULAR);
+    tb_rate = bank_rate(enemy_speed(tb_kind));
+    tb_hex  = cycle_hex_units(tb_rate);
+    // ⚠⚠ **Two roles and two worlds.**  The GATHERER's round closes on
+    // itself; the HARVESTER's grows R4b's terminal leg, which is a walk
+    // the repeating part never makes and therefore the one thing a
+    // gatherer could not ask the bound about.  ⚠ The BENT world is where
+    // a leg's field distance exceeds its lattice distance, which is
+    // where reading the bound in lattice distance is loosest.
+    for tb_role in [ROLE_GATHER, ROLE_HARVEST] {
+        for tb_bend in [false, true] {
+            tb_pw  = r5_world(tb_bend);
+            tb_er  = r5_gatherer();
+            if tb_role == ROLE_HARVEST { tb_er = r5_harvester(); }
+            tb_row = errand_role_of(tb_role);
+            tb_c   = r5_cycle(tb_pw, tb_er, tb_role, tb_kind);
+            assert(cycle_running(tb_c),
+                   "{tb_row.name}, bend {tb_bend}: no cycle to bound — "
+                   + "{cycle_fault(tb_c, tb_row, tb_rate)}");
+            tb_b = bound_of(tb_er, tb_c);
+            assert(!bound_empty(tb_b),
+                   "{tb_row.name}, bend {tb_bend}: the bound is EMPTY, so "
+                   + "containment below would be a claim about nothing");
+            if tb_c.terminal > 0 { tb_term += 1; }
+
+            // ⚠⚠ **THE VACUITY CONTROL, AND IT RUNS FIRST.**  A bound
+            // that held every hex of the fixture would satisfy every
+            // containment assertion in this file, so *how much ground it
+            // LEAVES OUT* is asserted BEFORE *every hex of the round is
+            // inside it*: loft abandons at the first failure, and a
+            // control that runs second is a control that never runs.
+            //
+            // ⚠ A third is the bar rather than *more than none*, because
+            // *more than none* is what the authored maps would pass with
+            // ONE hex of 1467 (§ PROBE).
+            tb_here = r5_outside(tb_pw, tb_b);
+            assert(tb_here.0 * 3 > tb_here.1,
+                   "{tb_row.name}, bend {tb_bend}: CONTROL — the bound "
+                   + "leaves out {tb_here.0} of {tb_here.1} standable "
+                   + "hexes, which is too near the whole fixture for "
+                   + "containment below to mean anything");
+            tb_ctl += tb_here.0;
+
+            // ⚠ Past the whole round AND past the turn, so the terminal
+            // leg is swept rather than assumed.
+            tb_span = (tb_c.period + tb_c.terminal + 4) * tb_hex;
+            tb_alt  = cycle_turn(tb_c, tb_row, tb_rate)
+                      + (tb_c.terminal + 4) * tb_hex;
+            if tb_alt > tb_span { tb_span = tb_alt; }
+            // ⚠ The disc indices are the LEG indices, and that is
+            // checked rather than assumed — a leg `bound_of` skipped
+            // would shift every one of them and the sweep below would
+            // measure the wrong disc while staying green.
+            assert(bound_legs(tb_b) == len(tb_c.anchors),
+                   "{tb_row.name}, bend {tb_bend}: {bound_legs(tb_b)} discs "
+                   + "for {len(tb_c.anchors)} legs — the disc index is no "
+                   + "longer the leg index");
+            tb_t = 0;
+            while tb_t <= tb_span {
+                tb_h  = cycle_at(tb_c, tb_row, tb_rate, tb_t);
+                tb_ph = cycle_phase(tb_c, tb_row, tb_rate, tb_t);
+                tb_seen += 1;
+                // ⚠⚠ **THE LEG'S OWN DISC, never the union** — the union
+                // is slack enough to hold a hex its own leg excludes, and
+                // R5's mutations proved it holds three separate defects.
+                if !bound_disc_holds(tb_b, tb_ph.0, tb_h) {
+                    tb_out += 1;
+                    if tb_say == "" {
+                        tb_say = " first at t={tb_t}: ({tb_h.q},{tb_h.r}) is "
+                                 + "outside the disc of leg {tb_ph.0}, "
+                                 + "radius {tb_b.radii[tb_ph.0] ?? 0} "
+                                 + "({tb_row.name}, bend {tb_bend})";
+                    }
+                }
+                tb_t += R5_TICK;
+            }
+        }
+    }
+    // ⚠ And the terminal leg really was in the corpus — a harvester whose
+    // round had closed on itself would make this a gatherer test twice.
+    assert(tb_term == 2,
+           "{tb_term} of the four rounds grew a terminal leg, wanted 2 — "
+           + "R4b's ending is not in this gate at all");
+    assert(tb_out == 0,
+           "R5 — {tb_out} of {tb_seen} swept moments put the RULE outside "
+           + "its own bound, over two roles and two worlds — a bound "
+           + "that leaves {tb_ctl} standable hexes out.{tb_say}");
+}
+
+// ─── ⚠⚠ THE INVARIANT GATE — a DEVIATING body ───────────────────
+
+// Run `count` mobs on one routine through a real tick and ask, of every
+// body at the end of every tick, whether it is inside the bound.
+//
+// Answers (bodies looked at, escapes, bodies that were NOT on the rule's
+// hex — the deviation control, the first escape).
+//
+// ⚠⚠ **It goes through `wave_tick` for § Rc's reason**: the twelve sites
+// that could break the invariant are in the TICK, and a gate driving
+// `errand_step` directly would exercise one of them.
+fn r5_bodies(pw: PaintedWorld, er: const Errand, role: integer, kind: u8,
+             count: integer, park: const Hex,
+             ticks: integer) -> (integer, integer, integer, text, integer) {
+    rb_pal = load_palette(PALETTE);
+    rb_row = errand_role_of(role);
+    rb_c   = cycle_build(er, rb_row, rb_pal, pw, height_layer_empty(), kind);
+    rb_b   = bound_of(er, rb_c);
+    rb_st  = wave_state_empty();
+    rb_at  = errand_anchor(er, rb_row.laden);
+    rb_i   = 0;
+    while rb_i < count {
+        rb_st.enemies += [Enemy { q: rb_at.q, r: rb_at.r, kind: kind,
+                                  alive: true, errand: true, route: er }];
+        rb_i += 1;
+    }
+    if park.q >= 0 { vehicle_place(rb_st.player, park.q, park.r); }
+
+    rb_seen = 0;
+    rb_out  = 0;
+    rb_dev  = 0;
+    rb_say  = "";
+    rb_t    = 0;
+    while rb_t < ticks {
+        wave_tick(rb_st, rb_pal, pw, marker_empty(), r5_far_core());
+        rb_t += 1;
+        for rb_e in rb_st.enemies {
+            // ⚠ The § Rc filter: a robot the bubble took reads
+            // `ROLE_NONE` and is no longer bounded by this round.
+            rb_r2 = errand_role_of(errand_role(rb_e));
+            if rb_r2.empty == ANCHOR_NONE { continue; }
+            rb_seen += 1;
+            // ⚠⚠ The DEVIATION control — a body standing where the rule
+            // says has not been pushed, and a run in which nothing was
+            // pushed cannot say anything about a deviating body.
+            rb_want = cycle_where(rb_e, rb_c, rb_st.now);
+            if rb_want.q != rb_e.q || rb_want.r != rb_e.r { rb_dev += 1; }
+            // ⚠⚠ **THE LEG THE MOB IS ACTUALLY ON, and its disc alone.**
+            // `@X336`: the body may stand somewhere the rule does not,
+            // but its DISTANCE to the anchor is the rule's — so the leg's
+            // own disc is exactly the claim, and the union is not.
+            rb_ph = cycle_phase(rb_c, rb_r2, bank_rate(enemy_speed(kind)),
+                                rb_st.now - rb_e.route.slip);
+            if !bound_disc_holds(rb_b, rb_ph.0, Hex { q: rb_e.q, r: rb_e.r }) {
+                rb_out += 1;
+                if rb_say == "" {
+                    rb_say = " first at tick {rb_t}: body ({rb_e.q},{rb_e.r}) "
+                             + "outside the disc of leg {rb_ph.0}, radius "
+                             + "{rb_b.radii[rb_ph.0] ?? 0}, slip "
+                             + "{rb_e.route.slip}";
+                }
+            }
+        }
+    }
+    (rb_seen, rb_out, rb_dev, rb_say, r5_outside(pw, rb_b).0)
+}
+
+// @DRY-185 — a body that was pushed off its route is still inside
+fn test_r5_the_bound_contains_a_deviating_body() {
+    // ⚠ Three mobs on ONE routine, so they queue behind each other and
+    // the sidestep fires — `tests/30_rc_the_conformance.loft` measured
+    // **37** hex disagreements in exactly this shape.
+    tv_open = r5_bodies(r5_world(false), r5_gatherer(), ROLE_GATHER,
+                        as_u8(ENEMY_KIND_REGULAR), 3, r5_nowhere(), 40);
+    tv_bent = r5_bodies(r5_world(true), r5_gatherer(), ROLE_GATHER,
+                        as_u8(ENEMY_KIND_REGULAR), 3, Hex { q: 4, r: 6 }, 40);
+    // ⚠⚠ **THE CONTROL FIRST.**  A run in which nothing deviated is a
+    // run in which the claim was never asked, and it would read green.
+    // ⚠ And the bound leaves real ground out in both worlds, or the
+    // containment below is a claim about a region with no edge.
+    assert(tv_open.4 > 0 && tv_bent.4 > 0,
+           "R5 CONTROL — the bound leaves out {tv_open.4} and {tv_bent.4} "
+           + "standable hexes, so it has no edge for a body to be inside of");
+    assert(tv_open.2 + tv_bent.2 > 0,
+           "R5 CONTROL — nothing was ever pushed off its route "
+           + "({tv_open.2} + {tv_bent.2} of {tv_open.0} + {tv_bent.0} "
+           + "body-ticks), so this gate cannot see a deviating body at all");
+    assert(tv_open.1 + tv_bent.1 == 0,
+           "R5 — {tv_open.1} + {tv_bent.1} of {tv_open.0} + {tv_bent.0} "
+           + "body-ticks left the bound, over an open world and a bent one, "
+           + "with {tv_open.2} + {tv_bent.2} of them off the rule's hex."
+           + "{tv_open.3}{tv_bent.3}");
+}
+
+// ─── ⚠⚠ WHAT MAKES THE BOUND A *POI'S* BOUND ────────────────────
+
+fn r5_world_of_places() -> PoiWorld {
+    rp_w = poi_world_new();
+    rp_w.pois += [poi_at(POI_KIND_NEST, r5_home().q, r5_home().r)];
+    rp_w
+}
+
+// @DRY-186 — one query for a whole population, and the count is not in it
+fn test_r5_the_bound_does_not_grow_with_the_population() {
+    tp_pal = load_palette(PALETTE);
+    tp_pw  = r5_world(true);
+    tp_hl  = height_layer_empty();
+    tp_one = r5_world_of_places();
+    tp_one.routes += [poi_route(0, ROLE_GATHER, as_u8(ENEMY_KIND_REGULAR),
+                                r5_work(), Hex { q: 0, r: 0 }, 1)];
+    tp_many = r5_world_of_places();
+    tp_many.routes += [poi_route(0, ROLE_GATHER, as_u8(ENEMY_KIND_REGULAR),
+                                 r5_work(), Hex { q: 0, r: 0 }, 40)];
+    tp_b1 = poi_bound(tp_one,  0, tp_pal, tp_pw, tp_hl);
+    tp_b40 = poi_bound(tp_many, 0, tp_pal, tp_pw, tp_hl);
+    assert(bound_legs(tp_b1) > 0,
+           "the bound of one hauler is EMPTY, so the comparison below is "
+           + "between two nothings");
+    tp_diff = 0;
+    tp_i = 0;
+    while tp_i < bound_legs(tp_b1) {
+        tp_c1 = tp_b1.centres[tp_i];
+        tp_c2 = tp_b40.centres[tp_i];
+        if tp_c1 == null || tp_c2 == null { tp_diff += 1; }
+        else {
+            if tp_c1.q != tp_c2.q || tp_c1.r != tp_c2.r { tp_diff += 1; }
+        }
+        if (tp_b1.radii[tp_i] ?? 0) != (tp_b40.radii[tp_i] ?? 0) {
+            tp_diff += 1;
+        }
+        tp_i += 1;
+    }
+    // ⚠⚠ **`@X301`'s *one query instead of N* is exactly this**: forty
+    // mobs on one route have the bound of one, because a bound is a
+    // union over ROUTES and never over BODIES.
+    assert(bound_legs(tp_b1) == bound_legs(tp_b40) && tp_diff == 0,
+           "R5 — a population of 40 bounds {bound_legs(tp_b40)} discs where "
+           + "one bounds {bound_legs(tp_b1)}, {tp_diff} of them different — "
+           + "so the bound is per-BODY and the collapse @X301 asks for is "
+           + "not there");
+}
+
+// @DRY-187 — a place may change state, and its bound does not move
+fn test_r5_the_bound_is_the_same_region_whatever_state_the_place_is_in() {
+    ts_pal = load_palette(PALETTE);
+    ts_pw  = r5_world(true);
+    ts_hl  = height_layer_empty();
+    ts_base = 0 - 1;
+    ts_diff = 0;
+    ts_say  = "";
+    for ts_state in [POI_STATE_WORKING, POI_STATE_DAMAGED,
+                     POI_STATE_COLLAPSED, POI_STATE_RAIDED,
+                     POI_STATE_REPAIRED] {
+        ts_w = r5_world_of_places();
+        ts_w.routes += [poi_route(0, ROLE_GATHER, as_u8(ENEMY_KIND_REGULAR),
+                                  r5_work(), Hex { q: 0, r: 0 }, 4)];
+        ts_p = ts_w.pois[0];
+        if ts_p != null { poi_state_set(ts_p, ts_state, 7 * R5_TICK); }
+        ts_b = poi_bound(ts_w, 0, ts_pal, ts_pw, ts_hl);
+        // ⚠ Folded to one integer so the comparison is a single value —
+        // the region, not its spelling.
+        ts_fold = 0;
+        ts_i = 0;
+        while ts_i < bound_legs(ts_b) {
+            ts_c = ts_b.centres[ts_i];
+            ts_r = ts_b.radii[ts_i] ?? 0;
+            if ts_c != null {
+                ts_fold = ts_fold * 31 + ts_c.q * 7 + ts_c.r * 13 + ts_r;
+            }
+            ts_i += 1;
+        }
+        if ts_base < 0 { ts_base = ts_fold; }
+        if ts_fold != ts_base {
+            ts_diff += 1;
+            if ts_say == "" {
+                ts_say = " state {ts_state} folds to {ts_fold}, working to "
+                         + "{ts_base}";
+            }
+        }
+        // ⚠ And the state really was written, with its `since` — a
+        // silent no-op here would make every fold agree for the wrong
+        // reason (`CLAUDE.md` § a gate that reads PERFECT).
+        ts_p2 = poi_of(ts_w, 0);
+        assert(ts_p2.state == ts_state && ts_p2.since == 7 * R5_TICK,
+               "poi_state_set did not take: state {ts_p2.state} since "
+               + "{ts_p2.since}, wanted {ts_state} since {7 * R5_TICK}");
+    }
+    assert(ts_diff == 0,
+           "R5 — the bound MOVED under {ts_diff} of 5 states, so a POI is "
+           + "not free to be stateful and @FR-E-Place-State does not pay "
+           + "for itself.{ts_say}");
+}
+
+// ─── ⚠ THE ATTACHMENT, AND WHAT IS REFUSED ──────────────────────
+
+// @DRY-188 — the POI's hex lands in the anchor its KIND names
+fn test_r5_anchors_derive_from_the_poi() {
+    ta_a = Hex { q: 20, r: 5 };
+    ta_b = Hex { q: 30, r: 6 };
+    ta_p = Hex { q: 4,  r: 4 };
+    ta_bad = 0;
+    ta_say = "";
+    // (kind, role, which anchor should hold the POI, then `a`, then `b`)
+    ta_kinds: vector<integer> = [POI_KIND_NEST, POI_KIND_FACE,
+                                 POI_KIND_DEPOT, POI_KIND_SHED,
+                                 POI_KIND_FACE];
+    ta_roles: vector<integer> = [ROLE_GATHER, ROLE_HAUL, ROLE_HAUL,
+                                 ROLE_HARVEST, ROLE_GUARD];
+    ta_i = 0;
+    while ta_i < len(ta_kinds) {
+        ta_k = ta_kinds[ta_i] ?? POI_KIND_NONE;
+        ta_r = ta_roles[ta_i] ?? ROLE_NONE;
+        ta_poi = poi_at(ta_k, ta_p.q, ta_p.r);
+        ta_er  = poi_errand(ta_poi, poi_route(0, ta_r,
+                                              as_u8(ENEMY_KIND_REGULAR),
+                                              ta_a, ta_b, 3));
+        ta_mine = poi_kind_of(ta_k).anchor;
+        ta_at   = errand_anchor(ta_er, ta_mine);
+        if ta_at.q != ta_p.q || ta_at.r != ta_p.r {
+            ta_bad += 1;
+            if ta_say == "" {
+                ta_say = " a '{poi_kind_of(ta_k).name}' running "
+                         + "'{errand_role_of(ta_r).name}' put its own hex at "
+                         + "({ta_at.q},{ta_at.r}) rather than "
+                         + "({ta_p.q},{ta_p.r})";
+            }
+        }
+        // ⚠ And the far anchors came from the route, in ANCHOR order —
+        // a mapping that depended on how a caller ordered two hexes
+        // would be a rule nobody could read off the tables.
+        ta_far = 0;
+        for ta_k2 in [ANCHOR_HOME, ANCHOR_WORK, ANCHOR_ALT] {
+            if !poi_role_uses(errand_role_of(ta_r), ta_k2) { continue; }
+            if ta_k2 == ta_mine { continue; }
+            ta_h = errand_anchor(ta_er, ta_k2);
+            ta_want_q = ta_a.q;
+            ta_want_r = ta_a.r;
+            if ta_far == 1 { ta_want_q = ta_b.q; ta_want_r = ta_b.r; }
+            if ta_h.q != ta_want_q || ta_h.r != ta_want_r {
+                ta_bad += 1;
+                if ta_say == "" {
+                    ta_say = " '{errand_role_of(ta_r).name}' anchor {ta_k2} "
+                             + "is ({ta_h.q},{ta_h.r}), wanted "
+                             + "({ta_want_q},{ta_want_r})";
+                }
+            }
+            ta_far += 1;
+        }
+        ta_i += 1;
+    }
+    assert(ta_bad == 0,
+           "R5 — {ta_bad} anchors did not derive from the POI across five "
+           + "kind/role pairs.{ta_say}");
+}
+
+// @DRY-189 — a route attached to a place its round never visits is refused
+fn test_r5_a_route_the_round_never_visits_is_refused() {
+    tf_w = poi_world_new();
+    tf_w.pois += [poi_at(POI_KIND_NEST,  1, 4)];   // 0 — ANCHOR_HOME
+    tf_w.pois += [poi_at(POI_KIND_DEPOT, 9, 4)];   // 1 — ANCHOR_ALT
+    tf_w.pois += [poi_new()];                       // 2 — not a place
+    tf_far = Hex { q: 15, r: 4 };
+    tf_kind = as_u8(ENEMY_KIND_REGULAR);
+
+    // ⚠⚠ **THE CONTROL FIRST**: a route that IS on its place's round has
+    // to be accepted, or the refusals below are a function that says no
+    // to everything.
+    tf_ok = poi_route_fault(tf_w, poi_route(0, ROLE_GATHER, tf_kind,
+                                            tf_far, Hex { q: 0, r: 0 }, 4));
+    assert(tf_ok == "",
+           "CONTROL — a gatherer attached to its NEST was refused: {tf_ok}");
+
+    // ⚠ A gatherer's round is WORK → HOME and never touches ALT, so a
+    // DEPOT is a place its population would not be bounded by.
+    tf_bad = poi_route_fault(tf_w, poi_route(1, ROLE_GATHER, tf_kind,
+                                             tf_far, Hex { q: 0, r: 0 }, 4));
+    tf_none = poi_route_fault(tf_w, poi_route(2, ROLE_GATHER, tf_kind,
+                                              tf_far, Hex { q: 0, r: 0 }, 4));
+    tf_oob = poi_route_fault(tf_w, poi_route(9, ROLE_GATHER, tf_kind,
+                                             tf_far, Hex { q: 0, r: 0 }, 4));
+    tf_role = poi_route_fault(tf_w, poi_route(0, ROLE_NONE, tf_kind,
+                                              tf_far, Hex { q: 0, r: 0 }, 4));
+    tf_pop = poi_route_fault(tf_w, poi_route(0, ROLE_GATHER, tf_kind,
+                                             tf_far, Hex { q: 0, r: 0 }, 0));
+    assert(tf_bad != "" && tf_none != "" && tf_oob != "" && tf_role != ""
+           && tf_pop != "",
+           "R5 — a route was accepted that should not be: off-round "
+           + "'{tf_bad}', no place '{tf_none}', out of range '{tf_oob}', "
+           + "no role '{tf_role}', no population '{tf_pop}'");
+    // ⚠ And the world-level door reports the ROUTE's index, because a
+    // message saying *some route* sends a reader back through the list.
+    tf_w.routes += [poi_route(0, ROLE_GATHER, tf_kind, tf_far,
+                              Hex { q: 0, r: 0 }, 4)];
+    tf_w.routes += [poi_route(1, ROLE_GATHER, tf_kind, tf_far,
+                              Hex { q: 0, r: 0 }, 4)];
+    assert(poi_world_fault(tf_w) != ""
+           && poi_world_fault(tf_w) != poi_route_fault(tf_w,
+                  poi_route(1, ROLE_GATHER, tf_kind, tf_far,
+                            Hex { q: 0, r: 0 }, 4)),
+           "poi_world_fault does not name which route: '{poi_world_fault(tf_w)}'");
+}
+
+// @DRY-190 — the window query answers both ways
+fn test_r5_the_window_query_answers_both_ways() {
+    tw_pw = r5_world(true);
+    tw_er = r5_gatherer();
+    tw_c  = r5_cycle(tw_pw, tw_er, ROLE_GATHER, as_u8(ENEMY_KIND_REGULAR));
+    tw_b  = bound_of(tw_er, tw_c);
+    assert(bound_legs(tw_b) > 0, "no bound to query");
+    // ⚠⚠ A window that answers YES to everything is the same vacuity the
+    // containment gate guards against, one function over — so the NO is
+    // asserted first.
+    assert(!bound_meets(tw_b, Hex { q: 200, r: 200 }, 3),
+           "R5 CONTROL — the bound claims to meet a window 200 hexes away, "
+           + "so it would never let anything be skipped");
+    assert(bound_meets(tw_b, Hex { q: r5_work().q, r: r5_work().r }, 0),
+           "R5 — the bound does not meet a window ON its own anchor");
+    // ⚠ And a window just outside the far anchor's disc, reached only by
+    // its radius — which is what makes the SUM of radii the rule rather
+    // than either one of them.
+    // ⚠ A window far outside every disc, whose OWN radius is what closes
+    // the gap — so a `bound_meets` that compared one radius instead of the
+    // sum would answer no.
+    assert(bound_meets(tw_b, Hex { q: 60, r: 4 }, 45),
+           "R5 — a window whose own radius reaches the bound reads as a "
+           + "miss, so bound_meets is comparing one radius and not the sum");
+}
+
+// ─── ⚠⚠ PROBE — how much of a map does the bound actually cover? ──
+
+// ⚠⚠ **The bound is only worth having if it EXCLUDES something**, and a
+// region is cheap to state and easy to make vacuous.  This counts it: on
+// each authored map, the standable hexes inside the bound against every
+// standable hex there is — read the loose way `bound_holds` reads it
+// (lattice) and the tight way the proof is stated in (field distance).
+//
+// ⚠ It is a COUNT and never a clock (`@M029`).
+fn r5_map(name: text) -> EditorState {
+    rm_pal    = load_palette(PALETTE);
+    rm_loaded = load_map_or_empty(map_slot_path(MAPS, name), rm_pal);
+    editor_state_from(rm_loaded.0,
+                      load_markers_or_empty(map_marker_slot_path(MAPS, name)),
+                      rm_loaded.1,
+                      picker_default(PALETTE))
+}
+
+
+// The standable hex with the smallest or the largest `q` anywhere on the
+// map.
+//
+// ⚠ Chosen over *the edge of the middle row* because a sea-default world
+// is not a rectangle: `starter_01`'s middle row has no standable hex at
+// all, and an anchor the probe could not place would have read as a map
+// with no round rather than as a probe with a bad rule.
+fn r5_extreme(pal: vector<GroundType>, pw: PaintedWorld,
+              hl: const HeightLayer, west: boolean) -> Hex {
+    re_best = r5_nowhere();
+    for re_h in pw.painted {
+        if !can_stand(pal, pw, hl, as_u8(ENEMY_KIND_REGULAR), re_h.q, re_h.r) {
+            continue;
+        }
+        if re_best.q < 0 {
+            re_best = Hex { q: re_h.q, r: re_h.r };
+            continue;
+        }
+        if west {
+            if re_h.q < re_best.q { re_best = Hex { q: re_h.q, r: re_h.r }; }
+        }
+        else {
+            if re_h.q > re_best.q { re_best = Hex { q: re_h.q, r: re_h.r }; }
+        }
+    }
+    re_best
+}
+
+fn test_probe_r5_how_much_of_a_map_the_bound_covers() {
+    tc_names = ["starter_01", "crossroads_02", "the_gap_03"];
+    tc_say   = "";
+    tc_stand = 0;
+    tc_lat   = 0;
+    tc_fld   = 0;
+    for tc_n in tc_names {
+        tc_s   = r5_map(tc_n);
+        tc_pal = load_palette(PALETTE);
+        tc_hl  = height_layer_empty();
+        tc_w = r5_extreme(tc_pal, tc_s.pw, tc_hl, true);
+        tc_e = r5_extreme(tc_pal, tc_s.pw, tc_hl, false);
+        assert(tc_w.q >= 0 && tc_e.q >= 0 && tc_w.q != tc_e.q,
+               "{tc_n}: no pair of standable hexes to anchor a round on");
+
+        // ⚠ The longest round the patch affords: a nest at one edge, the
+        // face at the other.  A SHORT round would flatter the bound.
+        tc_er  = errand_at(ROLE_GATHER, tc_w, tc_e, Hex { q: 0, r: 0 });
+        tc_c   = cycle_build(tc_er, errand_role_of(ROLE_GATHER), tc_pal,
+                             tc_s.pw, tc_hl, as_u8(ENEMY_KIND_REGULAR));
+        if !cycle_running(tc_c) {
+            tc_say = tc_say + "{tc_n}: the widest round does not connect; ";
+            continue;
+        }
+        tc_b = bound_of(tc_er, tc_c);
+        tc_fh = flow_build(tc_pal, tc_s.pw, tc_hl,
+                           as_u8(ENEMY_KIND_REGULAR), tc_w);
+        tc_fw = flow_build(tc_pal, tc_s.pw, tc_hl,
+                           as_u8(ENEMY_KIND_REGULAR), tc_e);
+        tc_n_stand = 0;
+        tc_n_lat   = 0;
+        tc_n_fld   = 0;
+        for tc_h in tc_s.pw.painted {
+            if !can_stand(tc_pal, tc_s.pw, tc_hl, as_u8(ENEMY_KIND_REGULAR),
+                          tc_h.q, tc_h.r) { continue; }
+            tc_n_stand += 1;
+            if bound_holds(tc_b, Hex { q: tc_h.q, r: tc_h.r }) {
+                tc_n_lat += 1;
+            }
+            // ⚠ The tight region: within a leg's length of that leg's
+            // anchor in FIELD distance, which is where the proof lives.
+            tc_in = false;
+            tc_i  = 0;
+            while tc_i < len(tc_c.anchors) {
+                tc_a = tc_c.anchors[tc_i] ?? ANCHOR_NONE;
+                tc_l = tc_c.lengths[tc_i] ?? 0;
+                tc_d = FLOW_UNREACHABLE;
+                if tc_a == ANCHOR_HOME { tc_d = flow_distance(tc_fh, tc_h.q, tc_h.r); }
+                if tc_a == ANCHOR_WORK { tc_d = flow_distance(tc_fw, tc_h.q, tc_h.r); }
+                if tc_d <= tc_l { tc_in = true; }
+                tc_i += 1;
+            }
+            if tc_in { tc_n_fld += 1; }
+        }
+        tc_stand += tc_n_stand;
+        tc_lat   += tc_n_lat;
+        tc_fld   += tc_n_fld;
+        tc_say = tc_say + "{tc_n} {tc_n_lat}/{tc_n_fld}/{tc_n_stand} "
+                 + "(lattice/field/standable, round {tc_c.period}); ";
+    }
+    assert(tc_stand > 0 && tc_lat > 0,
+           "PROBE R5 — no map offered a standable hex, so both readings "
+           + "below are counts of nothing");
+    // ⚠⚠ **THE CONCLUSION IS ASSERTED, NEVER THE COUNTS** (`@M071`'s own
+    // rule): a map edit moves the numbers for a legitimate reason, and
+    // `tests/a2_the_maps.loft` already gates the maps themselves.
+    //
+    // ⚠⚠ **FINDING 1 — the cheap reading is FREE.**  `bound_holds` asks
+    // `lat_distance` where the proof is stated in FIELD distance, and the
+    // difference across three authored maps is **one hex**.  That is what
+    // buys `2 × legs` integers, no world to read, and an answer that does
+    // not change while anything moves.
+    assert((tc_lat - tc_fld) * 100 <= tc_stand,
+           "PROBE R5 — reading the bound in LATTICE distance admits "
+           + "{tc_lat - tc_fld} hexes the FIELD-distance region excludes, "
+           + "of {tc_stand} standable across three maps — so the cheap "
+           + "form has stopped being free and `bound_holds` owes a field.  "
+           + "{tc_say}");
+    // ⚠⚠ **FINDING 2 — AND IT EXCLUDES NOTHING AT THIS SCALE.**  A round
+    // that crosses its patch has legs as long as the patch, so the disc
+    // round each anchor covers the patch: **1466 of 1467**.  ⚠ The bound
+    // is therefore not a filter for the POIs a base lands among — those
+    // are exactly the ones that must be materialised — and what it
+    // excludes is the world OFF the patch, which dryopea has not got yet
+    // (`@X298`, `@X299`).  ⚠ It is `@M072`'s second reading with a new
+    // subject: *the authored maps are smaller than the thing being
+    // measured*, and a red line here means the world finally outgrew the
+    // round, which is when the bound starts paying.
+    assert(tc_lat * 10 >= tc_stand * 9,
+           "PROBE R5 — the bound now covers only {tc_lat} of {tc_stand} "
+           + "standable hexes, so a POI's reach has stopped being the "
+           + "whole patch and the bound has become a real filter.  "
+           + "{tc_say}");
+}

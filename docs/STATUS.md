@@ -335,3 +335,19 @@ thirteen dead** (`@M060`) — `@M058`'s *a wave that cannot reach you
 cannot die*, inverted.  ⚠ `salvage_at` refuses SPOIL, because a clearer
 takes the whole pile whenever it is smaller than one bite and one helper
 in reach would hold a trench open for ever (`@M059`).
+
+**`plans/30` R5 — a PLACE owns its mobs, and its reach is a region you
+can ask about before anything moves** (2026-08-29).  `src/poi.loft`: a
+`Poi { kind, q, r, state, since }`, a population that is a set of ROUTES
+rather than a list of BODIES, and the BOUND — which turns *could this
+ever be in this window?* from `N` queries into ONE.  ⚠⚠ **The claim is
+per-LEG and the union is only the QUERY** (`@X342`): a union is slack,
+and against it a radius one hex short, a terminal leg with no disc, an
+off-by-one rim and a sidestep that breaks `@FR-E-Non-Increasing` all read
+green — four of nine mutations, and the four that matter (`@M080`).
+⚠⚠ **And the probe chose the fixture**: on an authored map the bound
+covers **1466 of 1467** standable hexes, because a round that crosses its
+patch has legs as long as the patch — so it is not a filter for the POIs
+a base lands among, and what it excludes is the world OFF the patch,
+which dryopea has not got (`@M079`).  ⚠ Still INERT: nothing builds a
+`PoiWorld`, and the 920 gate measurements did not move.

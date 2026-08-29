@@ -1,0 +1,643 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// A PLACE THAT OWNS MOBS — and the BOUND that is the point of one.
+//
+// `plans/30` R5, `@X301` and `@FR-E-Poi-Owns`.  Owner, 2026-08-28:
+// *"so a given scenario has a set of points of interest and these have
+// their attached mobs to them with their cycle that can be quite far and
+// elaborate."*
+//
+// ⚠⚠ **A POI is the scenario-scale object the economy's node is not.**
+// [`ROBOT_ECONOMY.md`](../docs/ROBOT_ECONOMY.md)'s node is a fact about a
+// 1.5 km cell — *this cell mines*.  A point of interest is its **local
+// expression on a patch**: the working face, the spoil heap, the
+// maintenance shed, the nest.  ⚠ So a base does not have to land on a
+// mine to have something to look at — it lands in a neighbourhood, and
+// the neighbourhood has features.
+//
+// ── ⚠⚠ WHY IT EXISTS AT ALL, AND IT IS NOT THE RECORD ───────────
+//
+// ⚠⚠ **The record is scaffolding; the BOUND is the phase.**  `@X299`
+// needs *could this ever be in this window?* answered **statically**, so
+// that a mob nobody can see costs nothing and
+// [`plans/22`](../plans/22-the-field-cache/README.md)'s LOD refusal needs
+// no exception.  A bound per MOB would be `N` queries; `@FR-E-Poi-Owns`
+// is what collapses it:
+//
+// > ⚠⚠ **the POI IS the bound, and culling one culls its whole
+// > population** — one query instead of `N`.
+//
+// ⚠⚠ **AND THE POPULATION'S SIZE DOES NOT ENTER IT.**  A POI with forty
+// haulers on one route has exactly the bound of a POI with one, because
+// a bound is a union over ROUTES and never over BODIES.  That is what
+// makes the collapse real rather than a change of index: `poi_bound`
+// reads `PoiRoute`s and cannot see a body at all.
+//
+// ── ⚠⚠ THE BOUND, AND ITS PROOF IS A COROLLARY OF `@X336` ───────
+//
+// > ⚠⚠ **The bound is the union, over the cycle's legs, of the disc
+// > centred on each leg's anchor with that leg's LENGTH as its radius.**
+//
+// ⚠ It is not a new claim and it needs no new measurement — it falls out
+// of two things already written down:
+//
+//   1. **`@FR-E-Non-Increasing`** — a mob's distance to its current
+//      destination never increases; `flow_steps` strictly decreases it
+//      and `flow_sidesteps` holds it equal, and `errand_descend` reaches
+//      for those two and nothing else.  So a body that STARTS leg `i` at
+//      field distance `lengths[i]` from `anchors[i]` is inside
+//      `disc(anchors[i], lengths[i])` for every moment of that leg,
+//      deviating or not.
+//   2. **`@X336`** — what is TOTAL about a mob is its DISTANCE: a body's
+//      field distance to its current anchor equals the rule's under
+//      every deviation.  The rule's distance inside leg `i` is at most
+//      `lengths[i]`, so the body's is too.
+//
+// ⚠⚠ **So containment is a COROLLARY rather than a hypothesis**, and the
+// gate exists to catch the day one of those two stops being true —
+// `plans/30` § Count the RE-ASSERTION SITES, with the sidestep at
+// number 3.
+//
+// ── ⚠⚠ AND THE CLAIM IS PER-LEG; THE UNION IS ONLY THE QUERY ────
+//
+// ⚠⚠ **A UNION IS SLACK, AND ASKING IT IS NOT ASKING ANYTHING.**  The
+// two facts above are about **one leg at a time**, and the union of the
+// discs is a much larger promise than either of them makes.  R5 measured
+// what that costs a gate: containment *against the union* survived a
+// radius **one hex short**, a **terminal leg given no disc at all**, and
+// a **rim excluded by an off-by-one** — three defects, none visible,
+// because a hex outside its own leg's disc is inside a neighbouring
+// leg's.
+//
+// ⚠ So there are two doors and the difference between them is nameable
+// (`@FR-F-Nameable-Difference`):
+//
+//   * **`bound_disc_holds(b, leg, h)`** — *is a body walking THIS leg
+//     where the rule allows?*  This is the CLAIM, and it is what a gate
+//     must ask.
+//   * **`bound_holds(b, h)` / `bound_meets(b, …)`** — *could anything
+//     bounded by this be there?*  This is the QUERY, and slack is exactly
+//     what it wants: over-answering costs work, under-answering is a
+//     defect.
+//
+// ── ⚠⚠ IT IS READ IN LATTICE DISTANCE, AND THAT IS A CHOICE ─────
+//
+// ⚠ The region above is stated in FIELD distance, which is where
+// `@FR-E-Non-Increasing` proves it.  `bound_holds` asks `lat_distance`
+// instead, and the two are not the same set:
+//
+// > ⚠⚠ **`lat_distance(a, b)` is at most the length of ANY path from
+// > `a` to `b`**, so it is at most the field distance — and the lattice
+// > disc therefore **CONTAINS** the field disc.
+//
+// ⚠ A superset is the safe direction and the only safe direction.  The
+// query's job (R6) is *may I skip materialising this population?*: a
+// bound that answers *maybe* where the truth is *no* costs work, and one
+// that answered *no* where the truth is *yes* would put a body somewhere
+// the rule never said.  ⚠⚠ **And what it buys is that the bound needs no
+// FIELD to be read** — it is `2 × legs` integers, static for the sortie,
+// answerable with no world at all, which is what `@X300`'s *a query
+// rather than a scan* has to mean if it is to mean anything.
+//
+// ⚠ What the looseness COSTS is measured rather than assumed —
+// `tests/30_r5_the_bound.loft` § PROBE counts both regions against the
+// three authored maps.
+//
+// ── ⚠⚠ STATE BELONGS TO THE PLACE, AND THE BOUND DOES NOT MOVE ──
+//
+// `@FR-E-Place-State`: a POI may hold as much state as it likes — there
+// are few of them and they do not move — while a mob may hold none
+// beyond `carry` and `slip`.  ⚠⚠ **And the bound is INVARIANT under a
+// state change**, which is what lets a POI be stateful for free: every
+// cycle a POI can issue is anchored on that POI, so the union over its
+// states is the same region.  ⚠ `poi_state_set` writes `since` with the
+// state because the closed form becomes **piecewise** at a state change
+// and a segment with no `t0` is `@X335`'s leg boundary with a new
+// subject.
+//
+// ⚠⚠ **A POI IS NEVER CULLED** (`@FR-E-Poi-Persists`, `@X304`) — which
+// is why there is no verb here that removes one.  A collapsed mine is a
+// STATE: the workers still walk to it, arrive, and find out.  *Not
+// materialised* and *culled* are different words and this file only ever
+// means the first.
+//
+// ── ⚠ WHAT LANDS INERT ──────────────────────────────────────────
+//
+// ⚠ `POI_KIND_NONE` is 0 and `poi_new()` is one, so [loft#914]'s silent
+// default is a place that is not a place — and nothing in the game
+// builds a `PoiWorld` yet, exactly as `ROLE_NONE` is what every
+// `Enemy { … }` literal already means.
+
+use lattice;
+use flow;
+use painted;
+use palette;
+use passable;
+use height;
+use errand;
+
+// ─── ⚠ WHAT KIND OF PLACE ───────────────────────────────────────
+
+// ⚠ `POI_KIND_NONE` is 0 for [loft#914]'s reason: a partial literal is
+// then a place with no population and no bound, which is today's game.
+pub const POI_KIND_NONE:  integer = 0;
+pub const POI_KIND_NEST:  integer = 1;   // where a gatherer's round ends
+pub const POI_KIND_FACE:  integer = 2;   // the working face — what is cut
+pub const POI_KIND_DEPOT: integer = 3;   // the drop-off a hauler runs to
+pub const POI_KIND_SHED:  integer = 4;   // the maintenance point (`@X339`)
+pub const POI_KIND_HEAP:  integer = 5;   // the spoil heap, the wreck field
+pub const POI_KIND_COUNT: integer = 6;
+
+// What a POI IS, to the mobs attached to it.
+//
+// ⚠⚠ **A KIND IS A ROW AND THE TABLE IS INDEXED** — never a `kind ==`
+// anywhere, which is `@X333`'s rule with places as its second subject.
+// ⚠ The one column that matters is `anchor`: **which of its population's
+// three anchors this POI is standing on**.  That is the whole of
+// *anchors derive from the POI*, and it is data.
+pub struct PoiKind {
+    name:   text,
+    anchor: integer,
+}
+
+pub fn poi_kind_row(name: text, anchor: integer) -> PoiKind {
+    PoiKind { name: name, anchor: anchor }
+}
+
+// ⚠⚠ **THE KIND TABLE.**  A kind the engine does not know reads as
+// `POI_KIND_NONE` rather than as a branch nobody took.
+pub fn poi_kinds() -> vector<PoiKind> {
+    pk_all: vector<PoiKind> = [];
+    pk_all += [poi_kind_row("none",  ANCHOR_NONE)];
+    pk_all += [poi_kind_row("nest",  ANCHOR_HOME)];
+    pk_all += [poi_kind_row("face",  ANCHOR_WORK)];
+    pk_all += [poi_kind_row("depot", ANCHOR_ALT)];
+    // ⚠ A shed is a NEST by geometry and not by fiction — both are the
+    // anchor a round ENDS at (`@FR-E-Home-Is-A-Place`), and what
+    // separates them is which role attaches, which is the route's column
+    // rather than this one's.
+    pk_all += [poi_kind_row("shed",  ANCHOR_HOME)];
+    pk_all += [poi_kind_row("heap",  ANCHOR_ALT)];
+    pk_all
+}
+
+// The row for a kind — `POI_KIND_NONE`'s for anything the table has not
+// got.  ⚠ It is the ONE lookup; nothing else may index the table.
+pub fn poi_kind_of(kind: integer) -> PoiKind {
+    pko_all = poi_kinds();
+    pko_i   = kind;
+    if pko_i < 0 || pko_i >= len(pko_all) { pko_i = POI_KIND_NONE; }
+    pko_all[pko_i] ?? poi_kind_row("none", ANCHOR_NONE)
+}
+
+// The kind a script or a measurement spells `name`, or `POI_KIND_NONE`.
+//
+// ⚠ **The writer and the reader are ONE** (`@D007` is what happens when
+// they are two): a name comes out of the row it names.
+pub fn poi_kind_named(name: text) -> integer {
+    pkn_i = 0;
+    for pkn_row in poi_kinds() {
+        if pkn_row.name == name { return pkn_i; }
+        pkn_i += 1;
+    }
+    POI_KIND_NONE
+}
+
+// ─── ⚠ WHAT STATE IT IS IN ──────────────────────────────────────
+
+// ⚠ A state a mob can SEE on arrival, never a number on a screen
+// (`@X304`).  ⚠⚠ `WORKING` is 0 so a partial literal is a place that is
+// fine, which is every POI a scenario has ever authored.
+pub const POI_STATE_WORKING:   integer = 0;
+pub const POI_STATE_DAMAGED:   integer = 1;
+pub const POI_STATE_COLLAPSED: integer = 2;
+pub const POI_STATE_RAIDED:    integer = 3;
+pub const POI_STATE_REPAIRED:  integer = 4;
+pub const POI_STATE_COUNT:     integer = 5;
+
+// ─── ⚠⚠ THE PLACE ITSELF ────────────────────────────────────────
+
+// Four facts and a timestamp — and the timestamp is the one that is not
+// obvious.
+//
+// ⚠⚠ **`since` is what makes the closed form PIECEWISE rather than
+// broken.**  `position(t) = cycle(poi.state, anchors, t − slip)` gains an
+// argument the moment a POI can change state, and a segment with no `t0`
+// is a cycle evaluated against a rule that was not in force — which is
+// `@X335`'s *the bank does not restart at a leg boundary* asked about a
+// place instead of a leg.  ⚠ It is one field on a POI and **nothing at
+// all on a mob**, which is `@FR-E-Place-State` paying for itself.
+pub struct Poi {
+    kind:  integer,
+    q:     integer,
+    r:     integer,
+    state: integer,
+    since: integer,   // base units at which the current state began
+}
+
+// A place that is not a place — which is every scenario today.
+pub fn poi_new() -> Poi {
+    Poi { kind: POI_KIND_NONE, q: 0, r: 0,
+          state: POI_STATE_WORKING, since: 0 }
+}
+
+// A place, spelled out.  ⚠ Build from here or from `poi_new` and never
+// from a partial literal — [loft#914] would take a default silently and
+// put the nest on the origin.
+pub fn poi_at(kind: integer, q: integer, r: integer) -> Poi {
+    Poi { kind: kind, q: q, r: r,
+          state: POI_STATE_WORKING, since: 0 }
+}
+
+// Where this place is.
+pub fn poi_hex(p: const Poi) -> Hex {
+    Hex { q: p.q, r: p.r }
+}
+
+// Is there a place here at all?
+pub fn poi_real(p: const Poi) -> boolean {
+    poi_kind_of(p.kind).anchor != ANCHOR_NONE
+}
+
+// The player raided it, or the swarm repaired it.
+//
+// ⚠⚠ **THE ONE DOOR FOR A STATE CHANGE, and it writes BOTH halves** —
+// the pattern this repo keeps six times over (`break_structure` is *"the
+// one site, and it does both halves"*).  A state written without its
+// `since` is a new segment of a piecewise form with no `t0`, and that
+// fails **silently**: the mobs keep walking, to the rule that is no
+// longer in force.
+//
+// Example: @DRY-187
+pub fn poi_state_set(p: Poi, state: integer, now: integer) {
+    p.state = state;
+    p.since = now;
+}
+
+// ─── ⚠⚠ THE POPULATION — a set of ROUTES, never a list of BODIES ──
+
+// One route a POI issues, and how many mobs are on it.
+//
+// ⚠⚠ **THE POPULATION IS A ROUTE AND A COUNT, and that is what makes the
+// bound cheap.**  Forty haulers walking one route have one bound between
+// them; a list of forty bodies would have forty and would move every
+// tick.  ⚠ `count` is therefore read by the MATERIALISER (R6) and by
+// nothing in this file — `poi_bound` cannot see it, which is the claim
+// `tests/30_r5_the_bound.loft` gates.
+//
+// ⚠ `a` and `b` are the anchors the POI is NOT: a role uses at most
+// three and the POI supplies one, so two is exactly enough.  Which of
+// them lands where is decided by the ROLE's row and the KIND's row
+// together — see `poi_errand` — and never by their order here.
+pub struct PoiRoute {
+    poi:   integer,   // index into `PoiWorld.pois`
+    role:  integer,   // an `errand.loft` role — the round it walks
+    kind:  u8,        // the mover class, which is what decides passability
+    a:     Hex,
+    b:     Hex,
+    count: integer,   // how many mobs are on this route
+}
+
+pub fn poi_route(poi: integer, role: integer, kind: u8,
+                 a: const Hex, b: const Hex, count: integer) -> PoiRoute {
+    PoiRoute { poi: poi, role: role, kind: kind,
+               a: Hex { q: a.q, r: a.r }, b: Hex { q: b.q, r: b.r },
+               count: count }
+}
+
+// A scenario's places, and what walks between them.
+//
+// ⚠⚠ **FLAT, and the flatness is load-bearing** ([loft#974]): a
+// `vector<PoiRoute>` field on `Poi` is the shape that reads back EMPTY
+// once an unrelated struct has been allocated — the same reason `Cycle`
+// is a vector of hexes rather than a vector of legs.  Each route carries
+// its POI's index instead.
+pub struct PoiWorld {
+    pois:   vector<Poi>,
+    routes: vector<PoiRoute>,
+}
+
+// No places at all — which is every scenario today.
+pub fn poi_world_new() -> PoiWorld {
+    PoiWorld { pois: [], routes: [] }
+}
+
+// The place at `i`, or a place that is not one.  ⚠ The ONE lookup.
+pub fn poi_of(w: const PoiWorld, i: integer) -> Poi {
+    if i < 0 || i >= len(w.pois) { return poi_new(); }
+    pof_p = w.pois[i];
+    if pof_p == null { return poi_new(); }
+    Poi { kind: pof_p.kind, q: pof_p.q, r: pof_p.r,
+          state: pof_p.state, since: pof_p.since }
+}
+
+// ─── ⚠⚠ ANCHORS DERIVE FROM THE POI ─────────────────────────────
+
+// Does this role's round use this anchor at all?
+//
+// ⚠ Asked of the ROW and never of the role id, so a role added to
+// `errand_roles()` is answered here the day it exists.  ⚠⚠ The terminal
+// leg counts: a harvester's `home` is an anchor its round reaches once
+// (`@X341`), and a bound that left it out would not contain the walk
+// that ends the round.
+pub fn poi_role_uses(row: const Role, anchor: integer) -> boolean {
+    if anchor == ANCHOR_NONE { return false; }
+    if row.empty == anchor || row.laden == anchor { return true; }
+    errand_terminal(row) && anchor == ANCHOR_HOME
+}
+
+// The routine a mob on this route runs.
+//
+// ⚠⚠ **THIS IS *anchors derive from the POI*, and it is the whole of the
+// attachment.**  The POI's hex goes into the anchor its KIND names; the
+// anchors the role uses and the POI is not are filled from the route's
+// `a` then `b`, **in anchor order** — HOME, WORK, ALT — so the mapping is
+// a fact about the two tables and never about how a caller happened to
+// order two hexes.
+//
+// ⚠ An anchor the role does not use is left at the origin, where
+// `errand_destination_of` will never ask for it.
+//
+// Example: @DRY-188
+pub fn poi_errand(p: const Poi, rt: const PoiRoute) -> Errand {
+    per_row  = errand_role_of(rt.role);
+    per_mine = poi_kind_of(p.kind).anchor;
+    per_next = 0;
+    per_h = Hex { q: 0, r: 0 };
+    per_w = Hex { q: 0, r: 0 };
+    per_a = Hex { q: 0, r: 0 };
+    for per_k in [ANCHOR_HOME, ANCHOR_WORK, ANCHOR_ALT] {
+        if !poi_role_uses(per_row, per_k) { continue; }
+        per_at = Hex { q: p.q, r: p.r };
+        if per_k != per_mine {
+            // ⚠ Read the FIELDS and never the struct — `[rt.a, rt.b]`
+            // is a copy of `PoiRoute` twice over (`advice[avoidable-copy]`),
+            // and the two hexes are rebuilt here in any case.
+            per_at = Hex { q: rt.a.q, r: rt.a.r };
+            if per_next == 1 { per_at = Hex { q: rt.b.q, r: rt.b.r }; }
+            if per_next > 1  { per_at = Hex { q: 0, r: 0 }; }
+            per_next += 1;
+        }
+        if per_k == ANCHOR_HOME { per_h = per_at; }
+        if per_k == ANCHOR_WORK { per_w = per_at; }
+        if per_k == ANCHOR_ALT  { per_a = per_at; }
+    }
+    errand_at(rt.role, per_h, per_w, per_a)
+}
+
+// ─── ⚠⚠ THE BOUND ───────────────────────────────────────────────
+
+// A static region, as discs.
+//
+// ⚠⚠ **`2 × legs` integers and no world**, which is what makes the query
+// a query.  ⚠ FLAT for [loft#974]'s reason, like `Cycle` and `PoiWorld`
+// above.
+pub struct Bound {
+    centres: vector<Hex>,
+    radii:   vector<integer>,
+}
+
+// A region containing NOTHING — which is what a POI with no population
+// bounds, and it is the honest answer rather than the whole plane.
+pub fn bound_new() -> Bound {
+    Bound { centres: [], radii: [] }
+}
+
+// How many discs — the query's cost, and `@FR-E-Closed-Form`'s O(legs)
+// with the same legs in it.
+pub fn bound_legs(b: const Bound) -> integer {
+    len(b.radii)
+}
+
+// Does this region contain nothing at all?
+pub fn bound_empty(b: const Bound) -> boolean {
+    len(b.radii) == 0
+}
+
+// One more disc.  ⚠ `b` is a PARAMETER and therefore aliases — a `Bound`
+// returned from a function would be a copy and the append a silent
+// no-op ([loft#894]).
+//
+// ⚠⚠ **A NEGATIVE RADIUS IS CLAMPED AND NEVER DROPPED.**  Dropping would
+// shift every disc after it, and `bound_disc_holds` is asked BY LEG
+// INDEX — so a skipped disc would silently point the claim at a
+// neighbouring leg's region and read green.  A radius of 0 is a disc
+// holding exactly its centre, which is the honest answer.
+pub fn bound_disc(b: Bound, centre: const Hex, radius: integer) {
+    bdc_r = radius;
+    if bdc_r < 0 { bdc_r = 0; }
+    b.centres += [Hex { q: centre.q, r: centre.r }];
+    b.radii   += [bdc_r];
+}
+
+// Everything in `other` as well.  ⚠⚠ **A union of discs is a LIST of
+// discs and never a merge** — two discs that overlap are cheaper to keep
+// apart than to reason about, and `bound_legs` is what prices that.
+pub fn bound_join(b: Bound, other: const Bound) {
+    bj_i = 0;
+    while bj_i < len(other.radii) {
+        bj_c = other.centres[bj_i];
+        bj_r = other.radii[bj_i] ?? 0;
+        if bj_c != null { bound_disc(b, Hex { q: bj_c.q, r: bj_c.r }, bj_r); }
+        bj_i += 1;
+    }
+}
+
+// ⚠⚠ **THE BOUND OF ONE ROUND** — the union, over the cycle's legs, of
+// the disc centred on each leg's anchor with that leg's length as its
+// radius (`@FR-E-Poi-Owns`).
+//
+// ⚠ The terminal leg is one of `c.anchors` already (R4b), so a round
+// that ends somewhere it does not pass is contained without a word here
+// about endings.
+//
+// ⚠ A routine with no cycle bounds nothing, which is the same refusal
+// `cycle_build` already made and not a second one.
+//
+// ⚠⚠ **DISC `i` IS LEG `i`, STRUCTURALLY** — a leg with no anchor
+// refuses the WHOLE bound rather than being skipped, exactly as
+// `cycle_build` refuses a whole cycle for a leg that does not connect.
+// ⚠ Skipping would shift every disc after it, and `bound_disc_holds`
+// asks BY LEG INDEX: the claim would quietly be checked against a
+// neighbouring leg's region and would read green.  `cycle_build` cannot
+// produce such a leg today, which is precisely why the branch must not
+// be a silent one.
+//
+// Enforces @FR-E-Poi-Owns: *the bound is the union over legs of the disc
+// centred on each anchor with the incoming leg's length as its radius* is
+// this loop and nothing else — the rule's own sentence, written once.
+//
+// Example: @DRY-184
+pub fn bound_of(er: const Errand, c: const Cycle) -> Bound {
+    bof_b = bound_new();
+    if !cycle_running(c) { return bof_b; }
+    bof_i = 0;
+    while bof_i < len(c.anchors) {
+        bof_a = c.anchors[bof_i] ?? ANCHOR_NONE;
+        bof_l = c.lengths[bof_i] ?? 0;
+        if bof_a == ANCHOR_NONE { return bound_new(); }
+        bound_disc(bof_b, errand_anchor(er, bof_a), bof_l);
+        bof_i += 1;
+    }
+    bof_b
+}
+
+// Is this hex inside disc `i` — the one belonging to leg `i`?
+//
+// ⚠⚠ **THIS IS WHERE THE CLAIM LIVES, AND `bound_holds` BELOW IS ONLY
+// WHERE THE QUERY LIVES.**  What `@FR-E-Non-Increasing` proves is
+// per-LEG: a body walking leg `i` is inside **that leg's** disc.  The
+// union is slack — a hex outside its own leg's disc is very likely inside
+// a neighbour's — so *is it in the union* is a claim almost nothing can
+// falsify, and `plans/30` R5 measured that: a radius one hex short, a
+// terminal leg given no disc at all, and a rim excluded by an off-by-one
+// all satisfied it.
+//
+// ⚠⚠ **LATTICE distance, and the file header is where that is argued** —
+// it is a SUPERSET of the field-distance region the proof is stated in,
+// which is the safe direction and the only one.
+//
+// Example: @DRY-184, @DRY-185
+pub fn bound_disc_holds(b: const Bound, i: integer, h: const Hex) -> boolean {
+    if i < 0 || i >= len(b.radii) { return false; }
+    bdh_c = b.centres[i];
+    if bdh_c == null { return false; }
+    lat_distance(Hex { q: bdh_c.q, r: bdh_c.r }, h) <= (b.radii[i] ?? 0)
+}
+
+// Is this hex inside the region at all?
+//
+// ⚠ The union, and it is `bound_disc_holds` over every disc rather than a
+// second reading of the same rule — `@FR-F-Nameable-Difference` would
+// have nothing to name between two copies of one comparison.
+//
+// Example: @DRY-184, @DRY-185
+pub fn bound_holds(b: const Bound, h: const Hex) -> boolean {
+    bh_i = 0;
+    while bh_i < len(b.radii) {
+        if bound_disc_holds(b, bh_i, h) { return true; }
+        bh_i += 1;
+    }
+    false
+}
+
+// ⚠⚠ **THE QUERY R6 IS FOR: could anything bounded by this ever be
+// inside that window?**  Two discs meet exactly when the distance
+// between their centres is at most the sum of their radii — so the
+// answer costs `legs` subtractions and reads no world, which is
+// `@X300`'s *a query rather than a scan* made literal.
+//
+// ⚠ It over-answers in the same direction `bound_holds` does: *maybe*
+// costs work, *no* where the truth is *yes* would be a defect.
+//
+// Enforces @FR-E-Boundable: *could this ever be in this window?* is a
+// QUERY rather than a scan, and this is the query — `legs` subtractions,
+// no world, and an answer that does not change while anything moves.
+//
+// Example: @DRY-190
+pub fn bound_meets(b: const Bound, centre: const Hex, radius: integer) -> boolean {
+    bm_i = 0;
+    while bm_i < len(b.radii) {
+        bm_c = b.centres[bm_i];
+        bm_r = b.radii[bm_i] ?? 0;
+        if bm_c != null {
+            if lat_distance(Hex { q: bm_c.q, r: bm_c.r }, centre)
+               <= bm_r + radius {
+                return true;
+            }
+        }
+        bm_i += 1;
+    }
+    false
+}
+
+// ⚠⚠ **THE POI'S OWN BOUND — the union over its ROUTES**, and the whole
+// point of the file: one region for a whole population, computed once
+// before anything moves.
+//
+// ⚠ It builds a cycle per route, which is two or three flow sweeps
+// (`@M072`: ~500 cells each).  **Not in the tick** — a POI does not move
+// and neither do its anchors, so this is a sortie-long constant.
+//
+// ⚠⚠ **THE RESULT IS FOR THE QUERY AND NEVER FOR THE CLAIM.**  A POI
+// with two routes concatenates two rounds' discs, so disc `i` is no
+// longer leg `i` of anything — `bound_disc_holds` on THIS bound would
+// ask about a leg of some other round.  ⚠ The per-leg claim belongs to
+// one round's `bound_of`, which is what `tests/30_r5_the_bound.loft`
+// asks; `bound_holds` and `bound_meets` are index-free and are what a
+// POI's bound is for (`@X342`).
+//
+// Enforces @FR-E-Poi-Owns, the half `bound_of` cannot: *the POI IS the
+// bound, and culling one culls its whole population*.  It ranges over
+// `PoiRoute`s and can see no body at all, so the answer is one region for
+// a population of any size — which is what makes it one query and not N.
+//
+// Example: @DRY-186
+pub fn poi_bound(w: const PoiWorld, poi: integer, pal: vector<GroundType>,
+                 pw: PaintedWorld, hl: const HeightLayer) -> Bound {
+    pb_b = bound_new();
+    pb_p = poi_of(w, poi);
+    if !poi_real(pb_p) { return pb_b; }
+    for pb_rt in w.routes {
+        if pb_rt.poi != poi { continue; }
+        pb_row = errand_role_of(pb_rt.role);
+        pb_er  = poi_errand(pb_p, pb_rt);
+        pb_c   = cycle_build(pb_er, pb_row, pal, pw, hl, pb_rt.kind);
+        pb_one = bound_of(pb_er, pb_c);
+        bound_join(pb_b, pb_one);
+    }
+    pb_b
+}
+
+// ─── ⚠ WHAT IS REFUSED ──────────────────────────────────────────
+
+// Why this route is not a route, or "".
+//
+// ⚠⚠ **THE ONE THAT MATTERS IS THE LAST: a route may name a POI its
+// round never visits.**  `poi_errand` would then put the POI's hex into
+// an anchor nothing reads, the mobs would walk a round the place is not
+// on, and *the POI is the bound* would be false with every count green.
+// ⚠ It is R4b's lesson with a new subject — a row can promise something
+// its geometry cannot keep, and the refusal belongs where the geometry
+// is known.
+//
+// Example: @DRY-189
+pub fn poi_route_fault(w: const PoiWorld, rt: const PoiRoute) -> text {
+    if rt.poi < 0 || rt.poi >= len(w.pois) {
+        return "route names POI {rt.poi}, and this world has {len(w.pois)}";
+    }
+    prf_p = poi_of(w, rt.poi);
+    if !poi_real(prf_p) {
+        return "route is attached to a POI of kind {prf_p.kind}, which is "
+               + "not a place — its population would have no anchor";
+    }
+    prf_row = errand_role_of(rt.role);
+    if prf_row.empty == ANCHOR_NONE {
+        return "route runs role {rt.role}, which has no round to walk";
+    }
+    if rt.count <= 0 {
+        return "route has a population of {rt.count}";
+    }
+    prf_mine = poi_kind_of(prf_p.kind).anchor;
+    if !poi_role_uses(prf_row, prf_mine) {
+        return "a '{poi_kind_of(prf_p.kind).name}' is the "
+               + "{prf_mine} anchor, and role '{prf_row.name}' never goes "
+               + "there — so this population would not be bounded by the "
+               + "place it is attached to";
+    }
+    ""
+}
+
+// Why this world is not one, or "".  ⚠ The first failing route names
+// itself, because a message that said *some route* would send a reader
+// back through the list by hand.
+pub fn poi_world_fault(w: const PoiWorld) -> text {
+    pwf_i = 0;
+    for pwf_rt in w.routes {
+        pwf_why = poi_route_fault(w, pwf_rt);
+        if pwf_why != "" { return "routes[{pwf_i}]: {pwf_why}"; }
+        pwf_i += 1;
+    }
+    ""
+}

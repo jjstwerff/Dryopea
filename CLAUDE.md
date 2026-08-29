@@ -90,8 +90,20 @@ legs repeat until the shift and then ONE **terminal leg** walks it to
 the repair point.  ⚠⚠ **The turn is a THIRD VALUE OF THE BAG** and never
 a second clock: the mover has no cycle and cannot know the period, but
 *the first empty leg after the shift* IS `T = ceil(S / period) × period`.
-⚠ And it is compared in **hexes, never in time** (`@M077`).  ⚠ R5 (the
-POI and its bound) and R7 (distraction) are what is left.
+⚠ And it is compared in **hexes, never in time** (`@M077`).
+⚠⚠ **AND SINCE R5 A PLACE OWNS ITS MOBS AND ITS REACH IS A REGION YOU
+CAN ASK ABOUT BEFORE ANYTHING MOVES** (2026-08-29, `@X342`, `@M079`,
+`@M080`) — a `Poi`, a population that is a set of ROUTES rather than a
+list of BODIES, and the BOUND, which is what turns *could this ever be
+in this window?* from `N` queries into one.  ⚠⚠ **The claim is per-LEG
+and the union is only the QUERY**: a union is SLACK, and against it a
+radius one hex short, a terminal leg with no disc, an off-by-one rim and
+**a sidestep that breaks `@FR-E-Non-Increasing`** all read green — four
+of nine mutations, and the four that matter.  ⚠⚠ **And the probe chose
+the fixture**: on an authored map the bound covers **1466 of 1467**
+standable hexes, because a round that crosses its patch has legs as long
+as the patch.  ⚠ R6 (the three tiers) and R7 (distraction) are what is
+left.
 
 ⚠⚠ **AND THE CREW WORK ON THEIR OWN** ([`plans/29`](plans/29-the-crews-own-work/README.md),
 complete 2026-08-28) — a crew member nobody has told anything takes the
@@ -117,11 +129,11 @@ critical path is **4, the SCRAMBLE**.
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1737 green**, ~320 s on a busy box (592 s beside another suite, 753 s on 2026-08-29), 138 files |
+| tests | `scripts/test.sh` | **1745 green**, ~320 s on a busy box (592 s beside another suite, 753 s and 1252 s on 2026-08-29 — the second was a `graphics` cdylib rebuild), 139 files |
 | scenarios | `scripts/validate.sh` | **50 scripts, 920 measurements**, ~20 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
-| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **419 defined, 415 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
-| ⚠⚠ formal rules | `scripts/rules.sh` — inside `test.sh` | **44 defined, 16 ENFORCED in 55 code sites** (`@X327`).  ⚠ Resolution GATES; coverage only REPORTS.  ⚠⚠ A doc reference is **not** an enforcing site (`@X330`) |
+| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **422 defined, 418 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
+| ⚠⚠ formal rules | `scripts/rules.sh` — inside `test.sh` | **44 defined, 18 ENFORCED in 73 code sites** (`@X327`).  ⚠ It moved at `plans/30` R5 because `src/poi.loft` gave `@FR-E-Poi-Owns` and `@FR-E-Place-State` their first code at all — never because citations were sprinkled (`@X328`).  ⚠ Resolution GATES; coverage only REPORTS.  ⚠⚠ A doc reference is **not** an enforcing site (`@X330`) |
 
 ⚠ `scripts/test.sh` is the canonical runner — **never `loft test` directly**
 (§ Key commands says what it does that you would otherwise skip).
@@ -585,6 +597,7 @@ source of truth and the listing is a navigational summary of it.
 | `build.loft` | **THE BUILD ORDER** — the only way a structure comes into existence during a run.  ⚠ Work is stored as SPENT, in INTEGER units |
 | `persist.loft` | **A PLANET — a place that REMEMBERS**.  `dryopea_planets/<planet>/<player>/world.json`; the GROUND and the MARKERS, not a run |
 | `errand.loft` | **A ROBOT GOING ABOUT ITS BUSINESS** — `Traffic`, `errand_done` / `errand_depart`, `plans/30` R1's **ROUTINE** (`Errand`'s five anchors, the role TABLE, `errand_destination`), R2's **CYCLE** (`cycle_at` / `cycle_build` / `cycle_fault`) R3's **MOVER** (`errand_step`, `errand_fields`, `errand_cycling`), R4's **ENDING** (`Role.shift`, `errand_home_done`) and R4b's **TERMINAL LEG** (`Cycle.terminal`, `cycle_turn`, `errand_terminal`, `errand_shift_over`, `ERRAND_BAG_HOMEWARD`).  ⚠ The bubble takes the errand, ONE WAY.  ⚠⚠ **The BAG steers and never a clock**, and the table is INDEXED — never a `role ==`.  ⚠⚠ **The bank does not RESTART at a leg boundary** (`@X335`).  ⚠⚠ **`errand_step` is the ONE DOOR that moves a mob on a cycle and it owns `slip`** (`@FR-E-One-Door`); the position is exact in its PHASE and only conditionally in its HEX (`@X336`), and **a DWELL is not a BLOCK** (`@X337`).  ⚠⚠ **HOME is a LEG of the round** and a mob leaves the roster the tick its cycle brings it there (`@X338`); ⚠ `errand_fields` builds one field per ANCHOR and never per DESTINATION (`@D008`).  ⚠⚠ **A round whose home is OFF it grows a TERMINAL leg** (`@X341`), and **the turn is a third value of the BAG, compared in HEXES** (`@M077`) |
+| `poi.loft` | **A PLACE THAT OWNS MOBS — and the BOUND that is the point of one** (`plans/30` R5).  `Poi`, the KIND table, the five states, `PoiRoute` / `PoiWorld`, `poi_errand`, `poi_bound`, and `Bound` + `bound_disc_holds` / `bound_holds` / `bound_meets`.  ⚠⚠ **The record is scaffolding; the BOUND is the phase** — `@FR-E-Poi-Owns` collapses *could this ever be in this window?* from `N` queries to ONE.  ⚠⚠ **The population is a set of ROUTES and never a list of BODIES**, so forty haulers on one route have the bound of one.  ⚠⚠ **The CLAIM is per-LEG and the UNION is only the QUERY** (`@X342`) — a union is SLACK, and against it four of nine mutations survived including the sidestep that breaks `@FR-E-Non-Increasing`.  ⚠ Read in LATTICE distance on purpose: a superset is the safe direction and it costs ONE hex across three maps (`@M079`).  ⚠ A POI is never CULLED, so there is no verb here that removes one |
 | `skill.loft` | **CREW SKILLS — build, repair, scout**.  `Skills` on `Helper`, `skill_factor`, and the DETECTION rule |
 | `endure.loft` | **ENDURANCE — work spends it, rest restores it**.  ⚠ A tired person works LESS and never stops |
 | `jammer.loft` | **THE JAMMER SWITCH — turning your own core off**.  ⚠ It stops the SUPPLY and never the SIEGE |
@@ -1153,6 +1166,11 @@ names; most of them exist because somebody did it without reading.
 | Ask what a blocked enemy attacks | `src/spawn.loft::enemy_target` over `flow.loft::flow_desire` |
 | Hurt or kill an enemy | `src/spawn.loft::enemy_hurt`; `wave_deaths` is the ONE death path |
 | Judge what a wave's COMPOSITION is worth | [`plans/24`](plans/24-the-siege-front/README.md) § W2 — ⚠⚠ **the siege front is the wall's WIDTH** |
+| Bound a POI's population, or ask *could this ever be in this window?* | `src/poi.loft` + `@X342` — ⚠⚠ **the CLAIM is `bound_disc_holds(b, leg, h)` and the UNION is only the QUERY**: a union is SLACK, and against it a radius one hex short, a terminal leg with no disc, an off-by-one rim and a sidestep that breaks `@FR-E-Non-Increasing` ALL read green (`@M080`).  ⚠ Two doors, one implementation — the claim asks a body about its own leg, the query wants the slack |
+| Add a POI, attach a population, or ask what a POI IS to its mobs | `src/poi.loft` § ANCHORS DERIVE FROM THE POI — ⚠⚠ **a KIND is a ROW and the table is INDEXED** (`@X333`'s rule, places as its second subject): the one column that matters is *which anchor this POI is standing on*.  ⚠ A route whose round never visits its place is REFUSED (`poi_route_fault`), which is R4b's lesson with a new subject |
+| Ask how many mobs a bound costs, or propose a bound per mob | ⚠⚠ **The population is a set of ROUTES and never a list of BODIES** — `poi_bound` cannot see a body, so forty haulers on one route have the bound of one.  That IS `@X301`'s *one query instead of N*, and a bound that counted bodies would be a change of index rather than a collapse |
+| Ask whether the BOUND is worth anything yet | `@M079` — ⚠⚠ **on an authored map it covers 1466 of 1467 standable hexes**, because a round that crosses its patch has legs as long as the patch.  ⚠ It is not a filter for the POIs a base lands among; what it excludes is the world OFF the patch, which dryopea has not got (`@X298`, `@X299`).  ⚠ `@M072`'s second reading with a new subject |
+| Change a POI's state, or ask why one is never removed | `src/poi.loft::poi_state_set` — ⚠ the ONE door, and it writes `since` with the state because the closed form goes PIECEWISE at a change.  ⚠⚠ **A POI is never CULLED** (`@X304`): there is no verb that removes one, and *not materialised* is a different word |
 | Add ambient life, or ask why a robot walks past instead of at you | `src/errand.loft` — ⚠⚠ **the bubble takes the errand, ONE WAY** |
 | Add a mob ROLE, or ask where a robot on a routine is going | `src/errand.loft` § THE ROUTINE + `@X333` — ⚠⚠ **a role is a ROW and the table is INDEXED, never a `role ==`**, and a test sweeps `src/` to say so.  ⚠ **The BAG steers and never a clock** (`@M073`): 4, 40 and 400 hexes all close; a period one column away gets 13 hexes out for ever |
 | Ask where a mob is at an arbitrary MOMENT, or add a leg to a cycle | `src/errand.loft` § THE CYCLE + `@X335` — ⚠⚠ **one modulo, O(legs), one index, and never a step forward** (`@FR-E-Closed-Form`), so an un-tracked mob is COMPUTED and `plans/22`'s LOD refusal needs no exception.  ⚠⚠ **The bank does NOT restart at a leg boundary**: `walked(t) − walked(t₀)`, never `walked(t − t₀)`, and a **DWELL is a LEG with a length, not a pause**.  ⚠ A clock period must be a whole number of ticks and is refused otherwise (`@M074`) |

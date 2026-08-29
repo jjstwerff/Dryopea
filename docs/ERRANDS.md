@@ -270,9 +270,26 @@ hexes adrift from its own rule after three minutes; it is (E-Slip)
 abused rather than broken, and only a liveness member that can actually
 turn mid-tick could see it.
 
-⚠ **What still awaits its phase**: no POI owns a population (R5), and no
-`.keys` scenario authors a routine — so every rule above is enforced and
-none of it runs in the shipped content.
+⚠⚠ **AND R5 SHIPPED `src/poi.loft`, WHICH ENFORCES (E-Poi-Owns),
+(E-Place-State) AND (E-Boundable)** — the three that had no code at all.
+A POI owns a population, a mob's anchors derive from one, and *could this
+ever be in this window?* is `bound_meets`: `legs` subtractions, no world
+read, unchanged while anything moves.  ⚠⚠ **What moved is how
+(E-Poi-Owns) is ASKED** (`@X342`).  Its sentence states the bound as a
+UNION over legs, and a union is **slack**: against it a radius one hex
+short, a terminal leg with no disc, an off-by-one rim and a sidestep that
+breaks **(E-Non-Increasing)** outright all read GREEN.  What
+(E-Non-Increasing) and `@X336` prove is about **one leg at a time**, so
+the CLAIM is `bound_disc_holds(b, leg, h)` and the union is only the
+QUERY — where slack is exactly what is wanted, because over-answering
+costs work and under-answering is a defect.  ⚠ The rule's own words are
+unchanged; what changed is that a gate now asks the member and not the
+quantifier.
+
+⚠ **What still awaits its phase**: no `.keys` scenario authors a routine
+or a POI, so every rule above is enforced and none of it runs in the
+shipped content.  ⚠ R7's scenario pair is what needs the vocabulary, and
+the writer and the reader go in as a PAIR (`@D007`).
 
 ## ⚠⚠ The model in ten lines
 

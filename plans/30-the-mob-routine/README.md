@@ -9,6 +9,42 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
+**R5 COMPLETE 2026-08-29 — a PLACE owns its mobs, and its reach is a
+region you can ask about before anything moves.**  R6 is startable.
+⚠ Gates: **1745 green over 139 files** (+8, all this phase's),
+`validate.sh` **50 scripts / 920 measurements** and `validate_gl.sh`
+**3 fixtures / 55 measurements**, both **UNCHANGED**.
+
+⚠⚠ **`@X342` — THE BOUND'S CLAIM IS PER-LEG, AND THE UNION IS ONLY THE
+QUERY.**  `@FR-E-Poi-Owns` states the bound as *the union over legs of
+the disc centred on each anchor with the incoming leg's length as its
+radius*, and the containment gate was written to match that sentence.
+⚠⚠ **It is very nearly unfalsifiable**: against the union, a radius one
+hex short, a terminal leg given no disc at all, a rim excluded by an
+off-by-one, and **a sidestep that could increase the distance** all read
+GREEN — four of nine mutations, and the four that matter.  ⚠ The reason
+is geometry: consecutive discs are centred a leg apart with that leg's
+length as their radius, so **a hex outside its own leg's disc sits inside
+its neighbour's**.  ⚠⚠ What `@FR-E-Non-Increasing` and `@X336` prove is
+about **one leg at a time**, so the CLAIM is `bound_disc_holds(b, leg,
+h)` and the union is a strictly larger promise nobody made.  ⚠ Two doors,
+one implementation, and the difference is nameable: the claim asks a body
+about its own leg; the query asks *could anything bounded by this be
+there*, where slack is what is wanted.
+
+⚠⚠ **`@M080` — nine mutations, four survived the union and nine are
+caught by the leg**, and the sidestep is the reading that matters: **13
+of 120 body-ticks leave the leg's disc where none leave the union.**
+⚠⚠ **`@M079` — and the probe chose the fixture.**  On the three authored
+maps the bound covers **1466 of 1467** standable hexes, because a round
+that crosses its patch has legs as long as the patch — so a containment
+gate over one of them would be satisfied by a region excluding ONE hex.
+⚠ The fixture is therefore a world much wider than its round, and what
+the bound LEAVES OUT is asserted before what it holds.  ⚠ The same probe
+prices the design's one shortcut: reading the bound in **lattice**
+distance rather than field distance admits **one hex** across three maps,
+which is what buys `2 × legs` integers and no world to read.
+
 **R4b COMPLETE 2026-08-29 — a round can end somewhere it does not
 pass, and the commonest robot in the world now has an ending.**
 R5 is startable.  ⚠ Gates: **1737 green over 138 files** (+6, all this
@@ -296,7 +332,7 @@ behaviour and clocks, gated by scenarios and counts.
 | **R3** — deviation, and `slip` | M | `tests/30_r3_the_deviation.loft` (5) | ✅ **COMPLETE 2026-08-28** — `@M075`, `@X336`, `@X337` |
 | **R4** — home is a PLACE | S | `tests/30_r4_home.loft` (6) — a played session | ✅ **COMPLETE 2026-08-28** — `@X338`, `@M076`, `@D008` |
 | **R4b** — the TERMINAL leg: a round that ends somewhere it does not pass | M | `tests/30_r4b_the_terminal_leg.loft` (6) — a played HARVESTER, plus R2's sweep extended | ✅ **COMPLETE 2026-08-29** — `@X341`, `@M078` |
-| **R5** — the POI, its population, its BOUND | M | ⚠ the containment gate above | **STARTABLE** — ⚠ **R0 probe 3 is ANSWERED and the bound is named**.  ⚠⚠ And R4b's terminal leg is now part of what the bound must contain |
+| **R5** — the POI, its population, its BOUND | M | `tests/30_r5_the_bound.loft` (8) — ⚠ the containment gate above, asked PER LEG | ✅ **COMPLETE 2026-08-29** — `@X342`, `@M079`, `@M080` |
 | **R6** — CULL / EVALUATE / MATERIALISE | M | ⚠ the `R` vs `2R` gate **and its differ-control** | Blocked on R5 |
 | **Rc** — the CONFORMANCE gate | S | `tests/30_rc_the_conformance.loft` (6) | ✅ **COMPLETE 2026-08-28** — ⚠ and it needed a LIVENESS gate beside it (`@X337`) |
 | **R7** — distraction: the hauler and your heap | M | a scenario pair + the *merely seen* negative control | Blocked on R5 |
@@ -1102,26 +1138,118 @@ freshly landed, and **only the latch knows which**.
 
 ## R5 — the POI, its population, its BOUND
 
-⚠ A `Poi { kind, q, r, state }`, a population attached to it, and every
-attached mob's anchors derived from the POI.  ⚠⚠ **The bound is the
-phase** — a static region, computed once, containing everything the
+✅ **COMPLETE 2026-08-29** — `src/poi.loft`, `tests/30_r5_the_bound.loft`
+(8).  ⚠ Gates: **1745 green over 139 files** (+8, all this phase's),
+`validate.sh` **50 scripts / 920 measurements** and `validate_gl.sh`
+**3 fixtures / 55 measurements**, both **UNCHANGED** — the inertness
+measured rather than asserted.
+
+A `Poi { kind, q, r, state, since }`, a population attached to it, and
+every attached mob's anchors derived from the POI.  ⚠⚠ **The bound was
+the phase** — a static region, computed once, containing everything the
 population can reach.
 
 ⚠⚠ **AND IT IS THE CYCLE'S REACH *DILATED BY THE DEVIATION*, WHICH THE
 FIRST VERSION OF THIS PLAN GOT WRONG.**  A sidestep puts a body on a hex
 the cycle never visits, so a bound computed from `cycle_at` alone **does
-not contain the thing it is supposed to bound**.  ⚠ R0 probe 3 is what
-says whether the dilation is a constant — and **if the deviation is
-unbounded there is no static bound and `@X300` has to be redesigned**,
-which is a plan-level answer rather than a phase-level one.
+not contain the thing it is supposed to bound**.  ⚠ R0 probe 3 answered
+that the deviation IS bounded — `flow_sidesteps` admits only
+equal-distance neighbours, so `@FR-E-Non-Increasing` holds — and R5
+inherited the answer rather than re-deriving it.
 
-**Gate** — the containment claim in § Invariant gate, **with its vacuity
-control**: a hex demonstrably outside the bound, or the assertion proves
-nothing.
+### What was built, and the four things the phase decided
 
-⚠ **Two to four per scenario** (`@X305`) is a scenario-authoring rule and
-**not enforced in code** — `@X322`: the library supplies the bound, the
-game supplies the number.
+**1. ⚠⚠ THE CLAIM IS PER-LEG, AND THE UNION IS ONLY THE QUERY**
+(`@X342`).  ⚠ This is the phase, and it was found by mutation rather
+than by design.  `@FR-E-Poi-Owns` states the bound as *the union over
+legs of the disc centred on each anchor with the incoming leg's length
+as its radius*, and the containment gate was written to match that
+sentence.  ⚠⚠ **Against the union, four of nine mutations survived and
+they were the load-bearing four** (`@M080`): a radius **one hex short**,
+a **terminal leg given no disc at all**, a **rim excluded by an
+off-by-one**, and **a sidestep that could increase the distance** —
+`@FR-E-Non-Increasing` broken outright, the one rule the whole bound
+rests on.  ⚠ The reason is geometry and not a weak fixture: consecutive
+discs are centred a leg apart with that leg's length as their radius, so
+**a hex outside its own leg's disc sits inside its neighbour's**.
+
+> ⚠⚠ **A UNION IS SLACK, AND ASKING IT IS NOT ASKING ANYTHING.**  What
+> `@FR-E-Non-Increasing` and `@X336` prove is about ONE LEG AT A TIME.
+
+⚠ So there are two doors and the difference between them is nameable
+(`@FR-F-Nameable-Difference`): **`bound_disc_holds(b, leg, h)` is the
+CLAIM** and a gate must ask it; **`bound_holds` / `bound_meets` is the
+QUERY**, where slack is exactly what is wanted, because over-answering
+costs work and under-answering is a defect.  ⚠ `bound_holds` is
+`bound_disc_holds` over every disc rather than a second copy of the
+comparison.  ⚠⚠ **Pointing the same two gates at the leg took it to 9 of
+9**, and the sidestep mutation is the reading that matters: **13 of 120
+body-ticks leave the leg's disc where none leave the union.**
+
+**2. ⚠⚠ THE POPULATION IS A SET OF ROUTES AND NEVER A LIST OF BODIES.**
+⚠ `@X301`'s *the POI IS the bound, and culling one culls its whole
+population — one query instead of `N`* is only true if the bound cannot
+see a body, so `poi_bound` ranges over `PoiRoute`s and a `count` is a
+column it never reads.  ⚠ **Forty haulers on one route have the bound of
+one**, which is asserted rather than described — and the mutation that
+unions once per body is caught by it.
+
+**3. ⚠ THE BOUND IS READ IN LATTICE DISTANCE, AND THE PROBE PRICED THE
+CHOICE** (`@M079`).  ⚠ The region is proved in FIELD distance;
+`bound_holds` asks `lat_distance`, which is at most any path length and
+therefore makes the lattice disc a **superset** — the safe direction,
+because a query that answers *maybe* costs work where one that answered
+*no* would be a defect.  ⚠⚠ **Across the three authored maps the
+superset admits ONE hex the tight region excludes** (1466 against 1465
+of 1467), which is what buys a bound of `2 × legs` integers, readable
+with no world at all.
+
+**4. ⚠ STATE BELONGS TO THE PLACE, AND THE BOUND DOES NOT MOVE WITH IT.**
+⚠ `poi_state_set` is the ONE door and writes `since` with the state,
+because the closed form becomes **piecewise** at a state change and a
+segment with no `t0` is `@X335`'s leg boundary with a new subject.  ⚠⚠
+The payoff is asserted: the bound folds to the same value under all five
+states, because every cycle a POI can issue is anchored on that POI.
+⚠ And the assertion that `poi_state_set` actually took comes first, or
+five identical folds would agree for the wrong reason.
+
+### ⚠⚠ AND THE PROBE CHOSE THE FIXTURE  `@M079`
+
+⚠ The probe was written to ask *is the bound worth having* and answered
+something sharper: **on an authored map it covers 1466 of 1467 standable
+hexes.**  A round that crosses its patch has legs as long as the patch,
+so the disc round each anchor covers the patch.
+
+> ⚠⚠ **The bound is not a filter for the POIs a base lands among** —
+> those are exactly the ones that must be materialised.  What it excludes
+> is the world OFF the patch, which dryopea has not got yet (`@X298`,
+> `@X299`).
+
+⚠ It is `@M072`'s second reading with a new subject — *the authored maps
+are smaller than the thing being measured* — and the probe asserts the
+FINDING rather than the counts, so a world that finally outgrows a round
+turns it red, which is when the bound starts paying.
+
+⚠⚠ **And it is why the fixture is a world much wider than its round.**  A
+containment gate over a map this size would be satisfied by a region that
+excluded one hex of 1467, so `r5_outside` counts what the bound LEAVES
+OUT and that count is asserted — at a third of the fixture, not *more
+than none* — **before** anything is asserted about what it holds.
+
+### What R5 did NOT build
+
+⚠ **No `.keys` vocabulary and no `WaveState` field.**  Nothing in the
+corpus authors a routine at all yet — `compare.loft`'s `errand_same` row
+is still the tripwire it was laid as — so a POI list on the wave state
+would be a field nothing could write.  ⚠ R7's scenario pair is what
+needs the verbs, and it is where the writer and the reader are added as a
+PAIR (`@D007`).
+
+⚠ **Nothing reads a POI's `state` yet.**  The five states are the
+catalogue's rows and `poi_state_set` is the door; *what a mob does on
+arrival is a leg selected by the POI's state* is R5a/R6's work, and the
+one claim R5 owed about state — that the bound does not move under it —
+is gated.
 
 ## R6 — CULL / EVALUATE / MATERIALISE
 

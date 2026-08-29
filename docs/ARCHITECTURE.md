@@ -1801,8 +1801,52 @@ src/
                    never slipped — it arrived, it was not held up.
                    ⚠ INERT: no scenario has a routine, so errand_fields
                    builds nothing and the fork in wave_tick is never
-                   taken — 920 gate measurements unmoved, through R4b
+                   taken — 920 gate measurements unmoved, through R5
                    as well
+  poi.loft         A PLACE THAT OWNS MOBS — and the BOUND that is the
+                   point of one (plans/30 R5, @X301, @FR-E-Poi-Owns).
+                   Poi { kind, q, r, state, since }, the KIND table
+                   (poi_kinds / poi_kind_of / poi_kind_named), the five
+                   states, poi_state_set, PoiRoute + PoiWorld,
+                   poi_errand, poi_bound, poi_route_fault, and
+                   Bound + bound_disc_holds / bound_holds / bound_meets.
+                   ⚠⚠ THE RECORD IS SCAFFOLDING; THE BOUND IS THE
+                   PHASE.  @X299 needs *could this ever be in this
+                   window?* answered STATICALLY, and @FR-E-Poi-Owns is
+                   what collapses it from N queries to one: the POI IS
+                   the bound.
+                   ⚠⚠ THE POPULATION IS A SET OF ROUTES AND NEVER A
+                   LIST OF BODIES — poi_bound reads PoiRoutes and
+                   cannot see a body, so forty haulers on one route
+                   have the bound of one.  A `count` is a column it
+                   never reads.
+                   ⚠⚠ THE CLAIM IS PER-LEG AND THE UNION IS ONLY THE
+                   QUERY (@X342).  bound_disc_holds(b, leg, h) is what
+                   @FR-E-Non-Increasing and @X336 actually prove;
+                   bound_holds is the union over it.  A union is SLACK
+                   — against it a radius one hex short, a terminal leg
+                   with no disc, an off-by-one rim and a sidestep that
+                   could increase the distance ALL read green (@M080).
+                   ⚠ Two doors, one implementation, and the difference
+                   is nameable: the claim asks a body about its own
+                   leg, the query asks whether anything could be here
+                   and WANTS the slack.
+                   ⚠ LATTICE distance, deliberately: lat_distance is at
+                   most any path length, so the lattice disc is a
+                   SUPERSET of the field-distance region — the safe
+                   direction — and it costs ONE hex across three maps
+                   (@M079) while buying a bound of 2 x legs integers
+                   that needs no world to read.
+                   ⚠ STATE BELONGS TO THE PLACE: poi_state_set is the
+                   ONE door and writes `since` with the state, because
+                   the closed form goes PIECEWISE at a change.  The
+                   bound does not move under any of the five states.
+                   ⚠⚠ A POI IS NEVER CULLED (@X304) — there is no verb
+                   here that removes one.  *Not materialised* and
+                   *culled* are different words.
+                   ⚠ INERT: nothing builds a PoiWorld yet, POI_KIND_NONE
+                   is 0, and no .keys verb authors one — R7's scenario
+                   pair is what needs the vocabulary
   skill.loft       CREW SKILLS — build, repair, scout (BACKLOG C1) —
                    SKILL_EFFECT_SPAN / _HALF, Skills { build, repair,
                    scout } on Helper, skill_factor, skill_work_units,
