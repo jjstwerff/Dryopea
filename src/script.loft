@@ -1436,8 +1436,15 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
     // One carryable thing.  ⚠ Coordinates FIRST, so the converter's
     // pair position matches every other coordinate verb.
     if sa_cmd == "object" {
-        if sa_argc != 5 {
+        // ⚠ SIX when the owner is a MOB (`plans/30` R7b): every other
+        // owner is one token and a mob is `mob <n>`, because the crew
+        // are BARE numbers and two owner spaces sharing one spelling is
+        // `@D007`'s shape waiting to happen.
+        if sa_argc < 5 || sa_argc > 6 {
             return "object needs <q> <r> <kind> <subj> <owner>";
+        }
+        if (sa_argc == 6) != ((tok[5] ?? "") == "mob") {
+            return "object: only a `mob <n>` owner takes a sixth argument";
         }
         sa_ov = script_ints(tok, 2);
         if len(sa_ov) != 2 { return "object: <q> and <r> must be integers"; }
@@ -1449,8 +1456,9 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         sa_ok = CARGO_WRECK;
         if sa_okw == "top" { sa_ok = CARGO_TOP; }
         else if sa_okw == "beacon" { sa_ok = CARGO_BEACON as integer; }
+        else if sa_okw == "salvage" { sa_ok = CARGO_SALVAGE as integer; }
         else if sa_okw != "wreck" {
-            return "object: unknown kind '{sa_okw}' — wreck, top, beacon";
+            return "object: unknown kind '{sa_okw}' — wreck, top, beacon, salvage";
         }
         sa_osj = (tok[4] ?? "") as integer?;
         if sa_osj == null { return "object: <subj> must be an integer"; }
@@ -1463,10 +1471,22 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         if sa_ow == "ground" { sa_owner = BLOCKER_NONE; }
         else if sa_ow == "gone" { sa_owner = CARGO_GONE; }
         else if sa_ow == "player" { sa_owner = BLOCKER_PLAYER; }
+        // ⚠⚠ **A MOB, and its index is the POI mob's and never a roster
+        // slot** (`plans/30` R7b) — `errand_owner` is the one place that
+        // number is made, and it is an identity that OUTLIVES a body.
+        else if sa_ow == "mob" {
+            sa_omv = (tok[6] ?? "") as integer?;
+            if sa_omv == null { return "object: <mob> must be an integer"; }
+            sa_omn = sa_omv ?? 0;
+            if sa_omn <= 0 {
+                return "object: a mob owner is ONE-BASED, so {sa_omn} names nobody";
+            }
+            sa_owner = BLOCKER_MOB + sa_omn;
+        }
         else {
             sa_oc = sa_ow as integer?;
             if sa_oc == null {
-                return "object: <owner> is ground, gone, player or a crew index, not '{sa_ow}'";
+                return "object: <owner> is ground, gone, player, `mob <n>` or a crew index, not '{sa_ow}'";
             }
             sa_ocn = sa_oc ?? 0;
             if sa_ocn < 0 || sa_ocn >= len(run.play.wave.crew) {

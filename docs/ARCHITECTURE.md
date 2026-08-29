@@ -1825,10 +1825,43 @@ src/
                    ⚠ cycle_carry is cycle_walked's REMAINDER — what a
                    mover is carrying toward its next hex — and it is
                    what stops a fresh body releasing that hex late.
-                   ⚠ INERT: no scenario has a routine, so errand_fields
-                   builds nothing and the fork in wave_tick is never
-                   taken — 920 gate measurements unmoved, through R6a
-                   as well
+                   ⚠ INERT through R6b: no scenario had a routine, so
+                   errand_fields built nothing and the fork in wave_tick
+                   was never taken — 920 gate measurements unmoved.
+                   R7a's `poi` / `route` verbs are what ended that
+                   plans/30 R7b — THE LURE (@X346,
+                   @FR-E-Built-Not-Seen): LURE_NONE / LURE_SALVAGE,
+                   Lure { name, reach }, errand_lures / _lure_of /
+                   _lure_named / _lure_known / _lure_names, and a fifth
+                   column on Role.  errand_lure_at (the nearest
+                   collectable pile within reach — EMPTY HANDS are half
+                   the rule, and `collectable` is vehicle.loft's so the
+                   thief and the owner cannot disagree about what
+                   salvage IS), errand_lure_take, errand_lure_drop,
+                   errand_toward (greedy, STRICTLY nearer, so it
+                   terminates), errand_owner, errand_load_pack/_metres/
+                   _source, errand_hex_cost.
+                   ⚠⚠ A HEX WALKED AWAY FROM ITS ANCHOR COSTS TWO — the
+                   one it spent and the one it owes — because a detour
+                   is paid BOTH WAYS and the return leg is
+                   indistinguishable from ordinary progress.  Charge one
+                   and the body is permanently short of its own rule, by
+                   the depth of the detour, silently.  With i steps out
+                   and d back the body is at D + i − d, the rule has
+                   advanced (i + d) − 2i = d − i, and D − (d − i) is the
+                   same number — so the two agree in DISTANCE at every
+                   moment of the detour with NOTHING REMEMBERED, which
+                   is what @FR-E-Place-State requires.
+                   ⚠⚠ THE BAG IS NOT TOUCHED BY A THEFT: the bag is the
+                   ROUND's state and cycle_phase reads the WALK, so a
+                   pickup that flipped it would put the body on a
+                   different leg from its rule.  The load is a
+                   CarryObject (@X334 come due) keyed on BLOCKER_MOB +
+                   the PoiMob index — an identity that OUTLIVES a body,
+                   where a roster slot does not.
+                   ⚠ errand_hex answers a COUNT (0/1/2) and no longer a
+                   boolean, and errand_step multiplies it by the hex's
+                   cost
   poi.loft         A PLACE THAT OWNS MOBS — and the BOUND that is the
                    point of one (plans/30 R5, @X301, @FR-E-Poi-Owns).
                    Poi { kind, q, r, state, since }, the KIND table
@@ -1941,7 +1974,12 @@ src/
                    ⚠ NO LONGER INERT: `tests/scripts/a-place-that-sends-
                    robots.keys` authors a face, a depot and two haulers,
                    and poi_step gives them bodies — the first captured
-                   scenario in which the GAME places the robots
+                   scenario in which the GAME places the robots.
+                   plans/30 R7b: bound_of grows every disc by the ROLE's
+                   lure REACH (@X346) — R7b is the first thing that can
+                   take a body FURTHER from its anchor, and until then
+                   @FR-E-Non-Increasing did the whole job.  ⚠ A row with
+                   no lure pays nothing
   skill.loft       CREW SKILLS — build, repair, scout (BACKLOG C1) —
                    SKILL_EFFECT_SPAN / _HALF, Skills { build, repair,
                    scout } on Helper, skill_factor, skill_work_units,

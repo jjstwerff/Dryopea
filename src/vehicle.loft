@@ -464,7 +464,14 @@ pub fn vehicle_hexes_per_tick(v: const Vehicle, elapsed: integer) -> integer {
 // Everything but SPOIL — see § SPOIL IS NOT SALVAGE.  An empty hex
 // answers true and contributes nothing, because `height_rise` is 0.0
 // there and the caller is comparing depths.
-fn collectable(hl: const HeightLayer, q: integer, r: integer) -> boolean {
+//
+// ⚠⚠ **PUBLIC since `plans/30` R7b, and it is the ONE rule for *is this
+// a heap somebody could take away*.**  A hauler reads the player's
+// leavings with the same question the player's own chassis asks
+// (`@FR-E-Built-Not-Seen`), and a second predicate would let the thief
+// and the owner disagree about what is salvage — which is exactly the
+// two-implementations hazard `scripts/rules.sh --review` exists to find.
+pub fn collectable(hl: const HeightLayer, q: integer, r: integer) -> boolean {
     height_source(hl, q, r) != RUBBLE_SPOIL
 }
 

@@ -406,3 +406,20 @@ refusal asks.  ⚠ **No longer inert**:
 and two haulers and places no robot — the game does — and it is the
 first fixture in which `slip` is VISIBLE.  Gates **51 scripts / 932
 measurements**.
+
+**`plans/30` R7b — a hauler turns for what you left** (2026-08-29,
+`@X346`, `@M084`).  `@FR-E-Built-Not-Seen` in code: a heap the player
+left on a hauler's route is picked up and carried off, and the scenario
+pair reads **230.0 against 200.0** of a 200-point wallet.  ⚠⚠ **The
+finding is the accounting**: a hex walked AWAY from the anchor costs
+**two** — the one it spent and the one it owes — because a detour is
+paid both ways and the return leg is indistinguishable from progress.
+Then the rule and the body agree in DISTANCE at every moment of the
+detour **with nothing remembered**, which is what `@FR-E-Place-State`
+requires.  ⚠⚠ **The BAG is untouched**: the stolen heap is a
+`CarryObject` keyed on `BLOCKER_MOB + PoiMob index` — an identity that
+outlives a body — so killing the thief gives it back, as the same stuff.
+⚠ The negative control is in the fixture's own opening half: the player
+in plain sight for thirty ticks, and the robot on its rule's hex to the
+tick.  ⚠ Thirteen mutations, twelve caught; the survivor was the load's
+MATERIAL.  Gates **53 scripts / 956 measurements**.

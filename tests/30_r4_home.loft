@@ -313,20 +313,20 @@ fn test_a_shift_a_round_cannot_reach_is_refused() {
     // ⚠ That is this file's claim moving rather than weakening, and the
     // row below is the shipped `harvest` row's shape.
     tsr_far  = errand_row("far",  ANCHOR_WORK, ANCHOR_ALT, 0,
-                          GATHER_SHIFT_UNITS);
-    tsr_neg  = errand_row("neg",  ANCHOR_WORK, ANCHOR_HOME, 0, 0 - 1);
+                          GATHER_SHIFT_UNITS, LURE_NONE);
+    tsr_neg  = errand_row("neg",  ANCHOR_WORK, ANCHOR_HOME, 0, 0 - 1, LURE_NONE);
     // ⚠⚠ **WHAT IS STILL REFUSED IS THE SHAPE NO ENDING CAN BE BUILT
     // FOR**: a CLOCK-steered round never turns its bag over, so there is
     // no arrival for a shift measured in HEXES to land on (`@M077`), and
     // its phase is a span of time where the turn point is a distance.
     tsr_clk  = errand_row("clk",  ANCHOR_WORK, ANCHOR_ALT, GUARD_LEG_UNITS,
-                          GATHER_SHIFT_UNITS);
+                          GATHER_SHIFT_UNITS, LURE_NONE);
     // ⚠ The control, and it is the generic one: a refusal that refuses
     // everything is not a refusal.  Both of these are legal rows — one
     // with a shift its round passes, one with none at all.
     tsr_good = errand_row("good", ANCHOR_WORK, ANCHOR_HOME, 0,
-                          GATHER_SHIFT_UNITS);
-    tsr_bare = errand_row("bare", ANCHOR_WORK, ANCHOR_ALT, 0, 0);
+                          GATHER_SHIFT_UNITS, LURE_NONE);
+    tsr_bare = errand_row("bare", ANCHOR_WORK, ANCHOR_ALT, 0, 0, LURE_NONE);
     assert(errand_row_fault(tsr_neg) != "" && errand_row_fault(tsr_clk) != ""
            && errand_row_fault(tsr_far) == ""
            && errand_row_fault(tsr_good) == ""

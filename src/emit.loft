@@ -301,6 +301,13 @@ fn emit_cargo(state: const WaveState) -> text {
         ec_who = "ground";
         if ec_o.owner == CARGO_GONE { ec_who = "gone"; }
         else if ec_o.owner == BLOCKER_PLAYER { ec_who = "player"; }
+        // ⚠⚠ **A MOB is the fourth kind of owner** (`plans/30` R7b), and
+        // it is spelled `mob <n>` rather than as a bare number because
+        // the crew are bare numbers: two owner spaces sharing one
+        // spelling is `@D007`'s shape waiting to happen.
+        else if ec_o.owner >= BLOCKER_MOB {
+            ec_who = "mob {ec_o.owner - BLOCKER_MOB}";
+        }
         else if ec_o.owner != BLOCKER_NONE {
             ec_who = "{blocker_crew_index(ec_o.owner)}";
         }
@@ -314,8 +321,13 @@ fn emit_cargo(state: const WaveState) -> text {
         // added to one and not the other is invisible until a scenario
         // drops one.
         ec_kind = "wreck";
-        if ec_o.kind == CARGO_TOP    { ec_kind = "top"; }
-        if ec_o.kind == CARGO_BEACON { ec_kind = "beacon"; }
+        if ec_o.kind == CARGO_TOP     { ec_kind = "top"; }
+        if ec_o.kind == CARGO_BEACON  { ec_kind = "beacon"; }
+        // ⚠ The FOURTH kind (`plans/30` R7b) — added here and in
+        // `script.loft`'s `object` verb in the same edit, because
+        // `@D007` is what happens when the writer and the reader are
+        // two.
+        if ec_o.kind == CARGO_SALVAGE { ec_kind = "salvage"; }
         ec_out = ec_out + "object {ec_o.q} {ec_o.r} " + ec_kind
                         + " {ec_o.subj} " + ec_who + "\n";
     }

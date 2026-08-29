@@ -146,7 +146,9 @@ fn r6_trip(pw: PaintedWorld, kind: u8, count: integer, seat: integer,
         if rt_has {
             rt_occ = occupancy_empty();
             occupancy_enter(rt_occ, rt_e.q, rt_e.r);
-            errand_step(rt_e, rt_fld, rt_occ, rt_blk, rt_t, R6_TICK);
+            errand_step(rt_e, rt_fld, rt_occ, rt_blk, rt_pal, pw,
+                        height_layer_empty(), cargo_empty(),
+                        rt_t, R6_TICK);
             rt_path += [Hex { q: rt_e.q, r: rt_e.r }];
             rt_live += 1;
             rt_bank  = bank_progress(rt_e.bank);
@@ -589,7 +591,9 @@ fn test_r6a_a_round_ends_whether_or_not_anybody_is_watching() {
     while td_n2 <= 260 && td_body == 0 {
         td_occ = occupancy_empty();
         occupancy_enter(td_occ, td_e.q, td_e.r);
-        errand_step(td_e, td_fld, td_occ, td_blk, td_n2 * R6_TICK, R6_TICK);
+        errand_step(td_e, td_fld, td_occ, td_blk, load_palette(PALETTE),
+                    r6_world(false), height_layer_empty(), cargo_empty(),
+                    td_n2 * R6_TICK, R6_TICK);
         if errand_done(td_e, load_palette(PALETTE), td_pw,
                        height_layer_empty(), td_n2 * R6_TICK) {
             td_body = td_n2;

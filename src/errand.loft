@@ -71,6 +71,8 @@ use height;
 use occupancy;
 use fixstep;
 use task;
+use carry;
+use vehicle;
 
 // Robots per second one source puts on the road, when a map says
 // nothing — `traffic <rate>` is how a scenario says otherwise.
@@ -341,6 +343,99 @@ pub fn errand_bag_named(name: text) -> integer {
     0 - 1
 }
 
+// ─── ⚠⚠ WHAT DRAWS A ROLE OFF ITS ROUTE ─────────────────────────
+//
+// Plan 30 R7b, and `@FR-E-Built-Not-Seen` is the whole of it:
+//
+// > ⚠⚠ **A mob leaves its route for something the player DID or BUILT,
+// > never for the player being SEEN.**
+//
+// ⚠ `crawler` measured what the other answer costs: without its *an
+// incursion does not break formation for a hero it has merely seen*
+// rule, raiders parked on a hero for seven days and *"the whole
+// mechanism silently became 'monsters walk at the player', which the
+// game already had"*.  ⚠⚠ So there is no radius here that looks at the
+// PLAYER at all — a lure is a fact about the GROUND, and the only way to
+// make one is to leave something on it.
+//
+// ⚠ `LURE_NONE` is 0 for [loft#914]'s reason a seventh time: a `Role`
+// row that names no lure is a role nothing draws off its route, which is
+// every role written before this phase.
+pub const LURE_NONE:    integer = 0;
+pub const LURE_SALVAGE: integer = 1;   // a heap the player left lying
+pub const LURE_KIND_COUNT: integer = 2;
+
+// How far off its route a hauler will go for a heap.
+//
+// ⚠⚠ **It is the ONE number that decides whether this mechanic exists**,
+// and it is small on purpose: a reach that grew toward the scrambler
+// bubble's 25 would make every robot on the map converge on the player's
+// leavings, which is *monsters walk at you* wearing a different hat.
+// ⚠ Four hexes is a heap you can SEE the robot turn for, and it is what
+// `bound_of` pays for — R5's discs grow by exactly this much and the
+// cull's reach with them.
+pub const LURE_SALVAGE_REACH_HEXES: integer = 4;
+
+// What draws a role off its route, and how far it will go.
+//
+// ⚠⚠ **A LURE IS A ROW AND THE TABLE IS INDEXED** — `@X333`'s rule with
+// its third subject, after the roles and the places.  The one column
+// that matters is the REACH, because *how far* is the whole difference
+// between a distraction and a swarm.
+pub struct Lure {
+    name:  text,
+    reach: integer,
+}
+
+pub fn errand_lure_row(name: text, reach: integer) -> Lure {
+    Lure { name: name, reach: reach }
+}
+
+// ⚠⚠ **THE LURE TABLE.**  A lure the engine does not know reads as
+// `LURE_NONE` rather than as a branch nobody took.
+pub fn errand_lures() -> vector<Lure> {
+    els: vector<Lure> = [];
+    els += [errand_lure_row("none",    0)];
+    els += [errand_lure_row("salvage", LURE_SALVAGE_REACH_HEXES)];
+    els
+}
+
+// The row for a lure — `LURE_NONE`'s for anything the table has not got.
+// ⚠ The ONE lookup; nothing else may index the table.
+pub fn errand_lure_of(lure: integer) -> Lure {
+    elo_all = errand_lures();
+    elo_i   = lure;
+    if elo_i < 0 || elo_i >= len(elo_all) { elo_i = LURE_NONE; }
+    elo_all[elo_i] ?? errand_lure_row("none", 0)
+}
+
+// The lure a script or a measurement spells `name`, or `LURE_NONE`.
+pub fn errand_lure_named(name: text) -> integer {
+    eln_i = 0;
+    for eln_row in errand_lures() {
+        if eln_row.name == name { return eln_i; }
+        eln_i += 1;
+    }
+    LURE_NONE
+}
+
+// Does the table have a lure of this name at all?  ⚠ `errand_role_known`'s
+// twin, and for its reason: `none` is a legal word.
+pub fn errand_lure_known(name: text) -> boolean {
+    errand_lure_of(errand_lure_named(name)).name == name
+}
+
+// Every lure, as one comma-separated phrase — for a REFUSAL that names
+// what it would have accepted.
+pub fn errand_lure_names() -> text {
+    elm_out = "";
+    for elm_row in errand_lures() {
+        if elm_out != "" { elm_out = elm_out + ", "; }
+        elm_out = elm_out + elm_row.name;
+    }
+    elm_out
+}
+
 // How long a guard stands one leg of its post, in `fixstep` base units
 // — 10 s, which is 15 ticks at today's 2/3 s.
 //
@@ -417,12 +512,21 @@ pub struct Role {
     laden:  integer,
     period: integer,
     shift:  integer,
+
+    // ⚠⚠ **WHAT DRAWS THIS ROLE OFF ITS ROUTE** (R7b) — the fifth
+    // column, and the one `plans/30` § R1 said was *deliberately not a
+    // column yet*.  It indexes `errand_lures()` and is compared to
+    // nothing, exactly as `role` indexes `errand_roles()`.
+    //
+    // ⚠ `LURE_NONE` is 0, so a row that does not name one is a role
+    // nothing distracts — which is every role R1 through R7a shipped.
+    lure:   integer,
 }
 
 pub fn errand_row(name: text, empty: integer, laden: integer,
-                  period: integer, shift: integer) -> Role {
+                  period: integer, shift: integer, lure: integer) -> Role {
     Role { name: name, empty: empty, laden: laden, period: period,
-           shift: shift }
+           shift: shift, lure: lure }
 }
 
 // Does this row's round END somewhere the round does not pass?
@@ -453,18 +557,32 @@ pub fn errand_terminal(row: const Role) -> boolean {
 // Example: @DRY-144, @DRY-149, @DRY-152
 pub fn errand_roles() -> vector<Role> {
     ers: vector<Role> = [];
-    ers += [errand_row("none",   ANCHOR_NONE, ANCHOR_NONE, 0, 0)];
+    ers += [errand_row("none",   ANCHOR_NONE, ANCHOR_NONE, 0, 0, LURE_NONE)];
     // ⚠ The harvester's row: out to the picking ground empty, back to
     // the first-pass plant laden, `home` the repair point it does not
     // visit on its round.  ⚠⚠ **A distribution robot is the SAME row** —
     // out empty, back loaded — differing only in how far apart its
     // anchors are and what is in the bag, which is `DESIGN.md` § 10's
     // *one AI, per-class DATA* rather than a second row.
-    ers += [errand_row("haul",   ANCHOR_WORK, ANCHOR_ALT,  0, 0)];
+    //
+    // ⚠⚠ **AND IT IS THE ROW YOUR SALVAGE HEAP DISTRACTS** (R7b,
+    // `@FR-E-Built-Not-Seen`): a hauler runs out with EMPTY HANDS, so a
+    // heap the player left on its route reads as spilled cargo and it
+    // picks the load up.  ⚠ The counter-play is `docs/ERRANDS.md`'s own
+    // — *clear the heap early; that is a trip in the worst place.*
+    ers += [errand_row("haul",   ANCHOR_WORK, ANCHOR_ALT,  0, 0,
+                       LURE_SALVAGE)];
+    // ⚠⚠ **`gather` AND `guard` HAVE NO LURE, AND THAT IS THE PAIR THE
+    // MEASUREMENT NEEDS** (R7b).  A gatherer cuts what it was sent for
+    // and a guard is standing a post; neither is a robot with empty
+    // hands and a depot to fill, which is the whole reason a hauler
+    // reads a heap as spilled cargo.  ⚠ So the same scenario run with a
+    // `gather` route is the CONTROL — one table column apart, exactly as
+    // `@M073`'s clock-steered hauler was.
     ers += [errand_row("gather", ANCHOR_WORK, ANCHOR_HOME, 0,
-                       GATHER_SHIFT_UNITS)];
+                       GATHER_SHIFT_UNITS, LURE_NONE)];
     ers += [errand_row("guard",  ANCHOR_WORK, ANCHOR_ALT,  GUARD_LEG_UNITS,
-                       0)];
+                       0, LURE_NONE)];
     // ⚠⚠ **THE HARVESTER — `haul`'s shape with an ENDING** (R4b,
     // `@X339`).  Same two working legs and the same walker; what the
     // column adds is a shift, and what the shift buys is a THIRD leg the
@@ -478,7 +596,7 @@ pub fn errand_roles() -> vector<Role> {
     // mechanism, and the difference is DATA — which is what a catalogue
     // is for (`@X322`).
     ers += [errand_row("harvest", ANCHOR_WORK, ANCHOR_ALT, 0,
-                       HARVEST_SHIFT_UNITS)];
+                       HARVEST_SHIFT_UNITS, LURE_SALVAGE)];
     ers
 }
 
@@ -490,7 +608,7 @@ pub fn errand_role_of(role: integer) -> Role {
     ero_all = errand_roles();
     ero_i   = role;
     if ero_i < 0 || ero_i >= len(ero_all) { ero_i = ROLE_NONE; }
-    ero_all[ero_i] ?? errand_row("none", ANCHOR_NONE, ANCHOR_NONE, 0, 0)
+    ero_all[ero_i] ?? errand_row("none", ANCHOR_NONE, ANCHOR_NONE, 0, 0, LURE_NONE)
 }
 
 // Every role, as one comma-separated phrase — for a REFUSAL that names
@@ -1468,6 +1586,216 @@ pub fn slip_seconds(units: integer) -> float {
     clock_seconds_from_units(units)
 }
 
+// ─── ⚠⚠ THE LURE — what the player LEFT, and what it costs ─────
+//
+// Plan 30 R7b.  ⚠⚠ **The rule is `@FR-E-Built-Not-Seen` and everything
+// here is its enforcement**: nothing in this section reads the player's
+// position, and there is no radius around a person anywhere in it.  A
+// lure is a fact about the GROUND — a heap somebody left — so the only
+// way to make one is to leave something lying.
+//
+// ── ⚠⚠ A HEX WALKED AWAY FROM YOUR ANCHOR COSTS TWO ────────────
+//
+// ⚠⚠ **This is the phase's finding, and it is what lets a mob leave its
+// route at all without a single new field on it.**  `@FR-E-Slip` says a
+// deviation costs TIME and never DESTINATION, and that *a body pushed
+// off its cycle re-converges on the same hex* — so a detour has to be
+// paid for **both ways**, and the return leg is indistinguishable from
+// ordinary progress.  A mover that charged one hex per hex spent going
+// out would leave the body permanently short of its own rule by the
+// depth of the detour, silently.
+//
+// ⚠ So: a step that INCREASES the distance to the leg's anchor is
+// charged **two** hexes of `slip` — the one it spent and the one it owes
+// — a step that holds the distance EQUAL is charged one, as a sidestep
+// always was, and a step that DECREASES it is free.  ⚠⚠ Then the rule's
+// distance to the anchor equals the body's at **every** moment of the
+// detour, in and out, with nothing remembered: with `i` steps out and
+// `d` steps back the body stands at `D + i − d`, the rule has advanced
+// `(i + d) − 2i = d − i`, and `D − (d − i)` is the same number.
+//
+// ⚠ `@FR-E-Place-State` is what makes that the required answer rather
+// than a clever one: a mob may hold nothing beyond `carry` and `slip`,
+// so a DEBT COUNTER is not available and the debt has to be paid at the
+// moment it is incurred.
+
+// How much of `slip` one hex of this step costs — 0, 1 or 2.
+//
+// ⚠ It is asked of the ANCHOR's field and never of the destination's:
+// while a mob is turned aside the two are different fields, and the
+// whole accounting above is about the ANCHOR.
+//
+// Example: @DRY-211
+pub fn errand_hex_cost(before: integer, after: integer) -> integer {
+    if before >= FLOW_UNREACHABLE || after >= FLOW_UNREACHABLE { return 1; }
+    if after < before  { return 0; }
+    if after == before { return 1; }
+    2
+}
+
+// The cargo-ledger identity of a mob — `BLOCKER_MOB` plus its POI mob
+// index, or `BLOCKER_NONE`.
+//
+// ⚠⚠ **AN IDENTITY THAT OUTLIVES A BODY, which is what a ledger needs**
+// and what a roster index is not: `errand_depart`, `wave_deaths` and
+// `poi_drop_body` all rebuild the roster, so an object keyed on a slot
+// would silently start following a different robot.  ⚠ `PoiMob` is
+// exactly *the thing that outlives the body*, so its one-based index is
+// the key — and a body no place owns has no identity to hold cargo
+// against and therefore never steals.
+//
+// ⚠ The offset is large enough that it can never collide with
+// `BLOCKER_CREW + i`, which is bounded by the roster cap.
+pub const BLOCKER_MOB: integer = 1000000;
+
+pub fn errand_owner(e: const Enemy) -> integer {
+    if e.route.mob <= 0 { return BLOCKER_NONE; }
+    BLOCKER_MOB + e.route.mob
+}
+
+// The heap this mob would turn aside for, or `job_none()`.
+//
+// ⚠⚠ **EMPTY HANDS ARE HALF THE RULE.**  A hauler runs OUT with nothing
+// in its bag, which is why a heap on its route reads as spilled cargo at
+// all; one coming back laden has no hands and walks past.  ⚠ The bag is
+// asked and never a clock, which is `@FR-E-Bag-Steers` reached from a
+// fourth direction.
+//
+// ⚠ `collectable` is `vehicle.loft`'s and that is deliberate: the thief
+// and the owner must not disagree about what salvage IS, so SPOIL is
+// refused here for the same reason it is refused there.
+//
+// ⚠ NEAREST wins and ties break by `lat_disc`'s order, which keeps a
+// scripted run repeatable.
+//
+// Example: @DRY-212
+pub fn errand_lure_at(row: const Role, e: const Enemy,
+                      hl: const HeightLayer, cl: const CargoLayer) -> Job {
+    ela_reach = errand_lure_of(row.lure).reach;
+    if ela_reach <= 0 { return job_none(); }
+    if e.route.carry != ERRAND_BAG_EMPTY { return job_none(); }
+    ela_who = errand_owner(e);
+    if ela_who == BLOCKER_NONE { return job_none(); }
+    if cargo_carrying(cl, ela_who) { return job_none(); }
+    ela_best = job_none();
+    ela_far  = ela_reach + 1;
+    ela_here = Hex { q: e.q, r: e.r };
+    for ela_h in lat_disc(ela_here, ela_reach) {
+        if height_rise(hl, ela_h.q, ela_h.r) <= 0.0 { continue; }
+        if !collectable(hl, ela_h.q, ela_h.r) { continue; }
+        ela_d = lat_distance(ela_here, ela_h);
+        if ela_d >= ela_far { continue; }
+        ela_far  = ela_d;
+        // ⚠⚠ **`TASK_CLEAR`, and it is the first `Job.kind` a mob has
+        // ever named** — `plans/30` § Open questions 1 left the column
+        // empty rather than guessing, saying *not one of the four kinds
+        // is what a hauler does at its face*.  This is not the face: it
+        // is a heap, and clearing one is exactly what the crew's own
+        // `TASK_CLEAR` means (`@X332` cashed in from the other end).
+        ela_best = Job { found: true, kind: TASK_CLEAR,
+                         q: ela_h.q, r: ela_h.r };
+    }
+    ela_best
+}
+
+// Take the heap at `at` — off the ground and onto this mob.
+//
+// ⚠⚠ **THE PILE IS CLEARED AND THE LOAD IS CONSERVED**, which is
+// `@X334`'s obligation coming due: *a bag holds material that was never
+// on the map, and `carry.loft` conserves an object that IS on the map
+// and the player could have picked up instead.*  A heap the player left
+// is the second kind, so it becomes a `CarryObject` rather than a number
+// nobody can follow — and killing the thief is what gets it back.
+//
+// ⚠ **The BAG is not touched, and that is load-bearing.**  The bag is
+// the ROUND's state and `cycle_phase` reads the walk rather than the bag
+// — so a theft that flipped it would put the body on a different leg
+// from its own rule, permanently and silently.  The mob steals, then
+// goes on to its face exactly as before, and hauls both loads in.
+//
+// Answers the cargo index, or `CARGO_NONE`.
+//
+// Example: @DRY-213
+pub fn errand_lure_take(e: const Enemy, at: const Hex, hl: HeightLayer,
+                        cl: CargoLayer) -> integer {
+    elt_who = errand_owner(e);
+    if elt_who == BLOCKER_NONE { return CARGO_NONE; }
+    if cargo_carrying(cl, elt_who) { return CARGO_NONE; }
+    elt_m = height_rise(hl, at.q, at.r);
+    if elt_m <= 0.0 { return CARGO_NONE; }
+    if !collectable(hl, at.q, at.r) { return CARGO_NONE; }
+    elt_src = height_source(hl, at.q, at.r);
+    height_clear(hl, at.q, at.r);
+    // ⚠ `subj` carries the load in MILLIMETRES, because the field is an
+    // integer and a heap is metres.  ⚠⚠ **The source travels with it**
+    // in the top bits so that spilling one back puts the same stuff on
+    // the ground — a wreck that came back as masonry would be the
+    // writer-and-reader defect (`@D007`) inside one struct.
+    elt_i = cargo_spawn(cl, CARGO_SALVAGE,
+                        errand_load_pack(elt_m, elt_src), at.q, at.r);
+    cargo_take(cl, elt_who, at, CARGO_REACH_HEXES);
+    elt_i
+}
+
+// Let a stolen load go at the mob's own drop-off.
+//
+// ⚠⚠ **THE PICKUP'S PAIR, and it lives beside it on purpose.**  Both
+// are *what this mob does at this hex*, which is `errand_hex`'s whole
+// subject — a delivery that lived in the tick instead would be a second
+// place deciding whether a mob is carrying anything, and the two could
+// disagree about a mob that died between them.
+//
+// ⚠ The destination is the mob's own LADEN anchor and never a row in
+// `cargo_destination_ok`: *the depot this particular mob is walking to*
+// is a fact about a routine and not about a kind, which is
+// `CARGO_BEACON`'s split one consumer over (`carry.loft` § A top has TWO
+// destinations).
+//
+// ⚠ A role with no laden anchor delivers nothing, which is right: it has
+// no depot to deliver to.
+//
+// Answers whether it let go.
+//
+// Example: @DRY-215
+pub fn errand_lure_drop(e: const Enemy, row: const Role,
+                        cl: CargoLayer) -> boolean {
+    eld_who = errand_owner(e);
+    if eld_who == BLOCKER_NONE { return false; }
+    eld_i = cargo_held_by(cl, eld_who);
+    if eld_i == CARGO_NONE { return false; }
+    if row.laden == ANCHOR_NONE { return false; }
+    eld_at = errand_anchor(e.route, row.laden);
+    if lat_distance(Hex { q: e.q, r: e.r }, eld_at) > CARGO_REACH_HEXES {
+        return false;
+    }
+    cargo_consume(cl, eld_i);
+    true
+}
+
+// A stolen load, as one integer: millimetres, with the rubble SOURCE
+// above them.
+//
+// ⚠ One field, two facts, and it is named rather than open-coded because
+// `carry.loft` says so: *a kind that needs a second payload field has
+// outgrown this and should say so rather than overloading one integer
+// twice.*  This overloads it ONCE, in a pair of functions.
+pub const LOAD_SOURCE_SCALE: integer = 1000000;
+
+pub fn errand_load_pack(metres: float, source: integer) -> integer {
+    elp_mm = (metres * 1000.0) as integer;
+    if elp_mm < 0 { elp_mm = 0; }
+    if elp_mm >= LOAD_SOURCE_SCALE { elp_mm = LOAD_SOURCE_SCALE - 1; }
+    source * LOAD_SOURCE_SCALE + elp_mm
+}
+
+pub fn errand_load_metres(subj: integer) -> float {
+    ((subj % LOAD_SOURCE_SCALE) ?? 0) as float / 1000.0
+}
+
+pub fn errand_load_source(subj: integer) -> integer {
+    (subj / LOAD_SOURCE_SCALE) ?? 0
+}
+
 // ─── ⚠⚠ THE MOVER — the ONE DOOR that writes a mob's position ───
 //
 // Plan 30 R3, and `@FR-E-One-Door` is the whole shape of it: *exactly
@@ -1681,6 +2009,8 @@ pub fn errand_cycling(e: const Enemy, now: integer) -> boolean {
 // Example: @DRY-162, @DRY-163, @DRY-164, @DRY-165, @DRY-170, @DRY-171
 pub fn errand_step(e: Enemy, fields: const vector<ErrandField>,
                    occ: Occupancy, blockers: const BlockerMap,
+                   pal: vector<GroundType>, pw: PaintedWorld,
+                   hl: HeightLayer, cl: CargoLayer,
                    now: integer, elapsed: integer) {
     if !e.alive { return; }
     if enemy_standing(e) {
@@ -1702,11 +2032,18 @@ pub fn errand_step(e: Enemy, fields: const vector<ErrandField>,
     // the whole bank, and a scout releases three.
     es2_done = 0;
     while es2_left > 0 {
-        if errand_hex(e, fields, occ, blockers, es2_row, es2_rate,
-                      cycle_walked(es2_rate, now - e.route.slip) + es2_done,
-                      now) {
-            e.route.slip += es2_cost;
-        }
+        // ⚠⚠ **A COUNT and no longer a boolean** (R7b): a hex walked
+        // AWAY from the leg's anchor costs TWO — the one it spent and
+        // the one it owes coming back — which is what lets a mob turn
+        // aside for a lure and still re-converge on its own rule
+        // (`@FR-E-Slip`, § A HEX WALKED AWAY FROM YOUR ANCHOR COSTS
+        // TWO).  ⚠ Every step that is not a detour answers 0 or 1
+        // exactly as it always did.
+        e.route.slip += es2_cost
+            * errand_hex(e, fields, occ, blockers, pal, pw, hl, cl,
+                         es2_row, es2_rate,
+                         cycle_walked(es2_rate, now - e.route.slip) + es2_done,
+                         now);
         es2_left -= 1;
         es2_done += 1;
         // ⚠⚠ **A ROUND THAT HAS ENDED STOPS HERE, AND A MOVER THAT
@@ -1765,10 +2102,27 @@ pub fn errand_step(e: Enemy, fields: const vector<ErrandField>,
 // guard stood, and its clock would then never flip at all — a guard
 // frozen at its post with **every conformance count green**, because
 // the frozen rule agrees with the frozen body.
+//
+// ── ⚠⚠ AND THE COST IS A COUNT, BECAUSE A DETOUR IS PAID BOTH WAYS ─
+//
+// ⚠ It answers 0, 1 or 2 — the hexes of `slip` this step owes — read
+// from the ANCHOR's distance before and after and never from what the
+// mover happened to aim at.  ⚠⚠ That is the whole of § A HEX WALKED AWAY
+// FROM YOUR ANCHOR COSTS TWO, and it is what keeps `@FR-E-Slip` true for
+// a mob that has turned aside for a lure: the rule's distance to the
+// anchor equals the body's at every moment of the detour, with nothing
+// remembered.
+//
+// ⚠ **The three answers are the three things a step can do** and every
+// one of them predates R7b: closer is free, EQUAL is the sidestep that
+// has always cost one, and *nothing moved* is equal too.  Only FURTHER
+// is new, and only a lure can produce it.
 fn errand_hex(e: Enemy, fields: const vector<ErrandField>,
               occ: Occupancy, blockers: const BlockerMap,
+              pal: vector<GroundType>, pw: PaintedWorld,
+              hl: HeightLayer, cl: CargoLayer,
               row: const Role, rate: integer, walked: integer,
-              now: integer) -> boolean {
+              now: integer) -> integer {
     // ⚠ `walked` is the count BEFORE this hex, so the arrival after a
     // step that gained one is asked at `walked + 1` — the mob is one hex
     // further on than it was when the step began, and the ending is
@@ -1776,10 +2130,27 @@ fn errand_hex(e: Enemy, fields: const vector<ErrandField>,
     errand_arrive(e.route, row, Hex { q: e.q, r: e.r }, now,
                   errand_shift_over(row, rate, walked));
     ehx_job = errand_destination_of(row, e.route, now);
-    if !ehx_job.found { return false; }
-    if ehx_job.q == e.q && ehx_job.r == e.r { return false; }
+    if !ehx_job.found { return 0; }
+    if ehx_job.q == e.q && ehx_job.r == e.r { return 0; }
     ehx_c  = climb_limit(e.kind);
-    ehx_on = false;
+
+    // ⚠⚠ **THE LURE, and it is read BEFORE the step** (R7b).  A mob
+    // already standing at a heap takes it and then walks on normally
+    // this same hex — the pickup is not a move and must not cost one,
+    // exactly as `errand_arrive` is not a move.
+    errand_lure_drop(e, row, cl);
+    ehx_lure = errand_lure_at(row, e, hl, cl);
+    if ehx_lure.found
+        && lat_distance(Hex { q: e.q, r: e.r },
+                        Hex { q: ehx_lure.q, r: ehx_lure.r })
+           <= CARGO_REACH_HEXES {
+        errand_lure_take(e, Hex { q: ehx_lure.q, r: ehx_lure.r }, hl, cl);
+        ehx_lure = job_none();
+    }
+
+    ehx_before = FLOW_UNREACHABLE;
+    ehx_after  = FLOW_UNREACHABLE;
+    ehx_moved  = false;
     for ehx_f in fields {
         // ⚠ The field is passed STRAIGHT from the vector into a `const`
         // parameter and never bound to a local — a whole-value bind
@@ -1787,14 +2158,60 @@ fn errand_hex(e: Enemy, fields: const vector<ErrandField>,
         // a class's field WITHOUT copying it: **2250x**).
         if ehx_f.q == ehx_job.q && ehx_f.r == ehx_job.r
             && ehx_f.climb == ehx_c {
-            ehx_on = errand_descend(e, ehx_f.field, occ, blockers);
+            ehx_before = flow_distance(ehx_f.field, e.q, e.r);
+            if ehx_lure.found {
+                ehx_moved = errand_toward(e, pal, pw, hl, occ, blockers,
+                                          Hex { q: ehx_lure.q,
+                                                r: ehx_lure.r });
+            }
+            if !ehx_moved {
+                ehx_moved = errand_descend(e, ehx_f.field, occ, blockers);
+            }
+            ehx_after = flow_distance(ehx_f.field, e.q, e.r);
         }
     }
-    if ehx_on {
+    if ehx_moved {
         errand_arrive(e.route, row, Hex { q: e.q, r: e.r }, now,
                       errand_shift_over(row, rate, walked + 1));
     }
-    !ehx_on
+    errand_hex_cost(ehx_before, ehx_after)
+}
+
+// One step TOWARD a lure — strictly nearer it in lattice distance, on
+// ground this class may enter, and free.  Answers whether it moved.
+//
+// ⚠⚠ **STRICTLY nearer is what makes it terminate**: the mob is at most
+// the lure's reach away, every step takes one off that, and there is no
+// pair of hexes it can oscillate between.  A rule that allowed an equal
+// step would let a mob circle a heap it can never reach.
+//
+// ⚠ **Greedy, and that is priced.**  R0 probe 1 (`@M071`) falsified
+// greedy for a whole LEG — only 10 of 90 straight crossings of the
+// authored maps arrive — but a lure is four hexes away, not four
+// hundred, and a lure the mob cannot greedily reach is one it simply
+// walks past.  ⚠ A field per heap per tick is what the alternative
+// costs, and `@FR-E-Boundable` is not worth spending on a distraction.
+//
+// ⚠ `can_step` is asked here where `errand_descend` does not need it —
+// the field has already refused every hex its class cannot enter, and a
+// lure has no field.
+//
+// Example: @DRY-214
+fn errand_toward(e: Enemy, pal: vector<GroundType>, pw: PaintedWorld,
+                 hl: const HeightLayer, occ: Occupancy,
+                 blockers: const BlockerMap, to: const Hex) -> boolean {
+    etw_from = Hex { q: e.q, r: e.r };
+    etw_d    = lat_distance(etw_from, to);
+    if etw_d <= 0 { return false; }
+    for etw_n in lat_neighbours(etw_from) {
+        if lat_distance(etw_n, to) >= etw_d { continue; }
+        if occupancy_taken(occ, etw_n.q, etw_n.r) { continue; }
+        if blocker_taken(blockers, etw_n.q, etw_n.r) { continue; }
+        if !can_step(pal, pw, hl, e.kind, etw_from, etw_n) { continue; }
+        enemy_move_to(e, etw_n.q, etw_n.r, occ);
+        return true;
+    }
+    false
 }
 
 // One step down a field toward its destination — closer if anything

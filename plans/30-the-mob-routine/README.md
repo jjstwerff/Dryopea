@@ -9,9 +9,41 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
+**R7b COMPLETE 2026-08-29 — a hauler turns for what you left, and it
+costs you thirty points.**  R8 is startable, and it is the last phase.
+⚠ Gates: **1777 green over 143 files** (+7, all this phase's),
+`validate.sh` **53 scripts / 956 measurements** (+2 scripts, +24 — the
+pair and its control) and `validate_gl.sh` **3 fixtures / 55
+measurements**, unchanged.
+
+⚠⚠ **`@X346` — A HEX WALKED AWAY FROM ITS ANCHOR COSTS TWO, AND THAT IS
+WHAT LETS A MOB LEAVE ITS ROUTE AT ALL.**  `@FR-E-Slip` says a deviation
+costs TIME and never DESTINATION and that *a body pushed off its cycle
+re-converges on the same hex* — so a detour is paid for **both ways**,
+and the return leg is indistinguishable from ordinary progress.  ⚠ The
+charge is read from the ANCHOR's distance before and after — 0 closer, 1
+equal, **2 further** — and then the rule's distance to the anchor equals
+the body's at every moment of the detour **with nothing remembered**,
+which is what `@FR-E-Place-State` requires: a mob may hold nothing
+beyond `carry` and `slip`, so there is no debt counter to reach for.
+
+⚠⚠ **AND THE BAG IS NOT TOUCHED BY A THEFT.**  The bag is the ROUND's
+state and `cycle_phase` reads the WALK, so a pickup that flipped it
+would put the body on a different leg from its own rule.  The stolen
+heap is a `CarryObject` instead — `@X334`'s obligation coming due — keyed
+on `BLOCKER_MOB + PoiMob index`, an identity that **outlives a body**
+where a roster slot does not.
+
+⚠⚠ **`@M084` — 230.0 against 200.0, one table column apart.**  And the
+negative control is in the same file and it is the half that matters:
+the player parks one hex off the road, in plain sight, for **thirty
+ticks**, and the robot is on its rule's own hex to the tick.  ⚠ Thirteen
+mutations, twelve caught, and the survivor was the load's MATERIAL — a
+spill that lost its source hands the player back the wrong rubble, and
+every count stayed green because *a robot's corpse is wreckage too*.
+
 **R7a COMPLETE 2026-08-29 — a PLACE is four verbs in a `.keys` file,
-and the corpus has one.**  R7b is startable.  ⚠ Gates: **1770 green over
-142 files** (+9, all this phase's), `validate.sh` **51 scripts / 932
+and the corpus has one.**  ⚠ Gates: **1770 green over 142 files** (+9, all this phase's), `validate.sh` **51 scripts / 932
 measurements** (+1 script, +12 — the first captured scenario with a POI
 in it) and `validate_gl.sh` **3 fixtures / 55 measurements**,
 unchanged.
@@ -432,8 +464,8 @@ behaviour and clocks, gated by scenarios and counts.
 | **R6b** — the materialiser in the TICK, and the `R` vs `2R` pair | M | `tests/30_r6b_the_materialiser.loft` (8) — ⚠ the `R` vs `2R` gate **and its differ-control** | ✅ **COMPLETE 2026-08-29** — `@X344`, `@M082` |
 | **Rc** — the CONFORMANCE gate | S | `tests/30_rc_the_conformance.loft` (6) | ✅ **COMPLETE 2026-08-28** — ⚠ and it needed a LIVENESS gate beside it (`@X337`) |
 | **R7a** — the places, said in a `.keys` file | M | `tests/30_r7a_the_places_said.loft` (9) + `tests/scripts/a-place-that-sends-robots.keys` (12) | ✅ **COMPLETE 2026-08-29** — `@X345`, `@M083`, `@D009` |
-| **R7b** — distraction: the hauler and your heap | M | a scenario pair + the *merely seen* negative control | Blocked on R7a |
-| **R8** — what a routine is WORTH | S | a scenario pair, one token apart | Blocked on R7b |
+| **R7b** — distraction: the hauler and your heap | M | `tests/30_r7b_the_distraction.loft` (7) + the scenario pair (24) and its *merely seen* control | ✅ **COMPLETE 2026-08-29** — `@X346`, `@M084` |
+| **R8** — what a routine is WORTH | S | a scenario pair, one token apart | Startable |
 
 ---
 
@@ -1613,15 +1645,91 @@ game already had."*
 ⚠ So the rule, and the gate is built round it:
 
 > ⚠⚠ **A distraction must be caused by something the player DID or
-> BUILT, never by the player being seen.**
+> BUILT, never by the player being seen.**  (`@FR-E-Built-Not-Seen`)
 
-**Gate** — a scenario pair plus the control:
-- a hauler whose route passes a **salvage heap the player left** diverts,
-  picks it up and carries it home — **the player loses the income**;
-- ⚠ the same base with the heap **cleared** reads the baseline;
-- ⚠⚠ **the negative control**: the player parked in plain sight, no
-  heap, changes **nothing** — which is the assertion that would have
-  caught `crawler`'s defect.
+**The gate, as built** — a scenario pair plus the control:
+- `a-heap-a-hauler-took.keys` — a hauler whose route passes a **salvage
+  heap the player left** turns four hexes up a dead-end side track for
+  it, takes it, and carries on.  The player drives out and finds
+  nothing: **200.0**;
+- `a-heap-a-gatherer-walked-past.keys` — the same everything, one table
+  column apart, and the player collects: **230.0**;
+- ⚠⚠ **the negative control, in the first file's own opening half**: the
+  player parks one hex off the road, in plain sight, for **thirty
+  ticks**, and the robot is on its rule's own hex to the tick
+  (`enemy 0 36 0`, which the closed form gives for offset 30 of a 32-hex
+  round).  That is `crawler`'s defect made assert-able.
+
+### ⚠⚠ THE FINDING — a hex walked AWAY from your anchor costs TWO  `@X346`
+
+⚠ The rule wants a mob drawn OFF its route; `@FR-E-Slip` wants a
+deviation to cost TIME and never DESTINATION, and says *a body pushed
+off its cycle re-converges on the same hex*.  ⚠⚠ **A detour therefore
+has to be paid for both ways — and the return leg is indistinguishable
+from ordinary progress.**  A mover charging one hex per hex spent going
+out leaves the body permanently short of its own rule by the depth of
+the detour, silently and for ever.
+
+⚠ So the charge is read from the **anchor's** distance before and after:
+
+| the step | costs | since |
+|---|---|---|
+| CLOSER | 0 | it is progress |
+| EQUAL | 1 | the sidestep, unchanged since R3 |
+| FURTHER | **2** | the hex it spent, and the hex it owes |
+
+⚠⚠ With `i` steps out and `d` back the body stands at `D + i − d`, the
+rule has advanced `(i + d) − 2i = d − i`, and `D − (d − i)` **is the same
+number** — so the two agree in DISTANCE at every moment of the detour,
+with nothing remembered.  ⚠ `@FR-E-Place-State` is what makes that the
+required answer rather than a clever one: a mob may hold nothing beyond
+`carry` and `slip`, so a debt COUNTER is not available and the debt has
+to be paid at the moment it is incurred.
+
+### ⚠⚠ And the BAG is not touched by a theft
+
+⚠ The bag is the ROUND's state and `cycle_phase` reads the WALK rather
+than the bag, so a pickup that flipped it would put the body on a
+different leg from its own rule — permanently, silently.  ⚠⚠ **So the
+stolen heap is a `CarryObject` and not a bag**, which is `@X334`'s
+obligation coming due: *a bag holds material that was never on the map;
+`carry.loft` conserves an object that IS on the map and the player could
+have picked up instead.*
+
+⚠ It is keyed on `BLOCKER_MOB + PoiMob index` — **an identity that
+outlives a body**, where a roster slot does not: `errand_depart`,
+`wave_deaths` and `poi_drop_body` all rebuild the roster.  ⚠ A body no
+place owns therefore never steals, and that is nameable rather than a
+restriction: it has no identity to hold cargo against.
+
+⚠ **And killing the thief gives it back**, as the same stuff, on the hex
+it fell on — which is the counter-play the theft is worth having.
+
+### ⚠ What the bound paid
+
+⚠⚠ **R7b is the first thing in the plan that can take a body FURTHER
+from its anchor.**  Until now `@FR-E-Non-Increasing` did the whole job
+and `disc(anchor, leg length)` held a deviating body by construction.  A
+mob turning aside can be its lure's REACH outside that disc, so every
+radius of a lured row grows by exactly that much — and a row with no
+lure pays nothing, which is why the 932 measurements R7a left did not
+move.
+
+### What R7b did NOT build
+
+- ⚠ **The other four rows of `docs/ERRANDS.md` § What each role comes
+  for** — the gatherer's seam, the builder's nibble, the guard's post,
+  the insect alarm.  Each is a lure ROW plus what it looks for; the
+  hauler is *"the one worth building first"* by that document's own
+  word, and the mechanism is now there for the rest.
+- ⚠ **A crew REMARK when it happens.**  R7b gives a mob a reason the
+  player can see; a crew member SAYING so is `@X142`'s channel.
+- ⚠⚠ **A cheap early-out for the lure sweep.**  `errand_lure_at` walks
+  `lat_disc(reach)` — 61 hexes at reach 4 — per lured mob per hex.  A
+  mob with no lure column pays nothing and a laden one pays nothing, so
+  the corpus is untouched; a base with forty haulers beside it is where
+  this stops being free, and `plans/22`'s cache is the shape of the
+  answer.
 
 ## Rc — the CONFORMANCE gate
 

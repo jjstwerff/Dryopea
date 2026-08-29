@@ -675,16 +675,34 @@ pub fn bound_join(b: Bound, other: const Bound) {
 // centred on each anchor with the incoming leg's length as its radius* is
 // this loop and nothing else — the rule's own sentence, written once.
 //
+//
+// ── ⚠⚠ AND A LURE COSTS THE BOUND ITS OWN REACH ────────────────
+//
+// ⚠⚠ **R7b is the first thing that can take a body FURTHER from its
+// anchor**, and the bound is where that has to be paid for.  Until then
+// `@FR-E-Non-Increasing` did the whole job: a body could sidestep but
+// never move away, so `disc(anchor, leg length)` held it by
+// construction.  A mob turning aside for a heap can be up to its lure's
+// REACH outside that disc, so every radius grows by exactly that much.
+//
+// ⚠ It is the role's own number and not a constant here, so a row with
+// no lure pays nothing — which is every row R1 through R7a shipped, and
+// is why the 932 measurements do not move.  ⚠⚠ **And it is read from the
+// ROW rather than added at the query**: `bound_disc_holds` is the CLAIM
+// (`@X342`), asked per leg, and a query that quietly padded the answer
+// would make the claim weaker than the discs it is checked against.
+//
 // Example: @DRY-184
 pub fn bound_of(er: const Errand, c: const Cycle) -> Bound {
     bof_b = bound_new();
     if !cycle_running(c) { return bof_b; }
+    bof_lure = errand_lure_of(errand_role_of(er.role).lure).reach;
     bof_i = 0;
     while bof_i < len(c.anchors) {
         bof_a = c.anchors[bof_i] ?? ANCHOR_NONE;
         bof_l = c.lengths[bof_i] ?? 0;
         if bof_a == ANCHOR_NONE { return bound_new(); }
-        bound_disc(bof_b, errand_anchor(er, bof_a), bof_l);
+        bound_disc(bof_b, errand_anchor(er, bof_a), bof_l + bof_lure);
         bof_i += 1;
     }
     bof_b

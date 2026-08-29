@@ -5,10 +5,18 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # Errands — what a mob is DOING, and when it stops doing it
 
-⚠⚠ **DESIGN, not built.**  What exists today is
-[`src/errand.loft`](../src/errand.loft): a robot's "business" is a bare
-HEADING, it walks that way until it cannot, and then it is deleted.  This
-document is the thing that replaces the heading.
+⚠⚠ **BUILT, since [`plans/30`](../plans/30-the-mob-routine/README.md)
+closed R7b on 2026-08-29** — this banner said *DESIGN, not built* until
+then, and what it described (a robot's "business" is a bare HEADING, it
+walks that way until it cannot, and then it is deleted) is what
+[`src/errand.loft`](../src/errand.loft) replaced.  ⚠ A mob now runs a
+ROUTINE from five anchors, its position is a closed form of `t − slip`, a
+POI owns it, the game materialises it near the player, and a heap the
+player leaves draws it off its route.
+
+⚠ **What is still design here**: the four lure rows below the hauler's
+(§ What each role comes for), and everything the world → scenario half
+owes ([`WORLDGEN.md`](WORLDGEN.md)).
 
 ⚠ It sits between two documents that already exist and does not repeat
 either: [`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) is the GRAPH (what the
@@ -1173,12 +1181,22 @@ at the routine layer.
 | **guard** | something crossed its post | follows it back, and arrives escorted | do not cross the post; the post is where it is |
 | **insect** | the **odour-sac alarm** from a tapped tree (`SETTING.md` § The ants) | swarms toward the alarm, and your base is in the way | do not tap that tree yet; the sap is worth taking |
 
-⚠⚠ **The hauler row is the one worth building first.**  It makes
+⚠⚠ **The hauler row is the one worth building first, and
+[`plans/30`](../plans/30-the-mob-routine/README.md) R7b BUILT IT**
+(`@X346`, 2026-08-29).  It makes
 `@X053`'s harvester cargo two-sided — the richest salvage on the field is
 now also the thing that *attracts more traffic if you leave it lying* —
 and it puts a decision in the player's hands at a moment when acting on
-it costs them a trip.  That is the design's own test, met by a mechanic
-that needs one field (`carry`) and one rule.
+it costs them a trip.  ⚠ Measured: **230.0 against 200.0** of a
+200-point wallet, over a pair one table column apart (`@M084`).
+
+⚠⚠ **And the prediction *one field (`carry`) and one rule* was WRONG in
+a way worth keeping.**  It needs no field at all — `@FR-E-Place-State`
+forbids one — and what it actually needs is an ACCOUNTING: *a hex walked
+away from your anchor costs two*, the one it spent and the one it owes,
+because a detour is paid both ways and the return leg is
+indistinguishable from ordinary progress.  ⚠ The four rows below it are
+a lure ROW apiece now that the mechanism exists.
 
 ## ⚠⚠ Home is a PLACE, not a despawn
 

@@ -68,7 +68,7 @@ comes back.  ⚠ The HUD is one number and `docs/DESIGN.md` § HUD says it shoul
 be — no wave counter, no health bar, no minimap; everything else is diegetic.
 ⚠⚠ **`MAP=` and `SCRIPT=` are what give it a base to be.**  `make play
 MAP=starter_01` opens one of the three AUTHORED maps in `maps/` (BACKLOG A2,
-2026-08-27); `SCRIPT=<name>` opens any of the 51 `.keys` files in
+2026-08-27); `SCRIPT=<name>` opens any of the 53 `.keys` files in
 `tests/scripts/` + `tests/gl/` as a live starting position, cut at its first
 `tick` (`@X263`).  Bare `make play` opens the empty default slot.
 ⚠⚠ **AND A ROBOT ON THE MAP CAN GO SOMEWHERE FOR A REASON**
@@ -135,7 +135,20 @@ door refuses one on purpose, and **R1's `src/` sweep caught both new
 verbs comparing a role** because `errand_role_named` cannot say no.  ⚠⚠ **And the corpus has a base the game
 populates itself**: `a-place-that-sends-robots` places no robot, and it
 is the first fixture in which `slip` is VISIBLE.
-⚠ R7b (distraction) is what is left.
+⚠⚠ **AND SINCE R7b A HAULER TURNS FOR WHAT YOU LEFT** (`@X346`,
+`@M084`) — `@FR-E-Built-Not-Seen` in code: a heap the player left on a
+route is picked up and carried off, and the pair reads **230.0 against
+200.0** of a 200-point wallet.  ⚠⚠ **The finding is the ACCOUNTING**: a
+hex walked AWAY from the anchor costs **two** — the one it spent and the
+one it owes — because a detour is paid both ways and the return leg is
+indistinguishable from progress.  Then the rule and the body agree in
+DISTANCE at every moment of it **with nothing remembered**, which is
+what `@FR-E-Place-State` requires.  ⚠⚠ **And the BAG is not touched**:
+the stolen heap is a `CarryObject` keyed on an identity that outlives a
+body, so killing the thief gives it back.  ⚠ The negative control is in
+the fixture's own opening half — the player in plain sight for thirty
+ticks, and the robot on its rule's hex to the tick.
+⚠ **R8, what a routine is WORTH, is the last phase.**
 
 ⚠⚠ **AND THE CREW WORK ON THEIR OWN** ([`plans/29`](plans/29-the-crews-own-work/README.md),
 complete 2026-08-28) — a crew member nobody has told anything takes the
@@ -161,11 +174,11 @@ critical path is **4, the SCRAMBLE**.
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1770 green**, ~320 s on a busy box (592 s beside another suite, 753 s and 1252 s on 2026-08-29 — the second was a `graphics` cdylib rebuild), 142 files |
-| scenarios | `scripts/validate.sh` | **51 scripts, 932 measurements**, ~20 s |
+| tests | `scripts/test.sh` | **1777 green**, ~320 s on a busy box (592 s beside another suite, 753 s and 1252 s on 2026-08-29 — the second was a `graphics` cdylib rebuild), 143 files |
+| scenarios | `scripts/validate.sh` | **53 scripts, 956 measurements**, ~20 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
-| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **428 defined, 424 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
-| ⚠⚠ formal rules | `scripts/rules.sh` — inside `test.sh` | **44 defined, 18 ENFORCED in 98 code sites** (`@X327`).  ⚠ It moved at `plans/30` R5 because `src/poi.loft` gave `@FR-E-Poi-Owns` and `@FR-E-Place-State` their first code at all — never because citations were sprinkled (`@X328`).  ⚠⚠ **This read 89 until 2026-08-29 and the tree measured 93 before R7a touched it** — the number aged against a tree that moved, which is `@M044`'s class one instrument over: **re-measure before quoting a delta**.  R7a's own contribution is **three**.  ⚠ Resolution GATES; coverage only REPORTS.  ⚠⚠ A doc reference is **not** an enforcing site (`@X330`) |
+| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **430 defined, 426 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
+| ⚠⚠ formal rules | `scripts/rules.sh` — inside `test.sh` | **44 defined, 19 ENFORCED in 115 code sites** (`@X327`).  ⚠ It moved at `plans/30` R5 because `src/poi.loft` gave `@FR-E-Poi-Owns` and `@FR-E-Place-State` their first code at all — never because citations were sprinkled (`@X328`).  ⚠⚠ **This read 89 until 2026-08-29 and the tree measured 93 before R7a touched it** — the number aged against a tree that moved, which is `@M044`'s class one instrument over: **re-measure before quoting a delta**.  R7a's own contribution is **three**.  ⚠ Resolution GATES; coverage only REPORTS.  ⚠⚠ A doc reference is **not** an enforcing site (`@X330`) |
 
 ⚠ `scripts/test.sh` is the canonical runner — **never `loft test` directly**
 (§ Key commands says what it does that you would otherwise skip).
@@ -650,7 +663,7 @@ source of truth and the listing is a navigational summary of it.
 | `scramble.loft` | **THE RUN'S ENDING, and the only one there is** — ⚠⚠ *the base never ends itself* (`@X293`).  Drive onto the core's own hex and stay six seconds; exiting CANCELS and resets.  ⚠ Beside the core you TRADE, on the core you LEAVE (`@X294`) |
 | `vehicle.loft` | the PLAYER — drive, boost, salvage.  `salvage_at` is the shared chassis |
 | `helper.loft` | the NPC crew — banked movement, wrecking, and the 60 s recovery |
-| `carry.loft` | one record per carryable thing, with an `owner` — conservation is STRUCTURAL |
+| `carry.loft` | one record per carryable thing, with an `owner` — conservation is STRUCTURAL.  ⚠ Since `plans/30` R7b an owner may be a MOB (`BLOCKER_MOB + PoiMob index`), which is an identity that OUTLIVES a body |
 | `part.loft` | **what an entity IS** — the `Socket` a part offers and the `Binding` that fills it, over `hex_body::Rig` |
 | `catalogue.loft` | **what each entity is MADE of** — the hover unit, the robot, the tower base + top, as `Limb` tables |
 | `part_mesh.loft` | **a part, as TRIANGLES** — and it contains no forward kinematics |
@@ -1212,6 +1225,9 @@ names; most of them exist because somebody did it without reading.
 | Ask whether the BOUND is worth anything yet | `@M079` — ⚠⚠ **on an authored map it covers 1466 of 1467 standable hexes**, because a round that crosses its patch has legs as long as the patch.  ⚠ It is not a filter for the POIs a base lands among; what it excludes is the world OFF the patch, which dryopea has not got (`@X298`, `@X299`).  ⚠ `@M072`'s second reading with a new subject |
 | Change a POI's state, or ask why one is never removed | `src/poi.loft::poi_state_set` — ⚠ the ONE door, and it writes `since` with the state because the closed form goes PIECEWISE at a change.  ⚠⚠ **A POI is never CULLED** (`@X304`): there is no verb that removes one, and *not materialised* is a different word |
 | Add ambient life, or ask why a robot walks past instead of at you | `src/errand.loft` — ⚠⚠ **the bubble takes the errand, ONE WAY** |
+| Draw a mob OFF its route, or add a thing that distracts one | `src/errand.loft` § THE LURE + `@X346` — ⚠⚠ **a lure is a fact about the GROUND and nothing here reads where a person is** (`@FR-E-Built-Not-Seen`).  ⚠⚠ **A hex walked AWAY from the anchor costs TWO** — the one it spent and the one it owes — because a detour is paid both ways and the return leg is indistinguishable from progress; charge one and the body is permanently short of its own rule, silently.  ⚠ A lure is a ROW (`errand_lures()`, indexed) and the REACH is its one column; the bound grows by exactly that much |
+| Make a mob CARRY something it found, or ask why a theft does not flip the bag | `src/errand.loft::errand_lure_take` / `errand_lure_drop` — ⚠⚠ **the bag is the ROUND's state and `cycle_phase` reads the WALK**, so a pickup that flipped it would put the body on a different leg from its rule.  ⚠ The load is a `CarryObject` (`@X334` come due) keyed on `BLOCKER_MOB + PoiMob index`, **an identity that outlives a body** — a roster slot is not one, because three callers rebuild the roster |
+| Ask what happens to the player's salvage when a robot takes it | `@M084` — ⚠⚠ **230.0 against 200.0**, one table column apart.  ⚠ Kill the thief and it is back on the ground as the same stuff; a spill that lost its SOURCE is the mutation that survived twelve others (`height.loft` names a pile by its NEWEST deposit, and a corpse is wreckage too) |
 | Add a mob ROLE, or ask where a robot on a routine is going | `src/errand.loft` § THE ROUTINE + `@X333` — ⚠⚠ **a role is a ROW and the table is INDEXED, never a `role ==`**, and a test sweeps `src/` to say so.  ⚠ **The BAG steers and never a clock** (`@M073`): 4, 40 and 400 hexes all close; a period one column away gets 13 hexes out for ever |
 | Ask where a mob is at an arbitrary MOMENT, or add a leg to a cycle | `src/errand.loft` § THE CYCLE + `@X335` — ⚠⚠ **one modulo, O(legs), one index, and never a step forward** (`@FR-E-Closed-Form`), so an un-tracked mob is COMPUTED and `plans/22`'s LOD refusal needs no exception.  ⚠⚠ **The bank does NOT restart at a leg boundary**: `walked(t) − walked(t₀)`, never `walked(t − t₀)`, and a **DWELL is a LEG with a length, not a pause**.  ⚠ A clock period must be a whole number of ticks and is refused otherwise (`@M074`) |
 | Move a mob on a routine, or ask what `slip` pays for | `src/errand.loft` § THE MOVER + `@X336`, `@X337` — ⚠⚠ **`errand_step` is the ONE DOOR and nothing else may write a cycling mob's position** (`@FR-E-One-Door`).  ⚠⚠ **The position is exact in its PHASE and only conditionally in its HEX**: a mob whose first choice is taken walks another route of the same length and loses no time, so hex equality holds only where nothing can push a body while the DISTANCE holds everywhere.  ⚠⚠ **A DWELL is not a BLOCK** — charging `slip` while a guard waits out its clock freezes it **with every conformance count green**, so *liveness is a second gate*.  ⚠ A lost hex costs `BANK_WHOLE / rate` and a rate without a whole one is REFUSED |

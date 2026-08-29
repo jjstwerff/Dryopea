@@ -2034,6 +2034,40 @@ fn wave_block(state: WaveState, fields: const vector<ClassField>,
 // tick N+1.  Same rule as `damage_resolve`, same reason: a hex raised
 // mid-loop would change passability for whoever the roster visited
 // later and not for the ones it visited first.
+// Walk a thief's stolen load onto its hex.
+//
+// ⚠ The DELIVERY is not here: `errand_lure_drop` lets a load go at the
+// mob's own drop-off, beside the `errand_lure_take` that picked it up,
+// because both are *what this mob does at this hex*.  Two places
+// deciding whether a mob is carrying anything is one too many.
+fn wave_carry_step(state: WaveState, e: const Enemy) {
+    wcs_who = errand_owner(e);
+    if wcs_who == BLOCKER_NONE { return; }
+    if !e.alive { return; }
+    cargo_follow(state.cargo, wcs_who, e.q, e.r);
+}
+
+// Put a killed thief's stolen load back on the ground.
+//
+// ⚠ The load goes back as RUBBLE and not as a carry object, because that
+// is what it was when the player left it: `errand_lure_take` cleared a
+// pile and `errand_load_pack` kept both the metres and the SOURCE, so a
+// wreck comes back a wreck.  ⚠⚠ **The object is CONSUMED rather than put
+// down** — the ledger's one legitimate exit — because the thing on the
+// ground afterwards is a heap and not an object, and leaving both would
+// be the same salvage counted twice.
+fn wave_spill_load(state: WaveState, e: const Enemy) {
+    wsl_who = errand_owner(e);
+    if wsl_who == BLOCKER_NONE { return; }
+    wsl_i = cargo_held_by(state.cargo, wsl_who);
+    if wsl_i == CARGO_NONE { return; }
+    wsl_o = cargo_get(state.cargo, wsl_i);
+    if wsl_o.kind != CARGO_SALVAGE { return; }
+    height_raise(state.heights, e.q, e.r, errand_load_metres(wsl_o.subj),
+                 errand_load_source(wsl_o.subj) as u8? ?? 0);
+    cargo_consume(state.cargo, wsl_i);
+}
+
 fn wave_deaths(state: WaveState) -> integer {
     wd_n = 0;
     for wd_e in state.enemies {
@@ -2041,6 +2075,13 @@ fn wave_deaths(state: WaveState) -> integer {
             wd_e.alive = false;
             height_raise(state.heights, wd_e.q, wd_e.r, BODY_HEIGHT_METRES,
                          body_source(wd_e.kind) as u8? ?? 0);
+            // ⚠⚠ **AND IT DROPS WHAT IT STOLE** (`plans/30` R7b) — the
+            // counter-play the theft is worth having: kill the thief and
+            // your heap is on the ground again, made of what it was made
+            // of, on the hex it fell on.  ⚠ `cargo_spill`'s own rule
+            // (*dying is not a retrieval*) read from the other side: the
+            // player still has to drive out and collect it.
+            wave_spill_load(state, wd_e);
             wd_n += 1;
         }
     }
@@ -2211,7 +2252,8 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
         // robot the bubble has taken comes back here as one of the wave
         // with no second write to remember.
         if errand_cycling(wt_e, state.now) {
-            errand_step(wt_e, wt_errand, wt_occ, wt_block, state.now,
+            errand_step(wt_e, wt_errand, wt_occ, wt_block, pal, pw,
+                        state.heights, state.cargo, state.now,
                         TICK_STEP_UNITS);
             continue;
         }
@@ -2316,6 +2358,15 @@ pub fn wave_tick(state: WaveState, pal: vector<GroundType>, pw: PaintedWorld,
     for wt_c in state.crew {
         cargo_follow(state.cargo, BLOCKER_CREW + wt_cg, wt_c.q, wt_c.r);
         wt_cg += 1;
+    }
+    // ⚠⚠ **A THIEF IS A CARRIER TOO** (`plans/30` R7b), and it is here
+    // rather than in `errand_step` for the reason the crew's line is
+    // here: cargo goes where its carrier goes, once, after every mover
+    // has finished, so nothing this tick can see a carrier and its load
+    // on different hexes.
+    //
+    for wt_th in state.enemies {
+        wave_carry_step(state, wt_th);
     }
 
     // ⚠ **Salvage is the wallet's only income** (plan 13 V3), and it

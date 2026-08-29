@@ -1,0 +1,106 @@
+# a-heap-a-hauler-took — `plans/30` R7b, and it is
+# `@FR-E-Built-Not-Seen` measured.
+#
+# ⚠⚠ **THE RULE THIS FILE EXISTS FOR**: *a mob leaves its route for
+# something the player DID or BUILT, never for the player being SEEN.*
+# `crawler` measured what the other answer costs — without its *an
+# incursion does not break formation for a hero it has merely seen*
+# rule, raiders parked on a hero for seven days and the whole mechanism
+# *"silently became 'monsters walk at the player', which the game
+# already had"*.
+#
+# ⚠⚠ So the file is in TWO HALVES and the first one is the CONTROL: the
+# player parks in plain sight beside a hauler's road and **nothing
+# happens for thirty ticks** — the robot is on its rule's own hex to the
+# tick.  Then a heap appears up a side track, and the same robot turns
+# four hexes off its line for it.
+#
+# ⚠ Its pair is `a-heap-a-gatherer-walked-past.keys`, one table column
+# apart: a gatherer has no lure and walks past the same heap.
+
+echo a heap a hauler took: it turns for what you left, never for you
+
+do toggle_mode
+
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+count markers 1 1
+do toggle_mode
+
+# A patch under the core, so the base is somewhere real.
+palette 5
+drag -2 -2 2 -2
+drag -2 -1 2 -1
+drag -2 0 2 0
+drag -2 1 2 1
+drag -2 2 2 2
+
+# The road, far enough east that no hex of it is inside the bubble —
+# `a-road-that-passes-by`'s rule, because a route the scrambler reaches
+# is a wave and not a round.
+drag 32 -1 54 -1
+drag 32 0 54 0
+drag 32 1 54 1
+
+# ⚠ A SIDE TRACK off the road at q = 42, four hexes long.  It is a dead
+# end: the flow field to the face never goes down it, so a robot on it
+# is a robot that left its route.
+drag 42 2 42 4
+
+# ── The place, and ONE hauler on the round ──────────────────────
+#
+# ⚠ One mob on purpose: two on an out-and-back round meet head-on and
+# the file would be measuring a queue (`a-place-that-sends-robots`).
+poi face 50 0
+route 0 haul robot 1 34 0 0 0
+
+# ── The CONTROL: the player, in plain sight, changes nothing ────
+#
+# ⚠⚠ Parked one hex OFF the road and in plain sight of it — beside the
+# robot's line, never on it, so nothing here is *in the way*.  If being
+# SEEN were enough, this is where it would show.
+park 44 3
+player on 0 0 0
+
+tick 1
+count alive 1 1
+enemy 0 35 0
+
+# ⚠⚠ **THIRTY TICKS AND IT IS EXACTLY WHERE ITS RULE SAYS.**  Fifty
+# hexes at 1.5 hex/s over a 32-hex round is offset 30, which the closed
+# form puts at (36, 0) — no `slip`, no deviation, no notice taken.  That
+# is the assertion that would have caught `crawler`'s defect.
+tick 29
+count alive 1 1
+enemy 0 36 0
+wallet 200.0 200.0
+
+snap r7b_nothing_happens_for_being_seen
+
+# ── And now you LEAVE something ─────────────────────────────────
+raise 42 4 1.5 wreckage
+pile 42 4 1.5 1.5
+
+tick 20
+
+# ⚠⚠ **THE HEAP IS GONE AND THE ROBOT WENT UP THE SIDE TRACK FOR IT.**
+# It turned four hexes off its line for something the player LEFT, took
+# the load, and went back to its round — and the BAG is untouched,
+# because the bag is the ROUND's state and a theft is not a leg.
+pile 42 4 0 0
+enemy 0 48 1
+
+# ── And what it cost YOU ────────────────────────────────────────
+#
+# ⚠⚠ Drive out to collect and there is nothing there.  The wallet is the
+# reading and it does not move — **200.0 against the 230.0 the same heap
+# is worth in `a-heap-a-gatherer-walked-past.keys`**.  Thirty points out
+# of a two-hundred-point wallet, for leaving a heap on a road.
+park 42 4
+tick 10
+pile 42 4 0 0
+wallet 200.0 200.0
+
+snap r7b_a_heap_a_hauler_took

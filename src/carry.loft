@@ -116,6 +116,31 @@ pub const CARGO_TOP: u8 = 1;
 // it back up.  **Nothing is refunded because nothing was lost.**
 pub const CARGO_BEACON: u8 = 2;
 
+// A HEAP THE PLAYER LEFT, on the robot that took it (`plans/30` R7b) —
+// `docs/ERRANDS.md` § Distraction: *"your salvage heap reads as spilled
+// cargo on its route … it steals your income"*.
+//
+// ⚠⚠ **THE FOURTH CONSUMER, AND THE FIRST WHOSE CARRIER IS NOT ON THE
+// PLAYER'S SIDE.**  `owner` has held `BLOCKER_PLAYER` and
+// `BLOCKER_CREW + i`; this one holds `errand.loft`'s `BLOCKER_MOB + mob`
+// — a POI mob's index, which is an identity that OUTLIVES its body,
+// because the roster is rebuilt by three different callers and a slot is
+// not a name.
+//
+// ⚠ Like `CARGO_BEACON` it adds no row to `cargo_destination_ok`: a
+// stolen load's destination is *the depot this particular mob is
+// walking to*, which is a fact about a routine and not about a kind.
+// `errand.loft` owns that half, exactly as `spawn.loft::wave_drop` owns
+// the beacon's.
+//
+// ⚠⚠ **And `subj` carries the load AND what it is made of** — metres in
+// millimetres with the rubble source above them (`errand_load_pack`) —
+// so a load spilled by a killed thief goes back on the ground as the
+// same stuff.  That is this file's own *a kind that needs a second
+// payload field has outgrown this* answered by NAMING the packing rather
+// than by overloading the field twice in silence.
+pub const CARGO_SALVAGE: u8 = 3;
+
 // ⚠ No index at all, for a caller asking "which object?" — the same
 // negative-sentinel choice `occupancy.loft` makes, and deliberately
 // NOT the zero-is-neutral rule the ledgers use: slot 0 is a real

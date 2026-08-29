@@ -1,0 +1,459 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 30 phase R7b — the hauler and your heap.
+//
+// ⚠⚠ **THE RULE**, `@FR-E-Built-Not-Seen`:
+//
+// > A mob leaves its route for something the player DID or BUILT, never
+// > for the player being SEEN.
+//
+// ⚠ `crawler` measured the other answer: without its *an incursion does
+// not break formation for a hero it has merely seen* rule, raiders
+// parked on a hero for seven days and *"the whole mechanism silently
+// became 'monsters walk at the player', which the game already had"*.
+//
+// ── ⚠⚠ AND THE FINDING IS THE ACCOUNTING ────────────────────────
+//
+// `@FR-E-Slip` says a deviation costs TIME and never DESTINATION, and
+// that *a body pushed off its cycle re-converges on the same hex*.  A
+// DETOUR has to be paid for both ways, and the return leg is
+// indistinguishable from ordinary progress — so a mover charging one
+// hex per hex spent going out leaves the body permanently short of its
+// own rule, silently, by the depth of the detour.
+//
+// ⚠⚠ **So a hex walked AWAY from the anchor costs TWO** — the one it
+// spent and the one it owes — and then the rule's distance to the
+// anchor equals the body's at every moment of the detour with nothing
+// remembered.  `@FR-E-Place-State` is what makes that the required
+// answer rather than a clever one: a mob may hold nothing beyond
+// `carry` and `slip`, so there is no debt counter to reach for.
+//
+// ⚠ § The rule and the body agree in DISTANCE throughout is that
+// claim, and it carries its own vacuity control — the mob must actually
+// have left its line, or the equality is about a walk in a straight
+// line.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const GRASS:   integer = 5;
+
+// One tick, in base units.  ⚠ Spelled out rather than derived from
+// `TICK_STEP_UNITS`: a file-scope const initialised from a sibling
+// module's const PANICS the compiler ([loft#962]).
+const R7_TICK: integer = 2000000;
+
+fn as_u8(n: integer) -> u8 { n as u8? ?? 0 }
+
+// ─── The world — a road, and a dead-end SIDE TRACK ──────────────
+//
+// ⚠ The spur is what makes a detour visible: the flow field to the face
+// never goes down it, so a robot on it is a robot that left its route.
+fn r7_world() -> PaintedWorld {
+    rw_pw = painted_empty();
+    for rw_q in 0..=16 {
+        for rw_r in 2..=4 {
+            paint(rw_pw, rw_q, rw_r, as_u8(GRASS));
+        }
+    }
+    for rw_s in 5..=7 {
+        paint(rw_pw, 8, rw_s, as_u8(GRASS));
+    }
+    rw_pw
+}
+
+fn r7_depot() -> Hex { Hex { q: 1,  r: 3 } }
+fn r7_face()  -> Hex { Hex { q: 15, r: 3 } }
+fn r7_heap()  -> Hex { Hex { q: 8,  r: 7 } }
+
+// A hauler, which is the row that names a lure.
+fn r7_hauler() -> Errand {
+    rh_er = errand_at(ROLE_HAUL, Hex { q: 0, r: 0 }, r7_face(), r7_depot());
+    // ⚠ A POI mob index, because the cargo ledger keys on an identity
+    // that OUTLIVES a body and a roster slot is not one.
+    rh_er.mob = 1;
+    rh_er
+}
+
+fn r7_fields(kind: u8) -> vector<ErrandField> {
+    rf_pal = load_palette(PALETTE);
+    rf_out: vector<ErrandField> = [];
+    rf_out += [ErrandField {
+        q: r7_face().q, r: r7_face().r, climb: climb_limit(kind),
+        field: flow_build(rf_pal, r7_world(), height_layer_empty(), kind,
+                          r7_face()),
+    }];
+    rf_out += [ErrandField {
+        q: r7_depot().q, r: r7_depot().r, climb: climb_limit(kind),
+        field: flow_build(rf_pal, r7_world(), height_layer_empty(), kind,
+                          r7_depot()),
+    }];
+    rf_out
+}
+
+// A layer with `metres` of `source` on the heap hex, or nothing.
+//
+// ⚠⚠ **MASONRY and not wreckage, wherever the SOURCE is the claim**: a
+// robot's corpse is wreckage too, so a spill measured on a hex a body
+// fell on could not tell the load from the carrier
+// (`CLAUDE.md` § a gate whose reading is already saturated, wearing its
+// other face).
+fn r7_ground_of(metres: float, source: integer) -> HeightLayer {
+    rg_hl = height_layer_empty();
+    if metres > 0.0 {
+        height_raise(rg_hl, r7_heap().q, r7_heap().r, metres, as_u8(source));
+    }
+    rg_hl
+}
+
+fn r7_ground(metres: float) -> HeightLayer {
+    r7_ground_of(metres, RUBBLE_MASONRY)
+}
+
+// ─── ⚠⚠ THE HARNESS — one hauler, driven by the ONE DOOR ────────
+
+// Walk a hauler `ticks` ticks over ground carrying `metres` of heap.
+//
+// Answers (worst distance disagreement, ticks spent OFF the rule's hex,
+// metres left on the ground, the bag at the end, cargo held, and what
+// the ground it ended on is MADE OF).
+fn r7_walk(metres: float, ticks: integer,
+           kill: boolean) -> (integer, integer, float, integer,
+                              integer, integer) {
+    rw_pal  = load_palette(PALETTE);
+    rw_pw   = r7_world();
+    rw_hl   = r7_ground(metres);
+    rw_cl   = cargo_empty();
+    rw_kind = as_u8(ENEMY_KIND_REGULAR);
+    rw_row  = errand_role_of(ROLE_HAUL);
+    rw_rate = bank_rate(enemy_speed(rw_kind));
+    rw_fld  = r7_fields(rw_kind);
+    rw_cyc  = cycle_build(r7_hauler(), rw_row, rw_pal, rw_pw, rw_hl,
+                          rw_kind);
+    // ⚠ The ANCHOR the round starts out for — the face — is the field
+    // the whole claim is measured in.
+    rw_af   = flow_build(rw_pal, rw_pw, height_layer_empty(), rw_kind,
+                         r7_face());
+
+    rw_e = Enemy { q: r7_depot().q, r: r7_depot().r, kind: rw_kind,
+                   alive: true, errand: true, route: r7_hauler() };
+    rw_worst = 0;
+    rw_off   = 0;
+    rw_n     = 0;
+    while rw_n < ticks {
+        rw_n += 1;
+        rw_t  = rw_n * R7_TICK;
+        rw_occ = occupancy_empty();
+        occupancy_enter(rw_occ, rw_e.q, rw_e.r);
+        errand_step(rw_e, rw_fld, rw_occ, blocker_empty(), rw_pal, rw_pw,
+                    rw_hl, rw_cl, rw_t - R7_TICK, R7_TICK);
+        // ⚠⚠ **THE CLAIM, asked every tick**: the rule's distance to the
+        // anchor and the body's are the same number.  ⚠ Only while the
+        // mob is on the OUTWARD leg — the field is the face's, and a
+        // mob on its way back to the depot is descending a different
+        // one.
+        rw_rule = cycle_at(rw_cyc, rw_row, rw_rate, rw_t - rw_e.route.slip);
+        if errand_leg(rw_row, rw_e.route, rw_t - rw_e.route.slip)
+           == rw_row.empty {
+            rw_d = flow_distance(rw_af, rw_e.q, rw_e.r)
+                   - flow_distance(rw_af, rw_rule.q, rw_rule.r);
+            if rw_d < 0 { rw_d = 0 - rw_d; }
+            if rw_d > rw_worst { rw_worst = rw_d; }
+            if rw_rule.q != rw_e.q || rw_rule.r != rw_e.r { rw_off += 1; }
+        }
+    }
+    // ⚠⚠ **Killed through `wave_tick` and never through a helper of its
+    // own**: `wave_deaths` is *the ONE death path*, so a test that
+    // reached past it would be gating a second one.  ⚠ The core goes far
+    // away, or `wave_cutoff` would take this mob's errand first.
+    //
+    // ⚠ **And the layers are read back OUT of the state** — a struct
+    // stored in a FIELD of another struct is a COPY
+    // (`advice[avoidable-copy]`), so the spill lands in `rw_st.heights`
+    // and never in `rw_hl`.  Reading the local instead is how this test
+    // first reported *0 m back on the ground* over a working spill.
+    rw_left = height_rise(rw_hl, r7_heap().q, r7_heap().r);
+    rw_held = cargo_held_by(rw_cl, errand_owner(rw_e));
+    rw_src  = 0 - 1;
+    if kill {
+        rw_st = wave_state_empty();
+        rw_st.heights = rw_hl;
+        rw_st.cargo   = rw_cl;
+        rw_st.enemies += [rw_e];
+        enemy_hurt(rw_st.enemies[0] ?? Enemy { }, 9999.0);
+        wave_tick(rw_st, rw_pal, rw_pw, marker_empty(),
+                  Hex { q: 400, r: 400 });
+        // ⚠ At the hex the body ENDED on: `wave_tick` moves before it
+        // kills, and `rw_e` is a copy the roster took — its own `q`/`r`
+        // are one hex behind.
+        rw_dead = rw_st.enemies[0] ?? Enemy { };
+        rw_left = height_rise(rw_st.heights, rw_dead.q, rw_dead.r);
+        rw_held = cargo_held_by(rw_st.cargo, errand_owner(rw_e));
+        rw_src  = height_source(rw_st.heights, rw_dead.q, rw_dead.r);
+    }
+    (rw_worst, rw_off, rw_left, rw_e.route.carry as integer, rw_held,
+     rw_src)
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ THE GATE: the rule and the body agree in DISTANCE throughout
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠⚠ **A hex walked away from the anchor costs TWO, and this is the
+// only reason that is true.**  The mob leaves its line for a heap four
+// hexes up a dead-end spur and comes back; at no tick of it does its
+// distance to the face differ from its own rule's.
+//
+// ⚠ **And the vacuity control is in the same assertion**: it must
+// actually have been OFF its rule's hex for some of those ticks, or the
+// equality is a statement about walking in a straight line.  A mob that
+// never noticed the heap satisfies the first half perfectly.
+// @DRY-214 — a mob turns four hexes off its line and comes back on its rule
+fn test_a_detour_keeps_the_rule_and_the_body_together() {
+    tad_got = r7_walk(1.5, 22, false);
+    assert(tad_got.0 == 0 && tad_got.1 > 0,
+           "the rule and the body never differ in distance ({tad_got.0}), "
+           + "and the mob DID leave its line ({tad_got.1} ticks off it)");
+
+    // ⚠ The control: with no heap the mob never leaves its line at all,
+    // so the second half of the assertion above is reading the detour
+    // and not the walk.
+    tad_none = r7_walk(0.0, 22, false);
+    assert(tad_none.0 == 0 && tad_none.1 == 0,
+           "and with nothing on the ground it never leaves it: "
+           + "{tad_none.0} / {tad_none.1}");
+}
+
+// ⚠⚠ **THE COST FUNCTION, on its own** — three answers, and only one of
+// them is new.  Closer is free, EQUAL is the sidestep that has always
+// cost one, *nothing moved* is equal too, and FURTHER is the one a lure
+// can produce.
+// @DRY-211 — the three things a step can do, and what each owes
+fn test_a_hex_away_from_the_anchor_costs_two() {
+    assert(errand_hex_cost(9, 8) == 0, "closer is free");
+    assert(errand_hex_cost(9, 9) == 1, "a sidestep costs one");
+    assert(errand_hex_cost(9, 10) == 2, "away costs two");
+    // ⚠ Unreachable is a SENTINEL and not a distance — two routeless
+    // readings would subtract to 0 and read as free.
+    assert(errand_hex_cost(FLOW_UNREACHABLE, 8) == 1
+           && errand_hex_cost(9, FLOW_UNREACHABLE) == 1,
+           "an unreachable reading costs one, never nothing");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ What draws it off, and what does NOT
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠⚠ **THE RULE, at the door**: `errand_lure_at` takes the ROW, the
+// mob, the GROUND and the ledger — and nothing that knows where a person
+// is.  ⚠ So the negative control is structural as well as measured: a
+// player standing on the heap's own hex cannot make a lure, and an empty
+// hex with a player on it is not one either.
+// @DRY-212 — what the player LEFT, and never the player
+fn test_only_the_ground_can_lure() {
+    tog_row = errand_role_of(ROLE_HAUL);
+    tog_e   = Enemy { q: 8, r: 4, kind: as_u8(ENEMY_KIND_REGULAR),
+                      alive: true, errand: true, route: r7_hauler() };
+    assert(errand_lure_at(tog_row, tog_e, r7_ground(0.0), cargo_empty())
+              .found == false,
+           "bare ground lures nobody");
+    assert(errand_lure_at(tog_row, tog_e, r7_ground(1.5), cargo_empty())
+              .found,
+           "and a heap on it does");
+
+    // ⚠ SPOIL is refused, and it is `vehicle.loft`'s own `collectable`
+    // that says so — the thief and the owner must not disagree about
+    // what salvage IS.
+    tog_sp = height_layer_empty();
+    height_raise(tog_sp, r7_heap().q, r7_heap().r, 1.5, as_u8(RUBBLE_SPOIL));
+    assert(!errand_lure_at(tog_row, tog_e, tog_sp, cargo_empty()).found,
+           "shovelled spoil is not salvage, here or at the chassis");
+
+    // ⚠⚠ **EMPTY HANDS ARE HALF THE RULE.**  A hauler runs OUT with
+    // nothing in its bag, which is why a heap reads as spilled cargo at
+    // all; one coming back laden walks past.
+    tog_laden = Enemy { q: 8, r: 4, kind: as_u8(ENEMY_KIND_REGULAR),
+                        alive: true, errand: true, route: r7_hauler() };
+    tog_laden.route.carry = ERRAND_BAG_LOAD;
+    assert(!errand_lure_at(tog_row, tog_laden, r7_ground(1.5),
+                           cargo_empty()).found,
+           "a laden hauler has no hands for it");
+
+    // ⚠ And a role with no lure column never looks — which is the pair
+    // `a-heap-a-gatherer-walked-past.keys` measures.
+    tog_g = Enemy { q: 8, r: 4, kind: as_u8(ENEMY_KIND_REGULAR),
+                    alive: true, errand: true, route: r7_hauler() };
+    assert(!errand_lure_at(errand_role_of(ROLE_GATHER), tog_g,
+                           r7_ground(1.5), cargo_empty()).found,
+           "a gatherer's row names no lure");
+}
+
+// ⚠⚠ **THE BAG IS NOT TOUCHED BY A THEFT, and that is load-bearing.**
+// The bag is the ROUND's state and `cycle_phase` reads the WALK rather
+// than the bag — so a theft that flipped it would put the body on a
+// different leg from its own rule, permanently and silently.
+// @DRY-213 — the heap comes off the ground and the bag is untouched
+fn test_a_theft_is_not_a_leg() {
+    tat_got = r7_walk(1.5, 12, false);
+    assert(tat_got.3 == (ERRAND_BAG_EMPTY as integer),
+           "still outbound with an empty bag: {tat_got.3}");
+    assert(tat_got.2 == 0.0 && tat_got.4 != CARGO_NONE,
+           "the heap is off the ground ({tat_got.2} m) and on the robot "
+           + "(cargo {tat_got.4})");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠ The load is CONSERVED
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠⚠ **`@X334`'s obligation coming due**: a bag holds material that was
+// never on the map, and `carry.loft` conserves an object that IS on the
+// map and the player could have picked up instead.  A heap the player
+// left is the second kind.
+// @DRY-215 — carried, delivered, or dropped where the thief fell
+fn test_a_stolen_load_is_conserved() {
+    // ⚠⚠ **Kill the thief and the heap is on the ground again** — the
+    // counter-play the theft is worth having, and the player still has
+    // to drive out and collect it (`cargo_spill`'s own *dying is not a
+    // retrieval*, read from the other side).
+    //
+    // ⚠ **Measured as a DIFFERENCE against a thief carrying nothing**,
+    // because a corpse piles its own `BODY_HEIGHT_METRES` on the same
+    // hex: the absolute reading is 2.0 m and only the 1.5 of it is the
+    // player's.  An assertion on the total would have been reading the
+    // body.
+    tas_killed = r7_walk(1.5, 22, true);
+    tas_bare   = r7_walk(0.0, 22, true);
+    assert(tas_killed.2 - tas_bare.2 == 1.5,
+           "a killed thief drops exactly what it stole: {tas_killed.2} m "
+           + "against {tas_bare.2} m for one carrying nothing");
+    assert(tas_killed.4 == CARGO_NONE,
+           "and it is not holding it any more: {tas_killed.4}");
+    // ⚠⚠ **AND IT COMES BACK AS THE SAME STUFF.**  `height.loft` names a
+    // pile by its NEWEST deposit, so the spill's source is what the hex
+    // reads as — and a load that came back as the wrong rubble could be
+    // uncollectable SPOIL, which is the player's salvage destroyed
+    // rather than returned.  ⚠ The heap is MASONRY on purpose: a robot's
+    // corpse is wreckage, and a gate that used wreckage for both could
+    // not tell the load from the carrier.  ⚠ It is the mutation
+    // `errand_load_source` survived until this line existed.
+    assert(tas_killed.5 == RUBBLE_MASONRY,
+           "the load comes back as what it was: source {tas_killed.5}");
+    assert(tas_bare.5 == RUBBLE_WRECKAGE,
+           "and a thief carrying nothing leaves only its own wreckage: "
+           + "source {tas_bare.5} — the control");
+
+    // ⚠ The packing, on its own: one integer, two facts, and the SOURCE
+    // travels with the metres so a spilled load is the same stuff.
+    tas_p = errand_load_pack(1.5, RUBBLE_WRECKAGE);
+    assert(errand_load_metres(tas_p) == 1.5
+           && errand_load_source(tas_p) == RUBBLE_WRECKAGE,
+           "the load round-trips: {errand_load_metres(tas_p)} m of "
+           + "{errand_load_source(tas_p)}");
+    // ⚠⚠ **AND IT LEAVES THE WORLD AT THE DEPOT** — the ledger's one
+    // legitimate exit, and the moment the player's salvage is finally
+    // somebody else's.  ⚠ The destination is the mob's own laden anchor
+    // and not a row in `cargo_destination_ok`: *the depot this
+    // particular mob is walking to* is a fact about a routine, which is
+    // `CARGO_BEACON`'s split one consumer over.
+    tas_home = r7_walk(1.5, 40, false);
+    assert(tas_home.4 == CARGO_NONE,
+           "it is delivered at the drop-off: {tas_home.4}");
+    // ⚠ The control: it was HOLDING one part-way round, so the reading
+    // above is a delivery and not a theft that never happened.
+    tas_mid = r7_walk(1.5, 22, false);
+    assert(tas_mid.4 != CARGO_NONE,
+           "and it was carrying it on the way: {tas_mid.4}");
+
+    tas_c = errand_load_pack(0.25, RUBBLE_CARAPACE);
+    assert(errand_load_metres(tas_c) == 0.25
+           && errand_load_source(tas_c) == RUBBLE_CARAPACE,
+           "and so does a carapace: {errand_load_metres(tas_c)} m of "
+           + "{errand_load_source(tas_c)}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠⚠ And the BOUND pays for the reach
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠⚠ **R7b IS THE FIRST THING THAT CAN TAKE A BODY FURTHER FROM ITS
+// ANCHOR**, and `@FR-E-Poi-Owns` is where that is paid for.  Until now
+// `@FR-E-Non-Increasing` did the whole job; a mob turning aside for a
+// heap can be its lure's REACH outside the disc, so every radius grows
+// by exactly that much.
+//
+// ⚠ And a row with no lure pays nothing, which is why the 932 gate
+// measurements did not move.
+fn test_the_bound_pays_for_the_reach() {
+    ttb_pal = load_palette(PALETTE);
+    ttb_pw  = r7_world();
+    ttb_row = errand_role_of(ROLE_HAUL);
+    ttb_cyc = cycle_build(r7_hauler(), ttb_row, ttb_pal, ttb_pw,
+                          height_layer_empty(), as_u8(ENEMY_KIND_REGULAR));
+    assert(cycle_running(ttb_cyc), "the round builds");
+    ttb_b = bound_of(r7_hauler(), ttb_cyc);
+
+    ttb_gr  = errand_role_of(ROLE_GATHER);
+    ttb_ger = errand_at(ROLE_GATHER, r7_depot(), r7_face(),
+                        Hex { q: 0, r: 0 });
+    ttb_gc  = cycle_build(ttb_ger, ttb_gr, ttb_pal, ttb_pw,
+                          height_layer_empty(), as_u8(ENEMY_KIND_REGULAR));
+    ttb_gb  = bound_of(ttb_ger, ttb_gc);
+
+    assert(bound_legs(ttb_b) == bound_legs(ttb_gb) && bound_legs(ttb_b) > 0,
+           "the same round, leg for leg: {bound_legs(ttb_b)} vs "
+           + "{bound_legs(ttb_gb)}");
+    ttb_grew = 0;
+    ttb_i = 0;
+    while ttb_i < bound_legs(ttb_b) {
+        ttb_rl = ttb_b.radii[ttb_i] ?? 0;
+        ttb_rg = ttb_gb.radii[ttb_i] ?? 0;
+        if ttb_rl == ttb_rg + LURE_SALVAGE_REACH_HEXES { ttb_grew += 1; }
+        ttb_i += 1;
+    }
+    assert(ttb_grew == bound_legs(ttb_b),
+           "every disc of the lured row is exactly the reach wider: "
+           + "{ttb_grew} of {bound_legs(ttb_b)}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ⚠ The table
+// ─────────────────────────────────────────────────────────────────
+
+// ⚠⚠ **A LURE IS A ROW AND THE TABLE IS INDEXED** — `@X333`'s rule with
+// its third subject, after the roles and the places.
+fn test_the_lure_table_is_a_table() {
+    assert(len(errand_lures()) == LURE_KIND_COUNT,
+           "the table has {len(errand_lures())} rows and LURE_KIND_COUNT "
+           + "is {LURE_KIND_COUNT}");
+    assert(errand_lure_of(LURE_NONE).reach == 0,
+           "a role with no lure looks nowhere");
+    assert(errand_lure_of(LURE_SALVAGE).reach == LURE_SALVAGE_REACH_HEXES,
+           "and salvage looks {LURE_SALVAGE_REACH_HEXES} hexes");
+    // ⚠ A kind the table has not got reads as `none`, never as a branch
+    // nobody took.
+    assert(errand_lure_of(0 - 3).reach == 0
+           && errand_lure_of(99).reach == 0,
+           "an unknown lure is `none`");
+    assert(errand_lure_known("salvage") && errand_lure_known("none")
+           && !errand_lure_known("shiny"),
+           "a lure is known by its row and never by its number");
+    assert(errand_lure_names().find("salvage") >= 0
+           && errand_lure_names().find("shiny") < 0,
+           "the refusals name the table: '{errand_lure_names()}'");
+
+    // ⚠⚠ **AND ONLY THE CARRIERS HAVE ONE.**  A gatherer cuts what it
+    // was sent for and a guard is standing a post; neither is a robot
+    // with empty hands and a depot to fill, which is the whole reason a
+    // hauler reads a heap as spilled cargo.
+    assert(errand_role_of(ROLE_HAUL).lure == LURE_SALVAGE
+           && errand_role_of(ROLE_HARVEST).lure == LURE_SALVAGE,
+           "the two carriers are lured");
+    assert(errand_role_of(ROLE_GATHER).lure == LURE_NONE
+           && errand_role_of(ROLE_GUARD).lure == LURE_NONE
+           && errand_role_of(ROLE_NONE).lure == LURE_NONE,
+           "and nothing else is");
+}

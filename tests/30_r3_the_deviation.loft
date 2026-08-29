@@ -130,7 +130,9 @@ fn r3_run(kind: u8, chunk: integer, block: const Hex) -> (integer, integer,
     rr2_n    = 0;
     while rr2_n < 400 && rr2_at < 0 {
         rr2_t += chunk;
-        errand_step(rr2_e, r3_fields(kind), rr2_occ, rr2_blk, rr2_t, chunk);
+        errand_step(rr2_e, r3_fields(kind), rr2_occ, rr2_blk,
+                    load_palette(PALETTE), r3_world(), height_layer_empty(),
+                    cargo_empty(), rr2_t, chunk);
         rr2_n += 1;
         rr2_seen += 1;
         if rr2_one.q < 0 && (rr2_e.q != r3_home().q || rr2_e.r != r3_home().r) {
@@ -250,6 +252,7 @@ fn test_one_actor_asks_occupancy_the_same_in_both_states() {
     occupancy_enter(toa_oc2, 1, 3);
 
     errand_step(toa_mob, r3_fields(toa_kind), toa_occ, blocker_empty(),
+                toa_pal, r3_world(), height_layer_empty(), cargo_empty(),
                 R3_TICK, R3_TICK);
     enemy_tick(toa_cut, toa_pal, r3_world(), height_layer_empty(),
                r3_work_field(toa_kind), flow_empty(), toa_oc2,
@@ -266,6 +269,7 @@ fn test_one_actor_asks_occupancy_the_same_in_both_states() {
     toa_fo2 = occupancy_empty();
     occupancy_enter(toa_fo2, 0, 3);
     errand_step(toa_fmob, r3_fields(toa_kind), toa_fo1, blocker_empty(),
+                toa_pal, r3_world(), height_layer_empty(), cargo_empty(),
                 R3_TICK, R3_TICK);
     enemy_tick(toa_fcut, toa_pal, r3_world(), height_layer_empty(),
                r3_work_field(toa_kind), flow_empty(), toa_fo2,
@@ -370,7 +374,9 @@ fn r3_hemmed(kind: u8, equal_free: boolean, ticks: integer)
     rhm_i    = 0;
     while rhm_i < ticks {
         rhm_t += R3_TICK;
-        errand_step(rhm_e, r3_fields(kind), rhm_occ, rhm_blk, rhm_t, R3_TICK);
+        errand_step(rhm_e, r3_fields(kind), rhm_occ, rhm_blk,
+                    load_palette(PALETTE), r3_world(), height_layer_empty(),
+                    cargo_empty(), rhm_t, R3_TICK);
         rhm_d = flow_distance(r3_work_field(kind), rhm_e.q, rhm_e.r);
         if rhm_d > rhm_worst { rhm_worst = rhm_d; }
         rhm_i += 1;
