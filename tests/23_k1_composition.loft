@@ -202,8 +202,15 @@ fn test_the_summed_size_is_what_spawns() {
 // scenario written before this phase means.  ⚠ Pinned as SHAPE as well
 // as size: one group per wave, so `emit.loft` writes no `compose` line
 // for any of them and all 28 captures stay byte-identical.
-fn test_the_default_list_is_untouched() {
-    tdl = wave_schedule_new();
+//
+// ⚠⚠ **This test used to ask `wave_schedule_new` and it now asks
+// `wave_schedule_of`, because the two stopped agreeing on 2026-08-29.**
+// The DEFAULT gained the design's composition (`@M089`); what an
+// authored `schedule` line means did not, and THAT is the claim this
+// test was really protecting — every scenario in the corpus authors its
+// own list, and all of them must go on meaning what they meant.
+fn test_an_authored_list_is_untouched() {
+    tdl = wave_schedule_of(wave_list_default(), INTER_WAVE_DELAY_SECONDS);
 
     assert(wave_schedule_count(tdl) == 7,
            "seven waves: {wave_schedule_count(tdl)}");
@@ -215,6 +222,31 @@ fn test_the_default_list_is_untouched() {
                "and wave {tdl_i} is one group of regulars");
         tdl_i += 1;
     }
+}
+
+// ⚠⚠ **And the other half, which is the thing that CHANGED**: the
+// schedule every `WaveState` is born with carries the design's
+// composition, so the game sends more than one symbol at the player.
+//
+// ⚠ **The SIZES are identical to the authored list** — a composition
+// changes the mix and never the count — which is what keeps this
+// comparable with every clock taken before it (`@M089`).
+fn test_the_default_now_carries_the_design_composition() {
+    tdn = wave_schedule_new();
+
+    tdn_i = 0;
+    for tdn_w in wave_list_default() {
+        assert(wave_schedule_size(tdn, tdn_i) == tdn_w,
+               "wave {tdn_i} is still {tdn_w} robots: "
+               + "{wave_schedule_size(tdn, tdn_i)}");
+        tdn_i += 1;
+    }
+
+    assert(wave_schedule_pure(tdn, 0) && wave_schedule_pure(tdn, 1),
+           "the opening five and eight stay plain — a player's first "
+           + "sight of a robot is legible (`@X246`)");
+    assert(!wave_schedule_pure(tdn, 2),
+           "and the mix starts at wave 2");
 }
 
 // The scheduled path still emits regulars when nobody composed

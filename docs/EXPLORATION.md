@@ -426,11 +426,27 @@ two `vector<Struct>` fields read correctly, declared defaults survive a cast
 ([loft#876], closed), and the native backend no longer answers an empty
 vector ([loft#866], closed).
 
-⚠ **So the remaining work is small and NOT blocked on anything**: give
-`examples/waves.json` a class per part and the game sends mixed waves at you,
-rather than only a `.keys` fixture doing it.  ⚠ The same probe frees
-`MapFile`'s six-field cap and [`plans/01`](../plans/01-ground-editor/README.md)
-E4's *"expanded once loft JSON-cast bugs land"*.  ⚠⚠ Until then
+⚠⚠ **DONE 2026-08-29 — `examples/waves.json` carries a `parts` column and
+`wave_schedule_new` builds from it**, so the schedule every `WaveState` is
+born with is composed and **the game sends more than one symbol at the
+player**.  A `schedule` line still means a flat list, which is what keeps
+every scenario in the corpus meaning what it meant.
+
+⚠⚠ **And the measurement inverted the obvious expectation** (`@M089`): the
+composed list makes the base last **63 ticks LONGER** — 452 flat against 515
+composed — and the **scouts are the whole of it** (scouts-alone reads 515,
+the slow strong classes alone read 464).  It is `@M020` with its sign
+flipped: the siege front is the wall's WIDTH, a scout moves 2.5 hex/s against
+1.5 and does **0.1 wall damage against 1.0**, so scouts arrive first, take
+every slot in the front and chew at a tenth of the rate while the
+triple-damage miners are still walking.  ***A fast weak class in a wave makes
+the wave weaker***, which no arithmetic over the rates shows.  ⚠ So the
+shipped composition SOFTENS the authored list by 14 %, recorded rather than
+tuned away.
+
+⚠ The same probe frees `MapFile`'s six-field cap and
+[`plans/01`](../plans/01-ground-editor/README.md) E4's *"expanded once loft
+JSON-cast bugs land"*, and neither has been widened.  ⚠⚠ Until then
 *"composition is a readout"* (`ROBOT_ECONOMY.md` § How the player ever learns
 any of this, layer 3) is true of every scenario in `tests/scripts/` and false
 of the shipped wave list, which is a **content** gap wearing a design gap's

@@ -66,18 +66,22 @@
 // scenario in the gate and every test written before K1 authors.  That
 // is what lets composition land without moving a measurement.
 //
-// ⚠ **`WaveFile` is deliberately NOT extended.**  Nothing in `src/`
-// loads it (only `tests/16_w1` does, against `examples/waves.json`), so
-// giving it composition would be a file format nothing reads.
+// ⚠⚠ **`WaveFile` IS extended, since 2026-08-29** — § WaveFile's
+// `parts`.  This note used to refuse it for two reasons and **both are
+// gone**: the shape it needs (`vector<Struct>` in a `text as`) was said
+// to hang the JSON cast and miscompile to zero on the native backend,
+// and that whole family is fixed (`@M088`, probed on both backends);
+// and *"nothing loads it"* stopped being an argument the moment the
+// game was meant to send a MIXED wave at the player, which until now
+// only a `.keys` file could do.
 //
-// ⚠⚠ **The SECOND reason this note used to give is now FALSE**: it said
-// the shape it would need — `vector<Struct>` in a `text as` — hangs the
-// JSON cast and miscompiles to zero on the native backend.  **That family
-// is fixed** (`@M088`, probed 2026-08-29 on both backends).  So extending
-// `WaveFile` is available work, and what still argues against it is only
-// the first reason — nothing loads it.  ⚠ It stops being true the moment
-// the game is meant to send a MIXED wave at the player, which today only
-// a `.keys` file can do (`EXPLORATION.md` § The hole this section named).
+// ⚠ **What is still true is narrower and worth keeping**: nothing in
+// `src/` loads `examples/waves.json` yet — `wave_schedule_new` builds
+// from `wave_list_default`, and it is called by `wave_state_empty`, so
+// wiring the file in changes the schedule EVERY `WaveState` inherits.
+// That is a balance change with a measured cost (`@M005`'s 320-tick
+// reading is taken against the default list), and it wants its own
+// measurement rather than riding along with a file format.
 
 use lattice;
 use passable;
@@ -104,6 +108,104 @@ pub const INTER_WAVE_DELAY_SECONDS: float = 15.0;
 pub struct WaveFile {
     inter_wave_delay_seconds: integer,
     waves: vector<integer>,
+
+    // What each wave is MADE of, when it is more than its count.
+    //
+    // ⚠⚠ **Layered exactly as `wave_schedule_compose` layers it**, which
+    // is why adding it moved no existing reading: `waves` still means
+    // *N waves of N counts, every robot a regular*, and a `parts` entry
+    // REPLACES what one named wave is made of.  The file mirrors the
+    // code's own division rather than inventing a second one.
+    //
+    // ⚠ **An omitted `parts` is `[]`, which is today's file exactly**
+    // ([loft#914]'s silent default made useful — the same spelling rule
+    // `wallet.carried` and `play.digging` follow: choose the field's
+    // sense so the default reproduces the behaviour that shipped).
+    //
+    // ⚠⚠ **A `vector<Struct>` in a `text as` is what this needs, and it
+    // was refused for years because the cast HUNG on it.**  That family
+    // is fixed and verified on both backends (`@M088`, 2026-08-29), so
+    // this shape is available rather than blocked.
+    parts: vector<WaveFilePart>,
+}
+
+// One authored part — *wave 2 is eight scouts and four miners*.
+//
+// ⚠ **`class` is a NAME and never a discriminant**, for the reason
+// `passable.loft::enemy_class_of` exists: a file is written by a person,
+// and a number would make a typo spawn the wrong class quietly.  The
+// name is looked up through that one table, so adding a class stays one
+// row and this file cannot drift from the `.keys` vocabulary.
+pub struct WaveFilePart {
+    wave:  integer,
+    count: integer,
+    class: text,
+}
+
+// Everything wrong with a wave file, or "" when it is sound.
+//
+// ⚠ **A separate verb rather than a null return**, the shape
+// `poi_route_fault` and `compose_fault` already use: the caller wants
+// the REASON, and a loader that silently dropped a bad part would ship
+// a run the author did not write.
+//
+// ⚠⚠ **An unknown class is REFUSED and not defaulted to a regular.**
+// That is `enemy_class_of`'s own rule — *a typo that spawns the wrong
+// class quietly turns a green run into a lie* — and it is the whole
+// value of naming classes rather than numbering them.
+pub fn wave_file_fault(f: const WaveFile) -> text {
+    if f.inter_wave_delay_seconds < 0 {
+        return "inter_wave_delay_seconds is negative: {f.inter_wave_delay_seconds}";
+    }
+    for wff_c in f.waves {
+        if wff_c < 0 { return "a wave holds a negative count: {wff_c}"; }
+    }
+    for wff_p in f.parts {
+        if wff_p.wave < 0 || wff_p.wave >= len(f.waves) {
+            return "a part names wave {wff_p.wave}, and the list holds "
+                 + "{len(f.waves)}";
+        }
+        if wff_p.count < 0 {
+            return "wave {wff_p.wave} has a part with a negative count: "
+                 + "{wff_p.count}";
+        }
+        if enemy_class_of(wff_p.class) == null {
+            return "wave {wff_p.wave} names an unknown class "
+                 + "'{wff_p.class}' — it is one of {enemy_class_names()}";
+        }
+    }
+    ""
+}
+
+// The schedule an authored file describes.
+//
+// ⚠ Built from the counts and then COMPOSED, so a file with no `parts`
+// takes exactly the path it took before this field existed.
+//
+// ⚠⚠ **It refuses a faulty file by answering the bare counts**, rather
+// than by half-applying it: a caller that wants the reason asks
+// `wave_file_fault`, and a run built from a file the author got wrong
+// is the one outcome worse than a run built from its counts.
+pub fn wave_file_schedule(f: const WaveFile) -> WaveSchedule {
+    wfs_s = wave_schedule_of(f.waves, f.inter_wave_delay_seconds as float);
+    if wave_file_fault(f) != "" { return wfs_s; }
+
+    // One `wave_schedule_compose` per wave the file names, because that
+    // door REPLACES a whole wave — calling it per part would leave each
+    // wave holding only its last part.
+    wfs_w = 0;
+    while wfs_w < len(f.waves) {
+        wfs_group: vector<WavePart> = [];
+        for wfs_p in f.parts {
+            if wfs_p.wave == wfs_w {
+                wfs_group += [WavePart { wave: wfs_w, count: wfs_p.count,
+                                         kind: enemy_class_of(wfs_p.class) ?? ENEMY_KIND_REGULAR }];
+            }
+        }
+        if len(wfs_group) > 0 { wave_schedule_compose(wfs_s, wfs_w, wfs_group); }
+        wfs_w += 1;
+    }
+    wfs_s
 }
 
 // ⚠ **Reading and parsing are SPLIT, and it is a loft bug rather than
@@ -134,7 +236,7 @@ pub fn wave_file_text(path: text) -> text {
 // so a caller can tell "no list" from "a list of one".
 pub fn wave_file_parse(source: text) -> WaveFile {
     if source == "" {
-        return WaveFile { inter_wave_delay_seconds: 0, waves: [] };
+        return WaveFile { inter_wave_delay_seconds: 0, waves: [], parts: [] };
     }
     wfp_f = source as WaveFile;
     wfp_f
@@ -229,14 +331,80 @@ pub fn wave_schedule_of(waves: vector<integer>, delay: float) -> WaveSchedule {
                    delay: clock_units_from_seconds(delay), running: false }
 }
 
+// What the design's list is MADE of — the mirror of
+// `examples/waves.json` § `parts`.
+//
+// ⚠⚠ **A HAND COPY, and it is gated rather than trusted.**  It is the
+// rule `CLAUDE.md` states for every tunable — *`numbers.json` is a
+// guide; edit the `.loft` constant too* — and the reason it applies
+// here is `wave_state_empty`: it calls `wave_schedule_new` for every
+// `WaveState` in the tree, so reading a FILE there would put disk I/O
+// and a cwd dependency inside the hottest factory in the repo.  ⚠ The
+// palette settles the same question the same way: a SESSION loads
+// files, a factory does not.
+//
+// ⚠⚠ **What makes the copy safe is the gate, not the care**:
+// `tests/16_w1b` § The copy asserts this function and the file agree
+// part for part, so a divergence is loud on the run that introduces it.
+// Without that this is exactly the second-copy-that-drifts the repo
+// refuses everywhere else.
+//
+// ⚠ Wave 0 and wave 1 carry no part on purpose — the opening five and
+// eight are the player's first sight of a robot, and `@X246`'s neutral
+// landing zone wants them LEGIBLE.  A mix is what arrives once the
+// player has learned to read one.
+pub fn wave_parts_default() -> vector<WaveFilePart> {
+    wpd: vector<WaveFilePart> = [];
+    wpd += [WaveFilePart { wave: 2, count:  8, class: "robot" }];
+    wpd += [WaveFilePart { wave: 2, count:  4, class: "scout" }];
+
+    wpd += [WaveFilePart { wave: 3, count: 12, class: "robot" }];
+    wpd += [WaveFilePart { wave: 3, count:  4, class: "scout" }];
+    wpd += [WaveFilePart { wave: 3, count:  4, class: "miner" }];
+
+    wpd += [WaveFilePart { wave: 4, count: 18, class: "robot" }];
+    wpd += [WaveFilePart { wave: 4, count:  6, class: "scout" }];
+    wpd += [WaveFilePart { wave: 4, count:  6, class: "miner" }];
+
+    wpd += [WaveFilePart { wave: 5, count: 28, class: "robot" }];
+    wpd += [WaveFilePart { wave: 5, count:  8, class: "scout" }];
+    wpd += [WaveFilePart { wave: 5, count:  8, class: "miner" }];
+    wpd += [WaveFilePart { wave: 5, count:  6, class: "harvester" }];
+
+    wpd += [WaveFilePart { wave: 6, count: 44, class: "robot" }];
+    wpd += [WaveFilePart { wave: 6, count: 12, class: "scout" }];
+    wpd += [WaveFilePart { wave: 6, count: 12, class: "miner" }];
+    wpd += [WaveFilePart { wave: 6, count: 12, class: "harvester" }];
+    wpd
+}
+
+// The design's list AS A FILE — counts plus what each wave is made of.
+pub fn wave_file_default() -> WaveFile {
+    wfd = WaveFile { inter_wave_delay_seconds: INTER_WAVE_DELAY_SECONDS as integer,
+                     waves: wave_list_default(),
+                     parts: wave_parts_default() };
+    wfd
+}
+
 // Factory: a run with the design's list, not yet started.
+//
+// ⚠⚠ **It carries the design's COMPOSITION since 2026-08-29**, so the
+// game sends more than one symbol at the player — until then a mixed
+// wave could only be authored in a `.keys` file, and every wave the
+// game sent ITSELF was the same wave (`EXPLORATION.md` § The hole this
+// section named, `ROBOT_ECONOMY.md`'s *"composition is a readout"*).
+//
+// ⚠ **`wave_schedule_of` still means what it always meant** — a bare
+// `vector<integer>` is all regulars — so a scenario that authors its
+// own list with a `schedule` line is untouched by this, and the two
+// fixtures that measure the difference are one such line apart.
 //
 // ⚠ The call is BOUND rather than returned in tail position: a struct
 // returned through two nested tail calls loses what its loop wrote
 // ([loft#880](https://github.com/loft-lang/loft/issues/880)), and
-// `wave_schedule_of` builds its parts in a loop.
+// `wave_file_schedule` builds its parts in a loop.
 pub fn wave_schedule_new() -> WaveSchedule {
-    wsn_s = wave_schedule_of(wave_list_default(), INTER_WAVE_DELAY_SECONDS);
+    wsn_s = wave_file_schedule(wave_file_default());
     wsn_s
 }
 

@@ -1,0 +1,146 @@
+# a-list-that-is-mixed — plan 31 follow-up, and what the composition costs.
+#
+# ⚠⚠ **The same base as `a-list-of-one-symbol.keys` with the `schedule`
+# line REMOVED**, so it plays the schedule every `WaveState` is born
+# with — which since 2026-08-29 carries the design's composition from
+# `examples/waves.json` § parts, mirrored by `waves.loft::
+# wave_parts_default` and gated against the file part for part.
+#
+# ⚠ So the pair is one line apart and the line is *author a flat list*
+# against *take the shipped one*.  Same ground, wall, tower, crew,
+# spawn, poke and ticks.
+#
+# ⚠⚠ **The SIZES are identical** — 5 / 8 / 12 / 20 / 30 / 50 / 80 in
+# both — so what moves the clock is the MIX and can be nothing else.
+# That is `@M020`'s reading applied on purpose: a wave is worth its
+# front class PLUS what the front cannot cover, so a composition at
+# constant size is the change worth measuring.
+#
+# ⚠ Waves 0 and 1 carry no part in either file: the opening five and
+# eight are the player's first sight of a robot and `@X246`'s neutral
+# landing zone wants them legible.  The mix starts at wave 2.
+
+echo a list that is mixed: the same counts, composed
+
+do toggle_mode
+do cycle_kind
+click 0 0
+marker 0 0 target
+do cycle_kind
+do cycle_kind
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 20 0
+marker 20 0 spawn 3
+count markers 2 2
+do toggle_mode
+
+palette 5
+drag -4 -3 22 -3
+drag -4 -2 22 -2
+drag -4 -1 22 -1
+drag -4 0 22 0
+drag -4 1 22 1
+drag -4 2 22 2
+drag -4 3 22 3
+
+# A wall to chew, and a tower behind it — the difference between the
+# classes is a WALL-DAMAGE rate and a SPEED, so a base with nothing to
+# chew could not tell them apart at all.
+# ⚠ A GATE at (6, 0) — the wall is painted around it — so the player can
+# drive out to poke the marker and back.  `plans/12` B7 measured that a
+# wall with a gate in it buys ONE tick over a sealed one, and it is
+# identical in both halves of this pair either way.
+palette 9
+click 6 -3
+click 6 -2
+click 6 -1
+click 6 1
+click 6 2
+click 6 3
+
+# ⚠⚠ **Three towers and two crew, and the base needs every one of
+# them**: the design's mix starts at WAVE 2, so a base that cannot reach
+# wave 2 cannot tell the two halves of this pair apart at all.  The
+# first version of this fixture had one tower, fell at 175 having sent
+# two waves, and read **175 against 175** — a flat pair measuring a base
+# that died before the content it was measuring arrived.
+do toggle_mode
+do cycle_kind
+do cycle_kind
+click 3 -2
+marker 3 -2 tower
+click 1 0
+marker 1 0 tower
+click 3 2
+marker 3 2 tower
+do toggle_mode
+top 3 -2 on
+top 1 0 on
+top 3 2 on
+
+# ⚠ The crew repair the towers between waves — `plans/17` T1 measured
+# that without upkeep more towers buy NOTHING (3, 5 and 7 towers give
+# 321, 319 and 317 ticks and four waves each).
+crew 2 -1
+crew 2 1
+park 0 0
+
+# ⚠⚠ **No `schedule` line — that is the whole difference.**  The state
+# is born with the design's list already composed.
+
+# ── The poke ────────────────────────────────────────────────────
+#
+# ⚠ The wave list does not start until the player drives out and touches
+# a spawn marker 12+ hexes from the core (`WAVE_1_PROVOCATION_HEXES`),
+# so both files start their clock the same way and at the same tick.
+waves 0 0
+drive 20 0
+tick 14
+vehicle 20 0
+waves 1 1
+
+drive 0 0
+tick 14
+vehicle 0 0
+
+
+# ── ⚠⚠ THE READING, AND THE SCOUTS ARE THE WHOLE OF IT ──────────
+#
+# **452 flat against 515 composed — the mix makes the base last 63
+# ticks LONGER**, which is the opposite of what the raw arithmetic
+# says.  On wall damage per second the composed list is mostly
+# STRONGER: wave 3 is 24.4 against 20.0, wave 6 is 87.2 against 80.0.
+#
+# ⚠⚠ **The attribution is measured, not reasoned** (`@M089`).  Swapping
+# in only the slow, strong classes reads **464**; swapping in only the
+# scouts reads **515**; the full mix reads **515** — identical to
+# scouts-alone, so the miners contribute nothing once scouts are there:
+#
+#     flat, all regular                       452
+#     miners + harvesters, no scouts          464   (+12)
+#     scouts only                             515   (+63)
+#     the shipped composition                 515   (+63)
+#
+# ⚠⚠ **The mechanism is `@M020` with its sign flipped.**  The siege
+# front is the wall's WIDTH, so only about six robots chew at once and
+# the rest of a wave is queued behind them — *a wave is worth its front
+# class PLUS what the front cannot cover*.  A **scout moves 2.5 hex/s
+# against a regular's 1.5 and does 0.1 wall damage against a regular's
+# 1.0**, so scouts reach the wall FIRST, take every slot in the front,
+# and chew at a TENTH of the rate — while the miners that would do
+# triple damage are still walking.  ⚠ **The fast class screens the wall
+# from the slow one**, and the wave's own composition is what defends
+# the base.
+#
+# ⚠⚠ **So this composition SOFTENS the authored list by 14 %, and that
+# is a content decision nobody has ruled on.**  It is recorded rather
+# than tuned away: `ROADMAP.md` § THE SESSION IS THE GAP NOW says the
+# wave list is a placeholder for the economy (item 10) and that tuning
+# it now is balancing a placeholder.  ⚠ What this pair makes possible is
+# the tuning being INFORMED when it happens — *adding a fast weak class
+# to a wave makes it weaker*, which no arithmetic over the rates shows.
+fall 900
+ticks 511 519

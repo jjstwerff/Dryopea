@@ -1,0 +1,278 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// The wave FILE carries a class — `examples/waves.json` § `parts`.
+//
+// ⚠⚠ **Until 2026-08-29 it could not, and the reason was upstream.**
+// `waves.loft` recorded that the shape a composition needs —
+// `vector<Struct>` in a `text as` — *"hangs the JSON cast and
+// miscompiles to zero entries on the native backend"*.  **That whole
+// family is fixed** (`@M088`, probed on both backends), so the wave
+// file can say what a wave is MADE of and not only how big it is.
+//
+// ── What this closes ────────────────────────────────────────────
+//
+// `plans/23` built the four robot classes and `wave_schedule_step`
+// spawns each part in its own `kind`, but the only way to author a mix
+// was a `.keys` file's `compose` verb.  ⚠ So `ROBOT_ECONOMY.md`'s
+// *"composition is a readout"* was true of every gate scenario and ONE
+// SYMBOL in shipped play — every wave the game sent itself was the same
+// wave (`docs/EXPLORATION.md` § The hole this section named).
+//
+// ── The layering, and why nothing moved ─────────────────────────
+//
+// ⚠⚠ **`waves` still means what it always meant** and `parts` REPLACES
+// one named wave, which is exactly what `wave_schedule_compose` does —
+// the file mirrors the code's division rather than inventing a second.
+// ⚠ An omitted `parts` is `[]`, so a file written before this field
+// takes the path it always took: [loft#914]'s silent default chosen to
+// reproduce the shipped behaviour, the rule `wallet.carried` and
+// `play.digging` follow.
+
+#cwd
+
+use dryopea;
+
+const WAVES: text = "examples/waves.json";
+
+fn part_count(ws: const WaveSchedule, wave: integer, kind: integer) -> integer {
+    pc_n = 0;
+    for pc_p in ws.parts {
+        if pc_p.wave == wave && pc_p.kind == kind { pc_n += pc_p.count; }
+    }
+    pc_n
+}
+
+// ─── The file ───────────────────────────────────────────────────
+
+fn test_the_authored_file_carries_a_composition() {
+    taf = wave_file_load(WAVES);
+
+    assert(wave_file_fault(taf) == "",
+           "the shipped file is sound: '{wave_file_fault(taf)}'");
+    assert(len(taf.waves) == 7, "seven waves: {len(taf.waves)}");
+    assert(len(taf.parts) > 0,
+           "and it says what they are made of: {len(taf.parts)} parts");
+}
+
+// ⚠⚠ **The SIZE of every wave is unchanged, and that is deliberate.**
+// `@M020` makes a wave worth its front class PLUS what the front cannot
+// cover, so a composition at CONSTANT size is the change worth making —
+// and it keeps every clock in the corpus comparable with the list that
+// came before it.
+fn test_composing_the_list_did_not_resize_it() {
+    tcl_f = wave_file_load(WAVES);
+    tcl_s = wave_file_schedule(tcl_f);
+
+    tcl_i = 0;
+    while tcl_i < len(tcl_f.waves) {
+        tcl_want = tcl_f.waves[tcl_i] ?? 0;
+        tcl_got  = wave_schedule_size(tcl_s, tcl_i);
+        assert(tcl_got == tcl_want,
+               "wave {tcl_i} is {tcl_got} robots and its count says "
+               + "{tcl_want} — a composition may change the MIX and never "
+               + "the size");
+        tcl_i += 1;
+    }
+}
+
+fn test_a_composed_wave_is_really_mixed() {
+    tcw = wave_file_schedule(wave_file_load(WAVES));
+
+    // Wave 0 has no part in the file, so it is its count in regulars.
+    assert(part_count(tcw, 0, ENEMY_KIND_REGULAR) == 5,
+           "wave 0 is five regulars: {part_count(tcw, 0, ENEMY_KIND_REGULAR)}");
+    assert(part_count(tcw, 0, ENEMY_KIND_SCOUT) == 0,
+           "and nothing else");
+
+    // Wave 2 does.
+    assert(part_count(tcw, 2, ENEMY_KIND_SCOUT) > 0,
+           "wave 2 carries scouts: {part_count(tcw, 2, ENEMY_KIND_SCOUT)}");
+    assert(part_count(tcw, 2, ENEMY_KIND_REGULAR) > 0,
+           "and regulars beside them");
+}
+
+// ⚠ The game can now send a class it could never send itself.
+fn test_the_shipped_list_sends_more_than_one_symbol() {
+    tsl = wave_file_schedule(wave_file_load(WAVES));
+
+    tsl_kinds = 0;
+    for tsl_k in [ENEMY_KIND_REGULAR, ENEMY_KIND_SCOUT, ENEMY_KIND_MINER,
+                  ENEMY_KIND_HARVESTER, ENEMY_KIND_BUILDER] {
+        tsl_any = 0;
+        for tsl_w in 0..len(tsl.parts) {
+            tsl_p = tsl.parts[tsl_w] ?? WavePart { };
+            if tsl_p.kind == tsl_k && tsl_p.count > 0 { tsl_any = 1; }
+        }
+        tsl_kinds += tsl_any;
+    }
+    assert(tsl_kinds >= 3,
+           "the shipped list is more than one symbol: {tsl_kinds} classes");
+}
+
+// ─── ⚠⚠ An omitted `parts` is the file that shipped before ──────
+
+// The claim that says adding the field moved nothing.  A file with no
+// composition must build the schedule `wave_schedule_of` builds.
+fn test_a_file_with_no_parts_is_all_regular() {
+    tfp = WaveFile { inter_wave_delay_seconds: 15,
+                     waves: [5, 8], parts: [] };
+    tfp_s = wave_file_schedule(tfp);
+
+    assert(wave_schedule_count(tfp_s) == 2, "two waves");
+    assert(part_count(tfp_s, 0, ENEMY_KIND_REGULAR) == 5
+           && part_count(tfp_s, 1, ENEMY_KIND_REGULAR) == 8,
+           "both all-regular, exactly as a bare count has always meant");
+    assert(wave_schedule_pure(tfp_s, 0) && wave_schedule_pure(tfp_s, 1),
+           "and the schedule says so itself");
+}
+
+// ⚠⚠ [loft#914] made useful: a literal that OMITS `parts` is the same
+// file.  That is the whole reason the field is spelled as the addition
+// rather than as the whole list.
+fn test_a_wave_file_literal_without_parts_still_loads() {
+    twf = WaveFile { inter_wave_delay_seconds: 15, waves: [4] };
+
+    assert(len(twf.parts) == 0, "an omitted composition is none of it");
+    assert(wave_file_fault(twf) == "", "and the file is sound");
+    assert(part_count(wave_file_schedule(twf), 0, ENEMY_KIND_REGULAR) == 4,
+           "four regulars, which is what a bare count means");
+}
+
+// ─── ⚠⚠ The refusals ───────────────────────────────────────────
+
+// ⚠⚠ **An unknown class is REFUSED and never defaulted to a regular.**
+// `passable.loft::enemy_class_of` exists for exactly this — *a typo
+// that spawns the wrong class quietly turns a green run into a lie* —
+// and it is the whole value of naming a class rather than numbering it.
+fn test_an_unknown_class_is_refused_by_name() {
+    tuc = WaveFile { inter_wave_delay_seconds: 15, waves: [5],
+                     parts: [WaveFilePart { wave: 0, count: 5,
+                                            class: "scoot" }] };
+
+    assert(wave_file_fault(tuc) != "", "a typo is a fault");
+    assert(wave_file_fault(tuc).contains("scoot"),
+           "and it names the typo: '{wave_file_fault(tuc)}'");
+    assert(wave_file_fault(tuc).contains("scout"),
+           "and lists what it could have been");
+
+    // ⚠ The negative control: the same file with the name spelled right
+    // is sound, so the refusal is about the NAME and not the shape.
+    tuc_ok = WaveFile { inter_wave_delay_seconds: 15, waves: [5],
+                        parts: [WaveFilePart { wave: 0, count: 5,
+                                               class: "scout" }] };
+    assert(wave_file_fault(tuc_ok) == "",
+           "spelled right it is sound: '{wave_file_fault(tuc_ok)}'");
+}
+
+// ⚠ `vehicle` is not a class a wave can be made of, and `enemy_class_of`
+// already refuses it — so this file inherits the refusal rather than
+// restating it.
+fn test_a_mover_is_not_a_wave_class() {
+    tmv = WaveFile { inter_wave_delay_seconds: 15, waves: [5],
+                     parts: [WaveFilePart { wave: 0, count: 5,
+                                            class: "vehicle" }] };
+    assert(wave_file_fault(tmv) != "",
+           "a vehicle is a mover, not something a wave is made of");
+}
+
+fn test_a_part_outside_the_list_is_refused() {
+    tpo = WaveFile { inter_wave_delay_seconds: 15, waves: [5, 8],
+                     parts: [WaveFilePart { wave: 4, count: 3,
+                                            class: "scout" }] };
+    assert(wave_file_fault(tpo) != "", "wave 4 of a two-wave list is a fault");
+    assert(wave_file_fault(tpo).contains("4"),
+           "and it names the wave: '{wave_file_fault(tpo)}'");
+}
+
+// ⚠⚠ **A faulty file answers its COUNTS rather than half a composition.**
+// A run built from a file the author got wrong is the one outcome worse
+// than a run built from its counts, and a caller that wants the reason
+// asks `wave_file_fault`.
+fn test_a_faulty_file_falls_back_to_its_counts() {
+    tff = WaveFile { inter_wave_delay_seconds: 15, waves: [5, 8],
+                     parts: [WaveFilePart { wave: 0, count: 5,
+                                            class: "scoot" }] };
+    tff_s = wave_file_schedule(tff);
+
+    assert(wave_schedule_count(tff_s) == 2, "the list is still the list");
+    assert(part_count(tff_s, 0, ENEMY_KIND_REGULAR) == 5,
+           "and wave 0 is its count in regulars, not half a composition: "
+           + "{part_count(tff_s, 0, ENEMY_KIND_REGULAR)}");
+    assert(part_count(tff_s, 0, ENEMY_KIND_SCOUT) == 0,
+           "with nothing of the class it could not read");
+}
+
+// ─── ⚠⚠ The copy — what makes the hand mirror safe ─────────────
+
+// `wave_parts_default` is a HAND COPY of `examples/waves.json` § parts,
+// and `waves.loft` says why it has to be one: `wave_schedule_new` is
+// called by `wave_state_empty` for every `WaveState` in the tree, so
+// reading a file there would put disk I/O and a cwd dependency inside
+// the hottest factory in the repo.
+//
+// ⚠⚠ **What makes a second copy acceptable is THIS TEST and not the
+// care taken writing it.**  Everywhere else the repo refuses a second
+// copy because it drifts; here the copy is gated part for part, so a
+// divergence is loud on the run that introduces it rather than silent
+// for twenty plans.  ⚠ It is the same bargain `numbers.json` has with
+// its `.loft` constants, with the gate that file's rows mostly lack.
+fn test_the_default_composition_matches_the_authored_file() {
+    tdc_file = wave_file_load(WAVES);
+    tdc_hand = wave_parts_default();
+
+    assert(len(tdc_file.parts) == len(tdc_hand),
+           "the file has {len(tdc_file.parts)} parts and the hand copy "
+           + "{len(tdc_hand)} — one of them was edited alone");
+
+    tdc_i = 0;
+    while tdc_i < len(tdc_hand) {
+        tdc_f = tdc_file.parts[tdc_i] ?? WaveFilePart { };
+        tdc_h = tdc_hand[tdc_i] ?? WaveFilePart { };
+        assert(tdc_f.wave == tdc_h.wave && tdc_f.count == tdc_h.count
+               && tdc_f.class == tdc_h.class,
+               "part {tdc_i} differs — file says wave {tdc_f.wave} "
+               + "{tdc_f.count} {tdc_f.class}, the hand copy says wave "
+               + "{tdc_h.wave} {tdc_h.count} {tdc_h.class}");
+        tdc_i += 1;
+    }
+
+    // ⚠ And the delay too, which is the other thing the file carries.
+    assert(tdc_file.inter_wave_delay_seconds
+           == INTER_WAVE_DELAY_SECONDS as integer,
+           "the lull agrees: {tdc_file.inter_wave_delay_seconds} against "
+           + "{INTER_WAVE_DELAY_SECONDS}");
+}
+
+// ⚠⚠ **The wiring itself**: the schedule every `WaveState` is born with
+// now carries the design's composition, so the game sends more than one
+// symbol at the player.  Until 2026-08-29 a mixed wave could only be
+// authored in a `.keys` file.
+fn test_a_fresh_wave_state_carries_the_composition() {
+    tfw = wave_state_empty();
+
+    assert(wave_schedule_count(tfw.schedule) == 7,
+           "seven waves: {wave_schedule_count(tfw.schedule)}");
+    assert(wave_schedule_pure(tfw.schedule, 0),
+           "wave 0 is still plain five regulars — the player's first "
+           + "sight of a robot stays legible");
+    assert(!wave_schedule_pure(tfw.schedule, 2),
+           "and wave 2 is a MIX, which no fresh state has ever carried");
+    assert(part_count(tfw.schedule, 2, ENEMY_KIND_SCOUT) == 4,
+           "four of them scouts: "
+           + "{part_count(tfw.schedule, 2, ENEMY_KIND_SCOUT)}");
+}
+
+// ⚠ **A `schedule` line still means a FLAT list**, which is what keeps
+// every scenario that authors its own untouched — and what makes the
+// measurement pair one line apart.
+fn test_an_authored_schedule_is_still_all_regular() {
+    tas = wave_schedule_of([5, 8, 12], INTER_WAVE_DELAY_SECONDS);
+
+    tas_i = 0;
+    while tas_i < 3 {
+        assert(wave_schedule_pure(tas, tas_i),
+               "wave {tas_i} of an authored list is plain regulars");
+        tas_i += 1;
+    }
+}
