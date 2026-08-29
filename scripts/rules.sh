@@ -39,7 +39,7 @@
 #
 # Usage:  scripts/rules.sh            # gate
 #         scripts/rules.sh --list     # also list the uncited rules
-#         scripts/rules.sh sites @FR-M-Sidestep
+#         scripts/rules.sh sites @FR-M-Sidestep     <!--norule-->
 
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

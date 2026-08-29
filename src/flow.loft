@@ -297,6 +297,12 @@ pub fn flow_empty() -> FlowField {
 // routing field that crossed trenches would walk robots INTO the
 // water: the depth is only 1 m, so `climb_ok` would happily allow the
 // step back out.
+//
+// ⚠⚠ **Enforces @FR-M-Desire-Removable** — an obstacle the wave can
+// REMOVE is a node in the DESIRE field and never in the routing one,
+// and `besiege` is that difference carried as DATA rather than as a
+// second sweep.  Together with the climb `flow_desire` lifts, it is the
+// whole of what separates the two fields.
 fn sweep_ground(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
                 besiege: boolean, q: integer, r: integer) -> boolean {
     if hex_walkable(pal, pw, hl, q, r) { return true; }
@@ -357,6 +363,7 @@ fn flow_sweep(pal: vector<GroundType>, pw: PaintedWorld, hl: const HeightLayer,
                 // computed it again.
                 fb_nh = hex_height(pal, pw, hl, fb_n.q, fb_n.r);
 
+                // ⚠⚠ Enforces @FR-M-Sweep-Inward.
                 // ⚠ `fb_n -> fb_h`, not the other way round: the sweep
                 // runs outward and the ENEMY walks inward, so the move
                 // being tested is the one it will actually make.  See
