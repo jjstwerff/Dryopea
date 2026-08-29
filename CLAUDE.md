@@ -845,9 +845,16 @@ around one.
   OUTLIVE their loop ([loft#915]) — prefix them per function.
 - A **missing `use`** reports as `Expect token ;` on a later `.0`, and
   the whole aggregator goes red naming the importer.
-- The JSON cast **HANGS** on ≥8 declared fields with a `vector<Struct>`
-  — `MapFile` is capped at 6 — and **ignores declared defaults**
-  ([loft#876]).
+- ⚠⚠ **The JSON-cast family is FIXED and this row used to say otherwise**
+  (`@M088`, probed 2026-08-29 on both backends).  It read *"HANGS on ≥8
+  declared fields with a `vector<Struct>` — `MapFile` is capped at 6 —
+  and ignores declared defaults ([loft#876])"*, and **none of it
+  reproduces**: 12 declared fields with two `vector<Struct>` fields read
+  correctly, a declared default survives a cast, the native backend no
+  longer answers an empty vector, an empty `[]` no longer corrupts the
+  text field before it, and `:j` no longer omits empty fields.
+  ⚠ `MapFile`'s six-field cap and `waves.json`'s classless wave list are
+  both **unblocked** and neither has been widened yet.
 - `graphics::KEY_*` need **explicit qualification**.
 - ⚠ **A zero-argument function in a TEST FILE is COLLECTED AS A TEST**,
   so it inflates the suite total while asserting nothing.  The practical
@@ -1185,7 +1192,7 @@ names; most of them exist because somebody did it without reading.
 |---|---|
 | Pick something CONCRETE to build | [`plans/BACKLOG.md`](plans/BACKLOG.md) — deliberately unordered |
 | Pick next work to do | [`plans/ROADMAP.md`](plans/ROADMAP.md) § The critical path |
-| Ask what the BIGGEST missing mechanic is | ⚠⚠ **the critical path's four gaps are ALL closed** (building 27, the scramble 28, helper orders 29).  What is left is `ROADMAP.md` § Then the run becomes a RUN: **6 the landing flow**, **7 carryover**, **8 the permit clock** |
+| Ask what the BIGGEST missing mechanic is | ⚠⚠ **It is no longer a MECHANIC — it is the SESSION** ([`plans/ROADMAP.md`](plans/ROADMAP.md) § THE SESSION IS THE GAP NOW, evaluated 2026-08-29).  Every verb in `DESIGN.md` § 2's pitch exists and is measured; what does not exist is a 15-25 minute sortie.  The best base plays **four of seven waves and falls at 320 ticks — 3.6 min**, the corpus's longest play is **490 ticks — 5.4 min**, and `numbers.json` targets **15-25 minutes**.  ⚠ Item 8 is blocked on that gap under another name, and `@X245`'s *first fifteen minutes* is a test the game cannot be run against.  ⚠⚠ **The fix is not a longer wave list** — duration should emerge from somewhere to GO, which is `plans/30`'s world (worth `@M085`'s 146 ticks) with nothing yet rewarding a look at it.  ⚠ Recommended order: **6 the landing flow** (a run cannot reach base 2), then **9 exploration finds BEFORE 8 the permit**, with the crew's VOICE alongside |
 | Continue plan 01 work | [`plans/01-ground-editor/README.md`](plans/01-ground-editor/README.md) § Implementation status |
 | TUNE a number | `examples/numbers.json` — ⚠ nothing LOADS it; edit the `.loft` constant too |
 | Document a new public function, or point at a test as its EXAMPLE | [`docs/EXAMPLES.md`](docs/EXAMPLES.md) |

@@ -397,26 +397,50 @@ the builds it would change:
 | **where a stockpile is** — ⚠ the thing to avoid waking | which way *not* to go, for the whole session | `ROBOT_ECONOMY.md` § 4 |
 | **how far the spawn markers sit** | which marker to poke first, and therefore when the clock starts | `WAVE_1_PROVOCATION_HEXES` = 12 |
 
-### ⚠⚠ And here is the hole: there is nothing yet to be intelligent ABOUT
+### ⚠⚠ The hole this section named is CLOSED IN CODE and open in CONTENT
 
-`src/spawn.loft` says it plainly — *"the validation tier still emits only
-regulars"*.  **`ENEMY_KIND_REGULAR` is the only class the game emits.**  Scout,
-harvester, builder and miner are designed and not built.
+> ⚠⚠ **CORRECTED 2026-08-29.**  This section used to read *"`ENEMY_KIND_REGULAR`
+> is the only class the game emits… that makes the four classes the FIRST thing
+> this design needs built"*.  **They were built by
+> [`plans/23`](../plans/23-the-small-robots/README.md), K0-K3** — so the
+> sentence that routed work to them is stale, and it was the stated blocker on
+> everything else on this page.
 
-⚠ So *"composition is a readout"* (`ROBOT_ECONOMY.md` § How the player ever
-learns any of this, layer 3) is currently a readout of **one symbol**, and a
-sortie cannot predict anything because every wave is the same wave.
+⚠ **What shipped, and it is more than the classes**: scout, harvester, builder
+and miner have their own wall-damage rates (`@M011`: 23 / 35 / 50 / 96 / 454
+ticks) and their own speeds (`@M016`: nine hexes in 6 / 9 / 14 ticks), a
+`.keys` file composes a mixed wave (`compose 1 4 miner 8 scout`, `@X055`), and
+**`wave_schedule_step` spawns each part in its own class** — `WaveSchedule`
+carries `vector<WavePart>` and every part has a `kind`.  ⚠ So there is no code
+path left that flattens a wave to one symbol.
 
-⚠⚠ **That makes the four classes the FIRST thing this design needs built**, ahead
-of find markers, intel persistence or anything else on this page — and
-`CLAUDE.md` already prices it as the cheapest item in the design:
+⚠⚠ **What is still one symbol is the AUTHORED CONTENT.**
+`examples/waves.json` is `"waves": [5, 8, 12, 20, 30, 50, 80]` — a bare
+`vector<integer>` — and `waves.loft::regular_parts` turns each entry into an
+all-`ENEMY_KIND_REGULAR` part, *"what a `vector<integer>` list means"*.
 
-> Four enemy types for **one row each in `numbers.json` plus one branch in
-> `spawn.loft`'s damage-to-wall lookup** — no new mover, no new targeting, no new
-> code path.
+⚠⚠ **It was a bare vector because the JSON cast could not carry a
+`vector<Struct>`, AND THAT IS NO LONGER TRUE** (`@M088`, probed 2026-08-29):
+the whole cast family is fixed on both backends — twelve declared fields with
+two `vector<Struct>` fields read correctly, declared defaults survive a cast
+([loft#876], closed), and the native backend no longer answers an empty
+vector ([loft#866], closed).
 
-That is the whole of it, because *"ONE AI, per-class DATA"* was built as a rule
-from plan 11 onward specifically so this would cost a row.
+⚠ **So the remaining work is small and NOT blocked on anything**: give
+`examples/waves.json` a class per part and the game sends mixed waves at you,
+rather than only a `.keys` fixture doing it.  ⚠ The same probe frees
+`MapFile`'s six-field cap and [`plans/01`](../plans/01-ground-editor/README.md)
+E4's *"expanded once loft JSON-cast bugs land"*.  ⚠⚠ Until then
+*"composition is a readout"* (`ROBOT_ECONOMY.md` § How the player ever learns
+any of this, layer 3) is true of every scenario in `tests/scripts/` and false
+of the shipped wave list, which is a **content** gap wearing a design gap's
+clothes.
+
+⚠ And `@M020` is what makes the readout worth having at all: the siege front is
+the wall's WIDTH, so **a wave is worth its front class PLUS what the front
+cannot cover** — before [`plans/24`](../plans/24-the-siege-front/README.md)
+every mix landed within four ticks of a pure wave of its fastest class
+(`@M018`, retired).
 
 ### ⚠ The open problem: free unlimited recon is a lean-back
 

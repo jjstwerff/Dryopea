@@ -68,12 +68,16 @@
 //
 // ⚠ **`WaveFile` is deliberately NOT extended.**  Nothing in `src/`
 // loads it (only `tests/16_w1` does, against `examples/waves.json`), so
-// giving it composition would be a file format nothing reads — and the
-// shape it would need is `vector<Struct>` in a `text as`, which is the
-// one that hangs the JSON cast and miscompiles to zero entries on the
-// native backend (`CLAUDE.md` § Loft language gotchas).  Composition is
-// authored in the `.keys` vocabulary, which is where dryopea authors
-// everything else about a run.
+// giving it composition would be a file format nothing reads.
+//
+// ⚠⚠ **The SECOND reason this note used to give is now FALSE**: it said
+// the shape it would need — `vector<Struct>` in a `text as` — hangs the
+// JSON cast and miscompiles to zero on the native backend.  **That family
+// is fixed** (`@M088`, probed 2026-08-29 on both backends).  So extending
+// `WaveFile` is available work, and what still argues against it is only
+// the first reason — nothing loads it.  ⚠ It stops being true the moment
+// the game is meant to send a MIXED wave at the player, which today only
+// a `.keys` file can do (`EXPLORATION.md` § The hole this section named).
 
 use lattice;
 use passable;

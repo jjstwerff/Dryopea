@@ -235,17 +235,30 @@ behaviour.  Full reproducers + loft-side issue refs live in
   UPPER_CASE constants without `pub` don't re-export across
   `use` chains.  `gl_key_pressed(graphics::KEY_W)` works;
   `gl_key_pressed(KEY_W)` doesn't.
-- **JSON cast HANGS on ≥8 declared fields with a
-  `vector<Struct>`.**  `text as MapFile` with 10 fields hangs
-  forever; 7 fields work.  MapFile is constrained to 6 fields
-  until the loft fix ships.
-- **`:j` formatter omits empty fields** (empty strings, empty
-  vectors, zero ints under some conditions).  Round-trip
-  `save → load` of a struct with empty fields can produce JSON
-  the cast can't reload.  We avoid empty fields in MapFile.
-- **Empty `[]` after a text field in JSON corrupts the prior
-  field on cast.**  `{"name":"b","items":[]}` reads back as
-  `name=""`.  We keep vectors non-empty (or put them first).
+- ⚠⚠ **FIXED, all three of the JSON-cast rows below** — probed
+  2026-08-29 against the `~/.local/bin/loft` of that date, on the
+  interpreter **and** `--native` (`@M088`).  They are kept here
+  rather than deleted because three dryopea design decisions were
+  made *because of* them and none has been revisited:
+  - ~~JSON cast HANGS on ≥8 declared fields with a
+    `vector<Struct>`~~ — **12 declared fields with TWO
+    `vector<Struct>` fields read correctly on both backends.**
+    `MapFile`'s six-field cap is now a choice, not a constraint,
+    and [`plans/01`](../plans/01-ground-editor/README.md) E4's
+    *"expanded once loft JSON-cast bugs land"* is unblocked.
+  - ~~`:j` omits empty fields~~ — `Rec { name: "", items: [] }`
+    formats as `{"name":"","items":[],…}`, both present.
+  - ~~Empty `[]` after a text field corrupts the prior field~~ —
+    `{"name":"b","items":[],"tail":"kept"}` reads `name='b'`.
+  ⚠ Two upstream issues in the same family are closed:
+  [loft#876](https://github.com/loft-lang/loft/issues/876) (a
+  declared default ignored by a cast — **verified honoured now**)
+  and [loft#866](https://github.com/loft-lang/loft/issues/866)
+  (the native backend answering an EMPTY vector — **verified
+  reading correctly now**).
+  ⚠⚠ **Re-probe before trusting any row on this page**: the binary
+  moves under you, and `CLAUDE.md` § The BINARY moves under you is
+  the standing warning this entry is now an instance of.
 - **Early `return (a, b)` of a tuple of two struct types fails
   type-check**, despite the if-else *expression* form of the
   same tuple working.  In `load_map_or_empty` we use the

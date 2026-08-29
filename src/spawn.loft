@@ -418,13 +418,21 @@ pub const PRE_WALK_SECONDS: float   = (PRE_WALK_UNITS as float)
 // be able to ask (plan 11 F1b).  They are in scope here through the
 // `use` above.
 //
-// ⚠ **The SCHEDULE still emits only regulars** (plan 23 K1).  A
-// `.keys` script has said `wave 4 miner` since K0, but `wave_schedule`
-// carries a `vector<integer>` — a wave is a COUNT with no class in it
-// — so `wave_due` below hands `spawn_wave` a hard-coded
-// `ENEMY_KIND_REGULAR`.  Until that changes, every wave the game
-// sends itself is the same wave, and `ROBOT_ECONOMY.md`'s
-// *"composition is a readout"* reads one symbol.
+// ⚠⚠ **The SCHEDULE carries a class and the shipped CONTENT does
+// not** — and this comment said the opposite until 2026-08-29.
+// `WaveSchedule` holds `vector<WavePart>`, every part has a `kind`,
+// and `wave_schedule_step` spawns each part in its own class; a
+// `.keys` file composes one with `compose` (plan 23 K1, `@X055`).
+//
+// ⚠ What is all-regular is `examples/waves.json`, a bare
+// `vector<integer>` that `waves.loft::regular_parts` expands into
+// all-`ENEMY_KIND_REGULAR` parts.  ⚠⚠ It was bare because the JSON
+// cast could not carry a `vector<Struct>` — **and that is fixed**
+// (`@M088`, probed 2026-08-29, both backends), so giving the wave
+// file a class per part is available work rather than blocked work.
+// Until somebody does it, `ROBOT_ECONOMY.md`'s *"composition is a
+// readout"* is true of every `.keys` scenario and one symbol in
+// shipped play.
 
 // One enemy on the map.  Mixes integer (q, r) with u8
 // (kind, heading) fields.  Not serialised today — vector<Enemy>

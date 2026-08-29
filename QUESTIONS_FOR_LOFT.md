@@ -618,9 +618,14 @@ saying the omission is fine.
 done**: `EditorInput` could carry `in_palette_index: integer = -1` and
 drop `in_select_palette`.  It touches the seam every `.keys` script and
 the GL loop read, so it wants its own change rather than a drive-by.
-⚠ And it is literal-only — [loft#876](https://github.com/loft-lang/loft/issues/876)
-records that a `text as Struct` cast IGNORES a declared default, so no
-struct dryopea loads from JSON may rely on one.
+⚠⚠ **This used to add *"and it is literal-only"*, on the strength of
+[loft#876](https://github.com/loft-lang/loft/issues/876) — a `text as
+Struct` cast ignoring a declared default.  That issue is CLOSED
+(2026-08-12) and the behaviour is verified fixed** (`@M088`, probed
+2026-08-29 on both backends): a cast now honours `rate: float = 1.5`
+exactly as a literal does.  So a struct dryopea loads from JSON **may**
+rely on a declared default, and the simplification above is unblocked
+on both sides.
 
 ### A `for`-loop variable is function-scoped, so 122 of 131 loops carry a prefix
 

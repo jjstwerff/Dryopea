@@ -103,7 +103,69 @@ a tower-top.
 | 5 | **helper ORDERS** — commanding, not purchasing.  ✅ **SHIPPED — [`plan 29`](29-the-crews-own-work/README.md), O0-O4, 2026-08-28.**  The row's own diagnosis was exact and O0 measured it: `helper_drive`'s only caller was the script runner, and a crew member four hexes from a wall order stood there for sixty ticks with not one unit of work in it.  ⚠ O1 built the **semi-automatic default** — the nearest of the four jobs inside `detect_radius` — and the radius is the load-bearing number (`@X295`): asked at six hexes it moved **18 tests across 8 files** and made bases unkillable, because a default that absorbs the work `DESIGN.md` § 9 says growth is supposed to CREATE deletes the table the pillar stands on.  ⚠ O3 is the ORDER itself — one kind, base-wide, on key **G**, which CYCLES and so answers `@X289`'s RESET-or-STEP by construction (`@X297`).  ⚠⚠ **And the pillar comes out intact as ARITHMETIC** (`@M069`, `@M070`): the default is worth **+44** where the work is near and **0** where it is not, one order **+34** where it is far and **0** where it is near — neither dominates, which is `@X198`'s *does this make ONE axis dominate?* answered with numbers | building (so there is something to order them at) |
 | 6 | **landing flow + map selection** — [`plan 05`](05-validation-scenario/README.md), [`plan 04`](04-map-library/README.md) | the scramble (a run needs an exit before it needs a second entrance) |
 | 7 | **carryover** — what the rocket takes becomes the next base's start.  ✅ **N1-N4 SHIPPED — [`plan 31`](31-carryover/README.md), 2026-08-29.**  The wallet a base opens with stops being a constant: `Wallet` gains a `carried`, `wallet_budget` is the one door the budget is asked at, and `manifest_opens` is where the manifest's three columns are sorted into the one that crosses and the two that do not.  ⚠⚠ **Counting the re-assertion sites BEFORE writing any code is what earned the plan** (`@X347`): three are in `wallet.loft` and the fourth is `hud.loft::hud_ink_for`, which read the BASELINE for the wallet ramp's span — so a base opened with 200 carried would have sat at the full colour from 400 points down to 200, **the ramp dead for half the run on the one number the game shows**, with `tests/19_p7`'s exhaustive colour sweep still green because it sweeps *the span it is given*.  ⚠⚠ **And the carry COMPOUNDS** (`@M087`): **230.0 against 106.0** with the same 100 points left when the ferry ends — a hundred spent on two more towers came back as a hundred and twenty-four.  ⚠ The sweep is the finding: +124 points at the authored wave, **standing against falling** from 26 robots to 50, +11 ticks past 115, then nothing once the wave saturates the siege front.  ⚠⚠ **The first version read 198 against 198** because `fall` waits on `wallet_broke` and the wallet is what BUYS towers as well as what enemies drain | the scramble |
-| 8 | **the permit clock** (`@X025`) | ⚠ **content long enough to clock.**  The longest base the corpus plays falls at **321 ticks ≈ 3.5 min** (`@M005`) against a 15-25 minute target — so the window is derived from content, never chosen |
+| 8 | **the permit clock** (`@X025`) | ⚠ **content long enough to clock.**  ⚠⚠ **That is § THE SESSION IS THE GAP NOW, under another name** — the corpus's longest play is **490 ticks ≈ 5.4 min** against a 15-25 minute target, so the window is derived from content and never chosen.  ⚠ It also needs `@X287`'s ruling: `@M064` falsified the battleship clock by 0.96° of camera pitch |
+
+### ⚠⚠ THE SESSION IS THE GAP NOW — all the verbs, none of the duration
+
+⚠⚠ **Evaluated 2026-08-29, after [`plans/31`](31-carryover/README.md) closed
+item 7.**  Every mechanic in `DESIGN.md` § 2's pitch now exists and is
+measured — land, build, defend, salvage, scramble, carry over.  **What does
+not exist is a SESSION**, and that one gap is what silently blocks most of
+what is left.
+
+| | measured |
+|---|---|
+| `tests/16_w4::test_the_authored_seven_wave_list_is_not_survivable` | the best base the suite can build plays **four of seven waves** and falls at **320 ticks — 3.6 minutes** (`@M005`) |
+| the longest play in all **58** gate scenarios | **490 ticks — 5.4 minutes** (`plans/31` N5), and that is a base that WINS and then idles |
+| `examples/numbers.json` § `_doc` | *"Values target a single base session of **~15-25 minutes**"* — 1350-2250 ticks |
+| the same `_doc`, about itself | *"a coherent placeholder set, **not a balanced one** — verify in play"* |
+
+⚠⚠ **So the game is a factor of four to seven short of its own session
+target**, and the consequences are already written down elsewhere as if they
+were separate problems:
+
+- **item 8** is blocked on *"content long enough to clock"* — that is this gap
+  under another name;
+- **`@X245`'s *the first fifteen minutes are scouting*** is a TEST the game
+  cannot be run against, because there is no fifteenth minute;
+- **`@X238`'s *most players play a couple of scenarios and never reach the end
+  game*** makes that missing session the entire product.
+
+### ⚠⚠ And the fix is NOT to lengthen the wave list
+
+⚠ The session is short not because the content runs out but because **there is
+nothing to do but hold the wall.**  The design's own answer for what fills
+fifteen minutes is SCOUTING (`EXPLORATION.md` § X0b) and TRIPS
+(`MATERIALS.md` § The governing rule) — so duration should EMERGE from having
+somewhere to go, and a tuned wave list would be balancing a placeholder:
+`numbers.json` calls its list *"Authored content (placeholder for the eventual
+economy-driven model)"*, which is item **10**.
+
+⚠⚠ **The largest built-and-unconsumed asset in the repo is the one that fills
+it.**  [`plans/30`](30-the-mob-routine/README.md) built a world worth scouting
+— places, routes, populations, rounds, lures — and `@M085` measured that it
+moves the clock by **146 ticks**.  ⚠ The player has no way to see that, learn
+it, or act on it.
+
+### ⚠ The recommended order, and where it diverges from the table above
+
+| # | do this | why here |
+|---|---|---|
+| **1** | **the landing flow** (item 6) | ⚠⚠ `plans/31` made a run possible and **nothing in the game can reach it** — there is no way to play base 2.  Smallest change that turns *a base* into *a run* in the player's hands, and most of the mechanism exists (close-spawn disable, the markers, the crew, `wallet_carrying`).  ⚠ It also lands the first real decision of a sortie — `@X317`'s **land in the overlap**, whose geometry is `plans/30`'s POI bounds, already built |
+| **2** | **exploration finds** (item 9) | ⚠⚠ **This is the divergence: 9 BEFORE 8.**  A permit clock bounds a session that has a middle; today it would bound holding a wall.  This is what cashes `plans/30` and makes the session long by giving the player somewhere to go |
+| **3** | **the crew's voice**, alongside 2 | ⚠ Not on this path at all, and load-bearing anyway: no tutorial (`@X137`), one HUD number, and the crew as the **only** lore channel (`@X152`).  A longer session with more to find is a longer session of confusion without it.  ⚠ Text shipped (BACKLOG B1); only the remark design is outstanding |
+| **4** | **the permit clock** (item 8) | now it has something to bound.  ⚠ Still needs the owner's ruling — `@M064` falsified the battleship clock by **0.96° of camera pitch** and `@X287` recommends the passing SHADOW |
+| **5** | **the economy** replaces the authored list (item 10) | the wave list stops being a placeholder, and only then is there something to balance |
+
+⚠⚠ **What this evaluation says NOT to do next**: tiers 2 and 3 and the bosses
+(item 11), the coarse world map (BACKLOG F8, deliberately last), bridges (item
+12, which re-reads 1 094 tests), and any tuning pass over `numbers.json`.  All
+of them pour more content into a three-minute container.
+
+⚠ **Multiplayer is not in this ordering and `DESIGN.md` § 20 already says
+why**: its length is not its priority, and BUILDING the base game is what
+serves it.
+
 
 ### Then it gets DEEP
 
