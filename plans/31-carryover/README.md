@@ -9,8 +9,29 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**N1-N4 SHIPPED 2026-08-29.  A base opens with what the last one carried,
-and `manifest_opens` is the door.**  ⚠ **N5 is HALF DONE** — see § Phases.
+**COMPLETE — N1-N5 SHIPPED 2026-08-29.  A base opens with what the last one
+carried, `manifest_opens` is the door, and the carry COMPOUNDS.**
+
+⚠⚠ **`@M087` is the plan's number: 230.0 against 106.0.**  The same base,
+crew, wave and tower sites, **and the same 100 points left when the ferry
+ends** — a hundred points spent on two more towers came back as a hundred and
+twenty-four.  That is what makes `DESIGN.md` § 14's *sequence of bases* a RUN
+rather than a list: a good sortie does not merely hand the next base a bigger
+number, it hands it a base that earns more.
+
+⚠⚠ **And the sweep is the finding, `@M085`'s shape with a new subject**:
+swept over the wave list the carry is worth **+124 points** at the authored
+5 + 8, **the difference between standing and falling** from 26 robots to 50,
+**+18 ticks** at 75 and **+11** past 115 — then nothing, because both columns
+flatten (214-217 and 228) once the wave saturates the siege front.
+
+⚠⚠ **THE FIRST VERSION OF THAT PAIR READ 198 AGAINST 198**, both "fallen" on
+the tick the ferry ended, with twice the towers plainly on the map.  `fall`
+plays until `wallet_broke`, and **the wallet is what BUYS towers as well as
+what enemies drain** — so a base that spends its budget on defence is broke
+before a robot arrives.  Holding the REMAINDER equal is what makes the
+difference the towers; it is `@X292`'s *the wallet at zero is POVERTY and not
+an ending* met in a fixture.
 
 ⚠⚠ **The measurement so far is `@M086`: a sortie's carry buys FOUR beacons
 where the first base bought two.**  `@M065` measured *exactly two, and the
@@ -179,7 +200,7 @@ shape of the pair rather than by a comment asking nicely.
 | **N2** — the HUD's span is the run's | XS | `tests/31_n1` § N2 — a CARRIED span swept whole, with the baseline-pinned ramp reproduced as the control | ✅ **Done** |
 | **N3** — the `.keys` door and its round trip | S | `carried <points>` + the `emit` line + the `wallet_diff` row; `tests/18_s2`'s *fields no scenario exercises* control carries one | ✅ **Done** |
 | **N4** — the chain: a manifest opens a wallet | S | `tests/31_n4_the_chain.loft` (5) — conservation, twice is unreachable, and two manifests differing only in CREW open the same base | ✅ **Done** |
-| **N5** — what a sortie is worth to the NEXT one | M | ⚠ **HALF**: `a-landing-a-sortie-paid-for.keys` prices the carry in BEACONS (`@M086`).  The CLOCK pair — the same base opened at 200 and at 400, towers ferried and built, `fall` — is open | ⚠ In progress |
+| **N5** — what a sortie is worth to the NEXT one | M | `a-landing-a-sortie-paid-for.keys` prices the carry in BEACONS (`@M086`); `a-base-a-sortie-paid-for.keys` + `a-base-a-sortie-did-not-pay-for.keys` price it in what the base comes home with — **230.0 against 106.0**, and a SWEEP over the wave list (`@M087`) | ✅ **Done** |
 
 ## What this plan does NOT build
 

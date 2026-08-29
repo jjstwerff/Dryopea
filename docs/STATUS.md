@@ -456,5 +456,13 @@ would have sat at the full colour from 400 points down to 200 — the ramp dead
 for half the run on the one number the game shows — with `tests/19_p7`'s
 exhaustive colour sweep still green, because *it sweeps the span it is given*.
 ⚠ Measured: **four beacons where the first base bought two** (`@M086`), so
-`@M065`'s landing exclusion moves with the wallet.  ⚠ N5's CLOCK half is open.
-Gates **1790 green / 145 files**, **56 scripts / 985 measurements**.
+`@M065`'s landing exclusion moves with the wallet — and **the carry
+COMPOUNDS** (`@M087`): **230.0 against 106.0** on the same base with the same
+100 points left when the ferry ends, so a hundred points of extra towers came
+back as a hundred and twenty-four.  ⚠⚠ **The first version of that pair read
+198 against 198** — `fall` waits on `wallet_broke`, and the wallet is what
+BUYS towers as well as what enemies drain, so a base that spends its budget on
+defence is broke before a robot arrives.  ⚠ The sweep is the finding: +124
+points at the authored wave, **standing against falling** from 26 robots to
+50, +11 ticks past 115, then nothing once the wave saturates the siege front.
+Gates **1790 green / 145 files**, **58 scripts / 1011 measurements**.

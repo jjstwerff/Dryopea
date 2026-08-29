@@ -179,9 +179,22 @@ and each refusal is blocked on a thing with a NAME — the crew on an IDENTITY
 (`@X290`) and a STATION, the stragglers on the same, the tops on a DEPOSIT.
 ⚠ **The ratio is applied once by construction**: `manifest_of` refuses to
 convert, `manifest_opens` BUILDS a wallet rather than crediting one.
-⚠ **Measured so far: four beacons where the first base bought two**
-(`@M086`) — the landing exclusion `@M065` found moves with the wallet.
-⚠ N5's CLOCK half is open.
+⚠⚠ **AND THE CARRY COMPOUNDS** (`@M087`): **230.0 against 106.0** on the
+same base, crew, wave and tower sites **with the same 100 points left when
+the ferry ends** — a hundred points spent on two more towers came back as a
+hundred and twenty-four, which is what makes `DESIGN.md` § 14's *sequence of
+bases* a RUN rather than a list.  ⚠⚠ **The first version of that pair read
+198 against 198**, both "fallen" on the tick the ferry ended with twice the
+towers on the map: `fall` plays until `wallet_broke`, and **the wallet is
+what BUYS towers as well as what enemies drain**, so a base that spends its
+budget on defence is broke before a robot arrives (`@X292` in a fixture).
+⚠⚠ **And the SWEEP is the finding** — the carry is worth **+124 points** at
+the authored wave, **the difference between standing and falling** from 26
+robots to 50, **+11 ticks** past 115 and then nothing, because both columns
+flatten once the wave saturates the siege front (`@M020`, `@M085`'s reading
+with a new subject).  ⚠ It also buys **four beacons where the first base
+bought two** (`@M086`), so `@M065`'s landing exclusion moves with the wallet.
+⚠ [`plans/31`](plans/31-carryover/README.md) is COMPLETE.
 
 ⚠⚠ **AND THE CREW WORK ON THEIR OWN** ([`plans/29`](plans/29-the-crews-own-work/README.md),
 complete 2026-08-28) — a crew member nobody has told anything takes the
@@ -208,10 +221,10 @@ critical path is **4, the SCRAMBLE**.
 | gate | command | today |
 |---|---|---|
 | tests | `scripts/test.sh` | **1790 green**, ~320 s on a busy box (592 s beside another suite, 753 s, 775 s and 1252 s on 2026-08-29 — one of them a `graphics` cdylib rebuild), 145 files |
-| scenarios | `scripts/validate.sh` | **56 scripts, 985 measurements**, ~20 s |
+| scenarios | `scripts/validate.sh` | **58 scripts, 1011 measurements**, ~20 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
-| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **433 defined, 429 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
-| ⚠⚠ formal rules | `scripts/rules.sh` — inside `test.sh` | **46 defined, 21 ENFORCED in 124 code sites** (`@X327`).  ⚠ `plans/31` added `@FR-R-Carry-Once` and `@FR-R-Opening` and gave both code the same day, which is the order `@X328` asks for.  ⚠ It moved at `plans/30` R5 because `src/poi.loft` gave `@FR-E-Poi-Owns` and `@FR-E-Place-State` their first code at all — never because citations were sprinkled (`@X328`).  ⚠⚠ **This read 89 until 2026-08-29 and the tree measured 93 before R7a touched it** — the number aged against a tree that moved, which is `@M044`'s class one instrument over: **re-measure before quoting a delta**.  R7a's own contribution is **three**.  ⚠ Resolution GATES; coverage only REPORTS.  ⚠⚠ A doc reference is **not** an enforcing site (`@X330`) |
+| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **434 defined, 430 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
+| ⚠⚠ formal rules | `scripts/rules.sh` — inside `test.sh` | **46 defined, 21 ENFORCED in 129 code sites** (`@X327`).  ⚠ `plans/31` added `@FR-R-Carry-Once` and `@FR-R-Opening` and gave both code the same day, which is the order `@X328` asks for.  ⚠ It moved at `plans/30` R5 because `src/poi.loft` gave `@FR-E-Poi-Owns` and `@FR-E-Place-State` their first code at all — never because citations were sprinkled (`@X328`).  ⚠⚠ **This read 89 until 2026-08-29 and the tree measured 93 before R7a touched it** — the number aged against a tree that moved, which is `@M044`'s class one instrument over: **re-measure before quoting a delta**.  R7a's own contribution is **three**.  ⚠ Resolution GATES; coverage only REPORTS.  ⚠⚠ A doc reference is **not** an enforcing site (`@X330`) |
 
 ⚠ `scripts/test.sh` is the canonical runner — **never `loft test` directly**
 (§ Key commands says what it does that you would otherwise skip).
