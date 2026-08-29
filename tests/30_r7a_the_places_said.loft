@@ -166,7 +166,7 @@ fn test_a_place_and_a_routine_survive_the_round_trip() {
     tap2_run = r7_session(
         "place 6 4 robot 0\n"
         + r7_places("mob 2 0.666666 working body\n")
-        + "routine 0 haul load 2.5 3 4 4 12 4 20 6\n", tap2_a);
+        + "routine 0 haul load 2.5 3 4 4 12 4 20 6 on\n", tap2_a);
     assert(tap2_run.ok, "the script runs: {script_describe(tap2_run)}");
 
     tap2_pal  = load_palette(PALETTE);
@@ -208,7 +208,7 @@ fn test_a_place_and_a_routine_survive_the_round_trip() {
 // on `a-road-that-passes-by` the first time the suite ran with it.
 fn test_the_flag_survives_without_a_routine() {
     ttf_run = r7_play("place 6 4 robot 0\n"
-                      + "routine 0 none empty 0.0 0 0 0 0 0 0 0\n");
+                      + "routine 0 none empty 0.0 0 0 0 0 0 0 0 on\n");
     assert(ttf_run.ok, "the script runs: {script_describe(ttf_run)}");
     ttf_e = ttf_run.play.wave.enemies[0] ?? Enemy { };
     assert(ttf_e.errand && errand_role(ttf_e) == ROLE_NONE,
@@ -220,6 +220,26 @@ fn test_the_flag_survives_without_a_routine() {
                          ttf_run.play.wave, "ambient");
     assert(ttf_keys.find("routine 0 none empty") >= 0,
            "the emitter writes the flag down: '{ttf_keys}'");
+
+    // ⚠⚠ **AND IT IS INDEPENDENT IN THE OTHER DIRECTION TOO** — a
+    // hauler the bubble TOOK is `ROLE_HAUL` with the flag CLEARED,
+    // because `wave_cutoff` clears the flag and leaves the anchors where
+    // they are.  ⚠ `plans/30` R8's own scenario is what produced one:
+    // the emitter's first version keyed on the flag alone and dropped a
+    // cut-off hauler's whole routine, which `compare.loft` named as
+    // *role 1 … mob 1 vs role 0 … mob 0*.
+    ttf_cut = r7_play("place 6 4 robot 0\n"
+                      + "routine 0 haul load 1.5 2 4 4 12 4 20 6 cut\n");
+    assert(ttf_cut.ok, "the script runs: {script_describe(ttf_cut)}");
+    ttf_ce = ttf_cut.play.wave.enemies[0] ?? Enemy { };
+    assert(!ttf_ce.errand && ttf_ce.route.work.q == 12
+           && errand_role(ttf_ce) == ROLE_NONE,
+           "cut off, and still carrying its anchors: errand {ttf_ce.errand} "
+           + "work ({ttf_ce.route.work.q},{ttf_ce.route.work.r})");
+    ttf_ck = emit_keys(ttf_pal, painted_empty(), marker_empty(),
+                       ttf_cut.play.wave, "taken");
+    assert(ttf_ck.find("routine 0 haul load 1.5 2 4 4 12 4 20 6 cut") >= 0,
+           "and the emitter writes BOTH facts down: '{ttf_ck}'");
 
     // ⚠ The control: the comparison can see the flag on its own, with
     // every anchor and the role identical on both sides.
@@ -252,8 +272,8 @@ fn test_the_refusals_name_themselves() {
         "poi face 3 3\nroute 0 haul robot 0 1 1 2 2\n",   // nobody on it
         "poi face 3 3\nroute 0 digger robot 2 1 1 2 2\n", // no such role
         "poi face 3 3\nroute 0 haul robot 2 1 1 2 2\nmob 9 0 working rule\n",
-        "place 6 4 robot 0\nroutine 0 haul spilled 0.0 0 1 1 2 2 3 3\n",
-        "place 6 4 robot 0\nroutine 7 haul empty 0.0 0 1 1 2 2 3 3\n",
+        "place 6 4 robot 0\nroutine 0 haul spilled 0.0 0 1 1 2 2 3 3 on\n",
+        "place 6 4 robot 0\nroutine 7 haul empty 0.0 0 1 1 2 2 3 3 on\n",
     ];
     trn_bad = 0;
     for trn_c in trn_cases {
@@ -269,7 +289,7 @@ fn test_the_refusals_name_themselves() {
     trn_ok = r7_play("place 6 4 robot 0\n"
                      + "poi face 3 3\nroute 0 haul robot 2 1 1 2 2\n"
                      + "mob 1 0 working rule\n"
-                     + "routine 0 haul empty 0.0 0 1 1 2 2 3 3\n");
+                     + "routine 0 haul empty 0.0 0 1 1 2 2 3 3 on\n");
     assert(trn_ok.ok, "the corrected shapes play: {script_describe(trn_ok)}");
 }
 
@@ -288,10 +308,10 @@ fn test_the_converter_moves_all_three_anchors() {
     tcm_a = relabel_hex(Hex { q: 1, r: 1 });
     tcm_b = relabel_hex(Hex { q: 3, r: 3 });
     tcm_c = relabel_hex(Hex { q: 5, r: 5 });
-    tcm_got = convert_keys_line("routine 0 haul load 2.5 2 1 1 3 3 5 5", true);
+    tcm_got = convert_keys_line("routine 0 haul load 2.5 2 1 1 3 3 5 5 cut", true);
     assert(tcm_got.1, "the line is understood");
     assert(tcm_got.0 == "routine 0 haul load 2.5 2 {tcm_a.q} {tcm_a.r} "
-                        + "{tcm_b.q} {tcm_b.r} {tcm_c.q} {tcm_c.r}",
+                        + "{tcm_b.q} {tcm_b.r} {tcm_c.q} {tcm_c.r} cut",
            "all three anchors move: '{tcm_got.0}'");
 
     // ⚠ The control: the conversion has to be capable of MOVING these
@@ -391,7 +411,7 @@ fn test_a_negative_slip_survives_the_door() {
            "and the unsigned door is what clamps it — the control");
 
     tns_r = r7_play("place 6 4 robot 0\n"
-                    + "routine 0 haul empty -2.5 1 4 4 12 4 20 6\n");
+                    + "routine 0 haul empty -2.5 1 4 4 12 4 20 6 on\n");
     assert(tns_r.ok, "the script runs: {script_describe(tns_r)}");
     tns_e = tns_r.play.wave.enemies[0] ?? Enemy { };
     assert(tns_e.route.slip == 0 - clock_units_from_seconds(2.5),

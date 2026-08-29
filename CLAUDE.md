@@ -68,7 +68,7 @@ comes back.  ⚠ The HUD is one number and `docs/DESIGN.md` § HUD says it shoul
 be — no wave counter, no health bar, no minimap; everything else is diegetic.
 ⚠⚠ **`MAP=` and `SCRIPT=` are what give it a base to be.**  `make play
 MAP=starter_01` opens one of the three AUTHORED maps in `maps/` (BACKLOG A2,
-2026-08-27); `SCRIPT=<name>` opens any of the 53 `.keys` files in
+2026-08-27); `SCRIPT=<name>` opens any of the 55 `.keys` files in
 `tests/scripts/` + `tests/gl/` as a live starting position, cut at its first
 `tick` (`@X263`).  Bare `make play` opens the empty default slot.
 ⚠⚠ **AND A ROBOT ON THE MAP CAN GO SOMEWHERE FOR A REASON**
@@ -148,7 +148,16 @@ the stolen heap is a `CarryObject` keyed on an identity that outlives a
 body, so killing the thief gives it back.  ⚠ The negative control is in
 the fixture's own opening half — the player in plain sight for thirty
 ticks, and the robot on its rule's hex to the tick.
-⚠ **R8, what a routine is WORTH, is the last phase.**
+⚠⚠ **AND R8 CLOSED THE PLAN WITH A NUMBER** (`@M085`): a base landed
+**ON** a robot road falls in **123** ticks against **269** beside one —
+the same map, wall, waves and painted road, four coordinates apart, and
+four haulers nobody sent at the player are worth more than the wave
+itself.  ⚠⚠ **But the SWEEP is the finding**: the road is worth
+196 / 146 / 10 / **0** ticks against waves of 2 / 3 / 5 / 8, because the
+siege front is the wall's WIDTH (`@M020`) and a big enough wave
+saturates it — ***the first version of that pair read 118 against 118
+with four extra besiegers plainly on the map***.
+⚠ **[`plans/30`](plans/30-the-mob-routine/README.md) is COMPLETE.**
 
 ⚠⚠ **AND THE CREW WORK ON THEIR OWN** ([`plans/29`](plans/29-the-crews-own-work/README.md),
 complete 2026-08-28) — a crew member nobody has told anything takes the
@@ -175,9 +184,9 @@ critical path is **4, the SCRAMBLE**.
 | gate | command | today |
 |---|---|---|
 | tests | `scripts/test.sh` | **1777 green**, ~320 s on a busy box (592 s beside another suite, 753 s and 1252 s on 2026-08-29 — the second was a `graphics` cdylib rebuild), 143 files |
-| scenarios | `scripts/validate.sh` | **53 scripts, 956 measurements**, ~20 s |
+| scenarios | `scripts/validate.sh` | **55 scripts, 974 measurements**, ~20 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
-| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **430 defined, 426 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
+| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **431 defined, 427 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
 | ⚠⚠ formal rules | `scripts/rules.sh` — inside `test.sh` | **44 defined, 19 ENFORCED in 115 code sites** (`@X327`).  ⚠ It moved at `plans/30` R5 because `src/poi.loft` gave `@FR-E-Poi-Owns` and `@FR-E-Place-State` their first code at all — never because citations were sprinkled (`@X328`).  ⚠⚠ **This read 89 until 2026-08-29 and the tree measured 93 before R7a touched it** — the number aged against a tree that moved, which is `@M044`'s class one instrument over: **re-measure before quoting a delta**.  R7a's own contribution is **three**.  ⚠ Resolution GATES; coverage only REPORTS.  ⚠⚠ A doc reference is **not** an enforcing site (`@X330`) |
 
 ⚠ `scripts/test.sh` is the canonical runner — **never `loft test` directly**
@@ -1237,7 +1246,7 @@ names; most of them exist because somebody did it without reading.
 | Simplify, drop or defer a piece of the worldgen / errand design | ⚠⚠ **READ `@X324` FIRST** ([`docs/WORLDGEN.md`](docs/WORLDGEN.md) § WHY IT IS AN OLD DESIGN) — it is aimed at a GAP, so **a piece dropped for convenience is a regression even when everything still works**: `@X320`'s edge restriction buys nothing visible alone and its absence makes the dither impossible; `@X321`'s residual looks like a detail and its absence takes the variant budget from a handful to thousands.  ⚠ **The design is not finished when it RUNS** — `@X303` and `@X323` are tests, not features |
 | Judge ANY worldgen or terrain-derivation idea | ⚠⚠ **THE TEST** ([`docs/WORLDGEN.md`](docs/WORLDGEN.md) § THE THESIS, `@X323`): *express detail from a very compact BASE SET* — so **does this add data in proportion to the detail it produces?**  If it does, it is the wrong mechanism.  ⚠ Every rule is a COMPRESSION plus a decompression that is **local, deterministic and commutative**; take one away and it stops being usable.  ⚠⚠ dryopea has done this since plan 01 — `painted.loft`'s sea-default absence, `height.loft`'s layer, `entity_view.loft`'s *nothing is STATE* |
 | Judge ANY mob-behaviour idea | [`docs/ERRANDS.md`](docs/ERRANDS.md) § WHY (`@X303`) — ⚠⚠ **does this make behaviour more BELIEVABLE, or does it only simulate MORE?**  Believability is owed where it can be OBSERVED; consistency everywhere |
-| Add a POINT OF INTEREST to a scenario | [`docs/ERRANDS.md`](docs/ERRANDS.md) § FEW, AND EACH ONE LOAD-BEARING (`@X305`) — ⚠⚠ **two to four, and it earns its place only if REMOVING it moves the clock**.  A POI that changes the picture and not the play is scenery |
+| Add a POINT OF INTEREST to a scenario | [`docs/ERRANDS.md`](docs/ERRANDS.md) § FEW, AND EACH ONE LOAD-BEARING (`@X305`) — ⚠⚠ **two to four, and it earns its place only if REMOVING it moves the clock**.  A POI that changes the picture and not the play is scenery.  ⚠⚠ **Measured** (`@M085`): a base ON a robot road falls at **123** ticks against **269** beside one — but the same road is worth **0** against a wave big enough to saturate the siege front, so **price the supply against the capacity before believing a flat reading** |
 | Ask what happens to a POI the player destroyed | [`docs/ERRANDS.md`](docs/ERRANDS.md) (`@X304`) — ⚠⚠ **nothing is culled**: the workers still come, find out, and try to fix it, and the swarm may send the machine that does |
 | Ask why an off-screen mob is not simulated, or propose simulation LOD | [`docs/ERRANDS.md`](docs/ERRANDS.md) § The scenario GROWS (`@X299`) — ⚠⚠ **it is COMPUTED, not approximated**, so [`plans/22`](plans/22-the-field-cache/README.md)'s LOD refusal stands untouched |
 | Ask how big the world behind a scenario is | [`docs/ERRANDS.md`](docs/ERRANDS.md) § The two scales (`@X298`) — ⚠ the economy's hex is **1.5 km against dryopea's 1.5 m**, so a whole scenario is ~1 % of ONE cell.  ⚠⚠ That is a CHOICE (`@X310`): `../crawler` compresses terrain 10× and thereby makes a level one whole tile |

@@ -1,0 +1,103 @@
+# a-base-beside-a-robot-road — `plans/30` R8, and it is the CONTROL.
+#
+# ⚠⚠ **THE SAME MAP, THE SAME WALL, THE SAME WAVES AND THE SAME ROAD.**
+# What moves is four numbers: the round runs at the FAR end of the road
+# instead of at the base's own end, so no hex of it is inside the
+# scrambler bubble and no hauler ever loses its link.
+#
+# ⚠ `a-road-that-passes-by`'s rule with a new mechanism: **the distance
+# of the SOURCE is not the question; the ROUTE is.**
+
+echo a base beside a robot road: the traffic never notices it
+
+do toggle_mode
+
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+do cycle_kind
+do cycle_kind
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 11 0
+marker 11 0 spawn 3
+
+count markers 2 2
+do toggle_mode
+
+# The base — `a-defended-base.keys`'s own patch, unchanged.
+palette 5
+drag -3 -2 12 -2
+drag -3 -1 12 -1
+drag -3 0 12 0
+drag -3 1 12 1
+drag -3 2 12 2
+
+# ⚠ The ROAD, three rows along the base's southern flank and running far
+# east.  It is painted identically in both halves of the pair — only the
+# round's anchors move.
+#
+# ⚠⚠ **It starts EAST of the wall on purpose.**  A road that ran past the
+# wall's end would let its traffic walk into the base without touching
+# it, and the file would be measuring the gap rather than the traffic.
+drag 6 3 74 3
+drag 6 4 74 4
+drag 6 5 74 5
+
+# The wall, sealing the base from the road as well as from the spawn.
+# ⚠ The road does not reach past it: rows 3-5 are painted only from
+# q = 6, so the base's western half is sealed by the wall and by the sea
+# alike.
+palette 9
+click 5 -2
+click 5 -1
+click 5 0
+click 5 1
+click 5 2
+kind 5 0 wall
+
+# ── The road's traffic ──────────────────────────────────────────
+#
+# ⚠ A depot and a face at the FAR end of the road — the round's nearest
+# hex is 36 out, past the bubble's 25, so the base is never on this
+# edge of the graph at all.
+poi face 70 4
+route 0 haul robot 4 36 4 0 0
+
+# The player, at the core.  ⚠ The materialiser measures from the PLAYER;
+# the bubble measures from the CORE.
+park 0 0
+player on 0 0 0
+
+# ── The waves ───────────────────────────────────────────────────
+#
+# ⚠⚠ **THREE, WHERE `a-defended-base.keys` SENDS FIVE AND THEN EIGHT,
+# AND THE SIZE IS THE WHOLE MEASUREMENT.**  The siege front is the
+# WALL'S WIDTH (`@M020`) — about four hexes on a five-row wall — so a
+# wave of eight already saturates it and four more bodies change
+# NOTHING.  Swept: the road is worth **196** ticks against a wave of
+# two, **146** against three, **10** against five and **0** against
+# eight (`@M085`).
+#
+# ⚠ That is `CLAUDE.md` § a gate whose reading is already saturated,
+# priced rather than discovered: the first version of this pair ran the
+# authored 5 + 8 and read **118 against 118** with four extra besiegers
+# plainly on the map.
+wave 3
+count alive 3 3
+wallet 200.0 200.0
+
+
+fall 800
+ticks 264 274
+wallet 0.0 0.0
+
+# ⚠ THREE alive — the wave and nothing else.  The haulers are 36 hexes
+# out and the game never even built their round: one subtraction a tick
+# per POI, and no body (`@X344`).
+count alive 3 3
+
+snap r8_a_base_beside_a_robot_road

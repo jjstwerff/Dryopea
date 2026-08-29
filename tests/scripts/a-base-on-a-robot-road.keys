@@ -1,0 +1,119 @@
+# a-base-on-a-robot-road — `plans/30` R8, and it is the plan's own test.
+#
+# ⚠⚠ **`@X303`: does this make behaviour more BELIEVABLE, or does it
+# only simulate MORE?**  A phase that adds ticks of work and moves no
+# clock has answered the second — so the last thing plan 30 owes is a
+# number, and this is one half of it.
+#
+# ⚠⚠ **`ROBOT_ECONOMY.md` § The graph: *"the only thing that matters is
+# which edges the base happens to sit on"*.**  This base sits ON one: a
+# hauler road runs past its southern face, and the round crosses the
+# scrambler bubble.  Every hauler that comes down it loses its link
+# (`wave_cutoff`, one way), stops being ambient, and joins the siege.
+#
+# ⚠ Its pair is `a-base-beside-a-robot-road.keys`: the same map, the
+# same wall, the same waves, the same road — and the round runs at the
+# FAR end of it, out of reach.  The two differ in four coordinates.
+#
+# ⚠⚠ **THE READING: 123 ticks here against 269 there.**  Four haulers
+# nobody sent at the player are worth **146 ticks** of a base's life —
+# more than the wave itself, which is three.  That is `@X305`'s test
+# answered (*a POI earns its place only if REMOVING it moves the
+# clock*), `@X317`'s *land in the overlap* priced from the other side,
+# and `@X303`'s *believable rather than more simulated* met with a
+# number.
+
+echo a base on a robot road: the traffic joins the siege
+
+do toggle_mode
+
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+do cycle_kind
+do cycle_kind
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 11 0
+marker 11 0 spawn 3
+
+count markers 2 2
+do toggle_mode
+
+# The base — `a-defended-base.keys`'s own patch, unchanged.
+palette 5
+drag -3 -2 12 -2
+drag -3 -1 12 -1
+drag -3 0 12 0
+drag -3 1 12 1
+drag -3 2 12 2
+
+# ⚠ The ROAD, three rows along the base's southern flank and running far
+# east.  It is painted identically in both halves of the pair — only the
+# round's anchors move.
+#
+# ⚠⚠ **It starts EAST of the wall on purpose.**  A road that ran past the
+# wall's end would let its traffic walk into the base without touching
+# it, and the file would be measuring the gap rather than the traffic.
+drag 6 3 74 3
+drag 6 4 74 4
+drag 6 5 74 5
+
+# The wall, sealing the base from the road as well as from the spawn.
+# ⚠ The road does not reach past it: rows 3-5 are painted only from
+# q = 6, so the base's western half is sealed by the wall and by the sea
+# alike.
+palette 9
+click 5 -2
+click 5 -1
+click 5 0
+click 5 1
+click 5 2
+kind 5 0 wall
+
+# ── The road's traffic ──────────────────────────────────────────
+#
+# ⚠ A depot at the base's own end of the road and a face far east, so
+# the round's western end sits deep inside the 25-hex bubble — and a
+# hauler that crosses it loses its link for good.
+poi face 40 4
+route 0 haul robot 4 6 4 0 0
+
+# The player, at the core.  ⚠ The materialiser measures from the PLAYER;
+# the bubble measures from the CORE.
+park 0 0
+player on 0 0 0
+
+# ── The waves ───────────────────────────────────────────────────
+#
+# ⚠⚠ **THREE, WHERE `a-defended-base.keys` SENDS FIVE AND THEN EIGHT,
+# AND THE SIZE IS THE WHOLE MEASUREMENT.**  The siege front is the
+# WALL'S WIDTH (`@M020`) — about four hexes on a five-row wall — so a
+# wave of eight already saturates it and four more bodies change
+# NOTHING.  Swept: the road is worth **196** ticks against a wave of
+# two, **146** against three, **10** against five and **0** against
+# eight (`@M085`).
+#
+# ⚠ That is `CLAUDE.md` § a gate whose reading is already saturated,
+# priced rather than discovered: the first version of this pair ran the
+# authored 5 + 8 and read **118 against 118** with four extra besiegers
+# plainly on the map.
+wave 3
+count alive 3 3
+wallet 200.0 200.0
+
+
+fall 800
+ticks 118 128
+wallet 0.0 0.0
+
+# ⚠⚠ **SEVEN ALIVE: the three of the wave, and FOUR HAULERS that were
+# never sent at you.**  Each lost its link crossing the bubble
+# (`wave_cutoff`, one way), stopped being ambient, and joined the siege
+# on the same front.
+count alive 7 7
+
+snap r8_a_base_on_a_robot_road

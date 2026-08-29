@@ -423,3 +423,18 @@ outlives a body — so killing the thief gives it back, as the same stuff.
 in plain sight for thirty ticks, and the robot on its rule's hex to the
 tick.  ⚠ Thirteen mutations, twelve caught; the survivor was the load's
 MATERIAL.  Gates **53 scripts / 956 measurements**.
+
+**`plans/30` R8 — a robot road is worth 146 ticks** (2026-08-29,
+`@M085`), and it CLOSES the plan.  `a-base-on-a-robot-road.keys` falls in
+**123** ticks against **269** for `a-base-beside-a-robot-road.keys` —
+the same map, wall, waves and painted road, differing in the four
+coordinates that put the round inside the scrambler bubble or 36 hexes
+out of it.  Four haulers nobody sent at the player lose their link
+crossing it and join the siege: seven alive against three.  ⚠⚠ **And the
+sweep is the finding**: the road is worth 196 / 146 / 10 / **0** ticks
+against waves of 2 / 3 / 5 / 8, because the siege front is the wall's
+WIDTH (`@M020`) and a wave of eight already saturates it — *the first
+version of the pair ran the authored 5 + 8 and read 118 against 118 with
+four extra besiegers plainly on the map.*  ⚠ `@X303`'s test is answered
+the right way: the routine makes behaviour more believable **and** moves
+the clock.  Gates **55 scripts / 974 measurements**.

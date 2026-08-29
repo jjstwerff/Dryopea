@@ -9,9 +9,31 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
+**⚠⚠ PLAN COMPLETE 2026-08-29 — R8 closed the last phase, and a robot
+road is worth 146 ticks of a base's life.**  ⚠ Gates: **1777 green over
+143 files**, `validate.sh` **55 scripts / 974 measurements** (+2 scripts,
++18 — R8's pair) and `validate_gl.sh` **3 fixtures / 55 measurements**,
+unchanged.
+
+⚠⚠ **`@M085` — 123 ticks against 269, and the SWEEP is the finding.**
+The same map, wall, waves and painted road; four coordinates put the
+round inside the scrambler bubble or 36 hexes out of it.  Four haulers
+nobody sent at the player lose their link crossing it and join the siege
+— seven alive against three.  ⚠ But the road is worth **196** ticks
+against a wave of two, **146** against three, **10** against five and
+**0** against eight: the siege front is the WALL'S WIDTH (`@M020`), so a
+wave of eight saturates it and four more bodies change nothing.
+⚠⚠ **The first version of this pair ran the authored 5 + 8 and read 118
+against 118 with four extra besiegers plainly on the map** — which is
+`CLAUDE.md` § *a gate whose reading is already saturated* caught by
+pricing the supply against the capacity.
+
+⚠ So `@X303`'s test is answered the right way: the routine makes
+behaviour more BELIEVABLE **and** moves the clock, and `@X305`'s *a POI
+earns its place only if REMOVING it moves the clock* has a number.
+
 **R7b COMPLETE 2026-08-29 — a hauler turns for what you left, and it
-costs you thirty points.**  R8 is startable, and it is the last phase.
-⚠ Gates: **1777 green over 143 files** (+7, all this phase's),
+costs you thirty points.**  ⚠ Gates: **1777 green over 143 files** (+7, all this phase's),
 `validate.sh` **53 scripts / 956 measurements** (+2 scripts, +24 — the
 pair and its control) and `validate_gl.sh` **3 fixtures / 55
 measurements**, unchanged.
@@ -465,7 +487,7 @@ behaviour and clocks, gated by scenarios and counts.
 | **Rc** — the CONFORMANCE gate | S | `tests/30_rc_the_conformance.loft` (6) | ✅ **COMPLETE 2026-08-28** — ⚠ and it needed a LIVENESS gate beside it (`@X337`) |
 | **R7a** — the places, said in a `.keys` file | M | `tests/30_r7a_the_places_said.loft` (9) + `tests/scripts/a-place-that-sends-robots.keys` (12) | ✅ **COMPLETE 2026-08-29** — `@X345`, `@M083`, `@D009` |
 | **R7b** — distraction: the hauler and your heap | M | `tests/30_r7b_the_distraction.loft` (7) + the scenario pair (24) and its *merely seen* control | ✅ **COMPLETE 2026-08-29** — `@X346`, `@M084` |
-| **R8** — what a routine is WORTH | S | a scenario pair, one token apart | Startable |
+| **R8** — what a routine is WORTH | S | `a-base-on-a-robot-road.keys` + `a-base-beside-a-robot-road.keys` (18) | ✅ **COMPLETE 2026-08-29** — `@M085` |
 
 ---
 
@@ -1759,12 +1781,65 @@ is written at the function as well.
 
 ## R8 — what a routine is WORTH
 
-⚠ A scenario pair one token apart, and the reading this repo takes:
-`@M050`'s 130 / 174, `@M059`'s 130 / 174 / 221, `@M070`'s 140 / 174.
+⚠ A scenario pair, and the reading this repo takes: `@M050`'s 130 / 174,
+`@M059`'s 130 / 174 / 221, `@M070`'s 140 / 174.
 
 ⚠⚠ **It is also the design's own test** (`@X303`): *does this make
 behaviour more BELIEVABLE, or does it only simulate MORE?*  A phase that
 adds ticks of work and moves no clock has answered the second.
+
+### ⚠⚠ The answer: 123 against 269  `@M085`
+
+`a-base-on-a-robot-road.keys` and `a-base-beside-a-robot-road.keys` —
+the same map, the same wall, the same waves, the same painted road, and
+four coordinates that put the round inside the scrambler bubble or 36
+hexes out of it.  ⚠ Four haulers nobody sent at the player lose their
+link crossing it (`wave_cutoff`, one way) and join the siege on the same
+front: **seven alive against three, and 123 ticks against 269.**
+
+⚠⚠ **AND THE SWEEP IS THE FINDING, not the headline.**
+
+| the wave | on the road | beside it | the road is worth |
+|---|---|---|---|
+| 2 | 123 | 319 | **196** |
+| 3 | 123 | 269 | **146** |
+| 5 | 118 | 128 | 10 |
+| 8 | 118 | 118 | **0** |
+
+⚠ The siege front is the WALL'S WIDTH (`@M020`) — about four hexes on a
+five-row wall — so a wave of eight already saturates it and four more
+bodies change **nothing**.  ⚠⚠ **The first version of this pair ran
+`a-defended-base.keys`'s authored 5 + 8 and read 118 against 118 with
+four extra besiegers plainly on the map.**  That is `CLAUDE.md` § *a gate
+whose reading is already saturated cannot see what you built*, met by
+pricing the supply against the capacity rather than by believing the
+flat reading.
+
+⚠ **It answers three questions at once**: `@X305`'s *a POI earns its
+place only if REMOVING it moves the clock*, `@X317`'s *land in the
+overlap* priced from the player's side, and `@X303`'s own test.
+
+### ⚠⚠ And the pair found a THIRD independence
+
+⚠ R7a found the FLAG and the ROLE to be two facts one way round — an
+AMBIENT robot is `errand: true` with `ROLE_NONE`.  ⚠⚠ **R8's own
+scenario produced the other way round**: `wave_cutoff` clears the flag
+and **leaves the anchors where they are**, so a hauler the bubble took is
+`ROLE_HAUL` with the flag CLEARED, and nothing reads its routine because
+`errand_role` guards on the flag first.
+
+⚠ `emit_enemies` keyed on the flag alone and dropped the whole routine;
+`tests/18_s2`'s corpus sweep named it the first time the pair ran —
+*role 1 … mob 1 vs role 0 … mob 0*.  ⚠ The `routine` verb gained an
+`<on|cut>` token, because a fact the game reaches and the vocabulary
+cannot say is `@D007`'s shape however it is spelled.
+
+### What R8 did NOT build
+
+⚠ **A gate for the saturation curve.**  The pair gates one column of the
+table; the other three are a measurement, recorded here and in `@M085`
+and not re-run.  A fixture per column would be four files saying one
+thing.
 
 ## What this plan does NOT build
 

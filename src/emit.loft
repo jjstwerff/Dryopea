@@ -141,11 +141,24 @@ fn emit_enemies(state: const WaveState) -> text {
         // `wave_cutoff` clears exactly that flag, so a capture without
         // it is a robot the bubble has already taken walking on.
         //
+        // ⚠⚠ **AND IT IS INDEPENDENT IN THE OTHER DIRECTION TOO, which
+        // `plans/30` R8's own scenario found.**  `wave_cutoff` clears
+        // the FLAG and leaves the ROUTINE where it is — a hauler the
+        // bubble took still carries its anchors, and nothing reads them
+        // because `errand_role` guards on the flag first.  A condition
+        // keyed on the flag alone therefore dropped a cut-off hauler's
+        // anchors on the round trip, and `compare.loft` named it:
+        // *role 1 … mob 1 vs role 0 … mob 0*.
+        //
+        // ⚠ So the test is *is any of it not neutral* — the same rule
+        // every emitter here follows, asked of BOTH facts rather than of
+        // the one that looked like the subject.
+        //
         // ⚠ The role and the bag are NAMED and the `slip` is SECONDS,
         // which is `banked`'s rule and `remit`'s: a `.keys` file is read
         // by a person, and the round trip is exact because the door
         // rounds.
-        if ee_e.errand {
+        if ee_e.errand || !errand_same(ee_e.route, errand_new()) {
             ee_out = ee_out + "routine {ee_i} "
                             + errand_role_of(ee_e.route.role).name + " "
                             + errand_bag_name(ee_e.route.carry)
@@ -153,7 +166,9 @@ fn emit_enemies(state: const WaveState) -> text {
                             + " {ee_e.route.mob}"
                             + " {ee_e.route.home.q} {ee_e.route.home.r}"
                             + " {ee_e.route.work.q} {ee_e.route.work.r}"
-                            + " {ee_e.route.alt.q} {ee_e.route.alt.r}\n";
+                            + " {ee_e.route.alt.q} {ee_e.route.alt.r} "
+                            + (if ee_e.errand { "on" } else { "cut" })
+                            + "\n";
         }
         ee_i += 1;
     }

@@ -1922,8 +1922,8 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
     // *no place owns this body* — a routine a test authored by hand,
     // which is every routine before R7.
     if sa_cmd == "routine" {
-        if sa_argc != 11 {
-            return "routine needs <i> <role> <bag> <slip> <mob> <hq> <hr> <wq> <wr> <aq> <ar>";
+        if sa_argc != 12 {
+            return "routine needs <i> <role> <bag> <slip> <mob> <hq> <hr> <wq> <wr> <aq> <ar> <on|cut>";
         }
         sa_rti = (tok[1] ?? "") as integer?;
         if sa_rti == null { return "routine: <i> must be an integer"; }
@@ -1967,13 +1967,20 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         sa_rter.slip  = slip_units(sa_rts ?? 0.0);
         sa_rter.mob   = sa_rtm ?? 0;
         sa_rte.route  = sa_rter;
-        // ⚠⚠ **`errand` is the FLAG and the role is one of the COLUMNS**
-        // — two facts, and this line is what says the first.  A robot on
-        // AMBIENT traffic (BACKLOG B4) is flagged with `ROLE_NONE`, so a
-        // verb that inferred the flag from the role could not say what
-        // half the corpus already holds; `wave_cutoff` clears the flag
-        // and nothing else, so it has to be sayable on its own.
-        sa_rte.errand = true;
+        // ⚠⚠ **`errand` is the FLAG and the role is one of the COLUMNS —
+        // two facts, INDEPENDENT IN BOTH DIRECTIONS**, and this token is
+        // what says the first.  A robot on AMBIENT traffic (BACKLOG B4)
+        // is flagged with `ROLE_NONE`; a hauler the bubble TOOK is
+        // `ROLE_HAUL` with the flag cleared, because `wave_cutoff`
+        // clears the flag and leaves the anchors where they are.  ⚠ A
+        // verb that inferred either from the other could not say half
+        // the states the game reaches, and `plans/30` R8's own scenario
+        // is what produced the second half.
+        sa_rton = tok[12] ?? "";
+        if sa_rton != "on" && sa_rton != "cut" {
+            return "routine: <on|cut> for the errand flag, not '{sa_rton}'";
+        }
+        sa_rte.errand = sa_rton == "on";
         return "";
     }
 
