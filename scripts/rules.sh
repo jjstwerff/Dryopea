@@ -74,14 +74,39 @@ MENTION = re.compile(r'^\s*\(([A-Z][A-Za-z0-9-]{1,40})\)\s')
 # ⚠⚠ Boundary-exact: the next character may not continue a tag.
 CITE = re.compile(r'@FR-([A-Z][A-Za-z0-9-]{1,40})(?![-A-Za-z0-9])')
 
+# ⚠⚠ **The exemption governs DEFINITION as well as citation, and it did
+# not until 2026-08-29.**  `docs/FORMAL.md` TEACHES the convention, so it
+# shows a fenced `  (Order-Wins)  …` line as a worked example — and a
+# fenced line at exactly two spaces is a definition, so the document
+# explaining the registry silently ADDED A RULE TO IT.  The phantom
+# resolved, so the gate stayed green while `@FR-E-Order-Wins`, the real <!--norule-->
+# rule at `ERRANDS.md:178`, read as uncited and its one example citation
+# pointed at the ghost.
+# ⚠ That is this checker's own stated hazard — *"otherwise a doc could
+# define a rule by mentioning it, and the registry would grow by
+# discussion"* — reaching it through the one door the guard did not
+# cover: `<!--norule-->` was built for the CITATION half and the
+# DEFINITION half never got it.
 defined = {}          # name -> [file:line, ...]
 for f in tracked('docs/*.md'):
     fenced = False
+    skip = False
     for n, line in enumerate(open(f, encoding='utf-8'), 1):
+        # ⚠ Block markers are read BEFORE the fence test so a pair may
+        # wrap a whole fenced example, and the fence still toggles
+        # inside a skipped region so the state is right after it.
+        if '<!--norule:begin-->' in line:
+            skip = True
+            continue
+        if '<!--norule:end-->' in line:
+            skip = False
+            continue
         if line.lstrip().startswith('```'):
             fenced = not fenced
             continue
-        if not fenced:
+        if not fenced or skip:
+            continue
+        if '<!--norule-->' in line:
             continue
         m = DEF.match(line)
         if m:

@@ -146,12 +146,25 @@ right by construction beats 23 renames plus the churn."*
 ⚠ In a **fenced block** in the area document that owns the subject, one
 rule per line:
 
+<!--norule:begin-->
 ```
   (Order-Wins)   `helper_drive` is an ORDER: the semi-automatic search
                  proposes a destination only to a crew member who has
                  none.  A verb that says GO HERE is honoured, or the
                  `.keys` vocabulary lies.
 ```
+<!--norule:end-->
+
+⚠⚠ **The example above is EXEMPTED, and it had to be** — it is a real
+fenced line at exactly two spaces, so until 2026-08-29 this document
+DEFINED a rule called `Order-Wins` just by teaching the shape of one.
+The registry read **49 defined** where there were 48; the phantom
+resolved, so nothing went red; and the real rule
+(`@FR-E-Order-Wins`, [`ERRANDS.md`](ERRANDS.md)) read as UNCITED while
+the citation example below pointed at the ghost.  ⚠ The exemption used
+to govern citations only — *a document that describes the convention
+names tags it does not cite* applies with equal force to the tags it
+**shows how to define**.
 
 ⚠⚠ **Only a fenced line defines**, which is what stops a rule being
 "defined" by prose that merely mentions it — loft's `_fenced_lines`
@@ -172,11 +185,18 @@ rule per line:
 ⚠ A comment in the implementing file, conventionally beginning
 **"Enforces"**:
 
+<!--norule:begin-->
 ```loft
 // Enforces @FR-Order-Wins — the search proposes only to a crew member
 // with no standing order, which is why `helper_seek` is a second door
 // rather than a flag.
 ```
+<!--norule:end-->
+
+⚠ Exempted for the same reason as the block above: the tag in it is a
+SHAPE, not a citation.  ⚠⚠ The rule it stands for is
+**`@FR-E-Order-Wins`** — an example that drops the area letter teaches a
+name that cannot resolve.
 
 ### ⚠⚠ Resolution GATES; coverage is REPORTED
 
@@ -428,10 +448,17 @@ this convention exists to remove."*
 generative**, and it is small: the four relation shapes measured above
 are `= value`, `= value × K`, `= value ÷ other`, and `family`.
 
-## ⚠⚠ What the first run of `rules.sh` found, in its own definition
+## ⚠⚠ What `rules.sh` found in its OWN definition — three times
 
-⚠ Two problems, both in the checker rather than the tree, and both worth
-keeping because they are `@X328`'s fourth lesson arriving on schedule.
+⚠ Three problems, every one in the checker rather than in the tree, and
+all worth keeping because they are `@X328`'s *do not trust a count from a
+new instrument until it has been wrong once* arriving on schedule and
+then twice more.  ⚠⚠ **Two of the three were found by READING the shape
+of the coverage rather than by a red gate** — a phantom rule resolves,
+and a false enforcing site is still a site, so **neither could ever have
+failed the gate that contains them**.  ⚠ The first two are from the
+checker's first run; the third is from fixing the second, the same
+afternoon.
 
 1. ⚠⚠ **A rule read as DEFINED TWICE, and the second was a CONTINUATION
    LINE.**  `(W-Residual)`'s prose wrapped onto a line beginning
@@ -450,17 +477,57 @@ keeping because they are `@X328`'s fourth lesson arriving on schedule.
    ⚠⚠ **The marker has to be on the line the tag is on**, which this
    section got wrong first: the block form exists because a prose
    paragraph wraps and the tag and the marker land on different lines.
+   ⚠⚠ **AND IT EXEMPTS A DEFINITION AS WELL AS A CITATION** — it did not
+   until 2026-08-29, and the half that was missing is the one that bites
+   THIS file: a document teaching the convention has to SHOW a fenced
+   definition, and a fenced definition is a definition wherever it sits.
+   ⚠ So both worked examples above are wrapped in a `begin` / `end`
+   pair.
+3. ⚠⚠ **A file is classified by its EXTENSION, so a `.sh` or `.loft`
+   comment merely DISCUSSING a rule counts as an enforcing site.**  The
+   fix for point 2 introduced exactly that on its first run — the
+   checker's own explanatory comment named the rule it had just stopped
+   defining, and the rule jumped to ENFORCED with no implementing code
+   anywhere.  ⚠ `<!--norule-->` works in any tracked file, and that is
+   what it is for.
 
-⚠⚠ **Coverage today: 43 defined, 5 ENFORCED in 5 code sites** — and the
-first printing said *13 cited*, because it counted `DECISIONS.md` and
-`CLAUDE.md` cross-references as sites (`@X330`).  ⚠ The five
-were cited because **the code already stated the rule in its own words**
-— `passable.loft` had *"the field filters NODES by the surface and EDGES
-by the step"*, `lattice.loft` had *"nothing may step a coordinate except
-`lat_neighbour`"* — so the citation really is a receipt for an evaluation
-that already happened.  ⚠⚠ **The other 38 are the work, and adding a
-citation to each without reading its sites is exactly what `@X328`
-refuses.**
+⚠⚠ **Coverage on 2026-08-29: 48 defined, 25 ENFORCED in 152 code
+sites** — it read *43 defined, 5 ENFORCED in 5* when this section was
+written, and the first printing of all said *13 cited*, because it
+counted `DECISIONS.md` and `CLAUDE.md` cross-references as sites
+(`@X330`).  ⚠ The original five were cited because **the code already
+stated the rule in its own words** — `passable.loft` had *"the field
+filters NODES by the surface and EDGES by the step"*, `lattice.loft` had
+*"nothing may step a coordinate except `lat_neighbour`"* — so the
+citation really is a receipt for an evaluation that already happened.
+⚠⚠ **The rest are the work, and adding a citation to each without
+reading its sites is exactly what `@X328` refuses.**
+
+⚠⚠ **AND THE COUNT WAS 49 UNTIL THE INSTRUMENT WAS FIXED** (2026-08-29):
+this document's own worked example DEFINED a rule called `Order-Wins`,
+because a fenced line at exactly two spaces is a definition wherever it
+appears — including in the document that teaches the shape.  ⚠ It is
+`@X328`'s *do not trust a count from a new instrument until it has been
+wrong once* landing a fourth time, and the tell was the SHAPE of the
+coverage rather than the total: the real `@FR-E-Order-Wins` sat with
+four citations and no code while a name nobody had written stood beside
+it.  ⚠⚠ **The exemption now governs DEFINITION as well as citation** —
+and fixing it immediately produced its own false positive, because the
+checker's explanatory comment naming the rule is in a `.sh` file and so
+counted as a CODE site.  ***A file is classified by its extension, so
+prose about a rule that lives outside `docs/` reads as enforcement.***
+
+⚠ **Where the uncovered rules actually are** (evaluated 2026-08-29): the
+`W-*` family is 12 rules with almost no code and that is CORRECT — the
+worldgen it describes is not built, and the rule is spec-first by
+design.  The gap is the **`M-*` family**: six rules — `M-Besiege`,
+`M-Desire-Removable`, `M-One-AI`, `M-Surface`, `M-Sweep-Inward`,
+`M-Waterline` — whose subjects all shipped years of phases ago, plus
+`@FR-E-Order-Wins` (`helper.loft`) and `@FR-E-Remit-Trades`
+(`task.loft`), whose two implementing files cite **nothing at all**.
+⚠⚠ **The routine system took the discipline and the mover under it did
+not**: `errand.loft` and `poi.loft` carry **74 of the tree's 109 `src/`
+citations** between them.
 
 ## Open questions
 
