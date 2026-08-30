@@ -2184,6 +2184,31 @@ tower-top, beacon, downed helper — is **rendered above the
 carrier as part of its geometry**.  No HUD; the world reads
 loaded vs idle at a glance.
 
+⚠⚠ **AND THE GROUND HALF IS THE SAME RULE, WHICH THIS SECTION DID
+NOT SAY** ([`plans/33`](../plans/33-exploration-finds/README.md) E1,
+`@X349`).  For as long as it said only *carried*, a beacon set down
+and a tower top lying on the ground were **drawn by nothing** —
+`entity_view.loft` is the ROSTER as triangles and a carry object was
+never in the roster.  Nothing was wrong; nothing said so either.  The
+rule is one claim about the whole ledger:
+
+```
+  (C-Ledger-Drawn)   everything the carry ledger holds that has not
+                     been CONSUMED is in the frame, exactly once, at
+                     the hex the ledger gives it.  So the drawn count
+                     IS `cargo_count`, and a renderer that asks who
+                     owns an object in order to decide whether to draw
+                     it has grown a SECOND rule about where cargo
+                     lives — which `carry.loft` exists to not have,
+                     because it made *on the ground* a VALUE of
+                     `owner` rather than a different place to be.
+                     ⚠ Only the HEIGHT may read the owner.
+```
+
+⚠ **What it forbids is a filter, not a colour.**  Drawing the five
+kinds alike is a content decision and this rule says nothing about it;
+drawing only the ones nobody is holding is the defect it names.
+
 ## 10. Three enemy tiers
 
 Tiers **stack** rather than replace.  Each is a distinct

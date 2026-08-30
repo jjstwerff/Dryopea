@@ -3347,6 +3347,8 @@ fn beacon_buy(state: WaveState, owner: integer, at: const Hex,
 // core has retrieved them, and the same press one hex further out has
 // merely put them down.  Two verbs would let a script deposit at a
 // place the game would not.
+//
+// Example: @DRY-228, @DRY-229
 pub fn wave_drop(state: WaveState, owner: integer, core: Hex,
                  mw: const MarkerWorld, pal: vector<GroundType>,
                  pw: PaintedWorld) -> integer {
@@ -3434,6 +3436,24 @@ pub fn wave_drop(state: WaveState, owner: integer, core: Hex,
 // spent record keeps its slot (`CARGO_GONE` is a state, not a removal).
 fn wave_arrived(state: WaveState, i: integer, core: const Hex) {
     wa_o = cargo_get(state.cargo, i);
+
+    // ⚠⚠ **A FIND IS CASHED, and `subj` is the whole of what it pays**
+    // (`plans/33` E1) — `carry.loft` § `subj` IS THE POINTS IT IS WORTH
+    // carries the argument, and the tripwire for the day it holds two
+    // facts.
+    //
+    // ⚠ **`wallet_earn`, not a second income path.**  Salvage has been
+    // the wallet's only income since `plans/13` V3, and a find that
+    // credited it through a door of its own would be a second place the
+    // run's budget can grow — which is the shape `carry.loft`'s header
+    // refuses one layer down (*"two fields that can disagree about one
+    // fact"*).  The points are integers because a `.keys` file authors
+    // them; the wallet is float because nibbling drains fractions.
+    if wa_o.kind == CARGO_FIND {
+        wallet_earn(state.wallet, (wa_o.subj as float?) ?? 0.0);
+        return;
+    }
+
     if wa_o.kind != CARGO_WRECK { return; }
 
     wa_j = 0;

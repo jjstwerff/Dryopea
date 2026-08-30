@@ -1,0 +1,387 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 33 phase E1 — a FIND, as one cargo row.
+//
+// `docs/EXPLORATION.md` § X4 is the whole design in a sentence: *"a
+// find is ONE marker row and ONE cargo row"*.  `plans/33` § The site
+// count answered the first half with a **no** — a marker kind is ~96
+// files and a `.keys` corpus does not need one — so what E1 buys is the
+// cargo row, and this file is what says the row is complete.
+//
+// ── ⚠⚠ WHAT A "COMPLETE ROW" MEANS, AND WHY IT IS FIVE SITES ────
+//
+// `plans/15` § C0.4 states the contract a cargo kind arrives under: a
+// constant, what a valid destination is, what arriving there does, and
+// **nothing in the carrying path**.  `@D007` added the fifth site the
+// hard way — `emit.loft` writes a kind's NAME and `script.loft` reads
+// it, and a beacon dropped on the ground round-tripped as a WRECK for
+// exactly as long as no scenario dropped one.
+//
+// So the gates below are one per site, and the round trip is the one
+// that could not have been written before the defect:
+//
+//   1. the destination is the CORE and nowhere else
+//   2. arriving CASHES it — the wallet, by exactly `subj`
+//   3. and does NOT do a wreck's job (the branch order in `wave_arrived`)
+//   4. the writer and the reader agree on the name `find`
+//   5. an unknown name is REFUSED rather than read as a wreck
+//
+// ── ⚠⚠ AND THE SIXTH GATE IS THE ONE THE PLAN NAMED AS A PROBLEM ─
+//
+// *"A find nobody can SEE is not a find."*  `entity_view.loft` is the
+// ROSTER as triangles and a `CarryObject` was not in it, so a beacon
+// set down and a tower top on the ground were invisible — `@M092`'s
+// wreck drew only because the downed crew member is still a roster
+// body.  E1 takes the second of the plan's two doors: **ground cargo
+// draws as an entity**, one catalogue row and one walk, which fixes the
+// beacon and the top at the same time.
+//
+// ⚠ The invariant that walk is written against is
+// `entity_bake_cargo`'s own: the drawn count and `cargo_count` are the
+// same number BY CONSTRUCTION, because both filter on `CARGO_GONE` and
+// nothing else.  § A drawn count IS the ledger's count is that made a
+// gate rather than a sentence.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SHOTS:   text = "tests/actual";
+
+fn as_u8(n: integer) -> u8 {
+    n as u8? ?? 0
+}
+
+fn pal() -> vector<GroundType> { load_palette(PALETTE) }
+
+fn near2(a: float, b: float) -> boolean {
+    n2 = a - b;
+    if n2 < 0.0 { n2 = 0.0 - n2; }
+    n2 < 0.01
+}
+
+fn played(src: text) -> ScriptRun {
+    p_s = editor_state_new(PALETTE);
+    script_run(p_s, src, SHOTS)
+}
+
+// A small painted patch with a core at the origin — the least a find
+// needs to be stood on and carried home over.
+//
+// ⚠ **An unpainted hex IS sea** (`CLAUDE.md` § Testing something that
+// moves), so a fixture that forgot the paint would have the find lying
+// in the water and every carry below would fail for the wrong reason.
+fn base() -> text {
+    "do toggle_mode\ndo cycle_kind\nclick 0 0\nmarker 0 0 target\n"
+    + "do toggle_mode\npalette 5\n"
+    + "drag -4 -3 12 -3\n"
+    + "drag -4 -2 12 -2\n"
+    + "drag -4 -1 12 -1\n"
+    + "drag -4 0 12 0\n"
+    + "drag -4 1 12 1\n"
+    + "drag -4 2 12 2\n"
+    + "drag -4 3 12 3\n"
+}
+
+fn grassy() -> PaintedWorld {
+    g_pw = painted_empty();
+    for g_q in -6..7 {
+        for g_r in -6..7 {
+            paint(g_pw, g_q, g_r, as_u8(5));
+        }
+    }
+    g_pw
+}
+
+// Bake one drawn class and answer the triangle count.
+fn bake(cls: integer, pw: PaintedWorld, mw: const MarkerWorld,
+        ws: const WaveState) -> integer {
+    b_m = mesh("bake");
+    entity_bake(b_m, catalogue(), pal(), pw, mw, ws, 0, cls)
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 1. The destination — the core, and nowhere else
+// ─────────────────────────────────────────────────────────────────
+
+// A find states its whole destination rule from `(kind, at, core)`,
+// which is what lets it live in `carry.loft` rather than in
+// `spawn.loft` the way a beacon's does.
+fn test_a_find_is_delivered_at_the_core() {
+    td_core = Hex { q: 0, r: 0 };
+    assert(cargo_destination_ok(CARGO_FIND, td_core, td_core),
+           "the core itself takes a find");
+    assert(cargo_destination_ok(CARGO_FIND, Hex { q: 1, r: 0 }, td_core),
+           "and so does the hex beside it — the reach is the CHASSIS's");
+    assert(!cargo_destination_ok(CARGO_FIND, Hex { q: 9, r: 0 }, td_core),
+           "but nine hexes out is not a delivery");
+}
+
+// ⚠ **The negative control that keeps the row from being vacuous**: a
+// destination rule that answered `true` everywhere would pass every
+// assertion about delivery below while making the trip home pointless.
+fn test_a_find_is_not_delivered_where_it_was_found() {
+    tn_core = Hex { q: 0, r: 0 };
+    tn_out  = 0;
+    for tn_q in 2..12 {
+        if cargo_destination_ok(CARGO_FIND, Hex { q: tn_q, r: 0 }, tn_core) {
+            tn_out += 1;
+        }
+    }
+    assert(tn_out == 0,
+           "no hex from 2 to 11 out is a destination: {tn_out} are");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 2. What arriving DOES — the wallet, by exactly `subj`
+// ─────────────────────────────────────────────────────────────────
+
+// @DRY-228 — a find delivered at the core credits the wallet
+//
+// ⚠⚠ **THE NUMBER IS `subj` AND NOT A CONSTANT**, which is what makes
+// `plans/33` E2 a sweep rather than a rebuild: the `.keys` file authors
+// what a find is worth and the code converts nothing.
+fn test_delivering_a_find_credits_exactly_what_it_is_worth() {
+    tw_r = played(base()
+                  + "object 6 0 find 150 ground\n"
+                  + "park 0 0\nwallet 200.0 200.0\n"
+                  + "drive 6 0\ntick 6\nvehicle 6 0\n"
+                  + "take player\ncargo 1 1\n"
+                  + "drive 0 0\ntick 6\nvehicle 0 0\n"
+                  + "drop player\ncargo 0 0\n"
+                  + "wallet 350.0 350.0\n");
+    assert(tw_r.ok, "the fetch plays: {script_describe(tw_r)}");
+}
+
+// ⚠ **Carried but NOT delivered pays nothing**, which is the control
+// the credit needs: a wallet written at pickup would satisfy every
+// assertion above and make the drive home free.
+fn test_a_find_still_in_the_slot_has_paid_nothing() {
+    tc_r = played(base()
+                  + "object 6 0 find 150 ground\n"
+                  + "park 0 0\nwallet 200.0 200.0\n"
+                  + "drive 6 0\ntick 6\nvehicle 6 0\n"
+                  + "take player\ncargo 1 1\n"
+                  + "wallet 200.0 200.0\n");
+    assert(tc_r.ok, "the pickup plays: {script_describe(tc_r)}");
+}
+
+// ⚠ **And a find dropped away from the core pays nothing either** — the
+// object goes back on the ground and is still there to be fetched
+// properly, which is `cargo_put`'s *nothing is refunded because nothing
+// was lost*.
+fn test_a_find_set_down_in_the_field_is_still_there() {
+    tf_r = played(base()
+                  + "object 6 0 find 150 ground\n"
+                  + "park 0 0\nwallet 200.0 200.0\n"
+                  + "drive 6 0\ntick 6\nvehicle 6 0\n"
+                  + "take player\ndrop player\n"
+                  + "cargo 1 1\nwallet 200.0 200.0\n");
+    assert(tf_r.ok, "the false delivery plays: {script_describe(tf_r)}");
+}
+
+// @DRY-229 — a find is not a wreck, and the branch order says so
+//
+// ⚠⚠ **THE MUTATION THIS IS AIMED AT IS ONE LINE.**  `wave_arrived`
+// used to open `if wa_o.kind != CARGO_WRECK { return; }`, and a find
+// added after that guard would fall straight through it and pay
+// nothing.  Written the other way round — a find branch that forgot to
+// `return` — it would ALSO run the wreck's loop, and `subj` 1 is a
+// perfectly good crew index: a find worth one point would stand a
+// wrecked crew member up.
+//
+// ⚠ So the fixture gives the find a `subj` that IS a live roster slot
+// and asserts the roster did not move.  A find worth nothing on a base
+// with no crew could not have seen it.
+fn test_cashing_a_find_does_not_recover_a_crew_member() {
+    tr_s = editor_state_new(PALETTE);
+    tr_r = script_run(tr_s, base()
+                      + "crew 3 0\nsend 0 3 0\nhelper 0 3 0\n"
+                      + "crew 4 0\nsend 1 4 0\nmember 1 off 0.0 0.0 0.0\n"
+                      + "object 6 0 find 1 ground\n"
+                      + "park 0 0\nwallet 200.0 200.0\nroster 1 1\n"
+                      + "drive 6 0\ntick 6\nvehicle 6 0\ntake player\n"
+                      + "drive 0 0\ntick 6\nvehicle 0 0\ndrop player\n"
+                      + "cargo 0 0\nwallet 201.0 201.0\n", SHOTS);
+    assert(tr_r.ok, "it plays: {script_describe(tr_r)}");
+
+    // ⚠ The reading the `.keys` verbs cannot make: `roster` counts
+    // members who are STANDING, and a member who began recovering is
+    // not standing either — so the count alone cannot tell "still down"
+    // from "on its way back".
+    tr_h = tr_r.play.wave.crew[1] ?? helper_new(0, 0);
+    assert(helper_wrecked(tr_h),
+           "the downed crew member is still down");
+    assert(!helper_recovering(tr_h),
+           "and cashing a find worth 1 did not start crew member 1's "
+           + "90-tick recovery — a find is not a wreck");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 3. The PAIR — the writer and the reader agree
+// ─────────────────────────────────────────────────────────────────
+
+// @DRY-230 — a find on the ground round-trips through `emit_keys`
+//
+// ⚠⚠ **`plans/33` § Invariant gate's row for E1, and it is `@D007`'s
+// gate re-aimed**: a kind the emitter can write and the reader cannot
+// name comes back as something ELSE, silently, and the only thing that
+// notices is a scenario that produces one.  This file produces one.
+fn test_a_find_survives_capture_and_replay() {
+    ts_a = editor_state_new(PALETTE);
+    ts_run = script_run(ts_a, base() + "object 9 0 find 150 ground\n", SHOTS);
+    assert(ts_run.ok, "the find is authored: {script_describe(ts_run)}");
+    assert(cargo_count(ts_run.play.wave.cargo) == 1, "and there is one of it");
+
+    ts_keys = emit_keys(pal(), ts_a.pw, ts_a.mw, ts_run.play.wave, "find");
+    assert(ts_keys.contains("object 9 0 find 150 ground"),
+           "the emitter writes it by NAME: the capture holds no such line");
+
+    ts_b = editor_state_new(PALETTE);
+    ts_back = script_run(ts_b, ts_keys, SHOTS);
+    assert(ts_back.ok, "the capture replays: {script_describe(ts_back)}");
+    assert(state_diff(ts_run.play.wave, ts_back.play.wave) == "",
+           "and nothing moved: "
+           + "'{state_diff(ts_run.play.wave, ts_back.play.wave)}'");
+
+    // ⚠ The reading `state_diff` alone would not make loudly enough: it
+    // is the KIND that the defect changed, and a wreck and a find are
+    // both one object at one hex.
+    ts_o = cargo_get(ts_back.play.wave.cargo, 0);
+    assert(ts_o.kind == CARGO_FIND,
+           "and it came back a FIND, not a wreck: kind {ts_o.kind}");
+    assert(ts_o.subj == 150, "carrying its value: {ts_o.subj}");
+}
+
+// @DRY-231 — an unknown cargo name is refused, never read as a wreck
+//
+// ⚠⚠ **THE NEGATIVE CONTROL `plans/33` § Invariant gate asks for**, and
+// it is aimed at the reader's own fall-through: `sa_ok` starts as
+// `CARGO_WRECK`, so a reader that only tested the names it knew would
+// take `fnid` — or `find` before E1 — as a wreck and be green.
+fn test_a_misspelt_kind_is_refused_by_name() {
+    tm_r = played(base() + "object 9 0 fnid 150 ground\n");
+    assert(!tm_r.ok, "`fnid` is refused rather than read as a wreck");
+    assert(script_describe(tm_r).contains("fnid"),
+           "and the refusal NAMES it: {script_describe(tm_r)}");
+    assert(script_describe(tm_r).contains("find"),
+           "and lists `find` among the kinds it would take: "
+           + "{script_describe(tm_r)}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 4. A drawn count IS the ledger's count
+// ─────────────────────────────────────────────────────────────────
+
+// @DRY-232 — every carryable thing still in the world is drawn once
+//
+// ⚠⚠ **THE INVARIANT, NOT A SAMPLE.**  `entity_bake_cargo` filters on
+// `CARGO_GONE` and on nothing else, so the picture and `cargo_count`
+// are the same number for any ledger — which is the claim a walk that
+// asked `owner == BLOCKER_NONE` could not make, because it would be a
+// SECOND rule about where cargo lives.
+//
+// ⚠ Swept over the four states a record can be in — on the ground, in
+// the player's hands, in a crew member's, and consumed — because a
+// filter that was wrong in one of them is wrong in exactly one.
+fn test_the_drawn_cargo_count_is_the_ledgers_count() {
+    tg_pw = grassy();
+    tg_mw = marker_empty();
+    tg_ws = wave_state_empty();
+    vehicle_place(tg_ws.player, 0, 0);
+
+    tg_one = 0;
+    for tg_step in 0..5 {
+        if tg_step == 1 {
+            cargo_spawn(tg_ws.cargo, CARGO_FIND, 150, 3, 0);
+        }
+        if tg_step == 2 {
+            cargo_spawn(tg_ws.cargo, CARGO_BEACON, 0, 2, 1);
+        }
+        if tg_step == 3 {
+            cargo_take(tg_ws.cargo, BLOCKER_PLAYER,
+                       Hex { q: 3, r: 0 }, CARGO_REACH_HEXES);
+        }
+        if tg_step == 4 {
+            cargo_consume(tg_ws.cargo, 1);
+        }
+
+        tg_n   = bake(ENT_CARGO, tg_pw, tg_mw, tg_ws);
+        tg_want = cargo_count(tg_ws.cargo);
+        if tg_want == 1 && tg_one == 0 { tg_one = tg_n; }
+
+        assert(tg_want * tg_one == tg_n || tg_want == 0,
+               "step {tg_step}: the ledger holds {tg_want} and the frame "
+               + "draws {tg_n} triangles against {tg_one} apiece");
+        assert(tg_n == 0 || tg_want > 0,
+               "step {tg_step}: nothing is drawn for a ledger holding "
+               + "{tg_want}");
+    }
+    assert(tg_one > 0, "and one object really does draw triangles: {tg_one}");
+}
+
+// ⚠ **A consumed find is GONE from the frame**, which is the half the
+// sweep above states as arithmetic and this one states as a fact.  A
+// record keeps its slot for ever (`CARGO_GONE` is a state, not a
+// removal), so a walk that forgot the filter would draw every find the
+// run ever cashed, for the rest of the run.
+fn test_a_cashed_find_leaves_the_frame() {
+    tk_pw = grassy();
+    tk_mw = marker_empty();
+    tk_ws = wave_state_empty();
+    cargo_spawn(tk_ws.cargo, CARGO_FIND, 150, 3, 0);
+
+    tk_before = bake(ENT_CARGO, tk_pw, tk_mw, tk_ws);
+    assert(tk_before > 0, "a find on the ground is drawn: {tk_before}");
+
+    cargo_consume(tk_ws.cargo, 0);
+    assert(cargo_slots(tk_ws.cargo) == 1,
+           "the record keeps its slot: {cargo_slots(tk_ws.cargo)}");
+    assert(bake(ENT_CARGO, tk_pw, tk_mw, tk_ws) == 0,
+           "and the cashed find is out of the frame");
+}
+
+// ⚠ **And it lands in its OWN class and no other** — the assertion a
+// per-class count cannot make about itself, and the one that would
+// catch a dispatch row wired to the wrong constant.
+fn test_cargo_draws_as_cargo_and_as_nothing_else() {
+    tj_pw = grassy();
+    tj_mw = marker_empty();
+    tj_ws = wave_state_empty();
+    cargo_spawn(tj_ws.cargo, CARGO_FIND, 150, 3, 0);
+
+    for tj_c in 0..ENT_CLASSES {
+        if tj_c != ENT_CARGO {
+            assert(bake(tj_c, tj_pw, tj_mw, tj_ws) == 0,
+                   "a lone find draws nothing as {entity_class_name(tj_c)}");
+        }
+    }
+}
+
+// @DRY-227 — the pylon is ONE part for every kind of cargo
+//
+// ⚠ `plans/33` E1 decided one drawn class rather than five, and the
+// gate for that decision is that the catalogue really does hold one
+// entry — a second `cargo_*` part appearing later is the split having
+// happened without the argument being revisited.
+fn test_there_is_exactly_one_cargo_part() {
+    tp_ps = catalogue();
+    tp_fault = part_fault(tp_ps, "cargo");
+    assert(tp_fault == "", "the pylon is legal: {tp_fault}");
+
+    tp_n = 0;
+    for tp_name in catalogue_names() {
+        if tp_name == "cargo" { tp_n += 1; }
+    }
+    assert(tp_n == 1, "and there is exactly one of it: {tp_n}");
+
+    // ⚠ `PROXY_ART.md` § Tower beacon's own numbers — a 0.5 m pylon
+    // 0.8 m tall — read off the part rather than restated, so a limb
+    // edited to a different size fails here rather than drifting.
+    (tp_w, tp_l, tp_h) = part_size(partset_get(tp_ps, "cargo")?);
+    assert(near2(tp_w, 0.50) && near2(tp_l, 0.50),
+           "0.5 m across: ({tp_w}, {tp_l})");
+    assert(near2(tp_h, 0.80), "and 0.8 m tall: {tp_h}");
+}

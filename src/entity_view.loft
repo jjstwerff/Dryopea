@@ -114,10 +114,13 @@ pub const ENT_CREW:       integer = 7;
 pub const ENT_TOWER_BASE: integer = 8;
 // A tower's top, which the simulation puts in that socket or does not.
 pub const ENT_TOWER_TOP:  integer = 9;
+// Anything in the CARGO ledger that has not been consumed — lying on
+// the ground, or riding on whoever is carrying it (`plans/33` E1).
+pub const ENT_CARGO:      integer = 10;
 
 // How many drawn classes there are.  ⚠ One `GroupVboSet` and one draw
 // call each (`entity_gl.loft`), so this is a cost as well as a count.
-pub const ENT_CLASSES:    integer = 10;
+pub const ENT_CLASSES:    integer = 11;
 
 // ⚠ `KIND_VEHICLE` (2) is the PLAYER's row and there is no `ENT_PLAYER`
 // beside it — a second name for one number is a second thing that can
@@ -133,6 +136,7 @@ pub fn entity_class_name(cls: integer) -> text {
     if cls == ENT_CREW       { return "crew"; }
     if cls == ENT_TOWER_BASE { return "tower_base"; }
     if cls == ENT_TOWER_TOP  { return "tower_top"; }
+    if cls == ENT_CARGO      { return "cargo"; }
     if cls < 0 || cls >= ENT_CLASSES { return "class {cls}"; }
     enemy_class_name(cls as u8? ?? 0)
 }
@@ -176,6 +180,15 @@ pub fn entity_colour(cls: integer) -> integer {
     if cls == ENT_CREW             { return rgb(0xa8, 0xa8, 0x78); }  // dimmed cream
     if cls == ENT_TOWER_BASE       { return rgb(0x1a, 0x1a, 0x1a); }  // near-black
     if cls == ENT_TOWER_TOP        { return rgb(0xff, 0x30, 0x60); }  // rose
+    // ⚠⚠ **PEACH, and it is NOT `PROXY_ART.md`'s gold.**  That document
+    // gives a loot drop `#ffd000` — *"off-palette, signals pick me
+    // up"* — and the wallet ramp runs `#ffc000` amber to `#ff0000` red,
+    // so gold sits **256** squared-RGB from the HUD's own full-wallet
+    // colour where the lane's floor is 3000.  ⚠ Second instance of
+    // `@M043`'s class, caught by the same instrument the scout was:
+    // `tests/19_p7` sweeps all 201 ramp colours against every entity
+    // colour.  ***The warm lane belongs to the wallet.***
+    if cls == ENT_CARGO            { return rgb(0xff, 0x90, 0x60); }  // peach
     rgb(0xff, 0x00, 0xff)                                             // unknown -> magenta
 }
 
@@ -334,6 +347,22 @@ pub fn entity_hover_metres(v: const Vehicle) -> float {
     vehicle_climb(v)
 }
 
+// How far above the GROUND a carried object rides (`plans/33` E1).
+//
+// ⚠ **DERIVED from the tallest carrier body rather than chosen**: a
+// robot is a 1.0 m box standing on the ground (`cat_robot`), and the
+// hover unit's canopy tops out at 0.96 m over it at rest — 0.40 of
+// clearance plus 0.56 to the canopy's upper face.  1.20 clears both by
+// a fifth of a metre, which is what *"floats above the vehicle"*
+// (`PROXY_ART.md` § Tower beacon) needs to be true of every carrier
+// there is rather than of the one that was in mind.
+//
+// ⚠ The player's BOOST is added on top of it and not folded into it,
+// because a boosting vehicle really is 2.6 m higher and its load goes
+// with it — `entity_hover_metres` is the door, so there is no second
+// number to keep in step.
+pub const CARGO_RIDE_METRES: float = 1.20;
+
 // ─── One entity at a time ───────────────────────────────────────
 
 // One hover unit — the player's or a crew member's — standing at
@@ -386,7 +415,7 @@ fn entity_emit_hover(m: Mesh, p: Part, ws: const WaveState,
 // a `vector<Mesh>` and loft truncates a `vector<Struct>` through two
 // library calls ([loft#969]).
 //
-// Example: @DRY-050, @DRY-051, @DRY-053, @DRY-061
+// Example: @DRY-050, @DRY-051, @DRY-053, @DRY-061, @DRY-232
 pub fn entity_bake(m: Mesh, ps: PartSet, pal: vector<GroundType>, pw: PaintedWorld,
                    mw: const MarkerWorld, ws: const WaveState,
                    units: integer, cls: integer) -> integer {
@@ -395,6 +424,7 @@ pub fn entity_bake(m: Mesh, ps: PartSet, pal: vector<GroundType>, pw: PaintedWor
     if cls == ENT_TOWER_BASE || cls == ENT_TOWER_TOP {
         return entity_bake_towers(m, ps, pal, pw, mw, ws, cls);
     }
+    if cls == ENT_CARGO     { return entity_bake_cargo(m, ps, pal, pw, ws); }
     if cls < 0 || cls >= ENT_CREW { return 0; }
     entity_bake_enemies(m, ps, pal, pw, ws, cls)
 }
@@ -461,6 +491,65 @@ fn entity_bake_enemies(m: Mesh, ps: PartSet, pal: vector<GroundType>, pw: Painte
                                   ebe_at.x, ebe_at.y, ebe_at.z);
     }
     ebe_n
+}
+
+// Every carryable thing still in the world.
+//
+// Enforces @FR-C-Ledger-Drawn.
+//
+// ⚠⚠ **IT WALKS THE LEDGER AND FILTERS ONLY ON `CARGO_GONE`, WHICH IS
+// THE WHOLE POINT.**  `carry.loft`'s conservation is structural — one
+// record with an `owner`, where *on the ground* is a VALUE of that
+// field rather than a different place to be — so a drawing that asked
+// `owner == BLOCKER_NONE` would be a SECOND rule about where cargo
+// lives, in step with the ledger only as long as somebody maintained
+// it.  Drawing every record that has not been consumed makes the
+// picture's count and `cargo_count` the same number by construction,
+// and `tests/33_e1` asserts exactly that.
+//
+// ⚠ It also finishes `DESIGN.md` § Carry visibility, which was half
+// built: *"anything a helper or the player is carrying … is rendered
+// above the carrier"*.  The canopy already said LOADED
+// (`entity_emit_hover` reads `cargo_carrying`); the object itself was
+// invisible, so a base with a beacon set down and a base with one in
+// hand drew identically.
+//
+// ⚠⚠ **AND A CARRIED OBJECT NEEDS NO SECOND POSITION.**  `cargo_follow`
+// walks the record onto its carrier's hex every tick precisely so that
+// *"where is this object"* has one answer at every moment — so the hex
+// is read the same way for both, and only the HEIGHT differs.  A
+// renderer that reached for the carrier's own `(q, r)` would be reading
+// the answer to a question the ledger had already answered.
+fn entity_bake_cargo(m: Mesh, ps: PartSet, pal: vector<GroundType>, pw: PaintedWorld,
+                     ws: const WaveState) -> integer {
+    ebg_p = ps.ps_parts["cargo"]?;
+    ebg_n = 0;
+    for ebg_o in ws.cargo.items {
+        if ebg_o.owner == CARGO_GONE { continue; }
+        ebg_z = hex_height(pal, pw, ws.heights, ebg_o.q, ebg_o.r);
+        // ⚠ Riding on a carrier lifts it clear of the tallest carrier
+        // body there is — `PROXY_ART.md`'s *"floats above the
+        // vehicle"*, and `CARGO_RIDE_METRES` is where that number is
+        // derived.
+        //
+        // ⚠⚠ **The BOOST is added on top and READ rather than
+        // restated**: a boosting player is 2.6 m higher than a resting
+        // one, and their load goes up with them for free because
+        // `entity_hover_metres` is the one door to the clearance.  A
+        // constant here instead would be a second number, and it would
+        // leave a boosting player's cargo hanging inside their own
+        // chassis.
+        if ebg_o.owner != BLOCKER_NONE {
+            ebg_z += CARGO_RIDE_METRES;
+            if ebg_o.owner == BLOCKER_PLAYER {
+                ebg_z += entity_hover_metres(ws.player) - VEHICLE_CLIMB_METRES;
+            }
+        }
+        ebg_at = lat_to_world(Hex { q: ebg_o.q, r: ebg_o.r }, ebg_z);
+        ebg_n += part_emit_facing(m, ebg_p, part_values_rest(ebg_p), 0.0,
+                                  ebg_at.x, ebg_at.y, ebg_at.z);
+    }
+    ebg_n
 }
 
 // Every tower, base or top.

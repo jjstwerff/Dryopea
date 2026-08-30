@@ -1,0 +1,69 @@
+# a-find-worth-fetching — `plans/33` E1, and the scenario that makes the
+# corpus round trip carry a FIND.
+#
+# ⚠⚠ **THE POINT OF THIS FILE IS `@D007`.**  A cargo kind's NAME is
+# written by `emit.loft` and read by `script.loft`, and the two are a
+# PAIR: a beacon dropped on the ground round-tripped as a WRECK for
+# exactly as long as no scenario in `tests/scripts/` dropped one.  So a
+# find that only ever appeared in a `.loft` test would inherit the same
+# blind spot — `tests/18_s2` sweeps THIS directory, not that one.
+#
+# ⚠ It carries a find in each of the two states the emitter spells
+# differently: one left lying at (-4, 0) — `ground` — and one fetched
+# and cashed at the core — `gone`.  A capture that lost either would
+# come back as a different situation.
+#
+# ⚠⚠ **What a find IS, in one line**: `object <q> <r> find <points>
+# <owner>`, and delivering it at the core credits the wallet by exactly
+# `<points>` (`carry.loft` § `subj` IS THE POINTS IT IS WORTH).  What
+# that is WORTH in ticks is `plans/33` E2's question, not this file's —
+# this one only says the mechanism is complete.
+
+echo a find worth fetching: one cashed at the core, one left where it lies
+
+do toggle_mode
+do cycle_kind
+click 0 0
+marker 0 0 target
+do toggle_mode
+
+# ⚠ The ground has to reach both finds — an unpainted hex IS sea, and a
+# find lying in the water is one nothing can stand on to take.
+palette 5
+drag -8 -2 12 -2
+drag -8 -1 12 -1
+drag -8 0 12 0
+drag -8 1 12 1
+drag -8 2 12 2
+count painted 105 105
+
+# ── The two finds ───────────────────────────────────────────────
+#
+# ⚠ Eight hexes out, because the vehicle covers TWO hexes a tick and
+# SKIPS every odd one — a find on an odd hex is one the player drives
+# through without ever standing on.
+object 8 0 find 150 ground
+object -4 0 find 60 ground
+cargo 2 2
+
+park 0 0
+wallet 200.0 200.0
+
+# ── The trip ────────────────────────────────────────────────────
+drive 8 0
+tick 8
+vehicle 8 0
+take player
+cargo 2 2
+wallet 200.0 200.0
+
+drive 0 0
+tick 8
+vehicle 0 0
+drop player
+
+# ⚠ `cargo` counts what is still IN THE WORLD, so the delivered find is
+# gone from it and the one at (-4, 0) is not.  This is the only line
+# that says the delivery happened.
+cargo 1 1
+wallet 350.0 350.0

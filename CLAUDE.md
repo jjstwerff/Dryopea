@@ -338,6 +338,37 @@ marker row to [`plans/04`](plans/04-map-library/README.md)'s content half —
 `@M092`'s fixtures authored a find with `object <q> <r> wreck …` and needed no
 marker at all.
 
+⚠⚠ **AND SINCE [`plans/33`](plans/33-exploration-finds/README.md) E1 A FIND IS
+A CARGO ROW AND ANYTHING ON THE GROUND CAN BE SEEN** (2026-08-30, `@X349`) —
+`object <q> <r> find <points> <owner>` is a `.keys` verb and delivering one at
+the core credits the wallet by exactly `<points>`.  ⚠⚠ **`subj` IS THE POINTS,
+and the TRIPWIRE is written into the constant rather than left to be
+discovered**: the day a find yields something that is not points — the DISH
+(`@X348`) — `subj` holds two facts and must SAY so, as a `find_pack` beside
+`errand_load_pack`.  ⚠ Points because `plans/31`'s wallet already turns them
+into towers and the compounding is MEASURED (`@M087`), so **E2 sweeps a number
+rather than rebuilding a mechanism** — and the wallet had no income outside
+salvage until this.
+⚠⚠ **AND THE VISIBILITY QUESTION IS WHAT DECIDED THE MARKER ROW**:
+`entity_view.loft` is *the ROSTER, as triangles* and a `CarryObject` was never
+in it, so **a beacon set down and a tower top on the ground were INVISIBLE** —
+`@M092`'s wreck drew only because the downed crew member is still a roster
+body.  One catalogue row and one walk fixes all three at once, against ~96
+files for a marker kind.  ⚠⚠ **The walk filters on `CARGO_GONE` and nothing
+else, and that is the invariant rather than a shortcut**: *on the ground* is a
+VALUE of `owner`, so a renderer asking `owner == BLOCKER_NONE` would be a
+SECOND rule about where cargo lives — drawing every record that is not
+consumed makes the frame's count and `cargo_count` the same number BY
+CONSTRUCTION, and the mutation fails at the one state that separates them.
+⚠ It also finishes `DESIGN.md` § Carry visibility, which was half built: the
+canopy already said LOADED, the object itself was not there.
+⚠ **ONE drawn class for all five cargo kinds**, because nothing the player can
+DO about a thing on the ground differs by kind.
+⚠⚠ **And the colour nearly repeated `@M043`** — `PROXY_ART.md`'s gold
+`#ffd000` sits **256** squared-RGB from the wallet ramp's amber where the
+lane's floor is 3000, so the entity colour is PEACH: ***the warm lane belongs
+to the wallet.***
+
 ⚠⚠ **AND THE CREW WORK ON THEIR OWN** ([`plans/29`](plans/29-the-crews-own-work/README.md),
 complete 2026-08-28) — a crew member nobody has told anything takes the
 nearest of four jobs **inside their own senses** (3 hexes untrained), and
@@ -362,11 +393,11 @@ critical path is **4, the SCRAMBLE**.
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1831 green**, ~320 s on a busy box (592 s beside another suite, 753 s, 775 s and 1252 s on 2026-08-29 — one of them a `graphics` cdylib rebuild), 150 files |
-| scenarios | `scripts/validate.sh` | **71 scripts, 1227 measurements**, ~20 s |
+| tests | `scripts/test.sh` | **1843 green**, ~320 s on a busy box (592 s beside another suite, 713 s, 753 s, 775 s and 1252 s — one of them a `graphics` cdylib rebuild), 151 files |
+| scenarios | `scripts/validate.sh` | **72 scripts, 1237 measurements**, ~20 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
-| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **440 defined, 436 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
-| ⚠⚠ formal rules | `scripts/rules.sh` — inside `test.sh` | **48 defined, 29 ENFORCED in 155 code sites** (`@X327`).  ⚠⚠ **The `M-*` family went 6 covered → 10 by EVALUATION, and 2 of 6 would have been MIS-CITED** — `@FR-M-Waterline` had TWO implementations (`hex_ground` and `hex_surface_index` restated the threshold line for line, and the second one SAID SO in a comment), and `@FR-M-Besiege` is worded in `can_stand` + `can_climb` where `enemy_target` asks `can_step`.  ⚠ `@FR-M-One-AI` is **not citable at a site at all** — *no second mover exists* is a claim about ABSENCE and wants `@X333`'s `src/` sweep test.  ⚠⚠ **`--review` cannot answer this question**: it reports only rules with MORE THAN ONE site, and an uncovered rule has none.  ⚠⚠ **This read 49 until 2026-08-29 and the extra one was a GHOST**: `docs/FORMAL.md`'s worked example showing *where a rule is DEFINED* is a fenced line at exactly two spaces, so **the document teaching the registry was silently adding to it** — and the phantom RESOLVED, so the gate could never go red.  ⚠ `<!--norule-->` existed for the CITATION half of that hazard and the DEFINITION half never got it.  ⚠⚠ **And the fix produced its own false positive immediately**: a file is classified by its EXTENSION, so the checker's own `.sh` comment naming the rule counted as an ENFORCING site — ***prose about a rule that lives outside `docs/` reads as enforcement***.  ⚠⚠ **`plans/32` moved it by FOUR while defining THREE**, and the fourth is the interesting one: `@FR-W-Position-Hash` was a WORLDGEN rule with no code anywhere, and the LANDING gave it its first — *a rule earns code from whichever plan first needs it, not from the plan that wrote it*.  ⚠⚠ **And the gate caught a citation broken by a LINE WRAP** — a rule name hyphenated across two lines of a doc reads as a dangling tag naming a rule that does not exist, which is `@X325`'s whole point one family over.  ⚠ **Never let a `@FR-`/`@X`/`@M` tag straddle a line break**; reflow the line instead.  ⚠ `plans/31` added `@FR-R-Carry-Once` and `@FR-R-Opening` and gave both code the same day, which is the order `@X328` asks for.  ⚠ It moved at `plans/30` R5 because `src/poi.loft` gave `@FR-E-Poi-Owns` and `@FR-E-Place-State` their first code at all — never because citations were sprinkled (`@X328`).  ⚠⚠ **This read 89 until 2026-08-29 and the tree measured 93 before R7a touched it** — the number aged against a tree that moved, which is `@M044`'s class one instrument over: **re-measure before quoting a delta**.  R7a's own contribution is **three**.  ⚠ Resolution GATES; coverage only REPORTS.  ⚠⚠ A doc reference is **not** an enforcing site (`@X330`) |
+| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **443 defined, 439 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
+| ⚠⚠ formal rules | `scripts/rules.sh` — inside `test.sh` | **49 defined, 30 ENFORCED in 156 code sites** (`@X327`).  ⚠⚠ **The `M-*` family went 6 covered → 10 by EVALUATION, and 2 of 6 would have been MIS-CITED** — `@FR-M-Waterline` had TWO implementations (`hex_ground` and `hex_surface_index` restated the threshold line for line, and the second one SAID SO in a comment), and `@FR-M-Besiege` is worded in `can_stand` + `can_climb` where `enemy_target` asks `can_step`.  ⚠ `@FR-M-One-AI` is **not citable at a site at all** — *no second mover exists* is a claim about ABSENCE and wants `@X333`'s `src/` sweep test.  ⚠⚠ **`--review` cannot answer this question**: it reports only rules with MORE THAN ONE site, and an uncovered rule has none.  ⚠⚠ **This read 49 until 2026-08-29 and the extra one was a GHOST**: `docs/FORMAL.md`'s worked example showing *where a rule is DEFINED* is a fenced line at exactly two spaces, so **the document teaching the registry was silently adding to it** — and the phantom RESOLVED, so the gate could never go red.  ⚠ `<!--norule-->` existed for the CITATION half of that hazard and the DEFINITION half never got it.  ⚠⚠ **And the fix produced its own false positive immediately**: a file is classified by its EXTENSION, so the checker's own `.sh` comment naming the rule counted as an ENFORCING site — ***prose about a rule that lives outside `docs/` reads as enforcement***.  ⚠⚠ **`plans/32` moved it by FOUR while defining THREE**, and the fourth is the interesting one: `@FR-W-Position-Hash` was a WORLDGEN rule with no code anywhere, and the LANDING gave it its first — *a rule earns code from whichever plan first needs it, not from the plan that wrote it*.  ⚠⚠ **And the gate caught a citation broken by a LINE WRAP** — a rule name hyphenated across two lines of a doc reads as a dangling tag naming a rule that does not exist, which is `@X325`'s whole point one family over.  ⚠ **Never let a `@FR-`/`@X`/`@M` tag straddle a line break**; reflow the line instead.  ⚠ `plans/31` added `@FR-R-Carry-Once` and `@FR-R-Opening` and gave both code the same day, which is the order `@X328` asks for.  ⚠ It moved at `plans/30` R5 because `src/poi.loft` gave `@FR-E-Poi-Owns` and `@FR-E-Place-State` their first code at all — never because citations were sprinkled (`@X328`).  ⚠⚠ **This read 89 until 2026-08-29 and the tree measured 93 before R7a touched it** — the number aged against a tree that moved, which is `@M044`'s class one instrument over: **re-measure before quoting a delta**.  R7a's own contribution is **three**.  ⚠ Resolution GATES; coverage only REPORTS.  ⚠⚠ A doc reference is **not** an enforcing site (`@X330`).  ⚠ `plans/33` E1 added `@FR-C-Ledger-Drawn` and gave it code the same day, which is `@X328`'s order again — and it is a rule the DESIGN section it belongs to had only half stated: `DESIGN.md` § Carry visibility said *carried* and said nothing about the ground, so a beacon set down was drawn by nothing and **nothing was wrong** |
 
 ⚠ `scripts/test.sh` is the canonical runner — **never `loft test` directly**
 (§ Key commands says what it does that you would otherwise skip).
@@ -859,12 +890,12 @@ source of truth and the listing is a navigational summary of it.
 | `vehicle.loft` | the PLAYER — drive, boost, salvage.  `salvage_at` is the shared chassis |
 | `landing.loft` | **WHERE THE BASE GOES — a pick, a map and a seed become a landed base** (`plans/32`).  ⚠⚠ **A landing MOVES the authored core rather than creating one** (`@FR-L-Map-Stays-Valid`), so a map stays valid as authored and **a map cannot be checked against a pick nobody has made yet**.  ⚠⚠ **Random is a HASH OF POSITION and never a stream** (`@FR-W-Position-Hash`, given its FIRST CODE here) — dryopea has no RNG.  ⚠ **The hashed offset is the START and the search is the RESCUE**, bounded from the PICK: an unbounded outward search always succeeds, on the far side of the map.  ⚠ **A refusal changes nothing** (`@FR-L-Landing-Is-Total`) and **the TOWER is dropped, not the landing**.  ⚠⚠ What a pick is WORTH is an open design question (`@M091`) |
 | `helper.loft` | the NPC crew — banked movement, wrecking, and the 60 s recovery |
-| `carry.loft` | one record per carryable thing, with an `owner` — conservation is STRUCTURAL.  ⚠ Since `plans/30` R7b an owner may be a MOB (`BLOCKER_MOB + PoiMob index`), which is an identity that OUTLIVES a body |
+| `carry.loft` | one record per carryable thing, with an `owner` — conservation is STRUCTURAL.  ⚠ Since `plans/30` R7b an owner may be a MOB (`BLOCKER_MOB + PoiMob index`), which is an identity that OUTLIVES a body.  ⚠⚠ Since `plans/33` E1 there is a FIFTH kind, `CARGO_FIND`, and **`subj` is the POINTS it pays at the core** (`@X349`) — with the tripwire for a second yield written into the constant |
 | `part.loft` | **what an entity IS** — the `Socket` a part offers and the `Binding` that fills it, over `hex_body::Rig` |
-| `catalogue.loft` | **what each entity is MADE of** — the hover unit, the robot, the tower base + top, as `Limb` tables |
+| `catalogue.loft` | **what each entity is MADE of** — the hover unit, the robot, the tower base + top, the cargo pylon, as `Limb` tables.  ⚠ `cat_cargo` is ONE part for all five cargo kinds (`@X349`) |
 | `part_mesh.loft` | **a part, as TRIANGLES** — and it contains no forward kinematics |
 | `pose.loft` | **the pose comes from the SIMULATION** — ⚠ read the sim, never a second flag |
-| `entity_view.loft` | **the ROSTER, as triangles** — ⚠ nothing here is STATE |
+| `entity_view.loft` | **the ROSTER, as triangles** — ⚠ nothing here is STATE.  ⚠⚠ Since `plans/33` E1 the ledger is drawn too (`entity_bake_cargo`), and it filters on **`CARGO_GONE` and nothing else** so the frame's count and `cargo_count` are one number by construction (`@X349`) |
 | `entity_gl.loft` | **the entities, DRAWN** — one `GroupVboSet` per drawn class, re-upserted WHOLE every frame |
 
 ## Important conventions
@@ -1296,6 +1327,7 @@ names; most of them exist because somebody did it without reading.
 | Goal | Start here |
 |---|---|
 | Design EXPLORATION, or judge a scouting idea | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) — ⚠ not a new pillar; the first scenario is a `.keys` file |
+| Author a FIND, or ask what one pays | `object <q> <r> find <points> <owner>` + `@X349` — ⚠⚠ **`subj` is the POINTS and delivering at the core credits the wallet by exactly them**, so `plans/33` E2 sweeps a number.  ⚠ The tripwire is in `carry.loft`'s constant: a find that yields something that is NOT points holds two facts in one integer and must name the packing (`errand_load_pack`'s precedent) |
 | Ask why a find has to be found EARLY | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X2c — ⚠⚠ **MEASURED and INVERTED** (`@M092`): a stranded crew member is worth **+74 taken in passing and +116 fetched at wave three**, because a BODY is *spent by being used*.  ⚠ The rule that survives is **a find decays with lateness only to the extent that what it buys is PERMANENT** |
 | Judge whether a SORTIE is worth taking, or price exploration at all | `tests/scripts/a-find-nobody-fetched.keys` + its two partners (`@M092`) — ⚠⚠ **248 / 322 / 364**, and `EXPLORATION.md`'s own falsifier does not fire.  ⚠ **Four of eight swept fetch ticks FAILED**: the player is killed carrying the wreck and `vehicle_respawn` clears the carry, so a late fetch is a RISK rather than a discount |
 | Judge whether a base LAYOUT is worth anything, or price the racing line | `tests/scripts/a-base-drawn-in-tight.keys` + `a-base-drawn-out-wide.keys` and their two no-tower nulls (`@M093`) — ⚠⚠ **170 against 207 with the defences held equal, +37 ticks**, so `PROGRESSION.md` § P7's racing line is REAL.  ⚠⚠ **And the same nine hexes with the towers deleted read 102 against 102, to the tick** — ***the layout is not the wall; it is how far from the core the FIGHT happens***, and a base with nothing that shoots has no such distance to sell.  ⚠ All four cells burn all 30 shots each, so the sixty shots are identical and only their GEOMETRY moved.  ⚠ The SERVICE half of § P7's trade is still unmeasured — it needs a crew that shuttles |
@@ -1502,7 +1534,7 @@ names; most of them exist because somebody did it without reading.
 | Add a crew SKILL, or ask what a detection radius detects | `src/skill.loft` — ⚠⚠ **check the number EXISTS first**; detection is two radii that interact |
 | Ask why a crew member is slow, or add something that TIRES them | `src/endure.loft` — ⚠ tire by the RAW elapsed, and only when work LANDED |
 | Pick something up, carry it, put it down | `src/carry.loft` — ⚠ never a "carried" field on the carrier as well |
-| Add a new kind of carryable thing | a `CARGO_*` constant + a destination rule — ⚠ and NOTHING in the carrying path |
+| Add a new kind of carryable thing | a `CARGO_*` constant + a destination rule — ⚠ and NOTHING in the carrying path.  ⚠⚠ **It is FIVE sites, not three** (`plans/33` § The site count): the constant, the destination row *or a deliberate absence*, what arriving does at its call site, and **`emit.loft`'s name plus `script.loft`'s reader, which are a PAIR** (`@D007`).  ⚠ It is now DRAWN for free — `entity_bake_cargo` walks the ledger, so a new kind needs no rendering at all (`@X349`) |
 | Add a value to a closed set a `.keys` file can carry | ⚠⚠ **the WRITER and the READER are a PAIR** (`@D007`) — `emit.loft` writes the name and `script.loft` reads it, and a kind added to one is invisible until a scenario produces it.  Three instances so far: `cargo`, `spoil`, `beacon` |
 | Add a FIELD to `WaveState`, or ask what a new one owes | ⚠⚠ **three sites and a `.keys` verb**: `wave_state_empty`, `emit.loft::crop_state` (run-wide switches are carried WHOLE), and a `compare.loft::state_diff` row.  ⚠ Add the compare row **before it can differ** — `plans/30` R3 did, and it went RED the same hour on `tests/18_s2`'s round trip (`'now: 442000000 vs 0'`), which is what earned the `now <seconds>` verb |
 | Clear rubble / collect after a tower | `src/vehicle.loft::salvage_at` — the shared chassis |
@@ -1537,6 +1569,7 @@ names; most of them exist because somebody did it without reading.
 | Ask what an entity IS, or add a socket to one | `src/part.loft`, [`docs/PARTS.md`](docs/PARTS.md) § D3 |
 | Draw an ENTITY, or change what one looks like | [`docs/PARTS.md`](docs/PARTS.md) — ⚠ never a shape drawn inline in `editor_view.loft` |
 | Draw the ROSTER, or ask why an entity is not in the frame | `src/entity_view.loft` — ⚠⚠ **nothing here is STATE** |
+| Draw a thing lying on the GROUND, or ask why a beacon you set down is invisible | ⚠⚠ **It is not any more** — `entity_view.loft::entity_bake_cargo` (`plans/33` E1, `@X349`) draws every `CarryObject` that is not `CARGO_GONE`, which fixed the beacon and the tower top at the same time as the find.  ⚠ **Do not filter on `owner == BLOCKER_NONE`** — that is a SECOND rule about where cargo lives, and `carry.loft` made *on the ground* a VALUE of `owner` precisely so there would not be one.  ⚠ ONE drawn class for all five kinds, and the split is earned by a scenario where telling them apart changes what the player drives to |
 | Ask which POSE an entity is drawn in, or add a joint the simulation drives | `src/pose.loft` — ⚠⚠ **read the sim, never a second flag** |
 | Ask what a tower's top is, in the art | [`docs/PARTS.md`](docs/PARTS.md) § D3 — it is a SOCKET |
 | Turn an entity to face somewhere | `part_mesh.loft::part_emit_facing` — a QUARTER TURN, not a scale |

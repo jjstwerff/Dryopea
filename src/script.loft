@@ -1459,8 +1459,12 @@ fn script_author(s: EditorState, run: ScriptRun, tok: vector<text>) -> text {
         if sa_okw == "top" { sa_ok = CARGO_TOP; }
         else if sa_okw == "beacon" { sa_ok = CARGO_BEACON as integer; }
         else if sa_okw == "salvage" { sa_ok = CARGO_SALVAGE as integer; }
+        // ⚠ A FIND, and `<subj>` is the POINTS it pays at the core
+        // (`plans/33` E1) — so `object 14 0 find 150 ground` is a find
+        // worth a hundred and fifty, and E2 sweeps that number.
+        else if sa_okw == "find" { sa_ok = CARGO_FIND as integer; }
         else if sa_okw != "wreck" {
-            return "object: unknown kind '{sa_okw}' — wreck, top, beacon, salvage";
+            return "object: unknown kind '{sa_okw}' — wreck, top, beacon, salvage, find";
         }
         sa_osj = (tok[4] ?? "") as integer?;
         if sa_osj == null { return "object: <subj> must be an integer"; }
@@ -3081,6 +3085,8 @@ fn script_command(s: EditorState, run: ScriptRun, tok: vector<text>, rest: text)
 // `shots_dir` is where `snap` writes; the default is the one a
 // validation run wants, and a test overrides it to land its
 // pictures where the suite already cleans up.
+//
+// Example: @DRY-231
 pub fn script_run(s: EditorState, source: text, shots_dir: text = SHOTS_DIR) -> ScriptRun {
     script_run_on(s, script_run_new(shots_dir), source)
 }

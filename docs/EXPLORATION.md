@@ -866,6 +866,22 @@ So a find is: a **marker** where it sits, a **cargo kind** for what you take
 home, and a **destination rule** (the core).  Carrying it is the model plan 15
 already shipped — one slot, one owner, conservation structural.
 
+⚠⚠ **BUILT 2026-08-30, AND THE MARKER HALF WAS REFUSED ON PRICE** (`@X349`,
+`plans/33` E1).  The two rows are not the same size: a **cargo** kind is ~5
+sites and a **marker** kind is **~96 files**, because the editor's place-kind
+CYCLE grows and every `.keys` file that cycles back to `spawn` needs another
+press.  ⚠ `@M092`'s three fixtures authored a find with `object <q> <r> wreck
+…` and needed no marker at all, so a marker kind is owed by an authored
+`maps/*.json` — [`plans/04`](../plans/04-map-library/README.md)'s content half
+— and not by a find.
+
+⚠⚠ **And the sentence this section could not have written is *a find nobody
+can SEE is not a find*.**  `entity_view.loft` is *the ROSTER, as triangles*
+and a `CarryObject` was never in it, so a beacon set down and a tower top on
+the ground were **invisible** — the wreck in `@M092`'s fixtures drew only
+because a downed crew member is still a roster body.  Ground cargo draws as an
+ENTITY now: one catalogue row and one walk, fixing all three at once.
+
 ⚠ **And it must NOT become a new subsystem.**  The moment a find needs its own
 inventory, its own tick or its own UI, it has stopped being a find and become an
 economy — which `ROBOT_ECONOMY.md` § What this design does NOT do already
@@ -1038,7 +1054,17 @@ features**, and the third is the cheapest code in the design:
    because until they exist every wave is the same wave and a sortie can predict
    nothing (§ X2b).  One row each in `numbers.json` plus one branch in
    `spawn.loft`'s damage-to-wall lookup; no new mover, no new targeting.
-4. **The find marker + cargo kind** (§ X4) — one row each.
+4. ~~**The find marker + cargo kind** (§ X4) — one row each.~~ ✅ **DONE —
+   2026-08-30, `@X349`, `plans/33` E1 — and it is ONE CARGO ROW AND NO MARKER
+   ROW.**  ⚠⚠ **§ X4's *one marker row and one cargo row* is half wrong on
+   price**: a cargo kind is ~5 sites and a marker kind is **~96 files** (70
+   `.keys` carrying 266 `do cycle_kind` presses, and 23 `.loft`), and the count
+   was taken BEFORE any code was written.  ⚠⚠ **And what actually decided it
+   was VISIBILITY**: `entity_view.loft` is *the ROSTER, as triangles* and a
+   `CarryObject` was never in it, so ground cargo now draws as an ENTITY — one
+   catalogue row and one walk, which fixed a set-down beacon and a grounded
+   tower top at the same time.  ⚠ `object <q> <r> find <points> <owner>`, and
+   `subj` is the POINTS the core credits.
 5. **The consequence** (§ X5) — taking a find makes its hex a spawn source.
 6. **Intel that persists** (§ X8) — the `found` flag, and what carries between
    bases.

@@ -534,4 +534,16 @@ wide, and `plans/12` B7's DEAD RAMP is falsified as the reason by a `pile` sweep
 that reads 0.0 at all thirteen hexes of the approach.  ⚠ SIGHT is the leading
 hypothesis and it is not gated.
 
-Gates **1831 green / 150 files**, **71 scripts / 1227 measurements**.
+⚠⚠ **AND A FIND IS A CARGO ROW, AND ANYTHING ON THE GROUND CAN BE SEEN —
+`plans/33` E1, 2026-08-30, `@X349`, and this one IS code.**
+`object <q> <r> find <points> <owner>` is a `.keys` verb and delivering one at
+the core credits the wallet by exactly `<points>`, so `plans/33` E2 sweeps a
+number rather than rebuilding a mechanism.  ⚠⚠ **And the visibility question
+is what decided the marker row**: `entity_view.loft` is *the ROSTER, as
+triangles* and a `CarryObject` was never in it, so a beacon set down and a
+tower top on the ground were INVISIBLE — one catalogue row and one walk fixed
+all three, against ~96 files for a marker kind.  ⚠ The walk filters on
+`CARGO_GONE` and nothing else, so the frame's count and `cargo_count` are one
+number by construction.
+
+Gates **1843 green / 151 files**, **72 scripts / 1237 measurements**.

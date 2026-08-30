@@ -9,7 +9,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**OPEN — E0 COMPLETE 2026-08-30 (`@M093`), E1 next.**
+**OPEN — E0 and E1 COMPLETE 2026-08-30 (`@M093`, `@M094`, `@X349`), E2 next.**
 
 ⚠⚠ **E0 ANSWERED ITS FALSIFIER AND FOUND A SHARPER RULE THAN THE ONE IT
 WENT LOOKING FOR.**  Four `.keys` files, one base, defences held equal,
@@ -80,6 +80,75 @@ behind it**, which is a claim about the PAIR.
 
 ⚠ **And the layout null survives it**: **0** in BOTH tower-free rows —
 102 / 102 and 95 / 95.
+
+### ⚠⚠ E1 — the find is a cargo row, and it can be SEEN  `@X349`
+
+`object <q> <r> find <points> <owner>` is a `.keys` verb, delivering one at
+the core credits the wallet by exactly `<points>`, and **anything lying on
+the ground is drawn**.
+
+⚠⚠ **Three open questions closed at once, and the third one decided the
+other two.**
+
+1. **What does a find buy?**  **Points** — `plans/31`'s wallet already turns
+   them into towers and the compounding is measured (`@M087`), so a find pays
+   in the one currency whose downstream value the repo has priced.  ⚠ The
+   wallet had no income outside salvage until this (`plans/13` V3), so the
+   credit goes through `wallet_earn` rather than a door of its own.
+2. **One kind, or a kind with a payload?**  **One**, and `subj` is the points.
+   ⚠⚠ **The TRIPWIRE is written into the constant** rather than left to be
+   found: the day a find yields something that is not points — the DISH
+   (`@X348`) — `subj` holds two facts and must SAY so, as a `find_pack` beside
+   `errand_load_pack`.  ⚠ What a find is worth is AUTHORED, so **E2 sweeps a
+   number rather than rebuilding a mechanism**.
+3. **Does a find need a MARKER kind?**  **No** — and § The open problem is
+   what actually answered it: `entity_view.loft` is *the ROSTER, as triangles*
+   and a `CarryObject` was never in it, so **a beacon set down and a tower top
+   on the ground were invisible**.  One catalogue row and one walk fixes all
+   three at once, against ~96 files for a marker kind.
+
+⚠⚠ **The walk filters on `CARGO_GONE` and nothing else, and that is the
+invariant rather than a shortcut.**  `carry.loft`'s conservation is
+structural — *on the ground* is a VALUE of `owner` rather than a different
+place to be — so a renderer asking `owner == BLOCKER_NONE` would be a SECOND
+rule about where cargo lives, in step with the ledger only while somebody
+maintained it.  **Drawing every record that is not consumed makes the frame's
+count and `cargo_count` the same number by construction.**
+
+⚠ It also finishes `DESIGN.md` § Carry visibility, which was half built: the
+canopy already said LOADED (`entity_emit_hover` reads `cargo_carrying`), the
+object itself was not there.
+
+⚠⚠ **ONE drawn class for all five cargo kinds.**  Nothing the player can DO
+about a thing on the ground differs by kind — one key, one slot,
+context-resolved — so a colour per kind would be four rows nothing reads.  ⚠
+The split is earned by the first scenario in which telling a beacon from a
+wreck at a glance CHANGES what the player drives to.
+
+#### ⚠ Four mutations, four caught — and the colour was the near miss
+
+| mutation | caught by |
+|---|---|
+| the arrival branch never fires | the wallet reads 200 where 350 was asked |
+| the walk filters `owner == BLOCKER_NONE` | the ledger holds 2 and the frame draws 1 — at the **held** state and nowhere else |
+| the READER cannot name `find` | six assertions, and the corpus round trip |
+| the WRITER cannot name `find` | *the capture holds no such line* — ⚠ `@D007`'s exact shape, and `tests/scripts/a-find-worth-fetching.keys` is what makes `tests/18_s2` able to see it at all |
+
+⚠⚠ **And the colour nearly repeated `@M043`.**  `PROXY_ART.md` gives a loot
+drop `#ffd000` — *"off-palette, signals pick me up"* — and the wallet ramp
+runs `#ffc000` amber to `#ff0000` red, so **gold sits 256 squared-RGB from the
+HUD's own full-wallet colour where the lane's floor is 3000**.  ⚠ The entity
+colour is PEACH `#ff9060` instead, and `tests/19_p7`'s 201-value sweep is what
+would have caught it — the same instrument that moved the scout.
+***The warm lane belongs to the wallet.***
+
+⚠ **Gates**: `scripts/test.sh` **1843 green / 151 files** (12 new in
+`tests/33_e1_the_find.loft`, and three pinned corpus counts re-baselined
+71 → 72 scenarios and 69 → 70 footing files — ⚠ the 182 wall hexes did NOT
+move, because the new fixture paints grass and nothing else, and two counts
+that move independently are two counts worth reading).  `scripts/validate.sh`
+**72 scripts / 1237 measurements** (1 new, 10 new; the other 1227 UNMOVED).
+`scripts/rules.sh` **49 defined, 30 enforced in 156 sites**.
 
 ### Where the plan sits
 
@@ -155,7 +224,7 @@ owed by [`plans/04`](../04-map-library/README.md)'s content half and not by
 this one.  **Written down here because deferring it silently is how a
 *the map cannot hold a find* surprise is bought later.**
 
-## ⚠ The open problem E1 has to answer: a find nobody can SEE is not a find
+## ⚠ The open problem E1 had to answer: a find nobody can SEE is not a find — ANSWERED
 
 `entity_view.loft` is *the ROSTER, as triangles* and a `CarryObject` on the
 ground is **not in it** — `@M092`'s wreck draws because the downed crew
@@ -169,8 +238,9 @@ would inherit that.  Two doors, priced in E1:
   `entity_view.loft`, ⚠ and it fixes the beacon and the top at the same
   time.
 
-⚠ The second is the expected answer and E1 is where it is decided rather
-than here.
+⚠⚠ **The second is what E1 took** (`@X349`), and it cost `cat_cargo` plus
+`entity_bake_cargo` — one row and one walk, as priced.  § E1 above carries
+the argument and the invariant the walk is written against.
 
 ## Invariant gate
 
@@ -188,9 +258,9 @@ and their gate is a band in a `.keys` file.
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
 | **E0** — ⚠⚠ **the LAYOUT quartet**: same defences, same list, tight vs wide, ± towers | S | four `.keys` in `tests/scripts/` + `scripts/validate.sh` | ✅ **COMPLETE** 2026-08-30 (`@M093`) |
-| **E1** — the find, as ONE cargo row (§ X4) | M | `tests/33_e1` + a round-trip fixture | **Next** |
-| **E2** — ⚠⚠ **what a PERMANENT find is worth**: `@M092`'s three-file design, re-run with a reward that does not die.  ⚠ The concrete candidate is **the DISH** (`@X348`) — `DESIGN.md` § 7 § THE DISH, and § Future tower types already says a variant is *found on the map through scouting* | S–M | three `.keys` + `scripts/validate.sh` | Blocked on E1 |
-| **E3** — the consequence (§ X5): taking a find opens a fight | M | `tests/33_e3` + a scenario pair | Blocked on E1 |
+| **E1** — the find, as ONE cargo row (§ X4) | M | `tests/33_e1` + a round-trip fixture | ✅ **COMPLETE** 2026-08-30 (`@X349`) |
+| **E2** — ⚠⚠ **what a PERMANENT find is worth**: `@M092`'s three-file design, re-run with a reward that does not die.  ⚠ E1 made it a **number in a `.keys` file**, so this is a SWEEP: `object <q> <r> find <points> ground` at three fetch ticks.  ⚠ The DISH (`@X348`) stays the richer column and is not built | S–M | three `.keys` + `scripts/validate.sh` | **Next** |
+| **E3** — the consequence (§ X5): taking a find opens a fight | M | `tests/33_e3` + a scenario pair | Unblocked |
 | **E4** — intel that persists (§ X8 layer 2) | M | `tests/33_e4` over `manifest_of` | Blocked on E3 |
 
 ⚠ **§ X8 layer 3 — wave composition as a readout — is deliberately NOT a
@@ -239,11 +309,14 @@ numbers; `@M093` and `@M094` carry them for grepping.
    through scouting*, and which `EXPLORATION.md` § X2c names as exactly the
    permanent reward `@M092` could not price.  ⚠ **Points are the cheap
    probe and the dish is the real one**, so E2 may want both columns.
-   *Resolution: E1 picks it, E2 prices it.*
+   ⚠⚠ **RESOLVED 2026-08-30 (`@X349`): POINTS, with the dish's tripwire
+   written into the constant.**  *E2 prices it, and it is a SWEEP.*
 2. **Does a find need a MARKER kind?**  ⚠ Argued **no** above, for a
-   `.keys` corpus.  *Resolution: E1, and it is the visibility question
-   that actually decides it.*
+   `.keys` corpus.  ⚠⚠ **RESOLVED 2026-08-30 (`@X349`): NO — and the
+   visibility question is exactly what decided it.**  Ground cargo draws as
+   an ENTITY, which fixes the beacon and the tower top at the same time.
 3. **Is `CARGO_FIND` one kind or a kind with a payload?**  ⚠
    `CARGO_SALVAGE` packs two facts into `subj` and NAMES the packing
    rather than overloading in silence — the precedent to follow if a find
-   has a size.  *Resolution: E1.*
+   has a size.  ⚠⚠ **RESOLVED 2026-08-30 (`@X349`): ONE kind**, `subj` is
+   the POINTS, and the packing is named the day a second yield exists.

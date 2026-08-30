@@ -356,6 +356,12 @@ fn emit_cargo(state: const WaveState) -> text {
         // `@D007` is what happens when the writer and the reader are
         // two.
         if ec_o.kind == CARGO_SALVAGE { ec_kind = "salvage"; }
+        // ⚠ The FIFTH (`plans/33` E1), added here and in
+        // `script.loft`'s `object` verb in the SAME edit — the pair rule
+        // is not a convention here, it is `@D007` itself: a dropped
+        // beacon round-tripped as a WRECK for exactly as long as no
+        // scenario dropped one.
+        if ec_o.kind == CARGO_FIND    { ec_kind = "find"; }
         ec_out = ec_out + "object {ec_o.q} {ec_o.r} " + ec_kind
                         + " {ec_o.subj} " + ec_who + "\n";
     }
@@ -466,6 +472,8 @@ fn emit_places(state: const WaveState) -> text {
 // a captured fixture explicable a year later — the difference between a
 // test somebody trusts and one they delete (`plans/18` § Open
 // questions 3).
+//
+// Example: @DRY-230
 pub fn emit_keys(pal: vector<GroundType>, pw: const PaintedWorld,
                  mw: const MarkerWorld, state: const WaveState,
                  origin: text) -> text {

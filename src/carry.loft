@@ -141,6 +141,54 @@ pub const CARGO_BEACON: u8 = 2;
 // than by overloading the field twice in silence.
 pub const CARGO_SALVAGE: u8 = 3;
 
+// SOMETHING OUT THERE WORTH THE TRIP (`plans/33` E1) —
+// `docs/EXPLORATION.md` § X4: *"a find is ONE marker row and ONE cargo
+// row"*, and § X2b's *the sortie's product is a BUILD DECISION*.
+//
+// ⚠⚠ **THE FIFTH CONSUMER, AND THE FIRST WHOSE WHOLE POINT IS THE
+// TRIP.**  A wreck, a top and a beacon all originate inside the base —
+// the simulation makes them and the player moves them a few hexes.  A
+// find is authored OUT THERE, and everything that makes it interesting
+// is the distance between it and the core: `@M092` measured that trip
+// at **+74 ticks taken in passing and +116 fetched at wave three**
+// against a base that lives 248.
+//
+// ⚠ **The destination is the CORE**, stated here rather than in
+// `spawn.loft`, because unlike a beacon a find has nowhere else to go:
+// `(kind, at, core)` is the whole rule, which is what `CARGO_WRECK`
+// and `CARGO_TOP` already show a kind may state for itself.
+//
+// ── ⚠⚠ `subj` IS THE POINTS IT IS WORTH, and that is a CHOICE ───
+//
+// `plans/33` § Open questions asks whether a find is one kind or a kind
+// with a payload.  It is ONE kind: `subj` carries **how many points
+// arriving at the core credits**, and nothing else.
+//
+// ⚠ **Points, because the wallet already turns them into towers and
+// the compounding is MEASURED** — `@M087` read 230.0 against 106.0 on
+// one base for a hundred points carried in, so a find that pays points
+// pays in the currency whose downstream value the repo has already
+// priced.  It is `plans/31`'s reader arriving: `manifest_of` had no
+// consumer outside its own test until a base opened with a carry, and
+// the wallet had no INCOME outside salvage until this.
+//
+// ⚠⚠ **AND THE TRIPWIRE IS WRITTEN DOWN RATHER THAN LEFT TO BE
+// DISCOVERED.**  The moment a find yields something that is not points
+// — `DESIGN.md` § 7 § THE DISH is the named candidate (`@X348`) — `subj`
+// holds TWO facts and must say so: a `find_pack` beside
+// `errand_load_pack`, which is this file's own *"a kind that needs a
+// second payload field has outgrown this and should say so rather than
+// overloading one integer twice"* obeyed in advance.  ⚠ Overloading it
+// in silence is `@D007`'s shape one field down: a value written by one
+// reader's meaning and read back by another's.
+//
+// ⚠ **What a find is worth is AUTHORED, not derived**, so a `.keys`
+// file says `object 14 0 find 150 ground` and `plans/33` E2 sweeps the
+// number.  A find whose value came from a table would be a table this
+// plan has no second row for (`CARGO_WRECK`'s own argument: *"a kind
+// with no consumer would be machinery nothing could gate"*).
+pub const CARGO_FIND: u8 = 4;
+
 // ⚠ No index at all, for a caller asking "which object?" — the same
 // negative-sentinel choice `occupancy.loft` makes, and deliberately
 // NOT the zero-is-neutral rule the ledgers use: slot 0 is a real
@@ -419,6 +467,14 @@ pub fn cargo_destination_ok(kind: u8, at: const Hex, core: const Hex) -> boolean
     // deliberately unbuilt at validation tier.  Mounting it on a tower
     // instead is `spawn.loft`'s half.
     if kind == CARGO_TOP {
+        return lat_distance(at, core) <= CARGO_REACH_HEXES;
+    }
+    // A find delivered to the core is CASHED — `plans/33` E1, and
+    // `wave_arrived` is where the points land.  ⚠ It states its
+    // destination HERE rather than in `spawn.loft` because it has only
+    // one: a find has no second thing to be done with it, where a top
+    // can also be mounted and a beacon can only ever be planted.
+    if kind == CARGO_FIND {
         return lat_distance(at, core) <= CARGO_REACH_HEXES;
     }
     // ⚠ `CARGO_BEACON` is deliberately absent — see its constant.  It

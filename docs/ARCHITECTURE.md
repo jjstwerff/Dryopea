@@ -776,12 +776,26 @@ src/
                    entities exist, where they stand, which way they
                    face and what colour each is, walked straight off a
                    `WaveState` and a `MarkerWorld`.  ENT_CREW /
-                   ENT_TOWER_BASE / ENT_TOWER_TOP / ENT_CLASSES,
+                   ENT_TOWER_BASE / ENT_TOWER_TOP / ENT_CARGO /
+                   ENT_CLASSES / CARGO_RIDE_METRES,
                    entity_class_name / entity_colour /
                    entity_colour_rgb / entity_colours_distinct /
                    entity_min_distance2 / facing_turns / entity_yaw /
                    entity_yaw_heading / entity_hover_metres /
                    entity_bake.
+                   ⚠⚠ AND SINCE `plans/33` E1 THE CARGO LEDGER IS DRAWN
+                   TOO (@X349), which is what made a find visible and
+                   fixed a set-down beacon and a grounded tower top with
+                   it.  `entity_bake_cargo` filters on **CARGO_GONE and
+                   nothing else**, so the frame's count and
+                   `cargo_count` are ONE NUMBER by construction — a walk
+                   asking `owner == BLOCKER_NONE` would be a SECOND rule
+                   about where cargo lives, which `carry.loft` exists to
+                   not have.  ⚠ ONE drawn class for all five kinds:
+                   nothing the player can DO about a thing on the ground
+                   differs by kind.  ⚠ A carried object needs no second
+                   position — `cargo_follow` already walks the record
+                   onto its carrier's hex, so only the HEIGHT differs.
                    ⚠⚠ NOTHING HERE IS STATE, and that is the whole
                    invariant: no drawable list, no per-entity render
                    record, no spawn hook.  A robot is in the frame
@@ -1153,7 +1167,9 @@ src/
                    earning or blocking either); `helper_lost` is the one
                    that means *still out there and needs fetching*
   carry.loft       what a vehicle is HOLDING (plan 15 C1) — CARGO_WRECK
-                   / CARGO_NONE / CARGO_GONE, CarryObject + CargoLayer +
+                   / CARGO_TOP / CARGO_BEACON / CARGO_SALVAGE /
+                   CARGO_FIND / CARGO_NONE / CARGO_GONE,
+                   CarryObject + CargoLayer +
                    cargo_empty / _spawn / _count / _slots / _held_by /
                    _carrying / _on_ground_near / _get / _owner / _take /
                    _put / _consume / _spill / _follow / _owned_by /
@@ -1234,7 +1250,12 @@ src/
                    public functions cite a test (`@DRY-016`..`@DRY-027`).
   catalogue.loft   what each entity is MADE of (plan 20 A3) — cat_hover_unit
                    / cat_helper / cat_robot / cat_tower_base /
-                   cat_tower_top, plus catalogue / catalogue_names.
+                   cat_tower_top / cat_cargo, plus catalogue /
+                   catalogue_names.
+                   ⚠ `cat_cargo` (`plans/33` E1) is ONE pylon for every
+                   cargo kind — `PROXY_ART.md` § Tower beacon's 0.5 x
+                   0.8 m, a cylinder written as a CONE whose two radii
+                   agree, so it needed no fourth limb kind.
                    ⚠⚠ **It declares no footprint.**  `part_size` DERIVES
                    the extent from the limb table, and that is the only
                    reason PARTS.md § D6's check against VEHICLE_WIDTH_M
@@ -2481,7 +2502,7 @@ suite redirects its own shots into `tests/actual/`.
 | `Wallet` | `wallet.loft` | points SPENT out of the run's budget, plus what the LAST sortie CARRIED in — zero is a FULL wallet, and the ledger is clamped at the budget so a later credit is not swallowed.  ⚠⚠ **`carried` is spelled as the CARRY and never as the BUDGET** (`plans/31` N1, `@X347`): [loft#914]'s silent default then reproduces the game that shipped, where a defaulted `budget` would open every base already FALLEN.  ⚠ `wallet_budget` is the ONE door the budget is asked at — three sites in `wallet.loft` and a fourth in `hud.loft`, where getting it wrong is SILENT |
 | `TowerState` | `tower.loft` | per tower: the seconds banked toward its next shot, the shots it has FIRED out of its 30, and the seconds banked toward a REBUILD — runtime, never saved.  ⚠ Three clocks, and repair touches exactly one of them |
 | `Enemy` | `spawn.loft` | `{ q, r, kind, heading, alive, taken, stand, bank }` — ⚠ **three of the eight are ZERO-neutral and that is the trap**: `taken` is damage ABSORBED, `stand` is the pre-walk window still owed and `bank` is ground banked but not yet spent, so a literal that omits any of them is a HEALTHY enemy that has finished arriving and is carrying nothing.  ⚠ The carry joined in plan 23 K2a and had no `.keys` setter until K2b, because at 1.5 hex/s it is exactly zero after every tick and nothing in the repo could hold one.  ⚠ It became a `Bank` in plan 26 L2 — and stayed zero-neutral through the nesting only because a `Bank` holds no scale (`@X080`) |
-| `CarryObject` | `carry.loft` | one carryable thing — ⚠ `owner` is the WHOLE state machine (ground / a carrier / spent), because two fields that can disagree about one fact is the defect the model exists to make unwritable |
+| `CarryObject` | `carry.loft` | one carryable thing — ⚠ `owner` is the WHOLE state machine (ground / a carrier / spent), because two fields that can disagree about one fact is the defect the model exists to make unwritable.  ⚠⚠ `subj` is the KIND's business: a crew index for a wreck, a top's spent shots, a packed load-and-material for salvage, and since `plans/33` E1 **the POINTS a find pays** — a kind needing a SECOND payload must NAME the packing rather than overload the integer twice (`@X349`) |
 | `CargoLayer` | `carry.loft` | every carryable thing in the run — ⚠ a VECTOR with stable slots, never a hash by hex: two objects share a hex and a hash deletes one |
 | `Socket` | `part.loft` | one joint a part OFFERS — a name, a class token, and **a bone plus a `t` along it**.  ⚠ NO SIZE: the class is the contract, and whether the thing physically fits is the simulation's constant to answer (`PARTS.md` § D6, plan 20 A3) |
 | `Binding` | `part.loft` | what is in which socket — **two texts and nothing else**.  ⚠⚠ The absence of a coordinate is the invariant, and the absence of a POSE is the deviation from `hex_part::Binding.bd_open`: a dryopea part is a catalogue asset, so its angles come from the sim |

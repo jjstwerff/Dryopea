@@ -206,6 +206,42 @@ pub fn cat_tower_top() -> Part {
   p
 }
 
+// ─── The cargo pylon  (`PROXY_ART.md` § Tower beacon) ───────────
+
+// ONE part for everything lying on the ground or riding on a carrier —
+// `plans/33` E1, and the answer to *"a find nobody can SEE is not a
+// find"*.
+//
+// ⚠⚠ **ONE PART AND ONE DRAWN CLASS FOR ALL FIVE CARGO KINDS**, which
+// is `PARTS.md` § D8's *a class is a row of DATA* applied to the
+// question the player actually asks of a thing on the ground: **is
+// there something here to pick up?**  Nothing they can do about it
+// differs by kind — one key, one slot, context-resolved
+// (`DESIGN.md` § 11) — so a colour per kind would be four rows nothing
+// reads, spent out of a palette `entity_colours_distinct` already keeps
+// deliberately scarce.
+//
+// ⚠ **The tripwire, written down rather than discovered**: the first
+// scenario in which telling a beacon from a wreck at a glance CHANGES
+// what the player drives to is what earns the split, and it is a
+// constant and a colour when it comes.  Today they cannot even
+// co-exist in most bases.
+//
+// ⚠ The shape is `PROXY_ART.md`'s beacon exactly — *"short vertical
+// cylinder ('pylon' / 'tent peg'), ~0.5 m diameter, ~0.8 m height"* —
+// standing ON the ground the way the robot and the tower body do.  A
+// cylinder is a `LIMB_CONE` whose two radii agree; there is no fourth
+// limb kind and this needed none.
+//
+// Example: @DRY-227
+pub fn cat_cargo() -> Part {
+  r = rig_new();
+  r = rig_bone3(r, -1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0);
+  p = part_new("cargo", "", r);
+  p = part_limb(p, 0, 0.0, 0.0, 0.40, LIMB_CONE, 0.25, 0.25, 0.80);
+  p
+}
+
 // ─── The catalogue itself ───────────────────────────────────────
 
 // Every entry, by name.
@@ -219,7 +255,7 @@ pub fn cat_tower_top() -> Part {
 //
 // Example: @DRY-033
 pub fn catalogue_names() -> vector<text> {
-  ["hover_unit", "robot", "tower_base", "tower_top"]
+  ["hover_unit", "robot", "tower_base", "tower_top", "cargo"]
 }
 
 // The whole catalogue, defined and bound: the tower with its top in.
@@ -229,6 +265,7 @@ pub fn catalogue() -> PartSet {
   ps = partset_new();
   partset_add(ps, cat_hover_unit());
   partset_add(ps, cat_robot());
+  partset_add(ps, cat_cargo());
   partset_add(ps, cat_tower_top());
   base = cat_tower_base();
   base = part_bind(base, "top", "tower_top");
