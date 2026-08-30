@@ -189,7 +189,7 @@ and their gate is a band in a `.keys` file.
 |---|---|---|---|
 | **E0** — ⚠⚠ **the LAYOUT quartet**: same defences, same list, tight vs wide, ± towers | S | four `.keys` in `tests/scripts/` + `scripts/validate.sh` | ✅ **COMPLETE** 2026-08-30 (`@M093`) |
 | **E1** — the find, as ONE cargo row (§ X4) | M | `tests/33_e1` + a round-trip fixture | **Next** |
-| **E2** — ⚠⚠ **what a PERMANENT find is worth**: `@M092`'s three-file design, re-run with a reward that does not die | S | three `.keys` + `scripts/validate.sh` | Blocked on E1 |
+| **E2** — ⚠⚠ **what a PERMANENT find is worth**: `@M092`'s three-file design, re-run with a reward that does not die.  ⚠ The concrete candidate is **the DISH** (`@X348`) — `DESIGN.md` § 7 § THE DISH, and § Future tower types already says a variant is *found on the map through scouting* | S–M | three `.keys` + `scripts/validate.sh` | Blocked on E1 |
 | **E3** — the consequence (§ X5): taking a find opens a fight | M | `tests/33_e3` + a scenario pair | Blocked on E1 |
 | **E4** — intel that persists (§ X8 layer 2) | M | `tests/33_e4` over `manifest_of` | Blocked on E3 |
 
@@ -233,8 +233,13 @@ numbers; `@M093` and `@M094` carry them for grepping.
 1. **What does a find BUY?**  ⚠ `@M092` measured a body.  E2 needs a
    PERMANENT reward and the cheapest is **points**, because
    `plans/31`'s wallet already converts points into towers and the
-   compounding is measured (`@M087`).  *Resolution: E1 picks it, E2
-   prices it.*
+   compounding is measured (`@M087`).  ⚠⚠ **The richer candidate arrived
+   2026-08-30**: a **TOWER TYPE unlocked** — `DESIGN.md` § 7 § THE DISH
+   (`@X348`), which § Future tower types already says is *found on the map
+   through scouting*, and which `EXPLORATION.md` § X2c names as exactly the
+   permanent reward `@M092` could not price.  ⚠ **Points are the cheap
+   probe and the dish is the real one**, so E2 may want both columns.
+   *Resolution: E1 picks it, E2 prices it.*
 2. **Does a find need a MARKER kind?**  ⚠ Argued **no** above, for a
    `.keys` corpus.  *Resolution: E1, and it is the visibility question
    that actually decides it.*

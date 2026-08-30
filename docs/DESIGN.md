@@ -1148,7 +1148,7 @@ cost, and two of the costs are things the player does to
 | **laser** | poor | single | little — it vaporises | short | good | none; instant, so it cannot miss |
 | **artillery** | good | single | — | — | — | travel time: a moving target can be missed, and a miss is a wasted shot |
 | **explosive / splash** | — | several | — | — | — | **damages the player's own walls** |
-| **EMP** | — | — | worst: destroys the high-value electrics (brain, wiring, motors) and leaves the chassis nearly whole | **longest** | nearly useless — it only lightly burns them | maximum obstruction, minimum salvage |
+| **EMP** | — | — | worst: destroys the high-value electrics (brain, wiring, motors) and leaves the chassis nearly whole | **longest** | nearly useless — it only lightly burns them | maximum obstruction, minimum salvage.  ⚠⚠ **This row is the BURNOUT rung of a ladder whose other rung is UPSET** — see § THE DISH (`@X348`), which is the same device delivered as a beam |
 | **flame thrower** | — | several, but only SMALL ones | — | — | **excellent** against a swarm | markedly **shorter range**, so it has to be placed where things get close |
 | **sniper** | heavy gun | single | — | — | — | **slowest to aim**, and it is *especially* bad at very short range — the best weapon there is at long range and nearly useless up close |
 
@@ -1364,6 +1364,125 @@ shot with no cost to switching, which is exactly the placeholder
 traverse time replaces — it will want hysteresis (stay on
 target) and will still have to be deterministic, because dryopea
 gates itself by replaying written-down runs.
+
+#### ⚠⚠ THE DISH — the scrambler, AIMED, and it is the EMP row's other rung  `@X348`
+
+⚠ **This adds no type.**  § Damage TYPE already carries an **EMP**
+row — *worst salvage, longest obstruction, nearly useless against
+insects* — and [§ 4](#4-the-core--the-scrambling-tower) already
+makes the core a **scrambler**.  What was missing is that those two
+are **one device at two rungs of one ladder**, and the physics of
+the thing decides which rung you get.
+
+**Two forms, and only one of them can be a tower.**  A scrambler
+built as a coil is a *near field*: it does not propagate, so there
+is no wavefront to converge and no way to aim it, and its reach
+grows as roughly the **sixth root of the energy put in** — doubling
+it costs sixty-four times the power.  A scrambler built to radiate
+is a *far field*: it focuses like any beam and its reach grows as
+the square root of the power.
+
+| | the coil | the dish |
+|---|---|---|
+| shape | a sphere centred on itself | a beam |
+| reach vs energy | **U^(1/6)** — you cannot buy range | **√P** — you can |
+| hits your own machines | **yes, everything inside it** | no |
+| what it is, here | ⚠ **a TRAP, not a tower** — § Future tower types' plate, with a different effect | **a tower** |
+
+⚠⚠ **So the coil version is already built, under another name.**
+[`src/trap.loft`](../src/trap.loft) is *placed in advance, fires
+once, and somebody drives out mid-wave to re-arm it* — which is
+exactly the delivery an unaimable area effect forces on you.  ⚠ And
+the law above is why it can never grow into a ranged weapon: **you
+cannot buy reach with power**, so a bigger coil is a bigger blast at
+the same distance and nothing else.  *A mechanic whose scaling law
+forbids the obvious upgrade is one that stays where it was put.*
+
+##### The dish does not kill.  It UPSETS, and that is a timer
+
+The effects ladder is **interference → upset → burnout**, and each
+rung costs about an order of magnitude more delivered field.  Upset
+is a machine that stops and then **gets up again**; burnout is the
+EMP row in § Damage TYPE — the electrics gone, the chassis nearly
+whole, the worst salvage in the catalogue and the longest-blocking
+wreck.
+
+⚠⚠ **So the dish's normal effect is a `Timer`**, the same shape as a
+black tower and as the moat (*its depth decides one thing: how much
+it takes to fill*).  And that gives the catalogue an axis it did not
+have.  § Damage TYPE's *range is a PROFILE, not a number* was about
+**whether the shot lands**; the dish's profile is about **what the
+hit DOES** — upset at the far end, burnout up close or on a target
+held long enough.  ⚠ One weapon whose *effect* is a function of
+range is a different thing from one whose *accuracy* is.
+
+##### Its costs, and every one of them is already a rule here
+
+⚠ § What kind of game this is asks one question — *does this put
+something in the player's hands at a moment when using it costs them
+something?*  The dish answers it four times, and **not one of the
+four is a balance number**:
+
+- ⚠⚠ **It never makes the wave smaller.**  An upset robot gets up.
+  A base defended only by dishes buys time for ever and never wins,
+  so the dish has to be *paired* — which is a placement decision and
+  not a purchase.
+- ⚠⚠ **A wall in front of it blinds it**, because a beam needs the
+  line of sight § LOS is a HEIGHT question already governs — and
+  that is now **measured**: a tower standing behind its own wall is
+  worth **−80 and −117 ticks** against the same tower with no wall
+  in front of it (`@M094`).  So the dish wants the **outer ridge**,
+  which § Where a tower goes has already priced at *driving outside
+  the wall mid-wave to service the thing doing the most work*.
+- ⚠⚠ **It works best on what is coming FOR it.**  A beam couples
+  most efficiently through an aperture the target needs — the sensor
+  it is looking at you with — and far worse through its shielded
+  flank.  So the dish is at its best against **retaliation**, and
+  § Retaliation is an INFORMATION rule is what produces retaliation:
+  *firing it is what turns the wave toward it, and a wave turned
+  toward it is what it is good against.*  ⚠ That is `@M057`'s trap
+  reading one mechanism over — **the value is in the loop it
+  creates, not in the pulse.**
+- ⚠⚠ **It fails on exactly what matters most.**  A hardened machine
+  is one built expecting this, and § The ONE exception under
+  scrambling already says the boss *carries enough power to reach
+  them through the jamming*.  So the dish is excellent in the early
+  waves and worthless in the late ones — its value **decays as the
+  pressure rises**, which is `@M092`'s axis with the sign that
+  measurement did *not* find for a body.
+
+##### And using it EARNS the escalation, which is the fiction's own test
+
+[`SETTING.md`](SETTING.md) § Nobody in this world is attacking
+anybody asks the second test: *aggression has to be EARNED, by the
+player, through accumulated pressure.*  ⚠⚠ **A persistent scrambling
+bubble is already on the robot faction's own trigger list** (§ Combat
+bots are dormant), and a dish is a portable, repeated, aimed version
+of the thing that started the whole game — [`SETTING.md`](SETTING.md)
+§ They were on an ERRAND: *their radio went dead*.  So firing it
+accrues the robots' **step** escalation by construction rather than
+by assertion.
+
+⚠⚠ **And the counter is a per-class ROW, never a second AI.**  A
+shield is only ever as good as its worst aperture, and a machine that
+must *sense* needs an aperture — so a **shielded** robot resists the
+dish and **sees less** for it.  That is one row of data (a shorter
+detection radius, a longer retaliation delay) against
+[`ENEMY_MOVEMENT.md`](ENEMY_MOVEMENT.md)'s *ONE AI, per-class DATA*,
+and it hands the player back the thing the shield took: a robot that
+cannot see you is a robot you can walk past.
+
+⚠ **Status: DESIGNED, NOT BUILT, and deliberately not shipped as one
+row of § Damage TYPE** — that table's own note says shipping a single
+row would make a drawback read as a balance choice rather than as a
+type.  ⚠⚠ **Its natural first appearance is a FOUND one**: § Future
+tower types (deferred) already says variants are *unlocked content —
+found on the map through scouting*, and
+[`EXPLORATION.md`](EXPLORATION.md) § X2c names *a tower type
+unlocked* as the PERMANENT reward `@M092` could not measure because
+the find it tested was a **body**.  ⚠ So the dish is the concrete
+candidate for [`plans/33`](../plans/33-exploration-finds/README.md)
+**E2**, and building it and pricing it are the same piece of work.
 
 ### Enemy targeting + nibble
 
