@@ -645,6 +645,14 @@ player, which is the only way it can be tested at all.
   cadence, the funnel and the ramp are all measurements that have not been
   taken.
 
+## The plan that tests this
+
+[`plans/34-the-drive`](../plans/34-the-drive/README.md) — ⚠⚠ **it tests this
+document rather than building it.**  D0 is room to drive in and needs no code;
+**D2 is the falsifier** that can kill `@X359` and `@X361` outright; D3 is the
+funnel and is independent of everything else here.  ⚠ Nothing downstream —
+rails, trains, sidings, curved-wall strength — is built until D2 answers.
+
 ## See also
 
 - [`MATERIALS.md`](MATERIALS.md) § Power, § What this design deliberately does
