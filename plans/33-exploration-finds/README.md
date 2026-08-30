@@ -9,7 +9,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**OPEN — E0 and E1 COMPLETE 2026-08-30 (`@M093`, `@M094`, `@X349`), E2 next.**
+**OPEN — E0, E1 and E2 COMPLETE 2026-08-30 (`@M093`, `@M094`, `@X349`, `@M095`), E3 next.**
 
 ⚠⚠ **E0 ANSWERED ITS FALSIFIER AND FOUND A SHARPER RULE THAN THE ONE IT
 WENT LOOKING FOR.**  Four `.keys` files, one base, defences held equal,
@@ -150,6 +150,84 @@ that move independently are two counts worth reading).  `scripts/validate.sh`
 **72 scripts / 1237 measurements** (1 new, 10 new; the other 1227 UNMOVED).
 `scripts/rules.sh` **49 defined, 30 enforced in 156 sites**.
 
+### ⚠⚠ E2 — the other half of `@M092`'s rule, and a THIRD sign nobody predicted  `@M095`
+
+E0's `a-base-drawn-in-tight` with its second tower removed, a hundred-point
+find authored at (14, 0), and the only difference between the columns is what
+happens to it:
+
+| | ticks | vs control |
+|---|---|---|
+| `a-find-nobody-cashed` | **209** | — |
+| `a-find-cashed-on-the-way` | **239** | **+30** |
+| `a-find-cashed-late` (tick 100) | **245** | **+36** |
+| `a-tower-the-find-would-have-bought` | **199** | **−10** |
+
+⚠⚠ **SWEPT ACROSS SEVEN LATE FETCH TICKS IT IS FLAT** — +37 / +35 / +36 / +36 /
++23 / +30 / +45 at 40, 60, 80, 100, 120, 140 and 160 past the opening trip,
+against **+30** for taking it in passing.  **No trend.**
+
+⚠⚠ **So the rule pays its second half.**  `@M092` measured a **BODY** and found
+**+74 early, +116 late** — it got BETTER, because a body is *spent by being
+used* and a late body is spent against a heavier wave.  A hundred points is
+spent by nothing.
+
+> **What decays is the find, never the opportunity.**
+
+⚠ **And the +30 READS as arithmetic rather than as an emergent balance
+number**: every column reports **5 enemies alive** at the fall, and five
+nibblers at 1.0 point/s over a 2/3 s tick is `100 / 3.33 ≈ 30` ticks.  ⚠⚠ **It
+is a CONSISTENCY reading and not a derivation** — what is observed is five
+ALIVE, and `nibble_in_reach` counts only those within one hex of the core,
+which nothing here measures.  It is quoted because it makes the late column's
+flatness a claim rather than a coincidence: a find converted at the one rate
+the wallet has should not care when it lands.
+
+#### ⚠⚠ But the FOURTH column is the finding: a find that buys UPKEEP is worth less than nothing
+
+The same hundred points as a **tower** reads **199 — minus ten**.
+
+⚠ **It is not that the tower does not shoot.**  At tick 150 it has fired
+**30 shots — a fully spent magazine** — while its base holds **73.3 points
+against the one-tower base's 106.0**.  ***It is poorer, not weaker.***
+
+⚠⚠ **The mechanism is UPKEEP, and upkeep is paid in the currency of INCOME.**
+Salvage is the wallet's only income (`plans/13` V3) and `wallet_broke` is what
+ends the run, so **the crew member who walks over to repair a black tower is
+the crew member who was clearing bodies for points**.  `plans/17` T3 called
+upkeep *"a POSITIONING problem, not a resource"*; this is that claim with a
+price on it.
+
+⚠⚠ **And more hands make it WORSE**, which is what killed the obvious fix:
+swept on a second base at one, two and three free crew, a marginal tower reads
+**−37, −91 and −96** — every extra pair of hands is one more the tower can
+capture.
+
+#### ⚠ Two explanations checked rather than assumed
+
+- ⚠⚠ **`plans/12` B7's DEAD RAMP is NOT the reason** — `@M094`'s lesson, second
+  instance in one plan: *a prior measurement that predicts your result arrives
+  pre-argued*.  A `pile` sweep of thirteen hexes along the west approach reads
+  **0.0 at twelve** and 1.5 m at the thirteenth, **eight hexes outside the
+  wall**.
+- ⚠ **Nor is it the crew being diverted to BUILD** — a beacon bought and
+  planted but never raised reads **209, identical to never fetching**, which is
+  the wallet control exact to the tick.
+
+⚠⚠ **And that probe found something else**: `job_pick` takes the NEAREST job in
+scope, so **a crew member standing in a gate full of bodies never reaches a
+build order two hexes away — even when `send` puts them on it.**  `plans/29`
+doing exactly what it says, and an open item rather than a defect.
+
+⚠ **The late fetch is still a RISK and this triple cannot show it** (`@M092`):
+four of eight swept fetch ticks failed there because `vehicle_respawn` clears
+the carry, and nothing about a permanent reward changes that.
+
+⚠ **Gates**: `scripts/test.sh` **1843 green / 151 files** (no new test; three
+pinned corpus counts re-baselined 72 → 76 scenarios, 70 → 74 footing files and
+182 → 214 wall hexes).  `scripts/validate.sh` **76 scripts / 1335
+measurements** (4 new, 98 new; the other 1237 UNMOVED).
+
 ### Where the plan sits
 
 [`ROADMAP.md`](../ROADMAP.md) § The recommended order
@@ -168,8 +246,9 @@ sharper rule it left behind is what this plan is built against:
 > **A find decays with lateness only to the extent that what it buys is
 > PERMANENT.**
 
-⚠ That rule has **one measured half**.  This plan owes the other one, and
-E2 is where it is paid.
+⚠ That rule had **one measured half** when this plan opened.  **E2 paid the
+other one** (`@M095`) — and found a third sign the rule did not have a word
+for: a reward that needs UPKEEP is worth *less than nothing*, at any tick.
 
 ## Goal
 
@@ -259,8 +338,8 @@ and their gate is a band in a `.keys` file.
 |---|---|---|---|
 | **E0** — ⚠⚠ **the LAYOUT quartet**: same defences, same list, tight vs wide, ± towers | S | four `.keys` in `tests/scripts/` + `scripts/validate.sh` | ✅ **COMPLETE** 2026-08-30 (`@M093`) |
 | **E1** — the find, as ONE cargo row (§ X4) | M | `tests/33_e1` + a round-trip fixture | ✅ **COMPLETE** 2026-08-30 (`@X349`) |
-| **E2** — ⚠⚠ **what a PERMANENT find is worth**: `@M092`'s three-file design, re-run with a reward that does not die.  ⚠ E1 made it a **number in a `.keys` file**, so this is a SWEEP: `object <q> <r> find <points> ground` at three fetch ticks.  ⚠ The DISH (`@X348`) stays the richer column and is not built | S–M | three `.keys` + `scripts/validate.sh` | **Next** |
-| **E3** — the consequence (§ X5): taking a find opens a fight | M | `tests/33_e3` + a scenario pair | Unblocked |
+| **E2** — ⚠⚠ **what a PERMANENT find is worth** | S–M | four `.keys` + `scripts/validate.sh` | ✅ **COMPLETE** 2026-08-30 (`@M095`) |
+| **E3** — the consequence (§ X5): taking a find opens a fight | M | `tests/33_e3` + a scenario pair | **Next** |
 | **E4** — intel that persists (§ X8 layer 2) | M | `tests/33_e4` over `manifest_of` | Blocked on E3 |
 
 ⚠ **§ X8 layer 3 — wave composition as a readout — is deliberately NOT a

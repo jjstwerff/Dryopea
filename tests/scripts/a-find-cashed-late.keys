@@ -1,0 +1,148 @@
+# a-find-cashed-late — `plans/33` E2's LATE column, and the one the
+# whole triple exists for.
+#
+# The same base and the same opening trip, and then the base plays a
+# hundred ticks WITHOUT the find before the player drives back out for
+# it.  By then a crew member is down and their wreck is lying on the
+# map beside it, which is why the cargo counts read 2.
+#
+#   nobody cashed      209 ticks
+#   cashed on the way  239 ticks       +30
+#   this file          245 ticks       +36
+#
+# ⚠⚠ **SWEPT, AND IT IS FLAT**: +37 / +35 / +36 / +36 / +23 / +30 / +45
+# at 40, 60, 80, 100, 120, 140 and 160 ticks past the opening trip,
+# against +30 for taking it in passing.  **No trend** — which is
+# `@M092`'s rule paying its second half: ***what a find is worth stops
+# depending on WHEN once what it buys stops being consumable.***
+#
+# ⚠⚠ **The contrast with `@M092` is the point.**  There the find was a
+# BODY and it was worth **+74 early and +116 late** — it got BETTER,
+# because a body is spent by being used and a late body is spent
+# against a heavier wave.  A hundred points is spent by nothing, so it
+# is worth the same hundred points whenever it lands.
+#
+# ⚠ **The trip is still a RISK and this file cannot show it.**  `@M092`
+# swept eight fetch ticks and four FAILED — the player killed carrying
+# the load, and `vehicle_respawn` clears the carry (`plans/26` L2).
+# ***The late fetch's price is a risk, not a discount***, and that is
+# unchanged by what the find pays out.
+
+# ── The base ────────────────────────────────────────────────────
+#
+# `plans/33` E0's `a-base-drawn-in-tight` with its SECOND TOWER TAKEN
+# AWAY: spawn markers at ±24, the core at (0, 0), eight wall hexes with
+# a gate on row 0 on each front, and one tower on the EAST front the
+# waves reach first.  ⚠ E0's four confounds are held by construction —
+# the wall's FACE WIDTH (`@M020`), its SHAPE and so its bracing
+# (`plans/14` H2), one painted kind under it (`@M061`), and a list that
+# RAMPS so the reading is not saturated (`@M085`, `@M087`).
+do toggle_mode
+
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+# ⚠ ONE tower, on the EAST front the waves reach first.  The WEST front
+# has none, and that is the hole the find is fetched to fill — `plans/33`
+# E0's `a-base-drawn-in-tight` with its second tower taken away.
+do cycle_kind
+click 4 -1
+marker 4 -1 tower
+
+do cycle_kind
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 24 0
+marker 24 0 spawn 3
+do rotate
+do rotate
+do rotate
+click -24 0
+marker -24 0 spawn 0
+
+count markers 4 4
+do toggle_mode
+
+palette 5
+drag -26 -2 26 -2
+drag -26 -1 26 -1
+drag -26 0 26 0
+drag -26 1 26 1
+drag -26 2 26 2
+count painted 265 265
+
+palette 9
+click 5 -2
+click 5 -1
+click 5 1
+click 5 2
+click -5 -2
+click -5 -1
+click -5 1
+click -5 2
+kind 5 0 grass
+kind 5 1 wall
+kind -5 0 grass
+kind -5 1 wall
+
+# ⚠ The east gate is HELD by an order and the west crew are left to
+# their own senses, identically in all three files: `helper_drive` is an
+# order the search does not overrule (`@X296`), so a `send` to the west
+# gate would be a crew member who never builds what the find pays for.
+crew 5 0
+send 0 5 0
+helper 0 5 0
+
+crew -5 0
+helper 1 -5 0
+
+object 14 0 find 100 ground
+cargo 1 1
+
+park 0 0
+wallet 200.0 200.0
+
+schedule 12 12 12 16 20 24 30 36
+waves 0 0
+count alive 0 0
+
+# ── The opening trip, IDENTICAL in all three files ──────────────
+drive 14 0
+tick 8
+vehicle 14 0
+drive 24 0
+tick 6
+vehicle 24 0
+waves 1 1
+
+drive 0 0
+tick 13
+vehicle 0 0
+
+# ── A hundred ticks of base, with the find still out there ─────
+tick 100
+
+# ⚠ TWO objects by now: the find, and the wreck of a crew member the
+# base has already lost.  A `cargo 1 1` here would be reading the
+# fixture's own attrition and calling it the find.
+cargo 2 2
+
+drive 14 0
+tick 8
+vehicle 14 0
+take player
+drive 0 0
+tick 8
+vehicle 0 0
+drop player
+
+# ⚠ The find is gone from the world and the wreck is not, so ONE is
+# left — and the wallet is what says which one went.
+cargo 1 1
+wallet 250.0 265.0
+
+fall 900
+ticks 241 249

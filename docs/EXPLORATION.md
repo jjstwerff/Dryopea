@@ -1066,6 +1066,7 @@ features**, and the third is the cheapest code in the design:
    tower top at the same time.  ⚠ `object <q> <r> find <points> <owner>`, and
    `subj` is the POINTS the core credits.
 5. **The consequence** (§ X5) — taking a find makes its hex a spawn source.
+   ⚠ Unblocked by E1; `plans/33` E3.
 6. **Intel that persists** (§ X8) — the `found` flag, and what carries between
    bases.
 7. **Wave composition as a readout** (§ X8 layer 3) — free once 3 lands,

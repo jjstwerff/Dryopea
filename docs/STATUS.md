@@ -546,4 +546,15 @@ all three, against ~96 files for a marker kind.  ⚠ The walk filters on
 `CARGO_GONE` and nothing else, so the frame's count and `cargo_count` are one
 number by construction.
 
-Gates **1843 green / 151 files**, **72 scripts / 1237 measurements**.
+⚠⚠ **AND E2 PAID THE OTHER HALF OF `@M092`'S RULE — `plans/33` E2,
+2026-08-30, `@M095`, and no code again.**  One base, a hundred-point find:
+**209 never cashed, 239 cashed in passing, 245 cashed at tick 100**, and
+**flat across seven late fetch ticks** — so ***what decays is the find, never
+the opportunity***.  ⚠⚠ **And the fourth column inverted the phase**: the same
+hundred points as a TOWER reads **199, minus ten** — it fires a full 30-shot
+magazine and its base is **poorer, not weaker** (73.3 points against 106.0),
+because upkeep is paid out of the crew time that produces the wallet's only
+income.  ⚠ More hands make it worse (−37 / −91 / −96), and `plans/12` B7's
+dead ramp is falsified as the reason for the second time in one plan.
+
+Gates **1843 green / 151 files**, **76 scripts / 1335 measurements**.
