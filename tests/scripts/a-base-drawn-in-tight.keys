@@ -1,0 +1,157 @@
+# a-base-drawn-in-tight — `EXPLORATION.md` § The order of work phase
+# 2, `PROGRESSION.md` § P7 and `BACKLOG.md` E2: **the same defences,
+# the same wave list, arranged two ways.**  This is the COMPACT
+# column — the whole defence drawn in tight around the core.
+#
+# ⚠⚠ **Nothing in the corpus as it stood — 67 scenarios — varied the
+# LAYOUT while holding the defences equal**, so `PROGRESSION.md`
+# § P7's racing line — *a compact base is fast to service and
+# concentrates the approach fan; a spread base covers more ground and
+# costs travel time* — was a claim with no number under it.  These
+# four files are the number:
+#
+#   a-base-drawn-in-tight.keys        wall+crew ±5,  towers ±4    170
+#   a-base-drawn-out-wide.keys        wall+crew ±14, towers ±13   207
+#   a-tight-base-with-no-towers.keys  wall+crew ±5,  no towers    102
+#   a-wide-base-with-no-towers.keys   wall+crew ±14, no towers    102
+#
+# ⚠⚠ **THE LAYOUT IS WORTH +37 TICKS ON A BASE THAT LIVES 170 — AND
+# THE SAME MOVE WITHOUT TOWERS IS WORTH EXACTLY NOTHING.**  102 against
+# 102, to the tick: moving the whole front line nine hexes outward,
+# eight wall hexes and both crew with it, buys ZERO.  ⚠ So what a
+# layout is worth is not where the WALL is; it is **how far from the
+# core the fight happens**, and a base with nothing that shoots has no
+# such distance to sell.
+#
+# ⚠⚠ **And the towers were never the variable**: all four cells burn
+# **all 30 shots each**, so the sixty shots are identical and only their
+# GEOMETRY moved.  A swept 2x2 (uncommitted) separates the two halves
+# and they are additive — wall+crew ±5 / towers ±13 and wall+crew ±14 /
+# towers ±4 both read **187**, exactly halfway.
+#
+# Held equal, by construction and each for a reason a measurement
+# already paid for:
+#
+#   * ⚠⚠ **the TOTAL walk** — the spawn markers sit at ±24 and the core
+#     at (0, 0) in every file, so a robot walks 24 hexes to the core
+#     whichever one it is in.  Moving the front outward shortens the
+#     approach to it by exactly what it lengthens the walk behind it,
+#     and the two cancel.  **A pair that did not null this would be
+#     measuring the ROAD and calling it the layout** — and the
+#     no-tower pair is what proves the cancellation is exact.
+#   * ⚠⚠ **the wall's FACE WIDTH** — five rows with a gate on row 0, on
+#     each front, in every file.  `@M020`: the siege front IS the
+#     wall's width, so a wider wall would be a WALL result in a LAYOUT
+#     costume.
+#   * ⚠ **the wall's SHAPE** — a fixed-`q` column zigzags on odd-r
+#     (`@M061`), and the same four rows give the same crinkle at any
+#     `q`, so BRACING is identical.  `plans/14` H2 measured a 99-tick
+#     artefact that read exactly like a finding.
+#   * ⚠ **the FOOTING** — one palette kind everywhere.  `footing_of`
+#     takes the sturdiest ground in REACH, so brittleness is a property
+#     of a region (`@M061`).
+#   * ⚠⚠ **the LIST RAMPS** — a flat list saturates the front and every
+#     column reads the same (`@M085`, `@M087`).
+
+echo a base drawn in tight: wall and crew at 5, towers at 4 — the COMPACT column
+
+do toggle_mode
+
+do cycle_kind
+click 0 0
+marker 0 0 target
+
+# One tower per front, and OFF the gate lane — row -1 east, row +1
+# west, so the base has no mirror to be read as one.
+do cycle_kind
+click 4 -1
+click -4 1
+marker 4 -1 tower
+marker -4 1 tower
+
+# ── Two spawn markers, at ±24 ───────────────────────────────────
+#
+# ⚠ Both are active every wave: `spawn_wave` round-robins over
+# `active_spawn_markers`, so the list arrives half on each front.  ⚠⚠
+# A one-front base is `CLAUDE.md`'s *a gate whose reading is already
+# saturated* — `plans/14` H2 measured a second crew member beside the
+# first at worth NOTHING and the same person on the other front at +28.
+do cycle_kind
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click 24 0
+marker 24 0 spawn 3
+do rotate
+do rotate
+do rotate
+click -24 0
+marker -24 0 spawn 0
+
+count markers 5 5
+do toggle_mode
+
+# The road, one kind end to end.  ⚠ An unpainted hex IS sea and the
+# markers at ±24 have to be stood on.
+palette 5
+drag -26 -2 26 -2
+drag -26 -1 26 -1
+drag -26 0 26 0
+drag -26 1 26 1
+drag -26 2 26 2
+count painted 265 265
+
+# ── The defence: eight wall hexes and two gates ─────────────────
+#
+# ⚠ The gate is not decoration and it is not generosity: `plans/12` B7
+# measured a sealed wall at nearly double the clock and one with a gap
+# in it at NOTHING — so the body standing in the gap IS the front, and
+# it is also the only way the player gets out (`plans/13` V2).
+palette 9
+click 5 -2
+click 5 -1
+click 5 1
+click 5 2
+click -5 -2
+click -5 -1
+click -5 1
+click -5 2
+kind 5 0 grass
+kind 5 1 wall
+kind -5 0 grass
+kind -5 1 wall
+
+# One crew member in each gate.  ⚠ They are ORDERS (`helper_drive`),
+# which `wave_assign` does not overrule (`@X296`) — a `.keys` file says
+# *stay* by sending somebody somewhere.
+crew 5 0
+send 0 5 0
+helper 0 5 0
+crew -5 0
+send 1 -5 0
+helper 1 -5 0
+
+park 0 0
+wallet 200.0 200.0
+
+schedule 12 12 12 16 20 24 30 36
+waves 0 0
+count alive 0 0
+
+# ── The poke, and the drive home ────────────────────────────────
+#
+# ⚠ Out along row 0 through the east gate to the marker and back.  A
+# vehicle covers TWO hexes a tick and skips every odd one, so 24 is
+# reachable and 23 would not be.
+drive 24 0
+tick 13
+vehicle 24 0
+waves 1 1
+
+drive 0 0
+tick 13
+vehicle 0 0
+
+fall 900
+ticks 166 174

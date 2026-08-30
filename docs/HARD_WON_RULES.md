@@ -802,6 +802,21 @@ against a candidate good enough to be measured at that scale, which is
 why it is worth writing down: the instrument was fine for three of the
 four policies and wrong for the one that mattered.
 
+⚠⚠ **A TIDY EXPLANATION FOR A MEASURED EFFECT IS A HYPOTHESIS, AND THE
+SWEEP FOR ITS EVIDENCE COSTS ONE RUN** (`@M094`, `plans/33` E0).  The
+factorial found a wall standing in front of a tower to be worth **−80
+and −117 ticks**, and `plans/12` B7 had already published the obvious
+reason — *its own dead ramp over the wall it defends*.  It was written
+down, then checked: a `pile` sweep of thirteen hexes along the approach,
+the wall's own outside face included, reads **0.0 rubble at every one of
+them**.  ⚠ So the number is real and the story was wrong, and what
+survives is the number plus a NAMED next probe — `range` / `target` /
+`tower_sight_fault`, already in the `.keys` vocabulary.
+⚠ The generic form: **a prior measurement that predicts your result is
+the most persuasive wrong explanation available**, because it arrives
+pre-argued.  *Cite it as a hypothesis and sweep for its mechanism, or do
+not cite it at all.*
+
 ## Profiling the suite — and why the wall clock cannot do it
 
 `LC_ALL=C LOFT_PROFILE=1 loft test > out.txt 2>&1` gives one merged

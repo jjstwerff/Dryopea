@@ -514,5 +514,24 @@ fetch's price is a RISK rather than a discount.  ⚠ The BUILD half of `@X024`
 cannot be priced at all while `@X022`'s recon window is free and unlimited,
 which makes the permit (`ROADMAP.md` item 8) the missing INCENTIVE rather than
 a follow-on.
+⚠⚠ **AND THE LAYOUT IS WORTH SOMETHING — `plans/33` E0, the same page's
+phase 2, 2026-08-30, `@M093`, and again with NO CODE WRITTEN.**
+`a-base-drawn-in-tight.keys` / `a-base-drawn-out-wide.keys` and their two
+no-tower nulls: eight wall hexes, two towers, two crew, a ramping list and a
+24-hex spawn-to-core walk held identical in all four, and only how far from the
+core the defence sits moves — **170 tight against 207 wide, +37 ticks and
++22 %**, so `PROGRESSION.md` § P7's racing line has a number under it at last.
+⚠⚠ **And the NULL is the finding**: the same nine hexes with the towers
+deleted read **102 against 102, to the tick** — ***the layout is not the wall;
+it is how far from the core the FIGHT happens, and a base with nothing that
+shoots has no such distance to sell***.  ⚠ All four cells burn **all 30 shots
+each**, so the sixty shots are identical and only their geometry moved.
+⚠⚠ **AND THE SWEPT FACTORIAL FOUND SOMETHING BIGGER** (`@M094`): with the walls
+and the towers deleted in turn the same two bases read **neither 95 / 95, wall
+only 102 / 102, towers only 250 / 324, wall AND towers 170 / 207** — ***a wall
+standing in front of a tower costs more than it buys***, −80 tight and −117
+wide, and `plans/12` B7's DEAD RAMP is falsified as the reason by a `pile` sweep
+that reads 0.0 at all thirteen hexes of the approach.  ⚠ SIGHT is the leading
+hypothesis and it is not gated.
 
-Gates **1831 green / 150 files**, **67 scripts / 1151 measurements**.
+Gates **1831 green / 150 files**, **71 scripts / 1227 measurements**.

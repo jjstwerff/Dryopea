@@ -148,7 +148,7 @@ argument rather than a number.
 | # | What to measure | Why it matters |
 |---|---|---|
 | **E1** | ⚠⚠ **How fast the statistic layer rises** vs the skill layer | Load-bearing in **two** places: too slow and a veteran is not distinguishably better than a fresh hire, which reopens the churn exploit (`@X193`, `@X160`) |
-| **E2** | **A scenario varying LAYOUT with defences held equal** | `PROGRESSION.md` § P7 says **none exists** — it is what would say whether the racing line is real |
+| **E2** | ~~**A scenario varying LAYOUT with defences held equal**~~ ✅ **DONE 2026-08-30** (`@M093`, [`plans/33`](33-exploration-finds/README.md) E0) | ⚠⚠ **The racing line is REAL — 170 tight against 207 wide, +37 ticks and +22 %** — with eight wall hexes, two towers, two crew, a ramping list and a 24-hex spawn-to-core walk held identical.  ⚠⚠ **And the NULL is the finding**: the same nine hexes with the towers deleted are worth **102 against 102, to the tick**, so *the layout is not the wall — it is how far from the core the fight happens*.  ⚠ The SERVICE half of § P7's trade is still unmeasured: it needs a crew that shuttles |
 | **E3** | **A scenario varying the CREW profile** | Nothing in the corpus varies it at all, and § P7 now claims a second axis |
 
 ---

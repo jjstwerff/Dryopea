@@ -464,6 +464,54 @@ cannot cover** — before [`plans/24`](../plans/24-the-siege-front/README.md)
 every mix landed within four ticks of a pure wave of its fastest class
 (`@M018`, retired).
 
+### ⚠⚠ What phase 2 measured — the racing line is real, and it is not the WALL  `@M093`
+
+⚠⚠ **Run 2026-08-30, and it answers this section's own claim** — *the sortie is
+RECONNAISSANCE and its product is a BUILD DECISION*.  If two bases with the same
+defences arranged two ways played the same, intel would convert into **nothing**
+and exploration would be a fetch quest.  It does not:
+
+| | ticks | against the tight column |
+|---|---|---|
+| `a-base-drawn-in-tight.keys` — front ±5, towers ±4 | **170** | — |
+| `a-base-drawn-out-wide.keys` — front ±14, towers ±13 | **207** | **+37** |
+| `a-tight-base-with-no-towers.keys` | **102** | — |
+| `a-wide-base-with-no-towers.keys` | **102** | **+0** |
+
+⚠ Everything else is held: eight wall hexes and their face width (`@M020`),
+their shape and so their bracing, one painted kind for the footing (`@M061`), a
+list that ramps so the front cannot saturate (`@M085`), and — the load-bearing
+one — **the spawn markers at ±24 and the core at (0, 0) in all four, so a robot
+walks 24 hexes to the core whichever file it is in.**  Moving the front outward
+shortens the approach to it by exactly what it lengthens the walk behind it.
+*A pair that did not null that would be measuring the ROAD and calling it the
+layout.*
+
+⚠⚠ **And the null is the finding.**  Moving the whole front line nine hexes
+outward — eight wall hexes and both crew with them — buys **0.0** once nothing
+on the map shoots.  ***What a layout is worth is not where the wall is; it is
+how far from the core the fight happens, and a base with nothing that shoots has
+no such distance to sell.***
+
+⚠⚠ **The towers were never the variable either**: all four cells burn **all 30
+shots each**, so the sixty shots are identical and only their geometry moved.
+⚠ The swept 2×2 separates the halves and they are additive — front ±5 with
+towers ±13, and front ±14 with towers ±4, **both read 187**.
+
+⚠ **What this does NOT say** is which layout a player should want.  207 beats
+170 *on this base*, whose approach is long and whose crew are ordered to stand
+still.  § P7's other half — a compact base being cheaper to SERVICE on a
+20-second repair clock — needs a crew that shuttles, and nothing here measures
+one.
+
+⚠⚠ **And the swept factorial found something bigger than the layout** (`@M094`,
+recorded here because it came out of these fixtures and belongs to combat rather
+than to exploration): deleting the walls and the towers in turn reads **neither
+95 / 95, wall only 102 / 102, towers only 250 / 324, wall AND towers 170 / 207**
+— so **a wall standing in front of a tower costs more than it buys**, by 80
+ticks tight and 117 wide.  ⚠ The layout null survives it: **0 in both
+tower-free rows.**
+
 ### ⚠ The open problem: free unlimited recon is a lean-back
 
 `CLAUDE.md`'s first design rule is that **the player cannot lean back**.  A recon
@@ -978,12 +1026,14 @@ features**, and the third is the cheapest code in the design:
    — so a sortie PAYS (+74 and +116 on a base that lives 248), and this page's
    own falsifier below does not fire.  ⚠⚠ **But the two are in the wrong ORDER
    for § X2c**, and §§ X2c and X2d carry what that changed.
-2. **A LAYOUT scenario** — the same defences and the same wave list, arranged
-   two ways: compact, and spread.  ⚠ **Nothing in the 28-scenario corpus varies
-   the layout while holding the defences equal**, so § X0's racing line is a
-   claim with no number under it.  ⚠ It must control for BRACING first —
-   `CLAUDE.md` warns that `q -> -q` is not a symmetry of this lattice, and plan
-   14 H2 measured a 99-tick artefact that read exactly like a finding.
+2. ~~**A LAYOUT scenario**~~ ✅ **DONE — 2026-08-30, `@M093`, and it needed no
+   code either.**  `tests/scripts/a-base-drawn-in-tight.keys` /
+   `a-base-drawn-out-wide.keys` and their two no-tower nulls: one base, eight
+   wall hexes, two towers, two crew and two spawn markers at ±24, and the only
+   thing that moves is how far from the core the defence sits.
+   ⚠⚠ **170 tight, 207 wide — the racing line is REAL, +37 ticks and +22 % —
+   and the same nine hexes with the towers deleted are worth 102 against 102,
+   to the tick.**  ⚠ § X2b § What phase 2 measured carries it.
 3. **The four robot classes** — ⚠⚠ **the gating item for everything below**,
    because until they exist every wave is the same wave and a sortie can predict
    nothing (§ X2b).  One row each in `numbers.json` plus one branch in

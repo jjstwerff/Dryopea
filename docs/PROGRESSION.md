@@ -2737,10 +2737,39 @@ the player still has to have thought of.
 3.0 m step that a good pilot crosses and a bad one goes round.
 `DESIGN.md` § Trees as terrain supplies the extreme case.
 
-⚠ **What it needs from this project is still measurement**, and there
-is none: no scenario varies the *layout* while holding the defences
-equal, and none varies the *crew profile* at all.  Those are two
-scenarios to write, and the second is now the more interesting one.
+### ⚠⚠ MEASURED 2026-08-30 — the racing line is real, and it is not the WALL  `@M093`
+
+⚠ This section used to end *"no scenario varies the layout while holding
+the defences equal, and none varies the crew profile at all"*.  The first
+half is now answered, by [`plans/33`](../plans/33-exploration-finds/README.md)
+E0 and with **no code written**:
+
+| | ticks |
+|---|---|
+| `a-base-drawn-in-tight.keys` — front ±5, towers ±4 | **170** |
+| `a-base-drawn-out-wide.keys` — front ±14, towers ±13 | **207** |
+| `a-tight-base-with-no-towers.keys` | **102** |
+| `a-wide-base-with-no-towers.keys` | **102** |
+
+⚠⚠ **The layout is worth +37 ticks, +22 %, with eight wall hexes, two
+towers, two crew, one ramping list and two spawn markers at ±24 held
+identical** — and the spawn-to-core walk is 24 hexes in every file, so
+what moved is not the road.
+
+⚠⚠ **And the null is what sharpens the section**: the same nine hexes of
+outward displacement, both crew included, is worth **0.0 — 102 against
+102, to the tick** — once nothing on the map shoots.  ***The layout is
+not the wall.  It is how far from the core the fight happens, and a base
+with nothing that shoots has no such distance to sell.***  ⚠ Which is
+`plans/12` B7's *a gate buys nothing* one level up: **a defence that does
+not kill cannot be positioned well.**
+
+⚠ **The bullet above about the compact base is NOT contradicted and is
+NOT confirmed** — 207 beats 170 on a base whose approach is long and
+whose crew are ordered to stand still.  The *service* half of the trade
+needs a crew that shuttles on a 20-second repair clock, and **no scenario
+varies that yet**.  ⚠ So does the crew-profile axis: `BACKLOG.md` **E3**
+is still owed, and it is now the more interesting of the two.
 
 ## P8 — ⚠ the perspective rule, and why it makes the roster matter  `@X115`
 

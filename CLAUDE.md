@@ -282,6 +282,62 @@ ONE-front version read the same wallet to the decimal with the find, without it,
 and with a second crew member from tick zero (`@M020`'s saturation, new
 subject).
 
+⚠⚠ **AND THE LAYOUT IS WORTH SOMETHING, ALSO WITH NO CODE WRITTEN** (2026-08-30,
+`@M093`) — [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § The order of work
+**phase 2**, `PROGRESSION.md` § P7 and `BACKLOG.md` E2, and the opening probe of
+[`plans/33`](plans/33-exploration-finds/README.md).  Four `.keys` files, one
+base, eight wall hexes, two crew and two spawn markers at ±24 held identical —
+two towers in the first pair, none in the second; only how far from the core the
+defence sits moves.
+⚠⚠ **170 tight against 207 wide — the racing line is REAL, +37 ticks and
++22 %** — so `@X019`'s *the base layout is the exam* has a number under it and
+§ X2b's *the sortie's product is a BUILD DECISION* is answered.
+⚠⚠ **But the NULL is the finding**: the same nine hexes of outward displacement,
+eight wall hexes and both crew with them, is worth **0.0 — 102 against 102, to
+the tick** — once nothing on the map shoots.  ***What a layout is worth is not
+where the WALL is; it is how far from the core the FIGHT happens, and a base
+with nothing that shoots has no such distance to sell.***  ⚠ Which is
+`plans/12` B7's *a gate buys nothing* one level up: **a defence that does not
+kill cannot be positioned well.**
+⚠⚠ **And the towers were never the variable** — all four cells burn **all 30
+shots each**, so the sixty shots are identical and only their geometry moved,
+which is `@M025`'s hazard sidestepped by READING the instrument (`shots` counts
+shots FIRED, and 30 is a spent magazine rather than a full one).  ⚠ The swept
+2×2 separates the halves and they are ADDITIVE: front ±5 / towers ±13 and front
+±14 / towers ±4 **both read 187**.
+⚠⚠ **The construction is what makes it readable**: the spawn markers at ±24 and
+the core at (0, 0) put the total walk at **24 hexes in every file**, so moving
+the front outward shortens the approach to it by exactly what it lengthens the
+walk behind it — ***a pair that did not null that would be measuring the ROAD
+and calling it the layout***, and the no-tower pair is what proves the
+cancellation exact.  ⚠ What is still NOT measured is § P7's other half: a
+compact base being cheaper to SERVICE needs a crew that shuttles, and no
+scenario varies one.
+⚠⚠ **AND THE SWEPT FACTORIAL FOUND SOMETHING BIGGER THAN THE LAYOUT**
+(`@M094`) — deleting the walls and the towers in turn over the same two bases
+reads **neither 95 / 95, wall only 102 / 102, towers only 250 / 324, wall AND
+towers 170 / 207**.  ⚠⚠ **A WALL STANDING IN FRONT OF A TOWER COSTS MORE THAN IT
+BUYS**: the eight wall hexes are worth **+7** alone, the two towers **+155 and
++229** alone, and adding the wall to a towered base takes **80 and 117 ticks**
+back off it.  ⚠⚠ **`plans/12` B7 saw the shape and its DEAD RAMP is falsified
+here** — a `pile` sweep of thirteen hexes along the approach, the wall's own
+outside face included, reads **0.0 at every one**.  ⚠ The leading hypothesis is
+SIGHT (`tower_sees` walks a line and a wall blocks it) and it is **not gated**;
+the decisive probe is named rather than run.  ⚠ It does not contradict `@M050`'s
++44 for a wall: **the wall's SIGN depends on whether something that shoots
+stands behind it.**  ⚠ And the layout null survives it — **0 in BOTH tower-free
+rows.**
+
+⚠⚠ **AND THE SITE COUNT, TAKEN BEFORE ANY CODE, MOVED THE PLAN'S DESIGN**:
+`EXPLORATION.md` § X4 says a find is *one marker row and one cargo row*, and a
+**CARGO** kind is ~5 sites where a **MARKER** kind is **~96 files** — 70 `.keys`
+(266 `do cycle_kind` presses) and 23 `.loft`.  ⚠ `CLAUDE.md`'s own *"the cycle
+grows in 47 places"* is STALE by the corpus doubling, which is `@M044`'s rule
+with a new instrument.  ⚠ So `plans/33` buys the cargo row and defers the
+marker row to [`plans/04`](plans/04-map-library/README.md)'s content half —
+`@M092`'s fixtures authored a find with `object <q> <r> wreck …` and needed no
+marker at all.
+
 ⚠⚠ **AND THE CREW WORK ON THEIR OWN** ([`plans/29`](plans/29-the-crews-own-work/README.md),
 complete 2026-08-28) — a crew member nobody has told anything takes the
 nearest of four jobs **inside their own senses** (3 hexes untrained), and
@@ -307,9 +363,9 @@ critical path is **4, the SCRAMBLE**.
 | gate | command | today |
 |---|---|---|
 | tests | `scripts/test.sh` | **1831 green**, ~320 s on a busy box (592 s beside another suite, 753 s, 775 s and 1252 s on 2026-08-29 — one of them a `graphics` cdylib rebuild), 150 files |
-| scenarios | `scripts/validate.sh` | **67 scripts, 1151 measurements**, ~20 s |
+| scenarios | `scripts/validate.sh` | **71 scripts, 1227 measurements**, ~20 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
-| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **438 defined, 434 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
+| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **440 defined, 436 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
 | ⚠⚠ formal rules | `scripts/rules.sh` — inside `test.sh` | **48 defined, 29 ENFORCED in 155 code sites** (`@X327`).  ⚠⚠ **The `M-*` family went 6 covered → 10 by EVALUATION, and 2 of 6 would have been MIS-CITED** — `@FR-M-Waterline` had TWO implementations (`hex_ground` and `hex_surface_index` restated the threshold line for line, and the second one SAID SO in a comment), and `@FR-M-Besiege` is worded in `can_stand` + `can_climb` where `enemy_target` asks `can_step`.  ⚠ `@FR-M-One-AI` is **not citable at a site at all** — *no second mover exists* is a claim about ABSENCE and wants `@X333`'s `src/` sweep test.  ⚠⚠ **`--review` cannot answer this question**: it reports only rules with MORE THAN ONE site, and an uncovered rule has none.  ⚠⚠ **This read 49 until 2026-08-29 and the extra one was a GHOST**: `docs/FORMAL.md`'s worked example showing *where a rule is DEFINED* is a fenced line at exactly two spaces, so **the document teaching the registry was silently adding to it** — and the phantom RESOLVED, so the gate could never go red.  ⚠ `<!--norule-->` existed for the CITATION half of that hazard and the DEFINITION half never got it.  ⚠⚠ **And the fix produced its own false positive immediately**: a file is classified by its EXTENSION, so the checker's own `.sh` comment naming the rule counted as an ENFORCING site — ***prose about a rule that lives outside `docs/` reads as enforcement***.  ⚠⚠ **`plans/32` moved it by FOUR while defining THREE**, and the fourth is the interesting one: `@FR-W-Position-Hash` was a WORLDGEN rule with no code anywhere, and the LANDING gave it its first — *a rule earns code from whichever plan first needs it, not from the plan that wrote it*.  ⚠⚠ **And the gate caught a citation broken by a LINE WRAP** — a rule name hyphenated across two lines of a doc reads as a dangling tag naming a rule that does not exist, which is `@X325`'s whole point one family over.  ⚠ **Never let a `@FR-`/`@X`/`@M` tag straddle a line break**; reflow the line instead.  ⚠ `plans/31` added `@FR-R-Carry-Once` and `@FR-R-Opening` and gave both code the same day, which is the order `@X328` asks for.  ⚠ It moved at `plans/30` R5 because `src/poi.loft` gave `@FR-E-Poi-Owns` and `@FR-E-Place-State` their first code at all — never because citations were sprinkled (`@X328`).  ⚠⚠ **This read 89 until 2026-08-29 and the tree measured 93 before R7a touched it** — the number aged against a tree that moved, which is `@M044`'s class one instrument over: **re-measure before quoting a delta**.  R7a's own contribution is **three**.  ⚠ Resolution GATES; coverage only REPORTS.  ⚠⚠ A doc reference is **not** an enforcing site (`@X330`) |
 
 ⚠ `scripts/test.sh` is the canonical runner — **never `loft test` directly**
@@ -488,6 +544,13 @@ thing it names.
   down**: twelve hexes of drift with every count green.  *Ask what your
   equality is allowed to absorb*, and ask liveness of a member that can
   actually reach the branch.
+- ⚠⚠ **A TIDY EXPLANATION FOR A MEASURED EFFECT IS A HYPOTHESIS, AND THE
+  SWEEP FOR ITS EVIDENCE COSTS ONE RUN** (`@M094`) — a wall in front of a
+  tower measured at **−80 ticks**, `plans/12` B7 had already published the
+  reason (*its own dead ramp*), and a `pile` sweep of thirteen approach
+  hexes read **0.0 at every one**.  ⚠ **A prior measurement that predicts
+  your result is the most persuasive wrong explanation available**, because
+  it arrives pre-argued.
 - ⚠⚠ **A GATE AIMED AT THE MECHANISM YOU EXPECT TO BE THE HAZARD IS NOT ONE
   AIMED AT THE HAZARD** (`@M025`) — and its own control is what said so.
   *The right code with the wrong justification* is what to look for when a
@@ -1235,6 +1298,8 @@ names; most of them exist because somebody did it without reading.
 | Design EXPLORATION, or judge a scouting idea | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) — ⚠ not a new pillar; the first scenario is a `.keys` file |
 | Ask why a find has to be found EARLY | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X2c — ⚠⚠ **MEASURED and INVERTED** (`@M092`): a stranded crew member is worth **+74 taken in passing and +116 fetched at wave three**, because a BODY is *spent by being used*.  ⚠ The rule that survives is **a find decays with lateness only to the extent that what it buys is PERMANENT** |
 | Judge whether a SORTIE is worth taking, or price exploration at all | `tests/scripts/a-find-nobody-fetched.keys` + its two partners (`@M092`) — ⚠⚠ **248 / 322 / 364**, and `EXPLORATION.md`'s own falsifier does not fire.  ⚠ **Four of eight swept fetch ticks FAILED**: the player is killed carrying the wreck and `vehicle_respawn` clears the carry, so a late fetch is a RISK rather than a discount |
+| Judge whether a base LAYOUT is worth anything, or price the racing line | `tests/scripts/a-base-drawn-in-tight.keys` + `a-base-drawn-out-wide.keys` and their two no-tower nulls (`@M093`) — ⚠⚠ **170 against 207 with the defences held equal, +37 ticks**, so `PROGRESSION.md` § P7's racing line is REAL.  ⚠⚠ **And the same nine hexes with the towers deleted read 102 against 102, to the tick** — ***the layout is not the wall; it is how far from the core the FIGHT happens***, and a base with nothing that shoots has no such distance to sell.  ⚠ All four cells burn all 30 shots each, so the sixty shots are identical and only their GEOMETRY moved.  ⚠ The SERVICE half of § P7's trade is still unmeasured — it needs a crew that shuttles |
+| Judge whether a WALL is worth building where a TOWER stands behind it | `@M094` — ⚠⚠ **it is NOT: −80 ticks tight and −117 wide.**  The swept factorial over `plans/33` E0's bases reads **neither 95 / 95, wall only 102 / 102, towers only 250 / 324, wall AND towers 170 / 207** — eight wall hexes with a gate are worth **+7** alone and two towers **+155 / +229** alone.  ⚠⚠ **`plans/12` B7's DEAD RAMP is falsified as the reason**: a `pile` sweep of thirteen approach hexes, the wall's own outside face included, reads **0.0 at every one**.  ⚠ SIGHT is the leading hypothesis (`tower_sees` walks a line and a wall blocks it) and it is **not gated** — the probe is `range` / `target` / `tower_sight_fault`, already in the `.keys` vocabulary.  ⚠ It does not contradict `@M050`'s +44: **the wall's SIGN depends on whether something that shoots stands behind it** |
 | Ask why a BUILD accelerant cannot be priced, or propose one | ⚠⚠ **`@X022`'s recon window is FREE AND UNLIMITED** (`@M092`) — the list does not start until the player pokes, so more hands before wave 1 save the player's WALL-CLOCK and not one game-tick.  **The pressure `@X024` needs is the PERMIT's** ([`plans/ROADMAP.md`](plans/ROADMAP.md) item 8) |
 | Ask what CLOCKS a run, or why the player must be efficient | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X2d — the permit.  ⚠⚠ **How the player TRACKS it is measured and still the owner's to rule** (`@X287`): the battleships cannot be the clock, because the default frame has **no sky** (`@M064`) |
 | Ask how the player learns the PERMIT window, or what the military say | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X0b |
@@ -1441,7 +1506,7 @@ names; most of them exist because somebody did it without reading.
 | Add a FIELD to `WaveState`, or ask what a new one owes | ⚠⚠ **three sites and a `.keys` verb**: `wave_state_empty`, `emit.loft::crop_state` (run-wide switches are carried WHOLE), and a `compare.loft::state_diff` row.  ⚠ Add the compare row **before it can differ** — `plans/30` R3 did, and it went RED the same hour on `tests/18_s2`'s round trip (`'now: 442000000 vs 0'`), which is what earned the `now <seconds>` verb |
 | Clear rubble / collect after a tower | `src/vehicle.loft::salvage_at` — the shared chassis |
 | Place or restore a marker of any kind | `src/markers.loft::place_marker` — the ONE dispatch |
-| Add a marker kind | append a constant, bump `MARKER_KIND_COUNT`, add rows — ⚠⚠ **and the cycle grows in 47 places**: BACKLOG C4's fourth kind moved **33 `.keys` fixtures and 14 inline test scripts** by one `do cycle_kind` press.  ⚠ Each file's own `marker … spawn` assertion is what makes the omission loud |
+| Add a marker kind | append a constant, bump `MARKER_KIND_COUNT`, add rows — ⚠⚠ **and the cycle grows in 47 places**: BACKLOG C4's fourth kind moved **33 `.keys` fixtures and 14 inline test scripts** by one `do cycle_kind` press.  ⚠ Each file's own `marker … spawn` assertion is what makes the omission loud  ⚠⚠ **RE-MEASURED 2026-08-30 (`plans/33` E0) AND THE 47 IS STALE: it is ~89 files today** — **70 `.keys` (266 `do cycle_kind` presses) and 23 `.loft` test files** — because the corpus doubled under a number nobody re-read.  ⚠ `@M044`'s rule with a new instrument: **re-measure before quoting a delta**.  ⚠⚠ And it is now a DESIGN lever rather than a cost note: a **CARGO** kind is ~5 sites, so `plans/33` buys a find as one cargo row and defers the marker row |
 | Change what a key does | `src/bindings.loft::editor_actions` — the ONE table; never a `gl_key_pressed` |
 | Add a PLAY action (a key that drives the game) | a row in `editor_actions` + a field on `EditorInput` + `play.loft::play_actions` |
 | Ask why WASD does two different things | `src/bindings.loft::editor_input_from` — `playing` fills one set or the other |
