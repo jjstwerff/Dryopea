@@ -1,0 +1,286 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 33 phase E3 — taking a find opens a fight.
+//
+// `docs/EXPLORATION.md` § X5 is the design in one line:
+//
+//   Scouting is a BET: every find is high-value AND opens a fight …
+//   taking it makes its hex a spawn source.
+//
+// ⚠⚠ **AND MECHANICALLY IT IS FREE, WHICH IS THE PART TO PROTECT.**
+// § X5 borrows `ROBOT_ECONOMY.md`'s *"no new mover"* and applies it one
+// level up: the fight is a wave that ALREADY EXISTS, so this phase adds
+// no spawner, no counter and no second schedule.  It places a SPAWN
+// MARKER, and `spawn_wave` round-robins across whatever markers are
+// active.  ⚠ A test that let the wave COUNT move would be gating a
+// different design.
+//
+// ── ⚠⚠ THE THREE REFUSALS, AND EACH IS A REAL WAY TO GET IT WRONG ─
+//
+// - **A WRECK opens nothing.**  Retrieving a downed crew member is the
+//   rescue `DESIGN.md` § 9 asks for and `plans/15` C2 built; a
+//   consequence keyed on *taking* rather than on the KIND would punish
+//   it.  Per-kind DATA over one mechanism, which is this engine's rule
+//   everywhere else.
+// - **A find taken CLOSE TO HOME opens nothing**, at the threshold that
+//   already decides whether a spawn marker emits anything at all.  An
+//   inert marker would be worse than nothing: `wave_drop` asks
+//   `has_marker` before planting a beacon, so one beside the core would
+//   silently make that hex unbuildable for the rest of the run.
+// - **A marker already there is never replaced.**  The core is a
+//   marker.
+//
+// ── ⚠ And the negative control the phase is really about ────────
+//
+// *A find DRIVEN PAST changes no spawn count.*  The consequence is
+// caused by the TAKE and by nothing else — not by proximity, not by
+// the wave list, not by the find merely existing.
+
+#cwd
+
+use dryopea;
+
+const PALETTE: text = "examples/palette.json";
+const SHOTS:   text = "tests/actual";
+
+fn pal() -> vector<GroundType> { load_palette(PALETTE) }
+
+fn played(src: text) -> ScriptRun {
+    p_s = editor_state_new(PALETTE);
+    script_run(p_s, src, SHOTS)
+}
+
+// A road east from the core, long enough that a find on it is outside
+// `SPAWN_DISABLE_RADIUS`.
+//
+// ⚠ **An unpainted hex IS sea**, so a fixture that forgot the paint
+// would have the find in the water and every take below would fail for
+// the wrong reason.
+fn road() -> text {
+    "do toggle_mode\ndo cycle_kind\nclick 0 0\nmarker 0 0 target\n"
+    + "do toggle_mode\npalette 5\n"
+    + "drag -20 -1 20 -1\n"
+    + "drag -20 0 20 0\n"
+    + "drag -20 1 20 1\n"
+}
+
+// How many spawn markers a session holds.
+fn spawns(s: const EditorState) -> integer {
+    sp_n = 0;
+    for sp_m in s.mw.markers {
+        if sp_m.kind == MARKER_KIND_SPAWN as u8 { sp_n += 1; }
+    }
+    sp_n
+}
+
+// Play a source and answer (spawn markers, ScriptRun.ok).
+fn spawns_after(src: text) -> (integer, boolean) {
+    sa_s = editor_state_new(PALETTE);
+    sa_r = script_run(sa_s, src, SHOTS);
+    (spawns(sa_s), sa_r.ok)
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The claim, and the control it is worthless without
+// ─────────────────────────────────────────────────────────────────
+
+// @DRY-233 — taking a find makes its hex a spawn source
+fn test_taking_a_find_opens_a_spawn_source() {
+    tt_took = spawns_after(road()
+                           + "object 14 0 find 100 ground\n"
+                           + "park 14 0\ntake player\n");
+    assert(tt_took.1, "the take plays");
+    assert(tt_took.0 == 1, "one spawn source where there were none: {tt_took.0}");
+}
+
+// ⚠⚠ **THE NEGATIVE CONTROL, and the phase is worth nothing without
+// it**: a find DRIVEN PAST changes no spawn count.  Same base, same
+// find, same hex, same parked vehicle — the only thing missing is the
+// press.
+fn test_a_find_driven_past_opens_nothing() {
+    td_left = spawns_after(road()
+                           + "object 14 0 find 100 ground\n"
+                           + "park 14 0\n");
+    assert(td_left.1, "the drive plays");
+    assert(td_left.0 == 0,
+           "standing ON a find opens nothing until it is TAKEN: {td_left.0}");
+}
+
+// ⚠ And the same for a find nobody ever went near, which separates
+// *the take* from *the find existing at all*.
+fn test_a_find_nobody_visited_opens_nothing() {
+    tn_far = spawns_after(road() + "object 14 0 find 100 ground\n");
+    assert(tn_far.1, "it plays");
+    assert(tn_far.0 == 0, "an untouched find is not a spawn source: {tn_far.0}");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// The three refusals
+// ─────────────────────────────────────────────────────────────────
+
+// @DRY-234 — a WRECK opens nothing, and that is the rescue protected
+//
+// ⚠⚠ **The mutation this is aimed at is one line**: a `wave_taken` that
+// fired on any take, rather than on `CARGO_FIND`, would turn every
+// retrieval of a downed crew member into a new enemy front — and the
+// whole of `plans/15` C2, `@M092` and `EXPLORATION.md` § X7 is about
+// making that retrieval worth doing.
+fn test_retrieving_a_wreck_opens_nothing() {
+    tw_got = spawns_after(road()
+                          + "crew 14 0\nsend 0 14 0\n"
+                          + "member 0 off 0.0 0.0 0.0\n"
+                          + "object 14 0 wreck 0 ground\n"
+                          + "park 14 0\ntake player\n");
+    assert(tw_got.1, "the retrieval plays");
+    assert(tw_got.0 == 0,
+           "fetching a downed crew member opens no front: {tw_got.0}");
+}
+
+// @DRY-235 — a find taken close to home opens nothing
+//
+// ⚠ The threshold is `SPAWN_DISABLE_RADIUS` and it is BORROWED rather
+// than invented: inside it a spawn marker emits no enemies anyway, so a
+// marker placed there would be a mark on the map that does nothing —
+// and `wave_drop` asks `has_marker` before planting a beacon, so it
+// would silently make that hex unbuildable for the rest of the run.
+//
+// ⚠ It is also `EXPLORATION.md` § X5's own trade in one line: *stay
+// near the core, no gains and low risk; push outward for real rewards
+// and real consequences.*
+fn test_a_find_taken_close_to_home_opens_nothing() {
+    assert(SPAWN_DISABLE_RADIUS > 1,
+           "the threshold can separate two cases: {SPAWN_DISABLE_RADIUS}");
+
+    tc_in = spawns_after(road()
+                         + "object {SPAWN_DISABLE_RADIUS - 1} 0 find 100 ground\n"
+                         + "park {SPAWN_DISABLE_RADIUS - 1} 0\ntake player\n");
+    assert(tc_in.1, "the near take plays");
+    assert(tc_in.0 == 0,
+           "one hex inside the disable radius opens nothing: {tc_in.0}");
+
+    // ⚠ **And the hex the radius NAMES is out**, which is the boundary
+    // `active_spawn_markers` states with `>=` — an off-by-one here
+    // would be a marker that exists and never emits.
+    tc_on = spawns_after(road()
+                         + "object {SPAWN_DISABLE_RADIUS} 0 find 100 ground\n"
+                         + "park {SPAWN_DISABLE_RADIUS} 0\ntake player\n");
+    assert(tc_on.1, "the boundary take plays");
+    assert(tc_on.0 == 1,
+           "and the radius's own hex DOES open one: {tc_on.0}");
+}
+
+// ⚠ A marker already on the hex is never replaced — the core is a
+// marker, and a find lying on one would otherwise delete it.
+fn test_a_find_on_an_existing_marker_replaces_nothing() {
+    tm_s = editor_state_new(PALETTE);
+    tm_r = script_run(tm_s, road()
+                      + "do toggle_mode\ndo cycle_kind\n"
+                      + "click 14 0\nmarker 14 0 tower\ndo toggle_mode\n"
+                      + "object 14 0 find 100 ground\n"
+                      + "park 14 0\ntake player\n", SHOTS);
+    assert(tm_r.ok, "it plays: {script_describe(tm_r)}");
+    assert(spawns(tm_s) == 0, "no spawn was added: {spawns(tm_s)}");
+    assert(marker_kind(tm_s.mw, 14, 0) == MARKER_KIND_TOWER,
+           "and the tower that was there is still a tower");
+}
+
+// ⚠⚠ **AND IT IS THE FIND'S HEX, NEVER THE CARRIER'S** — the case six
+// mutations found and five of them could not see.
+//
+// `CARGO_REACH_HEXES` is one, so a player may lift a find from the hex
+// BESIDE them, and `cargo_take` walks the record onto the carrier in the
+// same assignment that claims it.  Every other test here parks the
+// player ON the find, which makes *the find's hex* and *the carrier's
+// hex* the same coordinate — so the version that reads the wrong one
+// passes all of them.  ⚠ That is `@M075`'s hazard by name: **a gate
+// aimed at a mechanism somebody named can still miss it, because the
+// FIXTURE makes the wrong version behave identically.**
+//
+// ⚠ `docs/EXPLORATION.md` § X5 says *its* hex, and it matters: the
+// consequence should sit where the thing was disturbed, not where the
+// player happened to be standing when they reached for it.
+fn test_the_source_is_the_finds_hex_and_not_the_carriers() {
+    ts_s = editor_state_new(PALETTE);
+    ts_r = script_run(ts_s, road()
+                      + "object 14 0 find 100 ground\n"
+                      + "park 13 0\ntake player\n", SHOTS);
+    assert(ts_r.ok, "the reach-one take plays: {script_describe(ts_r)}");
+    assert(cargo_carrying(ts_r.play.wave.cargo, BLOCKER_PLAYER),
+           "and it really was picked up from the hex beside the player");
+
+    assert(marker_kind(ts_s.mw, 14, 0) == MARKER_KIND_SPAWN,
+           "the source is where the find LAY, (14, 0)");
+    assert(!has_marker(ts_s.mw, 13, 0),
+           "and not where the player STOOD, (13, 0)");
+}
+
+// ─────────────────────────────────────────────────────────────────
+// What the new source IS
+// ─────────────────────────────────────────────────────────────────
+
+// @DRY-236 — the new source faces the core, and it EMITS
+//
+// ⚠⚠ **Facing is not decoration**: `spawn_wave` hands a marker's
+// direction to every enemy it emits as that enemy's initial heading, so
+// a source pointing away from the base sends its wave into the sea.
+//
+// ⚠ The assertion is a COORDINATE and not an index — it steps the named
+// direction with `lat_neighbour` and asks whether that hex is nearer
+// the core, which is the only claim that survives a change of
+// convention (`CLAUDE.md` § Hex convention: the label step is
+// parity-dependent).
+fn test_the_new_source_faces_the_core() {
+    tf_s = editor_state_new(PALETTE);
+    tf_r = script_run(tf_s, road()
+                      + "object 14 1 find 100 ground\n"
+                      + "park 14 1\ntake player\n", SHOTS);
+    assert(tf_r.ok, "it plays: {script_describe(tf_r)}");
+
+    tf_here = Hex { q: 14, r: 1 };
+    tf_dir  = marker_direction(tf_s.mw, 14, 1) as integer;
+    tf_step = lat_neighbour(tf_here, tf_dir);
+    tf_core = Hex { q: 0, r: 0 };
+    assert(lat_distance(tf_step, tf_core) < lat_distance(tf_here, tf_core),
+           "direction {tf_dir} steps from (14, 1) to ({tf_step.q}, {tf_step.r}), "
+           + "which is not nearer the core");
+}
+
+// ⚠⚠ **AND THE FIGHT IS A WAVE THAT ALREADY EXISTS** — the phase's own
+// sentence, gated: the schedule is not touched, so the same list sends
+// the same number of robots and the only thing the find changed is
+// WHERE a share of them start.
+//
+// ⚠ A consequence that added bodies would pass every assertion above
+// and be a different design; this is the one that says it did not.
+fn test_the_consequence_adds_no_robots() {
+    // ⚠ An AUTHORED spawn to begin with, or the untouched run emits
+    // nothing and the comparison is 0 against 0 — `@M034`'s question,
+    // *are the numbers I chose capable of disagreeing?*
+    tb_src = road()
+             + "do toggle_mode\ndo cycle_kind\ndo cycle_kind\ndo cycle_kind\n"
+             + "do rotate\ndo rotate\ndo rotate\n"
+             + "click 18 0\nmarker 18 0 spawn 3\ndo toggle_mode\n"
+             + "object 14 0 find 100 ground\n"
+             + "schedule 6 6\n"
+             + "park 14 0\n";
+
+    tb_left = played(tb_src + "wave 1\n");
+    assert(tb_left.ok, "the untouched run plays: {script_describe(tb_left)}");
+
+    tb_took = played(tb_src + "take player\nwave 1\n");
+    assert(tb_took.ok, "the taken run plays: {script_describe(tb_took)}");
+
+    assert(len(tb_took.play.wave.enemies) == len(tb_left.play.wave.enemies),
+           "one wave is one wave: {len(tb_left.play.wave.enemies)} without the "
+           + "take, {len(tb_took.play.wave.enemies)} with it");
+
+    // ⚠ And it really did move some of them — an assertion that only
+    // counted would pass for a consequence that did nothing at all.
+    tb_at = 0;
+    for tb_e in tb_took.play.wave.enemies {
+        if tb_e.q == 14 && tb_e.r == 0 { tb_at += 1; }
+    }
+    assert(tb_at > 0,
+           "and a share of the wave now starts on the find's hex: {tb_at}");
+}

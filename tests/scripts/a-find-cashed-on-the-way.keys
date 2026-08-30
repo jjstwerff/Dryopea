@@ -6,7 +6,14 @@
 # spawns, wave list and drives: the trip is not one hex longer.
 #
 #   nobody cashed      209 ticks
-#   this file          239 ticks       +30
+#   this file          278 ticks       +69
+#
+# ⚠⚠ **278 READ 239 UNTIL `plans/33` E3**, and the 39 ticks it gained
+# are the CONSEQUENCE arriving — the find's hex became a spawn marker,
+# and on this base that is worth **+31 to the player** (`@M096`).  ⚠ The
+# reward half is unchanged and still isolated: `a-find-cashed-late`
+# reads **245** exactly as it did before E3, because by tick 110 the
+# marker it plants has too little of the list left to redistribute.
 #
 # ⚠⚠ **AND THE +30 READS AS ARITHMETIC, WHICH IS WHY THIS COLUMN IS
 # WORTH HAVING**: `fall` plays until `wallet_broke`, every column
@@ -114,7 +121,7 @@ vehicle 24 0
 waves 1 1
 
 drive 0 0
-tick 13
+tick 20
 vehicle 0 0
 
 # ⚠ `cargo` counts what is still IN THE WORLD, so a delivered find is
@@ -122,7 +129,15 @@ vehicle 0 0
 # delivery happened.
 drop player
 cargo 0 0
-wallet 300.0 300.0
+
+# ⚠⚠ **A BAND, AND THE WIDTH IS `plans/33` E3's CONSEQUENCE**: taking
+# the find plants a spawn marker on the hex it lay on, robots start
+# arriving from there, and the drive home that took 13 ticks before E3
+# takes **20** — during which the crew go on clearing bodies and
+# earning.  ⚠ The floor is what says the find landed: without it this
+# base reads ~236 at the same moment, so 300 is unreachable by income
+# alone.
+wallet 300.0 345.0
 
 fall 900
-ticks 235 243
+ticks 274 282

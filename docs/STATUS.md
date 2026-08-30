@@ -557,4 +557,14 @@ because upkeep is paid out of the crew time that produces the wallet's only
 income.  ⚠ More hands make it worse (−37 / −91 / −96), and `plans/12` B7's
 dead ramp is falsified as the reason for the second time in one plan.
 
-Gates **1843 green / 151 files**, **76 scripts / 1335 measurements**.
+⚠⚠ **AND TAKING A FIND OPENS A SPAWN SOURCE — `plans/33` E3, 2026-08-30,
+`@X350`, and this one IS code.**  `EXPLORATION.md` § X5 built as written:
+`wave_taken` plants a spawn marker on the hex the find lay on, and `spawn_wave`
+already round-robins across the active ones, so **a find never makes a wave
+bigger**.  ⚠⚠ **And it measures BACKWARDS** (`@M096`): **209 / 240 / 211** —
+a third source is worth **+31 ticks TO THE PLAYER** on the front the tower is
+on and **+2** on the front it is not, so ***a new spawn source is worth
+something only where something can shoot at it***.  ⚠ § X5 needs a ruling
+rather than a tune, and it is named rather than taken.
+
+Gates **1852 green / 152 files**, **78 scripts / 1383 measurements**.

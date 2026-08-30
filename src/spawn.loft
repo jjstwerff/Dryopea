@@ -3272,12 +3272,23 @@ fn is_tower_marker(mw: const MarkerWorld, q: integer, r: integer) -> boolean {
     marker_kind(mw, q, r) == MARKER_KIND_TOWER
 }
 
+//
+// Example: @DRY-233, @DRY-234, @DRY-235, @DRY-236
 pub fn wave_take(state: WaveState, owner: integer, core: Hex,
-                 mw: const MarkerWorld) -> integer {
+                 mw: MarkerWorld) -> integer {
     if !wave_carrier_ready(state, owner) { return CARGO_NONE; }
     if cargo_carrying(state.cargo, owner) { return CARGO_NONE; }
 
     wtk_at = wave_carrier_hex(state, owner);
+
+    // ⚠⚠ **WHERE THE OBJECT LIES, READ BEFORE IT IS LIFTED** (`plans/33`
+    // E3).  `cargo_take` walks the record onto the carrier's hex in the
+    // same assignment that claims it — that is `carry.loft`'s *"`q` / `r`
+    // are kept TRUE while carried"* — so the hex a find was FOUND at
+    // exists only until the take, and `wave_taken` needs it.  ⚠ It is
+    // not the carrier's hex: the reach is one, so the two differ
+    // wherever the player picked something up from beside them, and
+    // `docs/EXPLORATION.md` § X5 says *its* hex.
 
     // ⚠ **A loose object on the ground wins over detaching a top**, and
     // the tie-break is deliberate: picking something up is recoverable
@@ -3287,8 +3298,18 @@ pub fn wave_take(state: WaveState, owner: integer, core: Hex,
     // ⚠ It also makes the loop terminate sensibly: a top just set down
     // beside its tower is picked back UP rather than a second one being
     // torn off.
+    wtk_g    = cargo_on_ground_near(state.cargo, wtk_at, CARGO_REACH_HEXES);
+    wtk_from = Hex { q: wtk_at.q, r: wtk_at.r };
+    if wtk_g != CARGO_NONE {
+        wtk_go   = cargo_get(state.cargo, wtk_g);
+        wtk_from = Hex { q: wtk_go.q, r: wtk_go.r };
+    }
+
     wtk_i = cargo_take(state.cargo, owner, wtk_at, CARGO_REACH_HEXES);
-    if wtk_i != CARGO_NONE { return wtk_i; }
+    if wtk_i != CARGO_NONE {
+        wave_taken(state, mw, wtk_i, wtk_from, core);
+        return wtk_i;
+    }
 
     // ⚠ **Detaching is TWO effects at ONE site** — the tower loses its
     // top and a carryable top appears in the taker's hands — which is
@@ -3461,6 +3482,77 @@ fn wave_arrived(state: WaveState, i: integer, core: const Hex) {
         if wa_j == wa_o.subj { helper_begin_recovery(wa_h, core); }
         wa_j += 1;
     }
+}
+
+// What TAKING an object does where it lay.
+//
+// ⚠⚠ **The mirror of `wave_arrived`, and the pair is the bet.**
+// `docs/EXPLORATION.md` § X5: *"Scouting is a **bet**: every find is
+// high-value AND opens a fight … taking it makes its hex a spawn
+// source."*  `wave_arrived` is the high-value half and this is the
+// fight — one site each, on the two verbs a player presses.
+//
+// ⚠⚠ **THE FIGHT IS A WAVE THAT ALREADY EXISTS**, which is why this
+// adds no spawner, no counter and no second schedule: it places a
+// SPAWN MARKER, and `spawn_wave` round-robins across whatever markers
+// are active.  ⚠ So a find does not make the waves BIGGER — it makes
+// them arrive from somewhere else as well, and a base with two fronts
+// acquires a third.  *The size of the wave is the schedule's business
+// and this must never touch it.*
+//
+// ⚠ **`CARGO_FIND` only, and that is not a shortcut.**  A wreck is
+// taken every time a downed crew member is retrieved (`plans/15` C2),
+// so a consequence keyed on *taking* rather than on the KIND would
+// punish the rescue the design asks for — per-kind DATA over one
+// mechanism, this file's own rule.
+fn wave_taken(state: WaveState, mw: MarkerWorld, i: integer,
+              from: const Hex, core: const Hex) {
+    wtn_o = cargo_get(state.cargo, i);
+    if wtn_o.kind != CARGO_FIND { return; }
+
+    // ⚠⚠ **A find taken CLOSE TO HOME opens nothing, and the threshold
+    // is borrowed rather than invented**: `SPAWN_DISABLE_RADIUS` is
+    // already the distance inside which a spawn marker emits no
+    // enemies, so a marker placed inside it would be a mark on the map
+    // that does nothing — and worse, `has_marker` is what
+    // `wave_drop` asks before planting a beacon, so an inert marker
+    // beside the core would silently make that hex unbuildable for the
+    // rest of the run.
+    //
+    // ⚠ It also states § X5's own trade in one line: *stay near the
+    // core, no gains and low risk; push outward for real rewards and
+    // real consequences.*
+    if lat_distance(from, core) < SPAWN_DISABLE_RADIUS { return; }
+
+    // ⚠ **Never over a marker that is already there.**  The core is a
+    // marker, and a find lying on one would otherwise replace it.
+    if has_marker(mw, from.q, from.r) { return; }
+
+    place_marker(mw, from.q, from.r, MARKER_KIND_SPAWN,
+                 spawn_facing(from, core));
+}
+
+// Which of the six directions a new spawn marker faces: the one whose
+// neighbour is nearest the core.
+//
+// ⚠ **Chosen by MEASURING the six neighbours and never by arithmetic on
+// `q` and `r`** — the label step is parity-dependent and `lat_neighbour`
+// is the repo's one rule about it, so a hand-rolled bearing is right on
+// even rows and sheared on odd ones (`CLAUDE.md` § Hex convention).
+//
+// ⚠ Ties break by the LOWEST direction index, which keeps a scripted
+// run repeatable without a second ordering rule — `cargo_on_ground_near`
+// breaks its own tie the same way and for the same reason.
+fn spawn_facing(from: const Hex, core: const Hex) -> u8 {
+    sf_best = 0;
+    sf_d    = 0 - 1;
+    sf_i    = 0;
+    for sf_n in lat_neighbours(from) {
+        sf_nd = lat_distance(sf_n, core);
+        if sf_d < 0 || sf_nd < sf_d { sf_d = sf_nd; sf_best = sf_i; }
+        sf_i += 1;
+    }
+    sf_best as u8? ?? 0
 }
 
 // Count of alive enemies in the wave — wave-clear check.

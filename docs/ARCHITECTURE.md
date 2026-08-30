@@ -1216,7 +1216,16 @@ src/
                    ⚠ `cargo_deliver` does NOT apply the effect: what
                    arriving DOES needs the roster, and a carry model
                    that knew about helpers could not serve tower-tops.
-                   `spawn.loft::wave_arrived` is the other half
+                   `spawn.loft::wave_arrived` is the other half — and
+                   since `plans/33` E3 `wave_taken` is the other OTHER
+                   half: what TAKING an object does where it lay
+                   (`@X350`).  ⚠⚠ The pair is `EXPLORATION.md` § X5's
+                   BET — `wave_arrived` is the high-value half and
+                   `wave_taken` is the fight — one site each, on the two
+                   verbs a player presses.  ⚠ It plants a SPAWN MARKER
+                   and adds no bodies, and it reads the found-at hex
+                   BEFORE the take, because `cargo_take` walks the record
+                   onto the carrier in the same assignment that claims it
   part.loft        what an entity IS, structurally (plan 20 A1) — Socket +
                    Binding + Part + PartSet over `hex_body::Rig`, with
                    part_new / part_socket / part_bind / partset_new /

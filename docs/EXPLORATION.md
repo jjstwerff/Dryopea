@@ -909,6 +909,22 @@ gems wake elementals, a stockpile escalates robots.  That is three different
 consequences over one mechanism, which is the project's governing rule again:
 ONE system, per-type DATA.
 
+⚠⚠ **BUILT 2026-08-30 (`@X350`), AND MEASURED BACKWARDS (`@M096`).**  Taking a
+find plants a spawn marker on the hex it lay on and `spawn_wave` round-robins
+across the active ones — faithful to *"mechanically this is free"*, and worth
+**+31 ticks TO THE PLAYER**.  ⚠⚠ **The control says why**: the same third
+source on the front with no tower behind it is worth **+2**, so it is not
+dilution — it is a third of every wave arriving ten hexes closer *to the gun*.
+***A new spawn source is worth something only where something can shoot at
+it.***
+
+⚠⚠ **So this section needs a RULING rather than a tune.**  A fight that
+redistributes a fixed COUNT is not a fight; opening one means **adding bodies**,
+which is a change to what `spawn_wave` is called *with* rather than to where it
+is called *from* — and that is not free.  ⚠ The per-find CLASS variation above
+(sap → insects, gems → elementals) is a second fact per find and is blocked on
+`carry.loft`'s named packing (`@X349`), not on this mechanism.
+
 ---
 
 ## X6 — the cost of leaving is already MEASURED, so exploration needs no new one  `@M007`
@@ -1065,8 +1081,13 @@ features**, and the third is the cheapest code in the design:
    catalogue row and one walk, which fixed a set-down beacon and a grounded
    tower top at the same time.  ⚠ `object <q> <r> find <points> <owner>`, and
    `subj` is the POINTS the core credits.
-5. **The consequence** (§ X5) — taking a find makes its hex a spawn source.
-   ⚠ Unblocked by E1; `plans/33` E3.
+5. ~~**The consequence** (§ X5) — taking a find makes its hex a spawn
+   source.~~ ✅ **BUILT — 2026-08-30, `@X350`, `plans/33` E3 — AND IT MEASURES
+   BACKWARDS.**  ⚠⚠ A third spawn source is worth **+31 ticks TO THE PLAYER**
+   on the side the tower is on and **+2** on the side it is not (`@M096`), so
+   *a new spawn source is worth something only where something can shoot at
+   it*.  ⚠⚠ **§ X5 needs a RULING**: opening a fight means ADDING bodies, and
+   that contradicts *"mechanically this is free"* as written.
 6. **Intel that persists** (§ X8) — the `found` flag, and what carries between
    bases.
 7. **Wave composition as a readout** (§ X8 layer 3) — free once 3 lands,

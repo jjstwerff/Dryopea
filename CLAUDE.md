@@ -398,6 +398,29 @@ raised**: `job_pick` takes the NEAREST job, so a crew member standing in a gate
 full of bodies never reaches a build order two hexes away **even when `send`
 puts them on it**.
 
+⚠⚠ **AND SINCE E3 TAKING A FIND OPENS A SPAWN SOURCE — WHICH IS WORTH +31 TO
+THE PLAYER** (2026-08-30, `@X350`, `@M096`).  `EXPLORATION.md` § X5 in code:
+`wave_taken` plants a spawn MARKER on the hex the find lay on, and `spawn_wave`
+already round-robins across the active ones — **no spawner, no counter, no
+second schedule**, so a find never makes a wave BIGGER.  ⚠ It is the mirror of
+`wave_arrived`, one site each on the two verbs a player presses.
+⚠⚠ **AND IT MEASURES BACKWARDS**: **209** with two spawn markers, **240** with
+a third on the side the tower is on, **211** with a third on the side it is
+not.  ⚠⚠ **The west control is what makes it a rule** — it is not generic
+dilution, it is a third of every wave arriving ten hexes closer *to the gun*:
+***a new spawn source is worth something only where something can shoot at
+it***, which is E0's null (`@M093`) with a new subject.  ⚠⚠ **So § X5 needs a
+RULING and not a tune**: opening a fight means ADDING bodies — a change to what
+`spawn_wave` is called *with* — and that contradicts its own *"mechanically
+this is free"*.  Left OPEN, the way `plans/32` left the starter tower's bearing.
+⚠ **Three refusals**: `CARGO_FIND` only (a WRECK is the rescue the design asks
+for), nothing inside `SPAWN_DISABLE_RADIUS` (an inert marker would make that hex
+unbuildable for ever, because `wave_drop` asks `has_marker`), and never over a
+marker already there (the core is one).
+⚠⚠ **And the hex is the FIND's and never the CARRIER's** — the case **five of
+six mutations could not see**, because reach is one and every fixture parked the
+player ON the find.  `@M075`'s hazard by name.
+
 ⚠⚠ **AND THE CREW WORK ON THEIR OWN** ([`plans/29`](plans/29-the-crews-own-work/README.md),
 complete 2026-08-28) — a crew member nobody has told anything takes the
 nearest of four jobs **inside their own senses** (3 hexes untrained), and
@@ -423,9 +446,9 @@ critical path is **4, the SCRAMBLE**.
 | gate | command | today |
 |---|---|---|
 | tests | `scripts/test.sh` | **1843 green**, ~320 s on a busy box (592 s beside another suite, 713 s, 753 s, 775 s and 1252 s — one of them a `graphics` cdylib rebuild), 151 files |
-| scenarios | `scripts/validate.sh` | **76 scripts, 1335 measurements**, ~20 s |
+| scenarios | `scripts/validate.sh` | **78 scripts, 1383 measurements**, ~20 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
-| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **444 defined, 440 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
+| ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **446 defined, 442 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
 | ⚠⚠ formal rules | `scripts/rules.sh` — inside `test.sh` | **49 defined, 30 ENFORCED in 156 code sites** (`@X327`).  ⚠⚠ **The `M-*` family went 6 covered → 10 by EVALUATION, and 2 of 6 would have been MIS-CITED** — `@FR-M-Waterline` had TWO implementations (`hex_ground` and `hex_surface_index` restated the threshold line for line, and the second one SAID SO in a comment), and `@FR-M-Besiege` is worded in `can_stand` + `can_climb` where `enemy_target` asks `can_step`.  ⚠ `@FR-M-One-AI` is **not citable at a site at all** — *no second mover exists* is a claim about ABSENCE and wants `@X333`'s `src/` sweep test.  ⚠⚠ **`--review` cannot answer this question**: it reports only rules with MORE THAN ONE site, and an uncovered rule has none.  ⚠⚠ **This read 49 until 2026-08-29 and the extra one was a GHOST**: `docs/FORMAL.md`'s worked example showing *where a rule is DEFINED* is a fenced line at exactly two spaces, so **the document teaching the registry was silently adding to it** — and the phantom RESOLVED, so the gate could never go red.  ⚠ `<!--norule-->` existed for the CITATION half of that hazard and the DEFINITION half never got it.  ⚠⚠ **And the fix produced its own false positive immediately**: a file is classified by its EXTENSION, so the checker's own `.sh` comment naming the rule counted as an ENFORCING site — ***prose about a rule that lives outside `docs/` reads as enforcement***.  ⚠⚠ **`plans/32` moved it by FOUR while defining THREE**, and the fourth is the interesting one: `@FR-W-Position-Hash` was a WORLDGEN rule with no code anywhere, and the LANDING gave it its first — *a rule earns code from whichever plan first needs it, not from the plan that wrote it*.  ⚠⚠ **And the gate caught a citation broken by a LINE WRAP** — a rule name hyphenated across two lines of a doc reads as a dangling tag naming a rule that does not exist, which is `@X325`'s whole point one family over.  ⚠ **Never let a `@FR-`/`@X`/`@M` tag straddle a line break**; reflow the line instead.  ⚠ `plans/31` added `@FR-R-Carry-Once` and `@FR-R-Opening` and gave both code the same day, which is the order `@X328` asks for.  ⚠ It moved at `plans/30` R5 because `src/poi.loft` gave `@FR-E-Poi-Owns` and `@FR-E-Place-State` their first code at all — never because citations were sprinkled (`@X328`).  ⚠⚠ **This read 89 until 2026-08-29 and the tree measured 93 before R7a touched it** — the number aged against a tree that moved, which is `@M044`'s class one instrument over: **re-measure before quoting a delta**.  R7a's own contribution is **three**.  ⚠ Resolution GATES; coverage only REPORTS.  ⚠⚠ A doc reference is **not** an enforcing site (`@X330`).  ⚠ `plans/33` E1 added `@FR-C-Ledger-Drawn` and gave it code the same day, which is `@X328`'s order again — and it is a rule the DESIGN section it belongs to had only half stated: `DESIGN.md` § Carry visibility said *carried* and said nothing about the ground, so a beacon set down was drawn by nothing and **nothing was wrong** |
 
 ⚠ `scripts/test.sh` is the canonical runner — **never `loft test` directly**

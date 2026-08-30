@@ -9,7 +9,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**OPEN — E0, E1 and E2 COMPLETE 2026-08-30 (`@M093`, `@M094`, `@X349`, `@M095`), E3 next.**
+**OPEN — E0-E3 COMPLETE 2026-08-30 (`@M093`, `@M094`, `@X349`, `@M095`, `@X350`, `@M096`), E4 next.**
 
 ⚠⚠ **E0 ANSWERED ITS FALSIFIER AND FOUND A SHARPER RULE THAN THE ONE IT
 WENT LOOKING FOR.**  Four `.keys` files, one base, defences held equal,
@@ -228,6 +228,76 @@ pinned corpus counts re-baselined 72 → 76 scenarios, 70 → 74 footing files a
 182 → 214 wall hexes).  `scripts/validate.sh` **76 scripts / 1335
 measurements** (4 new, 98 new; the other 1237 UNMOVED).
 
+### ⚠⚠ E3 — the consequence is built, and it is worth +31 TO THE PLAYER  `@X350` `@M096`
+
+`EXPLORATION.md` § X5 in code: taking a find plants a **spawn marker** on the
+hex it lay on, and `spawn_wave` round-robins across whatever markers are
+active.  ⚠ No spawner, no counter, no second schedule — *the fight is a wave
+that already exists*, so a find never makes waves BIGGER.
+
+| | ticks |
+|---|---|
+| `a-find-nobody-cashed` — two spawn markers | **209** |
+| `a-third-front-the-find-would-open` — a third at (14, 0) | **240** |
+| `a-third-front-with-nothing-behind-it` — a third at (−14, 0) | **211** |
+
+⚠⚠ **THE CONSEQUENCE DOES NOT OPEN A FIGHT.**  A third source is worth **+31
+ticks to the player** on the side the tower is on, and **+2 — nothing** on the
+side it is not.
+
+⚠⚠ **The west control is what makes that a rule rather than a number.**  It is
+not generic dilution: a third of every wave arrives ten hexes closer, and that
+only matters where something can kill it.
+
+> ***A new spawn source is worth something only where something can shoot
+> at it.***
+
+⚠ Which is **this plan's own E0 null with a new subject** (`@M093`: *a base
+with nothing that shoots has no such distance to sell*), and `@M090`'s *a wave
+cannot be strengthened by adding to it, only diluted* one level up.
+
+⚠⚠ **So § X5 needs a RULING and not a tune**, and it is named rather than
+taken: a fight that redistributes a fixed count is not a fight.  Opening one
+means **ADDING bodies** — a change to what `spawn_wave` is called *with*,
+rather than to where it is called *from* — and that contradicts § X5's own
+*"mechanically this is free"*.  ⚠ Left OPEN the way `plans/32` left the starter
+tower's bearing (`@M091`).
+
+#### ⚠ What it did to E2's numbers, and what survived
+
+⚠⚠ **It moved the EARLY column and nothing else.**  `a-find-cashed-on-the-way`
+reads **278 against 239** — **+69** over the control instead of +30 — while
+`a-find-cashed-late` reads **245 unchanged**, because by tick 110 the marker it
+plants has too little of the list left to redistribute.  ⚠ So E2's isolated
+REWARD reading survives in the late column, and the early one is now
+reward-plus-consequence.
+
+⚠ **The drive home tells the same story from the other side**: 13 ticks before
+E3, **20** after, because robots now start on the hex the player just emptied.
+
+#### ⚠⚠ Six mutations, and the sixth is the one that mattered
+
+| mutation | caught by |
+|---|---|
+| fires on ANY take, not just a find | a retrieved WRECK opens a front |
+| no distance threshold | a find beside the core opens one |
+| the threshold off by one (`<=`) | the radius's own hex opens nothing |
+| the marker overwrites what is there | a find on a tower deletes the tower |
+| the marker always faces 0 | the source points away from the base |
+| **the marker goes at the CARRIER's hex** | ⚠⚠ **nothing — five tests could not see it** |
+
+⚠⚠ **`CARGO_REACH_HEXES` is one, so a find may be lifted from the hex BESIDE
+the player** — and every fixture parked the player ON the find, which makes the
+wrong version behave identically.  **`@M075`'s hazard by name**: *a gate aimed
+at a mechanism somebody named can still miss it, because the fixture makes the
+wrong version behave the same.*  The ninth test is the one that separates them.
+
+⚠ **Gates**: `scripts/test.sh` **1852 green / 152 files** (9 new; three pinned
+corpus counts re-baselined 76 → 78 scenarios, 74 → 76 footing files and
+214 → 230 wall hexes).  `scripts/validate.sh` **78 scripts / 1383
+measurements** (2 new files, 23 new measurements; ⚠ the other 1335 include
+`a-find-cashed-on-the-way`'s two re-pinned bands).
+
 ### Where the plan sits
 
 [`ROADMAP.md`](../ROADMAP.md) § The recommended order
@@ -339,8 +409,8 @@ and their gate is a band in a `.keys` file.
 | **E0** — ⚠⚠ **the LAYOUT quartet**: same defences, same list, tight vs wide, ± towers | S | four `.keys` in `tests/scripts/` + `scripts/validate.sh` | ✅ **COMPLETE** 2026-08-30 (`@M093`) |
 | **E1** — the find, as ONE cargo row (§ X4) | M | `tests/33_e1` + a round-trip fixture | ✅ **COMPLETE** 2026-08-30 (`@X349`) |
 | **E2** — ⚠⚠ **what a PERMANENT find is worth** | S–M | four `.keys` + `scripts/validate.sh` | ✅ **COMPLETE** 2026-08-30 (`@M095`) |
-| **E3** — the consequence (§ X5): taking a find opens a fight | M | `tests/33_e3` + a scenario pair | **Next** |
-| **E4** — intel that persists (§ X8 layer 2) | M | `tests/33_e4` over `manifest_of` | Blocked on E3 |
+| **E3** — the consequence (§ X5): taking a find opens a fight | M | `tests/33_e3` + a scenario pair | ✅ **COMPLETE** 2026-08-30 (`@X350`, `@M096`) |
+| **E4** — intel that persists (§ X8 layer 2) | M | `tests/33_e4` over `manifest_of` | **Next** |
 
 ⚠ **§ X8 layer 3 — wave composition as a readout — is deliberately NOT a
 phase.**  It is free only once a wave's contents are a function of where it
