@@ -393,13 +393,19 @@ its authored drawback.  ⚠ Everything else answers to § P6a's fence:
 - **No production simulation.**  A plant is a *converter with a time
   cost*, matching `ROBOT_ECONOMY.md` § What this design does NOT do.  No
   inventories ticking, no throughput graph.
-- **No rails, no trains, no lifts — yet.**  ⚠ They are the seed notes'
-  largest block and the least compatible: automated transport is
-  explicitly *"maximize automatic transport of materials"*, and
-  automating transport removes the trip.  ⚠⚠ **The version that could
-  work is the enemy's**, where a rail is a route to cut, and
-  [`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) § 3 already has transport routes
-  doing exactly that.
+- ~~**No rails, no trains, no lifts — yet.**~~ ⚠⚠ **REVISED 2026-08-30 by
+  the owner (`@X353`, [`PUZZLES.md`](PUZZLES.md) § Rails and trains): rails
+  and trains are RULED IN, and this refusal was aimed at a different
+  object.**  What it refused is a **conveyor** — *"maximize automatic
+  transport of materials"*, matter arriving without anybody going.  What is
+  ruled in is a **rail**: still loaded by hand, still occupying hexes, still
+  blockable by your own crew, and the track itself built by somebody standing
+  on it.  ⚠ The first DELETES a trip; the second CONSTRAINS one, and
+  `@FR-T-No-Instant-Path` forbids only the first.  ⚠ **The enemy-side version
+  stands unchanged and is still wanted**: a rail as a route to cut, which
+  [`ROBOT_ECONOMY.md`](ROBOT_ECONOMY.md) § 3 already has.  ⚠ **Lifts are NOT
+  ruled in** — nobody has argued them, and a lift with no trip is the
+  conveyor again.
 - **No flyers on the player's side, and none on the enemy's without a
   plan.**  ⚠ [`ENEMY_MOVEMENT.md`](ENEMY_MOVEMENT.md)'s rule is **ONE AI,
   per-class DATA** — a class that needs its own mover has broken it.  A

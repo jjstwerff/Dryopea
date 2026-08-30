@@ -393,10 +393,14 @@ crew, because every extra pair is one more the tower can capture.  ⚠⚠ **`pla
 reason** — a `pile` sweep of thirteen approach hexes reads 0.0 at twelve and
 1.5 m at the thirteenth, eight hexes OUTSIDE the wall — and nor is the crew
 being diverted to build: a beacon planted but never raised reads **209,
-identical to never fetching**.  ⚠ **That probe found the reason it was never
-raised**: `job_pick` takes the NEAREST job, so a crew member standing in a gate
-full of bodies never reaches a build order two hexes away **even when `send`
-puts them on it**.
+identical to never fetching**.  ⚠⚠ **That probe's open item was twice explained WRONG and is corrected**
+(2026-08-30): it is neither `job_pick` taking a nearer job nor an order
+suppressing work.  **Work is done by BEING somewhere** — `helper_build` and
+`helper_salvage` run for every crew member every tick on whatever is in reach
+of the hex they stand on, while `wave_assign` / `job_pick` decide only where
+somebody WALKS.  ⚠ Why that tower was not raised is **unknown and unprobed**;
+what is banked is that *navigation and work are two systems, and a failure in
+one reads exactly like a failure in the other*.
 
 ⚠⚠ **AND SINCE E3 TAKING A FIND OPENS A SPAWN SOURCE — WHICH IS WORTH +31 TO
 THE PLAYER** (2026-08-30, `@X350`, `@M096`).  `EXPLORATION.md` § X5 in code:
@@ -1290,6 +1294,7 @@ second copy here is the one that drifts.
 | [docs/ROBOT_ECONOMY.md](docs/ROBOT_ECONOMY.md) | ⚠ DESIGN, not built — the six robot installations whose traffic is what waves are made of, and the station capstone.  ⚠⚠ Its *no economy simulation* bullet is SUPERSEDED by `@X298`: the simulation exists, on the SERVER |
 | [docs/WORLDGEN.md](docs/WORLDGEN.md) | ⚠ DESIGN, not built — **world → scenario**, at 1.5 km a hex.  ⚠⚠ Two reasons: the economy (`@X298`) and a **BACKDROP of real geography** (`@X312`, which needs a skyline and so wants real data).  ⚠ `../crawler`'s Ortler map is a CALIBRATION FIXTURE, not its world (`@X309`) |
 | [docs/ERRANDS.md](docs/ERRANDS.md) | ⚠ DESIGN, not built — **what a mob is DOING**, between the economy's graph and the mover.  ⚠⚠ Read § WHY first: *do not simulate a world for the scenario; get believable behaviour* (`@X303`).  A mob has a RULE rather than a state, and the rule must be BOUNDABLE and CLOSED-FORM (`@X298`-`@X302`); read against `../crawler`'s mob AI |
+| [docs/PUZZLES.md](docs/PUZZLES.md) | ⚠⚠ **Puzzles come from the WORLD MODEL, never from obstacles** (owner, 2026-08-30) — **matter has no instant path**, and rails/trains are its first worked example.  ⚠ Read § THE THESIS before judging any transport, automation or logistics idea; it generalises `MATERIALS.md` § Power's refusal past power |
 | [docs/MATERIALS.md](docs/MATERIALS.md) | ⚠ DESIGN, not built — what things are MADE of.  ⚠⚠ Read § The governing rule first: a material earns its place because getting it is a TRIP |
 | [docs/ENEMY_MOVEMENT.md](docs/ENEMY_MOVEMENT.md) | Enemy movement — the two steering modes, passability as a height step, bodies as terrain, retaliation |
 | [docs/GROUND_TYPES.md](docs/GROUND_TYPES.md) | Palette spec — 11 painted types plus `rubble`, which the runtime deposits and nobody paints |
@@ -1331,6 +1336,8 @@ names; most of them exist because somebody did it without reading.
 | Add a KEY BINDING, or a mechanic that needs explaining | [`docs/DECISIONS.md`](docs/DECISIONS.md) (`@X139`) — ⚠⚠ **the key table is a BUDGET**; a new row needs an argument |
 | Add something to the HUD | [`docs/DESIGN.md`](docs/DESIGN.md) § HUD — ⚠⚠ **it almost certainly says NO**; one corner number, everything else diegetic |
 | Put a signal in the WORLD instead of on the HUD | ⚠⚠ **Measure whether it is in the DEFAULT frame first** (`@M064`) — the follow camera stops 0.96° below the horizon, so nothing overhead is ever seen, and a signal you must orbit to consult is a HUD element with a tax |
+| Ask why dryopea has PUZZLES, or judge a logistics/blocking idea | [`docs/PUZZLES.md`](docs/PUZZLES.md) (`@X351`, `@X352`) — ⚠⚠ **puzzles arrive from the WORLD MODEL and never from obstacles**: nobody places them, they exist because matter has to be somewhere and somebody has to move it.  ⚠ The shape that makes one teachable without a tutorial is ***the cost of the workaround is the measurement of the mistake*** — three shipped mechanics already have it |
+| Add a RAIL, a train, a siding or anything that carries matter | [`docs/PUZZLES.md`](docs/PUZZLES.md) § Rails and trains (`@X353`, `@X356`) — ⚠⚠ **ruled IN 2026-08-30**, on the reframe that a rail CONSTRAINS a trip where a conveyor deletes one.  ⚠ Trains have priority and helpers yield; a jam is never terminal but a LADDER of three outs.  ⚠⚠ **A hex lattice has no gentle turn**, so a curve is a RUN of hexes and costs SPACE — and it pays three ways: a train can pass, the section is strong, and the player moves fast, which turns a wall into a ROAD.  ⚠ Momentum is DEFERRED until the game is playable (`@X357`) |
 | Design a base site that is not flat ground | [`docs/DESIGN.md`](docs/DESIGN.md) § Trees as terrain |
 | Find a mechanic that is designed but NOT built | [`docs/DESIGN.md`](docs/DESIGN.md) + [`plans/ROADMAP.md`](plans/ROADMAP.md) |
 | Cite a design decision, or find where one was made | [`docs/DECISIONS.md`](docs/DECISIONS.md) — ⚠ never cite a bare plan phase; write `22-S0`.  ⚠⚠ **A citation must RESOLVE** — `scripts/tags.sh` runs inside `test.sh` and fails on a dangling `@X` |
@@ -1389,7 +1396,7 @@ names; most of them exist because somebody did it without reading.
 | Ask how the player learns the PERMIT window, or what the military say | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X0b |
 | Ask what a new player's FIRST FIFTEEN MINUTES are | [`docs/EXPLORATION.md`](docs/EXPLORATION.md) § X0b — ⚠ a TEST, not a work queue |
 | Ask what a wreck is MADE of, or add a material / weapon / machine | [`docs/MATERIALS.md`](docs/MATERIALS.md) — ⚠ read § The governing rule first |
-| Judge a POWER, AUTOMATION or TRANSPORT idea (cables, rails, conveyors, autopilot) | [`docs/MATERIALS.md`](docs/MATERIALS.md) § Power — ⚠⚠ **almost certainly refused, and the refusal is MEASURED** |
+| Judge a POWER, AUTOMATION or TRANSPORT idea (cables, rails, conveyors, autopilot) | [`docs/PUZZLES.md`](docs/PUZZLES.md) § THE THESIS (`@X351`) — ⚠⚠ **the test is one line: *does this make matter arrive without anybody going?***  A SOURCE with a position is fine; a CHANNEL between two positions is not.  ⚠⚠ **RAILS AND TRAINS ARE RULED IN** since 2026-08-30 (`@X353`) and `MATERIALS.md`'s *no rails, no trains — yet* is REVISED: a conveyor deletes a trip, a rail CONSTRAINS one.  ⚠ Power grids and lifts are still refused, and `MATERIALS.md` § Power carries that measurement |
 | Design where WAVES eventually come from | [`docs/ROBOT_ECONOMY.md`](docs/ROBOT_ECONOMY.md) |
 | Add a RESOURCE, a node or a route to the economy | [`docs/ROBOT_ECONOMY.md`](docs/ROBOT_ECONOMY.md) § The spreadsheet test — ⚠⚠ **never a resource that is purely GOOD** |
 | Add a FACTION, or a relation between factions | [`docs/ROBOT_ECONOMY.md`](docs/ROBOT_ECONOMY.md) § The capstone |
@@ -1716,7 +1723,7 @@ defined only inside a RANGE row nothing was expanding.
 - First dryopea-side P-issue gets numerous enough that prose
   references stop being practical (PROBLEMS.md currently has
   one `@D` row; trigger fires somewhere around ~20).
-- Documentation count crosses ~25 (**currently 26** — `docs/*.md`; it read
+- Documentation count crosses ~25 (**currently 27** — `docs/*.md`; it read
   "~12" until 2026-08-26 and "21" until 2026-08-27, so this trigger is
   closer than it looked and is still moving).
 - A specific drift incident makes the manual scan painful.

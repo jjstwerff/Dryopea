@@ -214,10 +214,15 @@ capture.
   planted but never raised reads **209, identical to never fetching**, which is
   the wallet control exact to the tick.
 
-⚠⚠ **And that probe found something else**: `job_pick` takes the NEAREST job in
-scope, so **a crew member standing in a gate full of bodies never reaches a
-build order two hexes away — even when `send` puts them on it.**  `plans/29`
-doing exactly what it says, and an open item rather than a defect.
+⚠⚠ **And that probe left an open item that was twice explained WRONG**
+(corrected 2026-08-30).  It is **not** `job_pick` taking a nearer job and
+**not** an order suppressing work: **work is done by BEING somewhere** —
+`helper_build` and `helper_salvage` run for every crew member every tick on
+whatever is in reach of where they stand, while `wave_assign` / `job_pick`
+decide only where somebody WALKS.  ⚠ **Why that tower was never raised is
+unknown and unprobed.**  What is banked instead is the lesson: *navigation and
+work are two systems, and a failure in one reads exactly like a failure in the
+other.*
 
 ⚠ **The late fetch is still a RISK and this triple cannot show it** (`@M092`):
 four of eight swept fetch ticks failed there because `vehicle_respawn` clears

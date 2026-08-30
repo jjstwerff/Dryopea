@@ -99,6 +99,16 @@ prose is a citation, not a definition.
                      widening the node rule — and a routing field that
                      admitted either would walk robots into it.
 
+  (M-Ramp-Reachable)
+                     no structure height is immune to a body ramp.  The
+                     climb is measured between two ADJACENT surfaces and
+                     never against the ground, so any height is reached
+                     by a long enough staircase and the only thing that
+                     grows is the number of bodies.  A global cap on how
+                     high a mover may STAND would create a wall nothing
+                     can ever climb, which is the permanent advantage
+                     DESIGN.md § What kind of game this is refuses.
+
   (M-One-AI)         one mover, per-class DATA.  A class differs by the
                      numbers in its row — how fast, how hard it bites,
                      how high it climbs — and a class that needs its own
