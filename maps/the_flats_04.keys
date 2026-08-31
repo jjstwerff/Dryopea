@@ -1,0 +1,366 @@
+# the_flats_04 — ROOM
+#
+# ⚠ This is the SOURCE; `maps/the_flats_04.json` +
+# `maps/the_flats_04_markers.json` beside it are BUILT from it by
+# `scripts/build_maps.sh`.  `make play MAP=the_flats_04` opens the pair.
+#
+# plans/34 D0.  The other three maps are STRIPS — 34 x 15, 49 x 13 and
+# 30 x 17 — and `docs/PUZZLES.md` § What CANNOT be measured yet says why
+# that is a wall: ***a player cannot build a round base on a map fifteen
+# rows tall***.  A rail-legal curve is a RUN of hexes whose direction
+# changes at most once every N (`@X356`), so a radius costs SPACE in BOTH
+# dimensions, and no map in this repo had any.
+#
+# ⚠⚠ This map decides NOTHING.  It has no lane, no neck, no gate, no
+# tower site and nothing to defend — the other three teach a shape, and
+# this one is the absence of one.  `@X360`: every base that is seen is
+# built by a player, so what `plans/04` owes the shape layer is ROOM.
+#
+# ── Why it is 65 hexes across and not more ──
+#
+# `numbers.json` § world.atmosphere_haze_radius is 40 — the radius the
+# design says you can see — and `tests/11_f8_the_tick_budget.loft`
+# measures the tick over exactly that disc.  So the size is the design's
+# own bound rather than a guess: a map bigger than the haze is a map you
+# cannot see across.
+#
+# ⚠ 4225 hexes against the disc's 4921, so the COST comparison holds.
+# ⚠⚠ But this is a SQUARE and the disc is not: by `lat_distance` the
+# edge of it is 32 hexes from the core and the four corners are 48, past
+# the haze.  That is the right way round for a sandbox — every row and
+# column through the core is visible end to end, and the corners are
+# over the horizon.
+#
+# ⚠⚠ And the tick agrees about where the ceiling is (`@M098`): a
+# FIGHTING tick on this map costs **183 ms of a 667 ms budget** against
+# 12 ms on `starter_01`.  ⚠ An IDLE one is free — 81 µs here against
+# 97 µs there — because with no wave running there is no field to build.
+# ***The size of a map costs nothing until something is walking on it.***
+#
+# ⚠ One hitch you will feel: pressing **P** bakes the whole ground mesh,
+# which costs ~1.4 s here against ~0.2 s on `starter_01`, and it is paid
+# on every press because the watch resets when play mode is off.
+#
+# ── Why the floor is speckled ──
+#
+# ⚠⚠ **You cannot feel speed over one flat colour.**  `ground_gl.loft`
+# draws one flat-unlit colour per palette kind, so a uniform field gives
+# a follow camera nothing to pass and a drive across it looks like a
+# still frame.  The patches are a MOTION CUE and nothing else: `sand`,
+# `hill` and `rock` are all height 0.0 and all `walk_ground` +
+# `walk_vehicle`, so not one of them turns, blocks or slows anything.
+# ⚠ They do differ in FOOTING (`@X284` — 153 / 174 / 220 HP), which is a
+# free second axis to build against, not a rule this map is making.
+#
+# ── The rim is the one thing that says no ──
+#
+# `steep_rock` carries `walk_vehicle: false` (BACKLOG C10), so two rings
+# of it are a closed edge: the chassis HOVERS and open sea is free to
+# cross (`@D006`), and without a rim the sandbox's real boundary would be
+# the one-hex ring past the paint where the mesher stops drawing
+# (`mesh_chunks.loft::mesh_hex_drawn`) — an invisible edge you fall off
+# into a void.  It is flat grey ground you cannot enter, the same idiom
+# `the_gap_03` builds its massif from.
+#
+# ⚠ It is played SOLO with the seven-wave default list, like every map
+# here — and NOTHING comes until you drive onto a spawn marker
+# (`wave_provoke_step`, and it wants the marker's own hex).  Two of them,
+# at opposite ends, because `map_fault` demands at least one and opposite
+# ends is what keeps a landing a choice (`@M091`).
+#
+# ── Editing it ──
+#
+# ⚠ The paint below is MECHANICAL — one `drag` per row, and every gesture
+# is a row SEGMENT.  That is on purpose: a drag between two hexes of the
+# same row is exactly that row's span, which is the one case where offset
+# coordinates and a straight line agree, so nothing here needs a hex
+# distance and nothing here steps a coordinate (`CLAUDE.md` § Hex
+# convention — a `+ 1` on a `q` outside `lat_neighbour` is the bug).
+# ⚠⚠ To resize it, change every row: the floor is q -30..30 over r
+# -30..30 and the rectangle is ±32, and `tests/a2_the_maps.loft`
+# § The flats is ROOM asserts BOTH numbers and the 4225 that follows.
+echo the_flats_04: room — 65 hexes across, and nothing in it decides anything
+
+# ⚠ Zoom 3, not the 1 the other three open at: `view_ppm` is 24 px/m
+# divided by the zoom, so a 960 x 720 window shows ~31 x 27 hexes at zoom
+# 1 and this map is 65 across.  A sandbox you cannot see the edges of is
+# a sandbox you get lost in.
+at 0 0 3
+
+# ── The pan is cut out of the cliff ──
+#
+# ⚠ The whole 65 x 65 rectangle goes down as `steep_rock` FIRST and the
+# floor is painted back over it.  A rim assembled from four sides would
+# be four spans to get right and one gap would let the vehicle out; this
+# way the rim is whatever the floor did not cover, by construction.
+palette 8
+drag  -32  -32   32  -32
+drag  -32  -31   32  -31
+drag  -32  -30   32  -30
+drag  -32  -29   32  -29
+drag  -32  -28   32  -28
+drag  -32  -27   32  -27
+drag  -32  -26   32  -26
+drag  -32  -25   32  -25
+drag  -32  -24   32  -24
+drag  -32  -23   32  -23
+drag  -32  -22   32  -22
+drag  -32  -21   32  -21
+drag  -32  -20   32  -20
+drag  -32  -19   32  -19
+drag  -32  -18   32  -18
+drag  -32  -17   32  -17
+drag  -32  -16   32  -16
+drag  -32  -15   32  -15
+drag  -32  -14   32  -14
+drag  -32  -13   32  -13
+drag  -32  -12   32  -12
+drag  -32  -11   32  -11
+drag  -32  -10   32  -10
+drag  -32   -9   32   -9
+drag  -32   -8   32   -8
+drag  -32   -7   32   -7
+drag  -32   -6   32   -6
+drag  -32   -5   32   -5
+drag  -32   -4   32   -4
+drag  -32   -3   32   -3
+drag  -32   -2   32   -2
+drag  -32   -1   32   -1
+drag  -32    0   32    0
+drag  -32    1   32    1
+drag  -32    2   32    2
+drag  -32    3   32    3
+drag  -32    4   32    4
+drag  -32    5   32    5
+drag  -32    6   32    6
+drag  -32    7   32    7
+drag  -32    8   32    8
+drag  -32    9   32    9
+drag  -32   10   32   10
+drag  -32   11   32   11
+drag  -32   12   32   12
+drag  -32   13   32   13
+drag  -32   14   32   14
+drag  -32   15   32   15
+drag  -32   16   32   16
+drag  -32   17   32   17
+drag  -32   18   32   18
+drag  -32   19   32   19
+drag  -32   20   32   20
+drag  -32   21   32   21
+drag  -32   22   32   22
+drag  -32   23   32   23
+drag  -32   24   32   24
+drag  -32   25   32   25
+drag  -32   26   32   26
+drag  -32   27   32   27
+drag  -32   28   32   28
+drag  -32   29   32   29
+drag  -32   30   32   30
+drag  -32   31   32   31
+drag  -32   32   32   32
+
+# The floor — 61 x 61 of it.
+palette 5
+drag  -30  -30   30  -30
+drag  -30  -29   30  -29
+drag  -30  -28   30  -28
+drag  -30  -27   30  -27
+drag  -30  -26   30  -26
+drag  -30  -25   30  -25
+drag  -30  -24   30  -24
+drag  -30  -23   30  -23
+drag  -30  -22   30  -22
+drag  -30  -21   30  -21
+drag  -30  -20   30  -20
+drag  -30  -19   30  -19
+drag  -30  -18   30  -18
+drag  -30  -17   30  -17
+drag  -30  -16   30  -16
+drag  -30  -15   30  -15
+drag  -30  -14   30  -14
+drag  -30  -13   30  -13
+drag  -30  -12   30  -12
+drag  -30  -11   30  -11
+drag  -30  -10   30  -10
+drag  -30   -9   30   -9
+drag  -30   -8   30   -8
+drag  -30   -7   30   -7
+drag  -30   -6   30   -6
+drag  -30   -5   30   -5
+drag  -30   -4   30   -4
+drag  -30   -3   30   -3
+drag  -30   -2   30   -2
+drag  -30   -1   30   -1
+drag  -30    0   30    0
+drag  -30    1   30    1
+drag  -30    2   30    2
+drag  -30    3   30    3
+drag  -30    4   30    4
+drag  -30    5   30    5
+drag  -30    6   30    6
+drag  -30    7   30    7
+drag  -30    8   30    8
+drag  -30    9   30    9
+drag  -30   10   30   10
+drag  -30   11   30   11
+drag  -30   12   30   12
+drag  -30   13   30   13
+drag  -30   14   30   14
+drag  -30   15   30   15
+drag  -30   16   30   16
+drag  -30   17   30   17
+drag  -30   18   30   18
+drag  -30   19   30   19
+drag  -30   20   30   20
+drag  -30   21   30   21
+drag  -30   22   30   22
+drag  -30   23   30   23
+drag  -30   24   30   24
+drag  -30   25   30   25
+drag  -30   26   30   26
+drag  -30   27   30   27
+drag  -30   28   30   28
+drag  -30   29   30   29
+drag  -30   30   30   30
+
+# sand — the softest footing there is.
+palette 4
+drag  -28   21  -24   21
+drag  -27   22  -25   22
+click  -26   23
+drag  -24  -28  -20  -28
+drag  -24  -27  -20  -27
+drag  -23  -26  -21  -26
+drag  -20    3  -16    3
+click  -16   19
+drag  -12  -26  -10  -26
+drag  -14   12  -10   12
+drag  -13   13  -11   13
+click  -10   28
+drag   -3  -29   -1  -29
+click   -2  -28
+click    9  -29
+drag    7  -28   11  -28
+drag    8  -27   10  -27
+drag   12   -1   16   -1
+click   10   21
+drag    8   22   12   22
+drag   10   27   14   27
+click   12   28
+drag   10   29   14   29
+drag   22   27   24   27
+click   23   28
+click   23   29
+drag   24  -28   28  -28
+
+# hill.
+palette 6
+drag  -27  -27  -25  -27
+drag  -28  -18  -27  -18
+drag  -28   -9  -26   -9
+drag  -28   -8  -27   -8
+drag  -28   -7  -26   -7
+drag  -28    1  -26    1
+drag  -28    2  -26    2
+click  -28    3
+drag  -19  -22  -15  -22
+drag  -19  -21  -15  -21
+drag  -19   -9  -17   -9
+click  -18   -8
+drag  -18    5  -14    5
+click  -16    6
+click   -8  -18
+drag  -10  -17   -6  -17
+click    2  -22
+drag    0  -21    4  -21
+click    1  -15
+click    1  -14
+drag    3   23    5   23
+click    7   13
+drag    5   14    9   14
+drag    6   15    8   15
+drag   16  -13   18  -13
+click   17  -12
+drag   19   -5   21   -5
+drag   18   -4   22   -4
+drag   19   -3   21   -3
+drag   17    8   21    8
+click   19    9
+click   22   16
+drag   20   17   24   17
+click   22   18
+drag   27  -24   28  -24
+click   28   -7
+drag   26   -5   28   -5
+click   28   -4
+drag   27    8   28    8
+click   28   18
+
+# rock — the sturdiest, and worth building a wall on.
+palette 7
+click  -27    8
+drag  -28    9  -26    9
+drag  -28   10  -26   10
+drag  -28   28  -27   28
+drag  -25   28  -23   28
+drag  -12   -9  -10   -9
+drag   -9   15   -7   15
+drag   -9   16   -7   16
+drag    2   25    4   25
+drag    2   26    4   26
+drag   11  -24   13  -24
+click   12  -23
+drag   13  -13   15  -13
+click   19  -29
+drag   17  -28   21  -28
+drag   19  -25   23  -25
+click   21  -24
+drag   27   28   28   28
+
+# ── The markers ──
+do toggle_mode
+
+# The core, dead centre, with six clear hexes around it in every
+# direction — the one place on the map that was kept plain.
+do cycle_kind
+click    0    0
+marker   0    0 target
+
+# ⚠ No tower markers.  A tower site is an authored answer to *where do
+# you stand*, which is the one thing this map refuses to say.
+
+# The east spawn, facing home — 28 out.
+do cycle_kind
+do cycle_kind
+do cycle_kind
+do rotate
+do rotate
+do rotate
+click   28    0
+marker   28    0 spawn 3
+
+# The west spawn.  Three more rotations bring the place-direction back
+# round to 0, which is EAST.
+do rotate
+do rotate
+do rotate
+click  -28    0
+marker  -28    0 spawn 0
+
+do toggle_mode
+
+# ⚠ The painted total is the geometry gate: 65 x 65 is 4225, and a
+# generator whose idea of a row span differed from the seam's by one hex
+# anywhere would miss it.
+count painted 4225 4225
+count markers 3 3
+kind    0    0 grass
+kind   32    0 steep_rock
+kind    0   32 steep_rock
+kind  -32  -32 steep_rock
+kind   31    0 steep_rock
+kind   30    0 grass
+kind   28    0 grass
+kind  -28    0 grass
+kind    0   30 grass

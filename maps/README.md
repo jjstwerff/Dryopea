@@ -3,7 +3,7 @@ Copyright (c) 2026 Jurjen Stellingwerff
 SPDX-License-Identifier: LGPL-3.0-or-later
 -->
 
-# maps/ — the authored bases
+# maps/ — the authored bases, and the one that is not one
 
 `make play MAP=starter_01` opens one of these.  BACKLOG A2.
 
@@ -12,9 +12,30 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 | [`starter_01`](starter_01.keys) | one walled neck, five hexes wide, two towers on the lane | **the first base** — it teaches WHERE TO STAND and nothing else |
 | [`crossroads_02`](crossroads_02.keys) | that neck mirrored, core in the middle, two spawns | **parking is the wrong answer** — the drive between the lanes is worth more than either lane |
 | [`the_gap_03`](the_gap_03.keys) | a `steep_rock` massif with one gap, four towers | **terrain, not masonry** — nothing to repair, nothing that can break, and the strongest base the repo can build |
+| [`the_flats_04`](the_flats_04.keys) | 65 hexes square, open floor, a cliff rim, nothing else | ⚠⚠ **ROOM** — the only one that is not a base.  No lane, no neck, no gate, no tower site: it is where you build your OWN |
 
 ⚠ What each is worth is **measured, not asserted** —
 [`docs/DECISIONS.md`](../docs/DECISIONS.md) § `@M045`.
+
+## ⚠⚠ Three of them teach a shape.  The fourth is the absence of one.
+
+`the_flats_04` is [`plans/34`](../plans/34-the-drive/README.md) D0 and
+[`docs/PUZZLES.md`](../docs/PUZZLES.md) § What CANNOT be measured yet is why
+it exists: the other three are **34 x 15**, **49 x 13** and **30 x 17** —
+long strips, thirteen to seventeen rows tall — and a rail-legal curve is a
+run of hexes whose direction changes at most once every N (`@X356`), so a
+radius costs space in **both** dimensions.  ***A player cannot build a round
+base on a map fifteen rows tall.***
+
+⚠ It follows from `@X360`: **every base that is seen is built by a player**,
+so what the map layer owes the shape work is ROOM, not more authored bases.
+
+⚠⚠ **Its gate is not a base's** — `tests/a2_the_maps.loft` § The flats is
+ROOM.  It is in `a2_shipped` and not in `a2_bases`, because *poking a spawn
+sends a wave at a defence* is a claim it does not make, and replaying its
+source through the seam costs **~12 s** where `starter_01` costs 0.3 s.  What
+that replay was checking is asked of it directly instead: the source's own
+`count painted` and `kind` measurements, re-asked of the pair that shipped.
 
 ## Two files per map, and one of them is the source
 

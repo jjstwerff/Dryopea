@@ -67,7 +67,7 @@ the vehicle, with the WALLET in the corner, ramping amber to red as it drains.  
 comes back.  ⚠ The HUD is one number and `docs/DESIGN.md` § HUD says it should
 be — no wave counter, no health bar, no minimap; everything else is diegetic.
 ⚠⚠ **`MAP=` and `SCRIPT=` are what give it a base to be.**  `make play
-MAP=starter_01` opens one of the three AUTHORED maps in `maps/` (BACKLOG A2,
+MAP=starter_01` opens one of the four maps in `maps/` (BACKLOG A2,
 2026-08-27); `SCRIPT=<name>` opens any of the 55 `.keys` files in
 `tests/scripts/` + `tests/gl/` as a live starting position, cut at its first
 `tick` (`@X263`).  Bare `make play` opens the empty default slot.
@@ -449,7 +449,7 @@ critical path is **4, the SCRAMBLE**.
 
 | gate | command | today |
 |---|---|---|
-| tests | `scripts/test.sh` | **1843 green**, ~320 s on a busy box (592 s beside another suite, 713 s, 753 s, 775 s and 1252 s — one of them a `graphics` cdylib rebuild), 151 files |
+| tests | `scripts/test.sh` | **1854 green**, ~320 s on a busy box (592 s beside another suite, 713 s, 753 s, 775 s, 934 s and 1252 s — one of them a `graphics` cdylib rebuild), 152 files |
 | scenarios | `scripts/validate.sh` | **78 scripts, 1383 measurements**, ~20 s |
 | drawn pixels | `scripts/validate_gl.sh` | **3 fixtures, 55 measurements** (needs xvfb) |
 | ⚠ decision tags | `scripts/tags.sh` — inside `test.sh` | **446 defined, 442 cited, all resolve** (`@X325`).  A dangling `@X` reads as authoritative and answers nothing |
@@ -811,7 +811,8 @@ scripts/validate_gl.sh the-ground    # just one
 # QUESTIONS_FOR_LOFT.md).  `loft src/main.loft` is `make play-native`,
 # kept for testing the eventual fix.
 make play
-# One of the three AUTHORED maps in maps/ (BACKLOG A2) — repo content.
+# One of the four maps in maps/ (BACKLOG A2) — repo content.  ⚠ Three are
+# BASES; `the_flats_04` is 65 hexes square and is ROOM (plans/34 D0).
 make play MAP=starter_01
 # Open one of the 50 `.keys` scenarios as a live starting position
 # (BACKLOG A1).  ⚠ `script=`, never `--script` — loft strips a leading
@@ -1303,7 +1304,7 @@ second copy here is the one that drifts.
 | [docs/RENDERER.md](docs/RENDERER.md) | ⚠ **The camera and the pipeline** — FOLLOW behind the facing, and `camera_overview` at 89° IS the editor's view |
 | [docs/PROXY_ART.md](docs/PROXY_ART.md) | Placeholder shapes.  ⚠ Its SIZES stay and become a gate; its SHAPES retire as plan 20's catalogue covers them |
 | [assets/README.md](assets/README.md) | ⚠ **The binary content the running game loads** — one file, and ⚠⚠ its licence travels with it |
-| [maps/README.md](maps/README.md) | ⚠ **The three authored bases**, what each teaches, and how to add one |
+| [maps/README.md](maps/README.md) | ⚠ **The three authored bases and the one that is not one**, what each teaches, and how to add one.  ⚠⚠ `the_flats_04` is ROOM rather than a shape (`@X362`) |
 | [loft_repros/README.md](loft_repros/README.md) | Minimal reproducers for loft bugs — filed, and ready to file |
 | [plans/README.md](plans/README.md) | Plan conventions (moros-style) + the index |
 | [plans/_TEMPLATE.md](plans/_TEMPLATE.md) | Template for a new plan |
@@ -1455,6 +1456,7 @@ names; most of them exist because somebody did it without reading.
 | Change how much world the frame shows, or add anything that draws, measures or inverts a click | `src/editor_view.loft::view_ppm` — ⚠⚠ **the ONE door, and the base scale is PRIVATE** (BACKLOG C7, `@X285`).  Four paths read it and they must AGREE: the GL loop's frame, `snap`'s frame, `classify_world`, and `screen_to_hex`, which un-projects a pointer back to a hex |
 | Play the game in a window | `make play SCRIPT=<name>` — ⚠ `script=`, never `--script` |
 | Play one of the AUTHORED maps, or add one | [`maps/README.md`](maps/README.md) — ⚠ the `.keys` is the SOURCE, the `.json` is BUILT |
+| Ask whether a map is big enough to build a base IN, or add ROOM | `maps/the_flats_04` + `@X362` — ⚠⚠ **the other three are STRIPS** (34 x 15, 49 x 13, 30 x 17) and *a player cannot build a round base on a map fifteen rows tall*.  The fourth is **65 hexes square** and teaches nothing on purpose.  ⚠ Its 65 is `atmosphere_haze_radius`, so it is as big as the game says you can SEE (4225 hexes against the disc's 4921; ⚠ it is a SQUARE, so the edge is 32 hexes out and the corners are 48) — and `@M098` says that is about the ceiling: a fighting tick costs **183 ms of 667** on it, while an IDLE tick is free |
 | Validate the GAME (not a function) | `scripts/validate.sh`, then [`plans/08-game-validation/README.md`](plans/08-game-validation/README.md) |
 | Add a script to the gate | drop a `.keys` in `tests/scripts/` — ⚠ every file there must play GREEN |
 | Add a validation scenario | a `.keys` + one test in `tests/08_v3_scenarios.loft` — ⚠ pin its check count |

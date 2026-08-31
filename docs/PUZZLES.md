@@ -629,6 +629,24 @@ layer is ROOM, not authored bases** — the bases come from players (`@X360`).
 ⚠ That makes map ROOM a prerequisite for testing any of this with a real
 player, which is the only way it can be tested at all.
 
+#### ⚠⚠ SHIPPED, 2026-08-31 — `maps/the_flats_04` is 65 x 65  `@X362`
+
+[`plans/34`](../plans/34-the-drive/README.md) D0, and it needed no code.  An
+open floor 61 hexes square inside two rings of `steep_rock`, a core dead
+centre, a spawn at each end of the middle row and **nothing else** — no lane,
+no neck, no gate, no tower site.  ⚠ It is bigger than every base **in both
+dimensions**, which is the assertion rather than a description:
+`crossroads_02` is 49 columns wide and would pass a width test on its own
+while being thirteen rows tall.
+
+⚠⚠ **The size is the design's own bound and not a guess** — **4225 hexes against the 4921 of the radius-40 disc** `tests/11_f8_the_tick_budget.loft` measures the tick over — fewer hexes, so the cost comparison holds.  ⚠⚠ **But it is a SQUARE and the disc is not**: measured with `lat_distance`, the edge of it is **32** hexes from the core and the four corners are **48**, past the haze's 40.  That is the right way round for a sandbox — every row and column through the core is visible end to end, and the corners are over the horizon.  ⚠ And it is
+close to the ceiling: a fighting tick on it costs **183 ms of a 667 ms
+budget** against **12 ms** on `starter_01` (`@M098`).  ***The room this
+document asked for is most of what a map can be.***
+
+⚠ What is still NOT answered is the rest of D0's question — *does it feel
+good?* — because only a person driving it can answer that.
+
 ## What this document does NOT decide
 
 - **Whether a rail is a GROUND LAYER or a vehicle type.**  ⚠⚠ It matters:
@@ -648,10 +666,11 @@ player, which is the only way it can be tested at all.
 ## The plan that tests this
 
 [`plans/34-the-drive`](../plans/34-the-drive/README.md) — ⚠⚠ **it tests this
-document rather than building it.**  D0 is room to drive in and needs no code;
-**D2 is the falsifier** that can kill `@X359` and `@X361` outright; D3 is the
-funnel and is independent of everything else here.  ⚠ Nothing downstream —
-rails, trains, sidings, curved-wall strength — is built until D2 answers.
+document rather than building it.**  ⚠ **D0 is SHIPPED** (2026-08-31, `@X362`):
+`maps/the_flats_04` is the room, and it needed no code.  **D2 is the
+falsifier** that can kill `@X359` and `@X361` outright; D3 is the funnel and is
+independent of everything else here.  ⚠ Nothing downstream — rails, trains,
+sidings, curved-wall strength — is built until D2 answers.
 
 ## See also
 

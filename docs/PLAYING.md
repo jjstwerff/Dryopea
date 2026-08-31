@@ -27,7 +27,7 @@ make play SCRIPT=a-defended-base  # any of the 50 `.keys` scenarios
 make play                         # the default save slot, empty on a fresh checkout
 ```
 
-Three maps ship in [`../maps/`](../maps/README.md); `SCRIPT=` opens any
+Four maps ship in [`../maps/`](../maps/README.md); `SCRIPT=` opens any
 `.keys` file in `tests/scripts/` or `tests/gl/` as a starting position.
 **Escape** closes the window.
 
@@ -236,7 +236,8 @@ is about.
 
 ## See also
 
-- [`../maps/README.md`](../maps/README.md) — the three authored bases and what each teaches
+- [`../maps/README.md`](../maps/README.md) — the three authored bases, what each
+  teaches, and `the_flats_04`, which teaches nothing and is 65 hexes square
 - [`DESIGN.md`](DESIGN.md) — the game this is becoming
 - [`STATUS.md`](STATUS.md) — one line per shipped phase
 - [`../plans/BACKLOG.md`](../plans/BACKLOG.md) — what could be built next

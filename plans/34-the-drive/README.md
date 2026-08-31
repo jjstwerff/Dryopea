@@ -9,7 +9,51 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 ## Status
 
-**OPEN — nothing built.  D0 next, and it is the one to play.**
+**OPEN — D0 SHIPPED 2026-08-31 (`@X362`, `@M098`).  D1 next; D3 is
+independent and can go any time.**
+
+⚠⚠ **D0 is a map and it needed no code**: `maps/the_flats_04` — an open floor
+**61 hexes square** inside two rings of `steep_rock`, a core dead centre, a
+spawn at each end of the middle row and **nothing else**.  It is bigger than
+every base in **both** dimensions, which is the assertion and not the
+description: `crossroads_02` is 49 columns wide and would pass a width test on
+its own while being thirteen rows tall.
+
+⚠⚠ **THE SIZE IS THE DESIGN'S OWN BOUND**, `numbers.json`
+§ `atmosphere_haze_radius`: **4225 hexes against the 4921 of the radius-40
+disc** `tests/11_f8_the_tick_budget.loft` measures the tick over — fewer
+hexes, so the cost comparison holds.  ⚠⚠ **But it is a SQUARE and the disc is
+not**: measured with `lat_distance`, the edge of it is **32** hexes from the
+core and the four corners are **48**, past the haze's 40.  That is the right
+way round for a sandbox — every row and column through the core is visible
+end to end, and the corners are over the horizon.
+
+⚠⚠ **AND THE MEASUREMENT SAYS THAT IS ABOUT THE CEILING** (`@M098`): a
+fighting tick costs **183 ms of a 667 ms budget** on it against **12 ms** on
+`starter_01` — nine times the hexes for fifteen times the tick.  ⚠ **But an
+IDLE tick is FREE**: 81 µs on the flats against 97 µs on `starter_01`, because
+with no wave running there is no field to build.  ***The size of a map costs
+nothing until something is walking on it***, which is why D0 is drivable at
+all, and it is [`plans/22`](../22-the-field-cache/README.md)'s subject exactly.
+
+⚠⚠ **The third number is the one that shaped the gate**: replaying the source
+through the seam costs **~12 s** where `starter_01` costs 0.3 s, because a
+`.keys` map is painted a hex at a time through the editor's own door.  So the
+flats is in `a2_shipped` and **not** in the new `a2_bases`, and the drift check
+it would have cost twelve seconds for is asked of it directly instead — the
+source's own `count painted` and `kind` measurements, re-asked of the pair that
+shipped (`tests/a2_the_maps.loft` § The flats is ROOM).  ⚠ **A drift check is a
+claim about the pair, not a method.**
+
+⚠ **And a fourth number is the one a player will FEEL**: the CPU half of a cold
+ground bake costs **1362 ms** on the flats against **197 ms** on `starter_01`,
+and it is paid on **every press of P**, because `play_view_sync` resets its
+watch whenever play mode is off.  So entering play mode here is a **~1.4 s
+hitch**, and incremental tiles for ever after.
+
+⚠ **What D0 has NOT answered is its own first question** — *does it feel
+good?* — because `@X358`'s feel target can only be answered by a person with
+their hands on it.  `make play MAP=the_flats_04`.
 
 ⚠⚠ **This plan exists to test [`docs/PUZZLES.md`](../../docs/PUZZLES.md), not
 to build it.**  That document is eleven decisions deep (`@X351`-`@X361`) and
@@ -47,6 +91,12 @@ left, 22 has never started S0, 01 has been open since the first week) and
 this is the convention; it is the owner's call and it is recorded here rather
 than quietly ignored.**
 
+⚠ **D0 was taken with that question still open, and deliberately**: it is XS,
+it needed no code, it touches nothing any other plan owns, and what it produces
+— ROOM — is [`plans/04`](../04-map-library/README.md)'s debt rather than this
+plan's (`docs/PUZZLES.md` § What CANNOT be measured yet).  ⚠⚠ **D1 is the first
+phase that writes simulation code, and it is where the cap actually bites.**
+
 ## Anchors
 
 - [`docs/PUZZLES.md`](../../docs/PUZZLES.md) — ⚠ **the whole design; this plan
@@ -81,11 +131,36 @@ stay design until D2 answers.
 
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
-| **D0** — ⚠⚠ **ROOM to drive in**: one big open map in `maps/`, no enemies, no pressure | XS | ⚠ **`make play MAP=…` and drive it** — no gate, and no code | **Next** |
-| **D1** — the THROTTLE: accelerate held, coast released, brake reversed, turning free | M | `tests/34_d1` + the tick-length sweep | Blocked on D0 |
+| **D0** — ⚠⚠ **ROOM to drive in**: one big open map in `maps/`, no enemies, no pressure | XS | ⚠ **`make play MAP=the_flats_04` and drive it** — no code.  Two cheap gates in `tests/a2_the_maps.loft` pin the SIZE and the RIM | ⚠ **Built 2026-08-31**; the FEEL half is the owner's to answer |
+| **D1** — the THROTTLE: accelerate held, coast released, brake reversed, turning free | M | `tests/34_d1` + the tick-length sweep | **Next** |
 | **D2** — ⚠⚠ **the FALSIFIER**: does a fast drawing drive make a rail-legal sweep? | S | `tests/34_d2` over a captured wall shape | Blocked on D1 |
 | **D3** — the FUNNEL: `@M094`'s factorial plus one cell | S | four `.keys` + `scripts/validate.sh` | ⚠ **independent — needs no code and can run any time** |
 | **D4** — the BOOST, re-decided against `@X357` | S | `tests/34_d4` | Blocked on D1 |
+
+### ⚠ What D0 shipped, and the two things its gate pins
+
+⚠⚠ **A sandbox map is a MAP but it is not a BASE, and the test file now says
+so**: `a2_shipped` is every map the repo ships and `a2_bases` is the three that
+teach a shape.  *Poking a spawn sends a wave at a defence* is a claim the flats
+does not make and its three siblings already carry three times over.
+
+⚠⚠ **What CAN silently take ROOM away is the SIZE and the RIM**, so those are
+what is gated.  A map that quietly lost half its floor would still load, still
+draw and still play, and nothing else in the tree looks at how BIG a map is.
+⚠ And the rim's closure rests on a **palette column** rather than on the map —
+two rings of `steep_rock` shut the vehicle in only while `walk_vehicle` is
+false for it, and it was TRUE until BACKLOG C10 turned it over — so the column
+is asserted beside the ring it holds shut.
+
+⚠ **The floor asserts a NULL, and that is the map's one claim**: no hex of it
+refuses the vehicle, refuses a building, or is a height anybody has to climb.
+The speckle of `sand` / `hill` / `rock` is a **MOTION CUE** — ⚠⚠ *you cannot
+feel speed over one flat colour*, because `ground_gl.loft` draws one flat
+unlit colour per palette kind — and those three differ from `grass` only in
+colour and in FOOTING (`@X284`).
+
+⚠ **And the sweep says how much it read before it says what it found.**  Three
+counters that are all zero is also what a loop that never ran answers.
 
 ### ⚠ D0 — why a map and not a `.keys` fixture
 

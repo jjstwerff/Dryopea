@@ -7,6 +7,17 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 **Status:** Future (design drafted 2026-05-26; no code).
 
+⚠⚠ **One debt this plan carries has been paid outside it, 2026-08-31**:
+[`docs/PUZZLES.md`](../../docs/PUZZLES.md) § What CANNOT be measured yet asked
+this plan for **ROOM rather than authored bases** — every map in `maps/` was a
+strip thirteen to seventeen rows tall, and *a player cannot build a round base
+on one*.  [`plans/34`](../34-the-drive/README.md) D0 shipped
+`maps/the_flats_04`, **65 hexes square with an open floor and a cliff rim**
+(`@X362`), and it needed no code from here.  ⚠ It is the opposite of what this
+plan is for — it teaches nothing and decides nothing — which follows from
+`@X360`: **every base that is seen is built by a player**, so a curated library
+owes the shape layer space, and the shapes come from elsewhere.
+
 ## Goal
 
 A **curated set of hand-authored maps** the player picks from

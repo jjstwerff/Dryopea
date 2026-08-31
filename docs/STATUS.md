@@ -567,4 +567,17 @@ on and **+2** on the front it is not, so ***a new spawn source is worth
 something only where something can shoot at it***.  ⚠ § X5 needs a ruling
 rather than a tune, and it is named rather than taken.
 
-Gates **1852 green / 152 files**, **78 scripts / 1383 measurements**.
+⚠⚠ **AND THERE IS ROOM TO DRIVE IN AT LAST — `plans/34` D0, 2026-08-31,
+`@X362`, and it needed NO CODE.**  `maps/the_flats_04` is an open floor
+**61 hexes square** inside two rings of `steep_rock`, with a core dead centre,
+a spawn at each end of the middle row and **nothing else** — no lane, no neck,
+no gate, no tower site.  ⚠⚠ **The other three maps are strips** — 34 x 15,
+49 x 13, 30 x 17 — and *a player cannot build a round base on a map fifteen
+rows tall*, which is the gap `docs/PUZZLES.md` named.  ⚠ Its 65 across is
+`atmosphere_haze_radius`, so the map is as big as the game says you can SEE.
+⚠⚠ **And the cost says that is the ceiling** (`@M098`): a fighting tick is
+**183 ms of 667** on it against **12 ms** on `starter_01`, while an IDLE tick
+is **free** — ***the size of a map costs nothing until something is walking on
+it.***
+
+Gates **1854 green / 152 files**, **78 scripts / 1383 measurements**.

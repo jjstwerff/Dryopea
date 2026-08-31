@@ -40,6 +40,25 @@ const SHOTS: text = "tests/actual";
 // DELETING a map is a decision that shows up in a diff — a sweep over
 // an emptied `maps/` reports green having checked nothing.
 fn a2_shipped(tag: integer) -> vector<text> {
+    ["starter_01", "crossroads_02", "the_gap_03", "the_flats_04"]
+}
+
+// The three that are BASES.
+//
+// ⚠⚠ **`the_flats_04` is not one, and the split is not tidiness.**  It
+// ships ROOM rather than a shape (`plans/34` D0) — no lane, no neck, no
+// gate, no tower site — so *poking a spawn sends a wave at a defence*
+// is a claim it does not make and its three siblings already carry
+// three times over.
+//
+// ⚠ And its source paints 4225 hexes through the seam TWICE — the rim
+// is whatever the floor did not cover — which replays in **~12 s**
+// where `starter_01` takes 0.3 s.  ⚠⚠ What that replay was checking is
+// asked of the flats directly in § The flats is ROOM: the source's own
+// measurements, re-asked of the artefact that shipped, for
+// milliseconds.  **A drift check is a claim about the pair, not a
+// method** — replaying is one way to make it and not the only one.
+fn a2_bases(tag: integer) -> vector<text> {
     ["starter_01", "crossroads_02", "the_gap_03"]
 }
 
@@ -180,7 +199,7 @@ fn test_every_way_a_map_can_be_unplayable_is_named() {
 // @DRY-085 — where a map is stored, and which maps there are
 fn test_the_repo_ships_maps_at_all() {
     trs_pal = load_palette(PAL);
-    assert(len(map_names(MAPS_DIR)) >= 3,
+    assert(len(map_names(MAPS_DIR)) >= 4,
            "maps/ holds {len(map_names(MAPS_DIR))} sources — `make play MAP=` needs content");
     for trs_n in a2_shipped(0) {
         trs_s = a2_load(trs_n);
@@ -202,7 +221,7 @@ fn test_every_shipped_map_is_playable() {
 
 // @DRY-087 — the shipped artefact is what its source says
 fn test_the_shipped_pair_is_what_its_source_says() {
-    for tsp_n in a2_shipped(0) {
+    for tsp_n in a2_bases(0) {
         // Replay the source into a session of its own…
         tsp_src = editor_state_new(PAL);
         editor_state_attach(tsp_src, "{SHOTS}/a2_{tsp_n}.json",
@@ -313,10 +332,192 @@ fn test_a_map_is_built_from_the_position_not_the_end_state() {
            "and the strip is 17 hexes, got {painted_count(tam_loaded.0)}");
 }
 
+// ─── The flats is ROOM ──────────────────────────────────────────
+
+// max(|q|, |r|) — which ring of the SQUARE the flats was painted as a
+// hex sits in.
+//
+// ⚠ Not a hex distance and not standing in for one: `lat_distance` is
+// the lattice's rule and this is a rectangle's own index, which is what
+// lets "the rim" and "the floor" be named without a second opinion
+// about how far apart two hexes are.
+fn a2_ring(q: integer, r: integer) -> integer {
+    ar_q = q;
+    if ar_q < 0 { ar_q = -ar_q; }
+    ar_r = r;
+    if ar_r < 0 { ar_r = -ar_r; }
+    if ar_q > ar_r { ar_q } else { ar_r }
+}
+
+// A map's painted span, in columns and rows.
+//
+// ⚠ The whole reason `plans/34` D0 exists is a number no other test in
+// this repo reads: how BIG a map is.  ⚠⚠ It is the RECTANGLE the paint
+// fits in and not a hex distance — `crossroads_02` is 49 columns and 13
+// rows, and it is the 13 that stops a curve fitting in it.
+fn a2_extent(pw: const PaintedWorld) -> (integer, integer) {
+    ae_lo_q = 0;
+    ae_hi_q = 0;
+    ae_lo_r = 0;
+    ae_hi_r = 0;
+    ae_first = true;
+    for ae_p in pw.painted {
+        if ae_first {
+            ae_lo_q = ae_p.q;
+            ae_hi_q = ae_p.q;
+            ae_lo_r = ae_p.r;
+            ae_hi_r = ae_p.r;
+            ae_first = false;
+        }
+        if ae_p.q < ae_lo_q { ae_lo_q = ae_p.q; }
+        if ae_p.q > ae_hi_q { ae_hi_q = ae_p.q; }
+        if ae_p.r < ae_lo_r { ae_lo_r = ae_p.r; }
+        if ae_p.r > ae_hi_r { ae_hi_r = ae_p.r; }
+    }
+    (ae_hi_q - ae_lo_q + 1, ae_hi_r - ae_lo_r + 1)
+}
+
+// ⚠⚠ **The flats ships ROOM, and the whole of what can silently take
+// that away is its SIZE and its RIM.**
+//
+// `docs/PUZZLES.md` § What CANNOT be measured yet is why it exists —
+// ***a player cannot build a round base on a map fifteen rows tall***
+// — so a map that quietly lost half its floor would still load, still
+// draw, still play, and no longer be the thing `plans/34` D0 asked for.
+// Nothing else in the tree looks at how BIG a map is.
+//
+// ⚠⚠ **And the rim's closure rests on a PALETTE column rather than on
+// the map.**  Two rings of `steep_rock` shut the vehicle in only while
+// `walk_vehicle` is false for it — and it was TRUE until BACKLOG C10
+// turned it over (`CLAUDE.md` § Movement: *a 0.4 m clearance does not
+// clear a cliff*).  Flip that column back and the sandbox opens onto
+// the void past the mesh with nothing here noticing, so the column is
+// asserted beside the ring it holds shut.
+//
+// ⚠ It is also this map's DRIFT check.  The source ends in
+// `count painted 4225` and nine `kind` lines; those run at BUILD time,
+// against the world the source painted.  These run against the pair
+// that SHIPPED — the same claims, one artefact later.
+fn test_the_flats_is_room_and_it_is_closed() {
+    ttf_pal   = load_palette(PAL);
+    ttf_s     = a2_load("the_flats_04");
+    // ⚠ Through `hex_surface_index` rather than the painted layer: it
+    // is what a body standing on a hex is standing ON, and over an
+    // empty height layer that is the painted kind — so the reading is
+    // the one the movers take and not a second opinion about it.
+    ttf_hl    = height_layer_empty();
+    ttf_floor = 30;
+    ttf_edge  = 32;
+    ttf_want  = (2 * ttf_edge + 1) * (2 * ttf_edge + 1);
+
+    assert(painted_count(ttf_s.pw) == ttf_want,
+           "the flats is {2 * ttf_edge + 1} hexes square, so {ttf_want} painted — "
+           + "got {painted_count(ttf_s.pw)}");
+
+    // Every hex of it, once.  ⚠ Counters rather than an assertion in
+    // the loop: the first offender would abandon the run (`CLAUDE.md`
+    // § Testing something that moves), and *how many* is the reading
+    // that tells a shifted rim from a hole in the floor.
+    ttf_shut = 0;   // floor hexes the vehicle cannot enter
+    ttf_wild = 0;   // floor hexes nothing can be built on
+    ttf_step = 0;   // floor hexes that are not at ground level
+    ttf_leak = 0;   // rim hexes a vehicle could cross
+    ttf_seen = 0;   // ⚠ the generic control: can this loop read anything?
+    for ttf_r in -ttf_edge..=ttf_edge {
+        for ttf_q in -ttf_edge..=ttf_edge {
+            ttf_seen += 1;
+            ttf_g = ttf_pal[hex_surface_index(ttf_pal, ttf_s.pw, ttf_hl,
+                                              ttf_q, ttf_r)] ?? GroundType {};
+            if a2_ring(ttf_q, ttf_r) > ttf_floor {
+                if ttf_g.walk_vehicle { ttf_leak += 1; }
+                continue;
+            }
+            if !ttf_g.walk_vehicle || !ttf_g.walk_ground { ttf_shut += 1; }
+            if !ttf_g.buildable { ttf_wild += 1; }
+            if abs(painted_height_of(ttf_pal, ttf_s.pw, ttf_q, ttf_r)) > 0.001 {
+                ttf_step += 1;
+            }
+        }
+    }
+
+    // ⚠⚠ **The sweep says how much it READ before it says what it
+    // found.**  Four counters that are all zero is also what a loop
+    // that never ran answers, and `-32..=32` is a range somebody could
+    // narrow to nothing without a single assertion going red
+    // (`CLAUDE.md` § A gate that reads PERFECT is as suspect as one
+    // that reads wrong).
+    assert(ttf_seen == ttf_want,
+           "the sweep must read every hex of the map — {ttf_seen} of {ttf_want}");
+
+    // ⚠⚠ *Nothing in it decides anything* is this map's one claim, and
+    // this is it as arithmetic: no hex of the floor turns anybody away,
+    // refuses a building, or is a height somebody has to climb.  The
+    // speckle is a MOTION CUE — you cannot feel speed over one flat
+    // colour — and `sand` / `hill` / `rock` differ from `grass` only in
+    // colour and in FOOTING (`@X284`).
+    assert(ttf_shut == 0 && ttf_wild == 0 && ttf_step == 0,
+           "the floor must decide nothing — {ttf_shut} hexes refuse the vehicle, "
+           + "{ttf_wild} refuse a building, {ttf_step} are a step");
+    assert(ttf_leak == 0,
+           "the rim must be closed — {ttf_leak} of its hexes take a vehicle");
+
+    // The palette column the rim is standing on.
+    ttf_rock = ttf_pal[hex_surface_index(ttf_pal, ttf_s.pw, ttf_hl,
+                                         ttf_edge, 0)] ?? GroundType {};
+    assert(ttf_rock.name == "steep_rock",
+           "the rim is steep_rock, got {ttf_rock.name}");
+    assert(!ttf_rock.walk_vehicle && !ttf_rock.walk_ground,
+           "and steep_rock is what stops both — walk_vehicle {ttf_rock.walk_vehicle}, "
+           + "walk_ground {ttf_rock.walk_ground}");
+
+    // The three markers, where the source put them.  ⚠ The spawns are
+    // at OPPOSITE ends: `map_fault` wants one pokeable spawn and takes
+    // the first, and two of them is what keeps a landing a choice
+    // (`@M091`) on a map players are meant to build their own bases on.
+    ttf_core = play_core(ttf_s.mw);
+    assert(ttf_core.0 == 1 && ttf_core.1 == 0 && ttf_core.2 == 0,
+           "the core is dead centre — {ttf_core.0} target(s) at "
+           + "({ttf_core.1}, {ttf_core.2})");
+    assert(marker_kind(ttf_s.mw, 28, 0) == MARKER_KIND_SPAWN
+        && marker_kind(ttf_s.mw, -28, 0) == MARKER_KIND_SPAWN,
+           "and a spawn at each end of the middle row");
+}
+
+// ⚠⚠ **This is the phase's whole reason for existing, and it is the
+// one number no other test in the repo reads.**
+//
+// `docs/PUZZLES.md` measured the three bases at **34 x 15**, **49 x 13**
+// and **30 x 17** and called that the wall: long strips, thirteen to
+// seventeen rows tall, and a rail-legal curve is a RUN of hexes whose
+// direction changes at most once every N (`@X356`) — so a radius costs
+// space in BOTH dimensions and no map in this repo had any.
+//
+// ⚠ **BOTH is the assertion.**  `crossroads_02` is 49 columns wide and
+// would pass a width test on its own while being 13 rows tall, which is
+// exactly the shape that cannot hold a curve.
+fn test_the_flats_is_bigger_than_every_base_in_both_dimensions() {
+    ttb_flats = a2_extent(a2_load("the_flats_04").pw);
+    for ttb_n in a2_bases(0) {
+        ttb_e = a2_extent(a2_load(ttb_n).pw);
+        assert(ttb_flats.0 > ttb_e.0 && ttb_flats.1 > ttb_e.1,
+               "the flats is {ttb_flats.0} x {ttb_flats.1} and must beat {ttb_n} "
+               + "({ttb_e.0} x {ttb_e.1}) in BOTH dimensions — a map that is only "
+               + "LONG is the strip plans/34 D0 exists to stop being the only option");
+    }
+    // ⚠ A floor and a rim, not a number pulled out of the air: 4225
+    // hexes against the 4921 of the radius-40 disc
+    // `tests/11_f8_the_tick_budget.loft` measures the tick over.  ⚠⚠ It
+    // is a SQUARE and the disc is not, so the edge of it is 32 hexes
+    // from the core and the corners are 48 — over the haze, which is
+    // the right way round for a sandbox.
+    assert(ttb_flats.0 == 65 && ttb_flats.1 == 65,
+           "and it is square — {ttb_flats.0} x {ttb_flats.1}");
+}
+
 // ─── It is a game, not two layers ───────────────────────────────
 
-fn test_a_run_starts_on_every_shipped_map() {
-    for tar_n in a2_shipped(0) {
+fn test_a_run_starts_on_every_base() {
+    for tar_n in a2_bases(0) {
         tar_s  = a2_load(tar_n);
         tar_ps = play_state_new();
         play_set_mode(tar_ps, tar_s, true);
